@@ -1,0 +1,254 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * The streamed graph.
+ *
+ * Rows live in a plain array, not in `$state`. A repository with 200k commits
+ * would mean 200k deeply-proxied objects, and every batch would pay to re-wrap
+ * them. Instead the array is untracked and a `version` counter is the reactive
+ * signal: appending a batch is O(batch), and consumers re-read what they need.
+ * Nothing here holds a DOM node — the row list is virtualized and the lanes are
+ * drawn on canvas.
+ */
+
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import * as api from '../api';
+import { repo } from '../repo.svelte';
+import {
+	GRAPH_DONE_EVENT,
+	GRAPH_ROWS_EVENT,
+	type CommitDetail,
+	type GraphDoneEvent,
+	type GraphRow,
+	type GraphRowsEvent
+} from '../types';
+
+/** Rows asked for on first paint. Enough to fill any window several times over. */
+const FIRST_WINDOW = 600;
+
+/** Rows asked for on each subsequent request. */
+const NEXT_WINDOW = 2000;
+
+/** Start fetching when the viewport gets this close to the last loaded row. */
+const PREFETCH = 300;
+
+/** Untracked row storage, indexed by absolute row index. */
+let buffer: GraphRow[] = [];
+
+let version = $state(0);
+let count = $state(0);
+let requested = $state(0);
+let complete = $state(false);
+let error = $state<string | null>(null);
+let selectedIndex = $state<number | null>(null);
+let detail = $state<CommitDetail | null>(null);
+let detailError = $state<string | null>(null);
+
+/** Guards against a slow detail fetch landing after a newer selection. */
+let detailSeq = 0;
+let unlisteners: UnlistenFn[] = [];
+
+/**
+ * Set when a re-walk is in flight. The existing rows stay on screen until the
+ * first batch of the new walk arrives, so a ref moving does not blank the graph
+ * and flash it back in.
+ */
+let pendingReset = false;
+
+/** The selected commit, tracked by id so it survives a re-walk. */
+let selectedId: string | null = null;
+/** True while we are re-walking and have not seen the selected commit again. */
+let selectionUnverified = false;
+
+function reset() {
+	buffer = [];
+	version += 1;
+	count = 0;
+	requested = 0;
+	complete = false;
+	error = null;
+	selectedIndex = null;
+	selectedId = null;
+	selectionUnverified = false;
+	pendingReset = false;
+	detail = null;
+	detailError = null;
+}
+
+export const graph = {
+	/** Reactive signal; changes whenever rows were added or cleared. */
+	get version(): number {
+		return version;
+	},
+	/** Number of rows loaded so far. Grows as the walk streams. */
+	get count(): number {
+		return count;
+	},
+	/** True once the walk reached the end of history. */
+	get complete(): boolean {
+		return complete;
+	},
+	get error(): string | null {
+		return error;
+	},
+	get selectedIndex(): number | null {
+		return selectedIndex;
+	},
+	get selected(): GraphRow | null {
+		return selectedIndex === null ? null : (buffer[selectedIndex] ?? null);
+	},
+	get detail(): CommitDetail | null {
+		return detail;
+	},
+	get detailError(): string | null {
+		return detailError;
+	},
+
+	/** One row, or undefined if the walk has not reached it yet. */
+	row(index: number): GraphRow | undefined {
+		return buffer[index];
+	},
+
+	/**
+	 * Subscribe to the walk. Call once; the returned function detaches.
+	 * Events carrying a stale token are dropped, which is what makes restarting
+	 * the walk after a ref change safe.
+	 */
+	async attach(): Promise<() => void> {
+		unlisteners.push(
+			await listen<GraphRowsEvent>(GRAPH_ROWS_EVENT, (event) => {
+				const payload = event.payload;
+				if (payload.token !== repo.token) return;
+
+				// The new walk has produced something, so the old rows can go.
+				if (pendingReset) {
+					buffer = [];
+					count = 0;
+					complete = false;
+					pendingReset = false;
+				}
+
+				for (const row of payload.rows) {
+					buffer[row.index] = row;
+					if (row.index + 1 > count) count = row.index + 1;
+					// Follow the selected commit to wherever it landed.
+					if (selectionUnverified && row.id === selectedId) {
+						selectedIndex = row.index;
+						selectionUnverified = false;
+					}
+				}
+				version += 1;
+				repo.setCommitCount(count);
+			})
+		);
+
+		unlisteners.push(
+			await listen<GraphDoneEvent>(GRAPH_DONE_EVENT, (event) => {
+				const payload = event.payload;
+				if (payload.token !== repo.token) return;
+
+				// A walk that ended without producing a row still has to clear
+				// the old ones — the repository may now be empty.
+				if (pendingReset) {
+					buffer = [];
+					count = 0;
+					pendingReset = false;
+					version += 1;
+				}
+
+				complete = payload.complete;
+				if (payload.error) error = payload.error;
+
+				// The selected commit never reappeared: history was rewritten
+				// under it, so the selection is gone rather than merely unseen.
+				if (selectionUnverified && payload.complete) {
+					selectionUnverified = false;
+					selectedIndex = null;
+					selectedId = null;
+					detail = null;
+				}
+
+				repo.setCommitCount(count);
+			})
+		);
+
+		return () => {
+			for (const off of unlisteners) off();
+			unlisteners = [];
+		};
+	},
+
+	/** Clear everything and ask for the first window of the current walk. */
+	async restart(): Promise<void> {
+		reset();
+		const token = repo.token;
+		if (token === null) return;
+		requested = FIRST_WINDOW;
+		try {
+			await api.graphRequest(token, FIRST_WINDOW);
+		} catch (e) {
+			error = String(e);
+		}
+	},
+
+	/**
+	 * Restart against a *new* walk, after refs moved. The old token's events
+	 * stop being accepted the moment the repo store takes the new one.
+	 */
+	async reload(): Promise<void> {
+		try {
+			const token = await api.graphRestart();
+			// Hold the current rows until the new walk delivers; only then do
+			// they get replaced. Clearing first is what makes a refresh flash.
+			pendingReset = true;
+			selectionUnverified = selectedId !== null;
+			requested = FIRST_WINDOW;
+			error = null;
+			repo.setToken(token);
+			await api.graphRequest(token, FIRST_WINDOW);
+		} catch (e) {
+			pendingReset = false;
+			error = String(e);
+		}
+	},
+
+	/**
+	 * Tell the store the viewport reaches `endIndex`. Requests more rows when
+	 * the walk is running out ahead of the scroll.
+	 */
+	ensure(endIndex: number): void {
+		const token = repo.token;
+		if (token === null || complete) return;
+		if (endIndex + PREFETCH < requested) return;
+
+		requested += NEXT_WINDOW;
+		api.graphRequest(token, NEXT_WINDOW).catch((e) => {
+			error = String(e);
+		});
+	},
+
+	/** Select a row and load its detail panel. */
+	select(index: number): void {
+		const row = buffer[index];
+		if (!row) return;
+		selectedIndex = index;
+		selectedId = row.id;
+		selectionUnverified = false;
+		detail = null;
+		detailError = null;
+
+		const seq = ++detailSeq;
+		api
+			.commitDetail(row.id)
+			.then((result) => {
+				if (seq === detailSeq) detail = result;
+			})
+			.catch((e) => {
+				if (seq === detailSeq) detailError = String(e);
+			});
+	},
+
+	clear(): void {
+		reset();
+	}
+};

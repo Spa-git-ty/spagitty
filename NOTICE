@@ -1,0 +1,68 @@
+GitLord
+Copyright (C) 2026 GitLord contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <https://www.gnu.org/licenses/>.
+
+
+TRADEMARK
+---------
+
+GitLord is not affiliated with, endorsed by, or sponsored by the Git project or
+the Software Freedom Conservancy. Git and the Git logo are trademarks of the
+Software Freedom Conservancy.
+
+
+THIRD-PARTY COMPONENTS
+----------------------
+
+The full, generated dependency inventory lives in THIRD-PARTY-LICENSES.md and is
+refreshed in CI (cargo-about for the Rust tree, license-checker for the npm
+tree). It is also shown in-app under Settings -> Advanced, as GPL-3 requires.
+The summary below covers the primary components and is not a substitute for that
+file.
+
+  gitoxide (gix)          MIT OR Apache-2.0
+  Tauri 2                 MIT OR Apache-2.0
+  serde, serde_json       MIT OR Apache-2.0
+  notify                  CC0-1.0 OR Artistic-2.0
+  Svelte / SvelteKit      MIT
+  Vite                    MIT
+
+All are compatible with distribution inside a GPL-3.0-or-later work.
+
+
+FONTS
+-----
+
+GitLord ships no bundled font. The UI uses the host platform's system font
+stack. The design handoff wireframes used "Architects Daughter" to signal draft
+status; it is deliberately not shipped.
+
+If a font is bundled in future, its license (OFL or otherwise) must be stated
+here and its text included in THIRD-PARTY-LICENSES.md.
+
+
+ICONS
+-----
+
+Glyphs in the UI are Unicode text characters, which carry no license. Any icon
+set added later must be MIT/OFL or an original commissioned mark, relicensable
+under GPL-3.0-or-later, and must be recorded here.
+
+
+CORRESPONDING SOURCE
+--------------------
+
+The commit SHA of each build is embedded at compile time and displayed in
+Settings -> Advanced -> About, alongside a link to the corresponding source for
+that exact build.

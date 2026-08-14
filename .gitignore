@@ -1,0 +1,9 @@
+node_modules/
+/build
+/.svelte-kit
+/dist
+/src-tauri/target
+/target
+THIRD-PARTY-LICENSES.md
+.DS_Store
+*.log

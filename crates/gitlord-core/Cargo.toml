@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+[package]
+name = "gitlord-core"
+description = "Git operations for GitLord"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+# gitoxide. MIT OR Apache-2.0 — clean to link into a GPL-3 work.
+# Default features on purpose: they carry the hash backend and the revision,
+# diff and status machinery. Trimming them means hand-picking a working set of
+# roughly a dozen interdependent features for no measurable gain here.
+gix = "0.86"
+serde = { workspace = true }
+thiserror = { workspace = true }

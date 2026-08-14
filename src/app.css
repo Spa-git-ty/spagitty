@@ -1,0 +1,148 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+/*
+ * Design tokens.
+ *
+ * The token *structure* is fixed by the design handoff — bg, panel, ink, muted,
+ * line, soft, placeholder, accent, selection, stripe, plus five lane colors.
+ * The hex values below are the wireframe placeholders and are expected to be
+ * replaced by the real visual system; the names are not.
+ *
+ * Structural metrics (row pitch, rail width, lane pitch, ...) are deliberately
+ * NOT defined here. They live in src/lib/metrics.ts, which is the single source
+ * of truth shared by the row list and the lane geometry, and are published to
+ * this stylesheet as --row-pitch, --rail-w, ... by applyMetrics() at boot.
+ */
+
+:root {
+	--bg: #ffffff;
+	--panel: #faf9f7;
+	--ink: #1a1a1a;
+	--muted: rgba(0, 0, 0, 0.5);
+	--line: rgba(0, 0, 0, 0.22);
+	--soft: rgba(0, 0, 0, 0.1);
+	--placeholder: rgba(0, 0, 0, 0.16);
+	--accent: #2a78d6;
+	--selection: rgba(42, 120, 214, 0.1);
+	--stripe: rgba(0, 0, 0, 0.035);
+
+	--lane-1: #2a78d6;
+	--lane-2: #7a5cc4;
+	--lane-3: #c0559b;
+	--lane-4: #c8862a;
+	--lane-5: #3f9d6a;
+
+	/* Type scale */
+	--fs-ui: 13px;
+	--fs-secondary: 11px;
+	--fs-mono: 10px;
+	--fs-title: 16px;
+	--lh-ui: 1.35;
+
+	/* Radii */
+	--r-field: 3px;
+	--r-pill: 9px;
+	--r-button: 12px;
+
+	--font-ui:
+		system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+	/* Contrast-safe text on top of a filled accent surface. */
+	--on-accent: #ffffff;
+}
+
+:root[data-theme='dark'] {
+	--bg: #1b1e24;
+	--panel: #20242b;
+	--ink: #e9e8e4;
+	--muted: rgba(255, 255, 255, 0.52);
+	--line: rgba(255, 255, 255, 0.2);
+	--soft: rgba(255, 255, 255, 0.09);
+	--placeholder: rgba(255, 255, 255, 0.2);
+	--accent: #5ba4ee;
+	--selection: rgba(91, 164, 238, 0.14);
+	--stripe: rgba(255, 255, 255, 0.035);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+}
+
+body {
+	background: var(--bg);
+	color: var(--ink);
+	font-family: var(--font-ui);
+	font-size: var(--fs-ui);
+	line-height: var(--lh-ui);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* The chrome owns the whole window; nothing outside it scrolls. */
+#app,
+body > div {
+	height: 100%;
+}
+
+button {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+}
+
+a {
+	color: var(--accent);
+}
+
+::selection {
+	background: var(--selection);
+}
+
+.mono {
+	font-family: var(--font-mono);
+	font-size: var(--fs-mono);
+}
+
+.muted {
+	color: var(--muted);
+}
+
+.note {
+	font-size: var(--fs-secondary);
+	color: var(--muted);
+}
+
+.hr {
+	height: 1.5px;
+	background: var(--soft);
+	flex: none;
+}
+
+.vr {
+	width: 1.5px;
+	background: var(--soft);
+	flex: none;
+}
+
+/* Grey bar standing in for not-yet-built content. Wireframe device; these
+   should all be gone by the time every screen is implemented. */
+.ph {
+	height: 6px;
+	border-radius: 3px;
+	background: var(--placeholder);
+}
+
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
