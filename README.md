@@ -37,6 +37,16 @@ npm run tauri dev      # development
 npm run tauri build    # release bundle
 ```
 
+## Documentation
+
+- [docs/architecture.md](docs/architecture.md) — the three layers, the
+  `gix`/`git` boundary, and how a repository is opened
+- [docs/screens.md](docs/screens.md) — every screen, its route, and whether it
+  is built
+- [docs/testing.md](docs/testing.md) — headless checks, the fixture repository,
+  and how to run the app for a visual sweep
+- [agile/](agile/) — work items, plans and test plans
+
 ## Naming
 
 The CLI binary is `gitlord`, never `git-lord`: git treats any `git-foo`
