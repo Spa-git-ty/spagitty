@@ -117,6 +117,36 @@ impl Fixture {
         fixture
     }
 
+    /// A repository stopped mid-merge, with one conflicted file.
+    ///
+    /// Kept separate from [`Fixture::woven`]: a repository in the middle of a
+    /// merge is a state the other screens should not be tested against.
+    pub fn conflicted() -> Self {
+        let fixture = Self::empty();
+
+        fixture.write("shared.txt", "one\ntwo\nthree\n");
+        fixture.write("untouched.txt", "calm\n");
+        fixture.git(&["add", "-A"]);
+        fixture.commit("Base");
+
+        fixture.git(&["switch", "-q", "-c", "theirs"]);
+        fixture.write("shared.txt", "one\nTHEIRS\nthree\n");
+        fixture.commit_all("Their change");
+
+        fixture.git(&["switch", "-q", "main"]);
+        fixture.write("shared.txt", "one\nOURS\nthree\n");
+        fixture.commit_all("Our change");
+
+        // Expected to fail: stopping mid-merge is the point of this fixture.
+        let _ = Command::new("git")
+            .current_dir(fixture.dir.path())
+            .args(["merge", "theirs"])
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .output();
+
+        fixture
+    }
+
     pub fn path(&self) -> &Path {
         self.dir.path()
     }

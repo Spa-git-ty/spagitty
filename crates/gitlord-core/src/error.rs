@@ -33,6 +33,20 @@ pub enum Error {
     #[error("could not diff: {0}")]
     Diff(String),
 
+    #[error("could not read the working copy: {0}")]
+    Status(String),
+
+    #[error("{0}")]
+    NotStageable(String),
+
+    /// The screen is showing something the repository no longer has. Raised
+    /// rather than applying a stale patch, which would half-stage a file.
+    #[error("{0} changed since it was read; reload and try again")]
+    Stale(String),
+
+    #[error("a commit needs a subject line")]
+    EmptyMessage,
+
     #[error("no commit {0}")]
     UnknownCommit(String),
 

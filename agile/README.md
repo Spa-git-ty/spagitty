@@ -37,7 +37,7 @@ written before the work is a guess rather than a record.
 | [FEAT-002](items/FEAT-002-diff-screen.md) | Diff screen | 1B | Done |
 | [TASK-001](items/TASK-001-records-baseline.md) | Records baseline | — | Done |
 | [TASK-002](items/TASK-002-test-and-ci-baseline.md) | Test and CI baseline | — | Done |
-| [FEAT-003](items/FEAT-003-working-copy.md) | Working copy / Commit | 1C | Planned |
+| [FEAT-003](items/FEAT-003-working-copy.md) | Working copy / Commit | 1C | Done |
 | [FEAT-004](items/FEAT-004-branches.md) | Branches | 1F | Planned |
 | [FEAT-005](items/FEAT-005-stash.md) | Stash | 1G | Planned |
 | [FEAT-006](items/FEAT-006-all-repositories.md) | All repositories | 1J | Planned |
@@ -54,3 +54,4 @@ written before the work is a guess rather than a record.
 | [FEAT-017](items/FEAT-017-forge-integration.md) | Forge integration | 1H | Backlog |
 | [FEAT-018](items/FEAT-018-fetch-and-push.md) | Fetch and push | chrome | Backlog |
 | [TASK-003](items/TASK-003-runtime-generic-tauri-layer.md) | Runtime-generic Tauri layer | — | Backlog |
+| [BUG-001](items/BUG-001-type-errors-shipped-in-task-002.md) | Type errors shipped in TASK-002 | — | Fixed |

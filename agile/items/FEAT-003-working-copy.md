@@ -2,7 +2,7 @@
 
 # FEAT-003 — Working copy / Commit (1C)
 
-**Status:** Planned.
+**Status:** Done.
 **Branch:** `feature/FEAT-003-working-copy`.
 **Route:** `/changes`. **Rail:** "Working copy", count `working`.
 

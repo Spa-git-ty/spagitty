@@ -8,7 +8,7 @@ pick/squash/reword/drop, ours/theirs — with no invented vocabulary.
 
 ## Status
 
-Early. The application chrome, the Graph screen and the Diff screen are
+Early. The application chrome and the Graph, Diff and Working copy screens are
 implemented; the remaining screens are placeholders being built one at a time.
 
 ## Stack

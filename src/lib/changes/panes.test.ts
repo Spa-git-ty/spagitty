@@ -1,0 +1,308 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { beforeEach, describe, expect, it } from 'vitest';
+import { click, flushSync, render } from '../../testing/mount';
+import type { FileDiff, StatusEntry, WorkingCopy } from '$lib/types';
+
+import { vi } from 'vitest';
+vi.mock('$lib/changes/store.svelte', async () => await import('../../testing/changes-store.svelte'));
+
+import { calls, control } from '../../testing/changes-store.svelte';
+import FileColumn from './FileColumn.svelte';
+import HunkPane from './HunkPane.svelte';
+import MessageBox from './MessageBox.svelte';
+
+function entry(path: string, status: StatusEntry['status'] = 'modified'): StatusEntry {
+	return { path, status };
+}
+
+function work(overrides: Partial<WorkingCopy> = {}): WorkingCopy {
+	return { staged: [], unstaged: [], conflicted: [], ...overrides };
+}
+
+function diff(overrides: Partial<FileDiff> = {}): FileDiff {
+	return {
+		path: 'core.txt',
+		status: 'modified',
+		binary: false,
+		tooLarge: false,
+		added: 1,
+		removed: 1,
+		hunks: [
+			{
+				oldStart: 1,
+				oldLines: 2,
+				newStart: 1,
+				newLines: 2,
+				header: '@@ -1,2 +1,2 @@',
+				lines: [
+					{ origin: 'context', old: 1, new: 1, text: 'kept' },
+					{ origin: 'removed', old: 2, new: null, text: 'gone' },
+					{ origin: 'added', old: null, new: 2, text: 'arrived' }
+				]
+			}
+		],
+		...overrides
+	};
+}
+
+beforeEach(() => {
+	control.reset();
+});
+
+describe('FileColumn', () => {
+	it('shows staged and unstaged separately, with counts', () => {
+		control.setWork(work({ staged: [entry('a.txt')], unstaged: [entry('b.txt')] }));
+		const view = render(FileColumn, {});
+
+		expect(view.text()).toContain('Staged');
+		expect(view.text()).toContain('Unstaged');
+		expect(view.text()).toContain('a.txt');
+		expect(view.text()).toContain('b.txt');
+
+		view.destroy();
+	});
+
+	it('draws staged rows solid and unstaged rows dashed', () => {
+		control.setWork(work({ staged: [entry('a.txt')], unstaged: [entry('b.txt')] }));
+		const view = render(FileColumn, {});
+
+		expect(view.all('.row.solid')).toHaveLength(1);
+		expect(view.all('.row.dashed')).toHaveLength(1);
+
+		view.destroy();
+	});
+
+	it('shows a path in both lists when it is staged in part', () => {
+		// Collapsing this into one row is what makes people commit something
+		// they did not mean to.
+		control.setWork(work({ staged: [entry('a.txt')], unstaged: [entry('a.txt')] }));
+		const view = render(FileColumn, {});
+
+		expect(view.all('.row').filter((r) => r.textContent?.includes('a.txt'))).toHaveLength(2);
+		view.destroy();
+	});
+
+	it('marks untracked files with the untracked glyph', () => {
+		control.setWork(work({ unstaged: [entry('new.txt', 'untracked')] }));
+		const view = render(FileColumn, {});
+
+		expect(view.get('.glyph').textContent?.trim()).toBe('?');
+		view.destroy();
+	});
+
+	it('stages one file from its row', () => {
+		control.setWork(work({ unstaged: [entry('b.txt')] }));
+		const view = render(FileColumn, {});
+
+		click(view.get('.row.dashed .act'));
+
+		expect(calls.staged).toEqual([['b.txt']]);
+		view.destroy();
+	});
+
+	it('unstages one file from its row', () => {
+		control.setWork(work({ staged: [entry('a.txt')] }));
+		const view = render(FileColumn, {});
+
+		click(view.get('.row.solid .act'));
+
+		expect(calls.unstaged).toEqual([['a.txt']]);
+		view.destroy();
+	});
+
+	it('stages and unstages everything from the section headers', () => {
+		control.setWork(work({ staged: [entry('a.txt')], unstaged: [entry('b.txt'), entry('c.txt')] }));
+		const view = render(FileColumn, {});
+
+		const stageAll = view.all('button').find((b) => b.textContent?.includes('Stage all'));
+		const unstageAll = view.all('button').find((b) => b.textContent?.includes('Unstage all'));
+		click(stageAll as HTMLElement);
+		click(unstageAll as HTMLElement);
+
+		expect(calls.staged).toEqual([['b.txt', 'c.txt']]);
+		expect(calls.unstaged).toEqual([['a.txt']]);
+		view.destroy();
+	});
+
+	it('opens a row on the side it belongs to', () => {
+		control.setWork(work({ staged: [entry('a.txt')], unstaged: [entry('b.txt')] }));
+		const view = render(FileColumn, {});
+
+		click(view.get('.row.solid .open'));
+		click(view.get('.row.dashed .open'));
+
+		expect(calls.opened).toEqual([
+			{ path: 'a.txt', side: 'staged' },
+			{ path: 'b.txt', side: 'unstaged' }
+		]);
+		view.destroy();
+	});
+
+	it('marks the open row', () => {
+		control.setWork(work({ unstaged: [entry('b.txt'), entry('c.txt')] }));
+		control.setSelection({ path: 'c.txt', side: 'unstaged' });
+		const view = render(FileColumn, {});
+
+		const selected = view.all('.row.selected');
+		expect(selected).toHaveLength(1);
+		expect(selected[0].textContent).toContain('c.txt');
+		view.destroy();
+	});
+
+	it('does not mark the same path on the other side as open', () => {
+		control.setWork(work({ staged: [entry('a.txt')], unstaged: [entry('a.txt')] }));
+		control.setSelection({ path: 'a.txt', side: 'staged' });
+		const view = render(FileColumn, {});
+
+		expect(view.all('.row.selected')).toHaveLength(1);
+		expect(view.get('.row.solid').classList.contains('selected')).toBe(true);
+		view.destroy();
+	});
+
+	it('says what conflicts mean and offers no action for them', () => {
+		control.setWork(work({ conflicted: [entry('shared.txt')] }));
+		const view = render(FileColumn, {});
+
+		expect(view.text()).toContain('shared.txt');
+		expect(view.text()).toContain('Nothing can be committed until these are resolved');
+		expect(view.get('.row.conflicted').querySelector('.act')).toBeNull();
+		view.destroy();
+	});
+
+	it('says each section is empty rather than showing nothing', () => {
+		control.setWork(work());
+		const view = render(FileColumn, {});
+
+		expect(view.text()).toContain('Nothing staged');
+		expect(view.text()).toContain('Nothing unstaged');
+		view.destroy();
+	});
+
+	it('disables every action while a write is in flight', () => {
+		control.setWork(work({ staged: [entry('a.txt')], unstaged: [entry('b.txt')] }));
+		control.setBusy(true);
+		const view = render(FileColumn, {});
+
+		for (const button of view.all('.act')) {
+			expect((button as HTMLButtonElement).disabled).toBe(true);
+		}
+		view.destroy();
+	});
+});
+
+describe('HunkPane', () => {
+	it('renders a hunk with numbers on both sides', () => {
+		control.setSelection({ path: 'core.txt', side: 'unstaged' });
+		control.setFile(diff());
+		const view = render(HunkPane, {});
+
+		expect(view.text()).toContain('@@ -1,2 +1,2 @@');
+		expect(view.get('.line.removed').textContent).toContain('gone');
+		expect(view.get('.line.added').textContent).toContain('arrived');
+		view.destroy();
+	});
+
+	it('offers to stage a hunk when the unstaged side is open', () => {
+		control.setSelection({ path: 'core.txt', side: 'unstaged' });
+		control.setFile(diff());
+		const view = render(HunkPane, {});
+
+		expect(view.text()).toContain('stage hunk');
+		click(view.get('.chip'));
+
+		expect(calls.hunks).toEqual([{ index: 0, header: '@@ -1,2 +1,2 @@' }]);
+		view.destroy();
+	});
+
+	it('offers to take it back out when the staged side is open', () => {
+		control.setSelection({ path: 'core.txt', side: 'staged' });
+		control.setFile(diff());
+		const view = render(HunkPane, {});
+
+		expect(view.text()).toContain('unstage hunk');
+		view.destroy();
+	});
+
+	it('asks for a file when none is open', () => {
+		const view = render(HunkPane, {});
+		expect(view.text()).toContain('Select a file');
+		view.destroy();
+	});
+
+	it('says a binary file has no hunks to stage individually', () => {
+		control.setSelection({ path: 'logo.bin', side: 'unstaged' });
+		control.setFile(diff({ path: 'logo.bin', binary: true, hunks: [] }));
+		const view = render(HunkPane, {});
+
+		expect(view.text()).toContain('Binary file');
+		expect(view.find('.chip')).toBeNull();
+		view.destroy();
+	});
+
+	it('distinguishes too-large from mode-only from binary', () => {
+		control.setSelection({ path: 'huge.sql', side: 'unstaged' });
+		control.setFile(diff({ tooLarge: true, hunks: [] }));
+		const big = render(HunkPane, {});
+		expect(big.text()).toContain('too large');
+		big.destroy();
+
+		control.setFile(diff({ hunks: [] }));
+		const mode = render(HunkPane, {});
+		expect(mode.text()).toContain("only the file's mode changed");
+		mode.destroy();
+	});
+
+	it('shows a file error instead of hunks', () => {
+		control.setSelection({ path: 'core.txt', side: 'unstaged' });
+		control.setFileError('core.txt changed since it was read; reload and try again');
+		const view = render(HunkPane, {});
+
+		expect(view.text()).toContain('changed since it was read');
+		view.destroy();
+	});
+});
+
+describe('MessageBox', () => {
+	it('writes the subject and the body into the store', () => {
+		const view = render(MessageBox, {});
+
+		const subject = view.get('.subject') as HTMLInputElement;
+		subject.value = 'A subject';
+		subject.dispatchEvent(new Event('input', { bubbles: true }));
+		flushSync();
+
+		const body = view.get('.body') as HTMLTextAreaElement;
+		body.value = 'A body.';
+		body.dispatchEvent(new Event('input', { bubbles: true }));
+		flushSync();
+
+		expect(view.get('.subject').getAttribute('aria-label')).toBe('Commit subject');
+		expect(body.getAttribute('aria-label')).toBe('Commit body');
+	});
+
+	it('shows a character count only once the subject is long', () => {
+		const short = render(MessageBox, {});
+		expect(short.find('.count')).toBeNull();
+		short.destroy();
+
+		control.setSubject('x'.repeat(60));
+		const long = render(MessageBox, {});
+		expect(long.get('.count').textContent?.trim()).toBe('60');
+		long.destroy();
+	});
+
+	it('toggles amending and says what it does', () => {
+		const view = render(MessageBox, {});
+
+		click(view.get('.chip'));
+		expect(calls.amends).toEqual([true]);
+
+		view.destroy();
+
+		control.setAmend(true);
+		const amending = render(MessageBox, {});
+		expect(amending.text()).toContain('rewrites the last commit');
+		amending.destroy();
+	});
+});

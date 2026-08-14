@@ -283,7 +283,8 @@ describe('LaneCanvas', () => {
 				set: () => true
 			}
 		);
-		HTMLCanvasElement.prototype.getContext = () => ctx as unknown as CanvasRenderingContext2D;
+		HTMLCanvasElement.prototype.getContext = (() =>
+			ctx) as unknown as HTMLCanvasElement['getContext'];
 		vi.stubGlobal('getComputedStyle', () => ({ getPropertyValue: () => '#123456' }));
 		return seen;
 	}

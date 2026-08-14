@@ -14,7 +14,7 @@ under Amendment 11.
 | --- | --- | --- | --- | --- | --- |
 | 1A | Graph | `/` | yes | Built | FEAT-001 |
 | 1B | Diff | `/diff` | no | Built | FEAT-002 |
-| 1C | Working copy | `/changes` | yes | Stub | FEAT-003 |
+| 1C | Working copy | `/changes` | yes | Built | FEAT-003 |
 | 1D | Conflicts | `/conflicts` | yes | Stub | FEAT-008 |
 | 1E | Interactive rebase | `/rebase` | yes | Stub | FEAT-009 |
 | 1F | Branches | `/branches` | yes | Stub | FEAT-004 |
@@ -70,12 +70,21 @@ with the additions that follow it.
 
 ## 1C — Working copy
 
-**Stub.** Planned in FEAT-003. Route `/changes`; the toolbar's primary Commit
-button points here.
+**Built.** `src/routes/changes/+page.svelte`, `src/lib/changes/`.
 
-Stage what you mean to commit, write the message, commit. Message box, staged
-and unstaged columns, hunk pane with per-hunk staging. Its status walk is what
-will fill the rail's Working copy and Conflicts counts, which are `·` today.
+Stage what you mean to commit, write the message, commit. A 250px column holds
+Staged above Unstaged — solid rows against dashed ones — and a path appears in
+both when it is staged in part. Beside them: the message box, then the hunks of
+the selected file with one action each, `stage hunk` or `unstage hunk`
+depending on which side is open.
+
+Its status walk is what made the rail's Working copy and Conflicts counts real.
+The toolbar's Commit button counts `staged` rather than `working`: a working
+copy with ten changed files and one staged must not offer to commit ten.
+
+Nothing here can discard work. Stage, unstage and commit only move changes
+forward; a mistake costs an unstage. Discarding is a separate decision and is
+not built.
 
 ## 1D — Conflicts
 

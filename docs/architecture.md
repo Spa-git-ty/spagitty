@@ -28,7 +28,8 @@ compiles and is tested without a GUI, and its examples
 | `graph.rs` | The log walk, lane assignment, lane colours, edges, `ROW_PITCH` |
 | `refs.rs` | `RefIndex` — commit id to the refs pointing at it |
 | `diff.rs` | Commit detail, per-commit file lists, per-file hunks |
-| `status.rs` | The counts the nav rail shows |
+| `status.rs` | The working-copy status walk, and the counts the nav rail shows |
+| `work.rs` | Changing the working copy: stage, unstage, commit |
 | `error.rs` | `Error`, whose `Display` text is user-facing |
 | `shell.rs` | The only module that spawns a process |
 
@@ -52,7 +53,8 @@ forwards to the core.
 
 Commands registered today: `open_repo`, `close_repo`, `graph_request`,
 `graph_restart`, `snapshot`, `commit_detail`, `commit_diff`, `file_diff`,
-`metrics`, `about`, `launch_path`.
+`working_copy`, `working_diff`, `stage`, `unstage`, `stage_hunk`,
+`unstage_hunk`, `commit`, `head_message`, `metrics`, `about`, `launch_path`.
 
 ### `src`
 
@@ -92,10 +94,10 @@ in one sentence:
 > Read-only history questions are answered in-process with `gix`.
 
 So reads — log walking, refs, diffing, blame, status — are `gix`. Interactive
-rebase execution, hooks, LFS, submodule recursion and credential helpers are
-`git`. As screens land, commit, checkout, hunk staging, stash push and clone
-join the `git` side for the same reason, and the table in that header is
-extended in the same change that adds them.
+rebase execution, hooks, LFS, submodule recursion, credential helpers,
+committing and staging are `git`. As further screens land, checkout, stash push
+and clone join the `git` side for the same reason, and the table in that header
+is extended in the same change that adds them.
 
 `gix` is MIT/Apache-2.0, which links cleanly into a GPL-3 program.
 

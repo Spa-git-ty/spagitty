@@ -105,6 +105,11 @@ export const DIFF_FILES_W = 210;
  */
 export const DIFF_GUTTER_W = 44;
 
+// --- Working copy columns -------------------------------------------------
+
+/** The staged/unstaged column on the Commit screen. */
+export const CHANGES_FILES_W = 250;
+
 // --- Lane elbow shape -----------------------------------------------------
 
 /**
@@ -147,7 +152,8 @@ export function applyMetrics(root: HTMLElement = document.documentElement): void
 		'refs-gutter-w': REFS_GUTTER_W,
 		'lane-col-w': LANE_COL_W,
 		'diff-files-w': DIFF_FILES_W,
-		'diff-gutter-w': DIFF_GUTTER_W
+		'diff-gutter-w': DIFF_GUTTER_W,
+		'changes-files-w': CHANGES_FILES_W
 	};
 	for (const [name, value] of Object.entries(px)) {
 		root.style.setProperty(`--${name}`, `${value}px`);

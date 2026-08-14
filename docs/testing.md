@@ -139,7 +139,7 @@ git merge theirs || true    # stops with a conflict, which is the point
 
 ## Visual sweep
 
-The application is driven for real, not screenshotted from a mock. On Linux:
+The application is driven for real, not screenshotted from a mock.
 
 ```sh
 npm run tauri dev -- -- -- /tmp/gitlord-fixture
@@ -148,13 +148,40 @@ npm run tauri dev -- -- -- /tmp/gitlord-fixture
 The trailing path is passed to the binary and read by the `launch_path`
 command, so the app opens straight onto the fixture with no dialog.
 
-Two environment variables help on some Linux desktops:
+`WEBKIT_DISABLE_DMABUF_RENDERER=1` helps on several Linux driver and compositor
+combinations, where the webview otherwise renders blank.
 
-- `WEBKIT_DISABLE_DMABUF_RENDERER=1` — works around a blank webview on several
-  driver and compositor combinations.
-- `GDK_BACKEND=x11` — runs the window through XWayland, which is what makes
-  window-level screenshot tools such as ImageMagick's `import -window` able to
-  capture it on a Wayland session.
+### Driving it without a desk
+
+A human tester works the window directly. An automated sweep on a Wayland
+session cannot, for two reasons that both look like bugs in the application and
+are not:
+
+- **The pointer cannot be moved.** XWayland refuses `XWarpPointer`, so
+  `xdotool mousemove` silently does nothing and every click lands wherever the
+  real pointer happens to be.
+- **An unfocused window never repaints.** The compositor only paints what it
+  shows, so `import -window` returns whatever was in the backing store — usually
+  the first frame, before the stylesheet's custom properties were applied. The
+  capture looks like a broken layout and is a stale image of a correct one.
+
+A plain X server has neither problem. Run the app against `Xvfb`, which is also
+the polite option — nothing steals focus from whatever is on screen:
+
+```sh
+Xvfb :99 -screen 0 1600x1000x24 -nolisten tcp &
+
+env -u WAYLAND_DISPLAY DISPLAY=:99 GDK_BACKEND=x11 \
+    WEBKIT_DISABLE_DMABUF_RENDERER=1 \
+    npm run tauri dev -- -- -- /tmp/gitlord-fixture
+```
+
+`-u WAYLAND_DISPLAY` is the part that is easy to miss: with it set, GTK prefers
+the Wayland backend and connects to the real session regardless of `DISPLAY`,
+and the window opens on the desktop instead of the virtual screen.
+
+Then `xdotool mousemove`, `xdotool click`, `xdotool type` and
+`import -window` all behave, against `DISPLAY=:99`.
 
 Findings go into the item's `agile/testing/<ID>-sweep.md` as filled-in results,
 not into a commit message.

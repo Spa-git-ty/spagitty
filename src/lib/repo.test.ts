@@ -35,6 +35,7 @@ function result(overrides: Partial<OpenResult> = {}): OpenResult {
 		counts: {
 			commits: null,
 			working: null,
+			staged: null,
 			conflicts: null,
 			branches: 4,
 			stashes: 2,
@@ -128,6 +129,7 @@ describe('refresh', () => {
 			counts: {
 				commits: null,
 				working: 3,
+				staged: 1,
 				conflicts: 0,
 				branches: 5,
 				stashes: 2,

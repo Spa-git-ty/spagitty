@@ -57,7 +57,7 @@ export interface GraphRow {
 
 // --- Commit detail --------------------------------------------------------
 
-export type FileStatus = 'added' | 'modified' | 'deleted' | 'renamed';
+export type FileStatus = 'added' | 'modified' | 'deleted' | 'renamed' | 'untracked';
 
 export interface ChangedFile {
 	path: string;
@@ -138,6 +138,33 @@ export interface FileDiff {
 	hunks: Hunk[];
 }
 
+// --- Working copy ---------------------------------------------------------
+
+/** Which two sides of the working copy a diff compares. */
+export type DiffSide = 'staged' | 'unstaged';
+
+/** One path in the working copy, on the side it was found. */
+export interface StatusEntry {
+	path: string;
+	status: FileStatus;
+}
+
+/**
+ * The working copy, split the way the Commit screen shows it.
+ *
+ * A path can be in `staged` and `unstaged` at once — staged in part, or
+ * changed again afterwards — so these are three lists rather than one list of
+ * rows carrying flags.
+ */
+export interface WorkingCopy {
+	/** HEAD against the index: what a commit right now would contain. */
+	staged: StatusEntry[];
+	/** The index against the working tree, plus untracked files. */
+	unstaged: StatusEntry[];
+	/** Paths the index holds at stages 1 to 3. Nothing can be committed yet. */
+	conflicted: StatusEntry[];
+}
+
 // --- Repository -----------------------------------------------------------
 
 export interface HeadInfo {
@@ -166,6 +193,8 @@ export interface RepoInfo {
 export interface RepoCounts {
 	commits: number | null;
 	working: number | null;
+	/** Paths staged for the next commit — what the Commit button counts. */
+	staged: number | null;
 	conflicts: number | null;
 	branches: number | null;
 	stashes: number | null;

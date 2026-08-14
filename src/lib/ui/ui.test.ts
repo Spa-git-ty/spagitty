@@ -2,6 +2,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { click, render, textSnippet } from '../../testing/mount';
+import type { RefChip as Chip_ } from '$lib/types';
 import Btn from './Btn.svelte';
 import Chip from './Chip.svelte';
 import RefChip from './RefChip.svelte';
@@ -87,7 +88,7 @@ describe('Chip', () => {
 
 describe('RefChip', () => {
 	it('marks the current branch with a check', () => {
-		const view = render(RefChip, { chip: { name: 'main', kind: 'branch', current: true } });
+		const view = render(RefChip, { chip: { name: 'main', kind: 'branch', current: true } as Chip_ });
 		const element = view.get('.ref');
 
 		expect(element.classList.contains('current')).toBe(true);
@@ -99,7 +100,7 @@ describe('RefChip', () => {
 
 	it('does not check a branch that is not current', () => {
 		const view = render(RefChip, {
-			chip: { name: 'chore/tooling', kind: 'branch', current: false }
+			chip: { name: 'chore/tooling', kind: 'branch', current: false } as Chip_
 		});
 
 		expect(view.text()).not.toContain('✔');
@@ -109,8 +110,8 @@ describe('RefChip', () => {
 	});
 
 	it('tells a tag from a branch without a label or an icon', () => {
-		const tag = render(RefChip, { chip: { name: 'v0.2.0', kind: 'tag', current: false } });
-		const branch = render(RefChip, { chip: { name: 'main', kind: 'branch', current: false } });
+		const tag = render(RefChip, { chip: { name: 'v0.2.0', kind: 'tag', current: false } as Chip_ });
+		const branch = render(RefChip, { chip: { name: 'main', kind: 'branch', current: false } as Chip_ });
 
 		expect(tag.get('.ref').classList.contains('tag')).toBe(true);
 		expect(branch.get('.ref').classList.contains('tag')).toBe(false);
@@ -121,7 +122,7 @@ describe('RefChip', () => {
 
 	it('marks a remote', () => {
 		const view = render(RefChip, {
-			chip: { name: 'origin/main', kind: 'remote', current: false }
+			chip: { name: 'origin/main', kind: 'remote', current: false } as Chip_
 		});
 		expect(view.get('.ref').classList.contains('remote')).toBe(true);
 		view.destroy();
@@ -129,7 +130,7 @@ describe('RefChip', () => {
 
 	it('carries the full name as a title, since the chip elides', () => {
 		const name = 'feature/a-branch-name-far-too-long-for-the-gutter';
-		const view = render(RefChip, { chip: { name, kind: 'branch', current: false } });
+		const view = render(RefChip, { chip: { name, kind: 'branch', current: false } as Chip_ });
 		expect(view.get('.ref').getAttribute('title')).toBe(name);
 		view.destroy();
 	});

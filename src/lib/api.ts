@@ -12,9 +12,11 @@ import type {
 	About,
 	CommitDetail,
 	CommitDiff,
+	DiffSide,
 	FileDiff,
 	OpenResult,
-	Snapshot
+	Snapshot,
+	WorkingCopy
 } from './types';
 
 export function openRepo(path: string): Promise<OpenResult> {
@@ -51,6 +53,46 @@ export function commitDiff(id: string): Promise<CommitDiff> {
 /** One file's hunks, fetched as that file is opened. */
 export function fileDiff(id: string, path: string): Promise<FileDiff> {
 	return invoke('file_diff', { id, path });
+}
+
+/** The staged, unstaged and conflicted lists. One call per refresh. */
+export function workingCopy(): Promise<WorkingCopy> {
+	return invoke('working_copy');
+}
+
+/** One working-copy file's hunks, on either side of the index. */
+export function workingDiff(path: string, side: DiffSide): Promise<FileDiff> {
+	return invoke('working_diff', { path, side });
+}
+
+export function stage(paths: string[]): Promise<void> {
+	return invoke('stage', { paths });
+}
+
+export function unstage(paths: string[]): Promise<void> {
+	return invoke('unstage', { paths });
+}
+
+/**
+ * Stage one hunk. `header` identifies which one, so a view that has gone stale
+ * is refused rather than half-applied.
+ */
+export function stageHunk(path: string, index: number, header: string): Promise<void> {
+	return invoke('stage_hunk', { path, index, header });
+}
+
+export function unstageHunk(path: string, index: number, header: string): Promise<void> {
+	return invoke('unstage_hunk', { path, index, header });
+}
+
+/** Commit what is staged. Resolves to the new commit's id. */
+export function commit(subject: string, body: string, amend: boolean): Promise<string> {
+	return invoke('commit', { subject, body, amend });
+}
+
+/** The message of the commit HEAD points at, for pre-filling an amend. */
+export function headMessage(): Promise<string> {
+	return invoke('head_message');
 }
 
 export function about(): Promise<About> {

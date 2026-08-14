@@ -8,11 +8,12 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
-use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff};
+use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
 use gitlord_core::graph::ROW_PITCH;
 use gitlord_core::refs::RefIndex;
 use gitlord_core::repo::{self, RepoInfo};
-use gitlord_core::status::{self, RepoCounts};
+use gitlord_core::status::{self, RepoCounts, WorkingCopy};
+use gitlord_core::work;
 use gitlord_core::{Error, Result};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
@@ -171,6 +172,78 @@ pub fn commit_diff(state: State<'_, AppState>, id: String) -> Result<CommitDiff>
 #[tauri::command]
 pub fn file_diff(state: State<'_, AppState>, id: String, path: String) -> Result<FileDiff> {
     state.with_session(|session| diff::file_diff(&session.repo.to_thread_local(), &id, &path))
+}
+
+/// The staged, unstaged and conflicted lists behind the Working copy screen.
+///
+/// This is the full status walk, so it is one call per refresh rather than one
+/// per row.
+#[tauri::command]
+pub fn working_copy(state: State<'_, AppState>) -> Result<WorkingCopy> {
+    state.with_session(|session| status::working_copy(&session.repo.to_thread_local()))
+}
+
+/// One working-copy file's hunks, on either side of the index.
+#[tauri::command]
+pub fn working_diff(state: State<'_, AppState>, path: String, side: Side) -> Result<FileDiff> {
+    state.with_session(|session| {
+        diff::working_file_diff(&session.repo.to_thread_local(), &path, side)
+    })
+}
+
+#[tauri::command]
+pub fn stage(state: State<'_, AppState>, paths: Vec<String>) -> Result<()> {
+    state.with_session(|session| work::stage(&session.repo.to_thread_local(), &paths))
+}
+
+#[tauri::command]
+pub fn unstage(state: State<'_, AppState>, paths: Vec<String>) -> Result<()> {
+    state.with_session(|session| work::unstage(&session.repo.to_thread_local(), &paths))
+}
+
+/// Stage one hunk. `header` identifies it, so a stale view is refused rather
+/// than half-applied.
+#[tauri::command]
+pub fn stage_hunk(
+    state: State<'_, AppState>,
+    path: String,
+    index: usize,
+    header: String,
+) -> Result<()> {
+    state.with_session(|session| {
+        work::stage_hunk(&session.repo.to_thread_local(), &path, index, &header)
+    })
+}
+
+#[tauri::command]
+pub fn unstage_hunk(
+    state: State<'_, AppState>,
+    path: String,
+    index: usize,
+    header: String,
+) -> Result<()> {
+    state.with_session(|session| {
+        work::unstage_hunk(&session.repo.to_thread_local(), &path, index, &header)
+    })
+}
+
+/// Commit what is staged. Returns the new commit's id.
+#[tauri::command]
+pub fn commit(
+    state: State<'_, AppState>,
+    subject: String,
+    body: String,
+    amend: bool,
+) -> Result<String> {
+    state.with_session(|session| {
+        work::commit(&session.repo.to_thread_local(), &subject, &body, amend)
+    })
+}
+
+/// The message of the commit HEAD points at, for pre-filling an amend.
+#[tauri::command]
+pub fn head_message(state: State<'_, AppState>) -> Result<String> {
+    state.with_session(|session| work::head_message(&session.repo.to_thread_local()))
 }
 
 #[tauri::command]

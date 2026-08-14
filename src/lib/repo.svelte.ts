@@ -14,6 +14,7 @@ import type { RepoCounts, RepoInfo } from './types';
 const NO_COUNTS: RepoCounts = {
 	commits: null,
 	working: null,
+	staged: null,
 	conflicts: null,
 	branches: null,
 	stashes: null,

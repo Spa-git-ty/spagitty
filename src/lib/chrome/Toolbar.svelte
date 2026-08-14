@@ -5,7 +5,8 @@
 	import Btn from '$lib/ui/Btn.svelte';
 
 	const head = $derived(repo.info?.head ?? null);
-	const working = $derived(repo.counts.working);
+	/** Staged is what a commit would actually contain, so that is what it counts. */
+	const staged = $derived(repo.counts.staged);
 
 	/**
 	 * Actions that need network, hooks or a working-copy write are not built
@@ -31,8 +32,9 @@
 	];
 
 	function commitLabel(): string {
-		if (working === null) return 'Commit';
-		return working === 1 ? 'Commit 1 file' : `Commit ${working} files`;
+		if (staged === null) return 'Commit';
+		if (staged === 0) return 'Commit';
+		return staged === 1 ? 'Commit 1 file' : `Commit ${staged} files`;
 	}
 </script>
 

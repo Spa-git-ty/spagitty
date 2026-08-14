@@ -48,6 +48,7 @@ function counts(overrides: Partial<RepoCounts> = {}): RepoCounts {
 	return {
 		commits: null,
 		working: null,
+		staged: null,
 		conflicts: null,
 		branches: 4,
 		stashes: 2,
@@ -177,27 +178,29 @@ describe('Toolbar', () => {
 		view.destroy();
 	});
 
-	it('counts the files the commit button would commit', () => {
-		repoControl.setCounts(counts({ working: 3 }));
+	it('counts what a commit would actually contain, which is what is staged', () => {
+		// Not `working`: a working copy with ten changed files and one staged
+		// would otherwise offer to "Commit 10 files" and commit one.
+		repoControl.setCounts(counts({ working: 10, staged: 3 }));
 		const many = render(Toolbar, {});
 		expect(many.text()).toContain('Commit 3 files');
 		many.destroy();
 
-		repoControl.setCounts(counts({ working: 1 }));
+		repoControl.setCounts(counts({ working: 10, staged: 1 }));
 		const one = render(Toolbar, {});
 		expect(one.text()).toContain('Commit 1 file');
 		one.destroy();
 	});
 
-	it('says plain "Commit" while the count is unknown', () => {
-		// A count of zero would be a claim; `·` is the truth until the Working
-		// copy screen computes one.
-		repoControl.setCounts(counts({ working: null }));
-		const view = render(Toolbar, {});
+	it('says plain "Commit" when nothing is staged or the count is unknown', () => {
+		for (const staged of [null, 0]) {
+			repoControl.setCounts(counts({ staged }));
+			const view = render(Toolbar, {});
 
-		expect(view.text()).toContain('Commit');
-		expect(view.text()).not.toContain('Commit 0 files');
-		view.destroy();
+			expect(view.text()).toContain('Commit');
+			expect(view.text()).not.toContain('Commit 0 files');
+			view.destroy();
+		}
 	});
 
 	it('says which actions are not built rather than failing silently', () => {

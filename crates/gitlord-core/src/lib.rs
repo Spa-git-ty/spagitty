@@ -23,6 +23,7 @@ pub mod refs;
 pub mod repo;
 pub mod shell;
 pub mod status;
+pub mod work;
 
 /// Repository fixtures, shared by the tests of every module that reads one.
 #[cfg(test)]
@@ -37,3 +38,4 @@ pub use error::{Error, Result};
 pub use graph::{GraphRow, LaneEdge, LaneState, ROW_PITCH};
 pub use refs::{RefChip, RefIndex, RefKind};
 pub use repo::{HeadInfo, RepoInfo};
+pub use status::{StatusEntry, WorkingCopy};

@@ -42,6 +42,9 @@ pub enum FileStatus {
     Modified,
     Deleted,
     Renamed,
+    /// Present in the working tree and not in the index. Only ever produced by
+    /// the working-copy status walk; a commit cannot contain one.
+    Untracked,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -290,6 +293,210 @@ pub fn file_diff(repo: &gix::Repository, id: &str, path: &str) -> Result<FileDif
         removed: stats.removed,
         hunks,
     })
+}
+
+// --- The working copy -----------------------------------------------------
+
+/// Which two sides of the working copy a diff compares.
+///
+/// The Working copy screen shows both at once — what is staged, and what is
+/// not — and they are the same diff machinery pointed at different pairs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Side {
+    /// `HEAD` against the index: what a commit right now would contain.
+    Staged,
+    /// The index against the working tree: what a commit right now would leave
+    /// behind.
+    Unstaged,
+}
+
+/// One file's hunks between two sides of the working copy.
+///
+/// The same [`FileDiff`] the Diff screen renders, so the hunk pane is one
+/// component rather than two.
+pub fn working_file_diff(repo: &gix::Repository, path: &str, side: Side) -> Result<FileDiff> {
+    let (old, new) = match side {
+        Side::Staged => (head_blob(repo, path)?, index_bytes(repo, path)?),
+        Side::Unstaged => (index_bytes(repo, path)?, worktree_bytes(repo, path)?),
+    };
+
+    let status = match (old.is_some(), new.is_some()) {
+        (false, false) => return Err(Error::UnknownPath(path.to_string())),
+        (false, true) => FileStatus::Added,
+        (true, false) => FileStatus::Deleted,
+        (true, true) => FileStatus::Modified,
+    };
+
+    let stats = line_stats(old.as_deref(), new.as_deref());
+    let hunks = if stats.binary || stats.too_large {
+        Vec::new()
+    } else {
+        hunks(
+            old.as_deref().unwrap_or_default(),
+            new.as_deref().unwrap_or_default(),
+        )
+    };
+
+    Ok(FileDiff {
+        path: path.to_string(),
+        status,
+        binary: stats.binary,
+        too_large: stats.too_large,
+        added: stats.added,
+        removed: stats.removed,
+        hunks,
+    })
+}
+
+/// A patch containing exactly one hunk of one file, ready for `git apply`.
+///
+/// The hunk is identified by its position and its header rather than sent as
+/// text from the UI, for two reasons. The patch has to be built from the bytes
+/// as they are *now*, so a file that changed under an open screen cannot be
+/// half-applied from a stale view. And the header check is what turns that
+/// staleness into a plain refusal instead of a wrong result.
+pub fn working_hunk_patch(
+    repo: &gix::Repository,
+    path: &str,
+    side: Side,
+    index: usize,
+    expect_header: &str,
+) -> Result<String> {
+    let (old, new) = match side {
+        Side::Staged => (head_blob(repo, path)?, index_bytes(repo, path)?),
+        Side::Unstaged => (index_bytes(repo, path)?, worktree_bytes(repo, path)?),
+    };
+
+    let old_bytes = old.as_deref().unwrap_or_default();
+    let new_bytes = new.as_deref().unwrap_or_default();
+
+    if is_binary(old_bytes) || is_binary(new_bytes) {
+        return Err(Error::NotStageable(
+            "a binary file has no hunks to stage".into(),
+        ));
+    }
+
+    let hunks = hunks(old_bytes, new_bytes);
+    let Some(hunk) = hunks.get(index) else {
+        return Err(Error::Stale(path.to_string()));
+    };
+    if hunk.header != expect_header {
+        return Err(Error::Stale(path.to_string()));
+    }
+
+    Ok(format_patch(path, old, new, hunk))
+}
+
+/// Render one hunk as a unified diff `git apply` will accept.
+fn format_patch(path: &str, old: Option<Vec<u8>>, new: Option<Vec<u8>>, hunk: &Hunk) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("diff --git a/{path} b/{path}\n"));
+    out.push_str(&match old {
+        Some(_) => format!("--- a/{path}\n"),
+        None => "--- /dev/null\n".to_string(),
+    });
+    out.push_str(&match new {
+        Some(_) => format!("+++ b/{path}\n"),
+        None => "+++ /dev/null\n".to_string(),
+    });
+    out.push_str(&hunk.header);
+    out.push('\n');
+
+    let old_bytes = old.as_deref().unwrap_or_default();
+    let new_bytes = new.as_deref().unwrap_or_default();
+    // A file whose last line has no terminator has to say so, or applying the
+    // patch would quietly add one — a content change nobody asked for.
+    let old_unterminated = last_line_of(old_bytes);
+    let new_unterminated = last_line_of(new_bytes);
+
+    for line in &hunk.lines {
+        let sign = match line.origin {
+            LineOrigin::Context => ' ',
+            LineOrigin::Added => '+',
+            LineOrigin::Removed => '-',
+        };
+        out.push(sign);
+        out.push_str(&line.text);
+        out.push('\n');
+
+        let ends_a_file = match line.origin {
+            LineOrigin::Added => line.new == new_unterminated,
+            LineOrigin::Removed => line.old == old_unterminated,
+            // A context line is the same line on both sides; it only lacks a
+            // terminator if both sides end there.
+            LineOrigin::Context => line.old == old_unterminated && line.new == new_unterminated,
+        };
+        if ends_a_file {
+            out.push_str("\\ No newline at end of file\n");
+        }
+    }
+
+    out
+}
+
+/// The 1-based number of the final line when the data does not end in a
+/// newline, or `None` when it does (or is empty).
+fn last_line_of(data: &[u8]) -> Option<u32> {
+    if data.is_empty() || data.ends_with(b"\n") {
+        return None;
+    }
+    Some(data.iter().filter(|b| **b == b'\n').count() as u32 + 1)
+}
+
+/// The blob `HEAD` has at `path`. `None` in an unborn repository, which is a
+/// repository where everything staged is an addition.
+fn head_blob(repo: &gix::Repository, path: &str) -> Result<Option<Vec<u8>>> {
+    let Ok(id) = repo.head_id() else {
+        return Ok(None);
+    };
+    let commit = repo
+        .find_commit(id.detach())
+        .map_err(|e| Error::Diff(e.to_string()))?;
+    let tree = commit.tree().map_err(|e| Error::Diff(e.to_string()))?;
+    blob_bytes(repo, blob_at(&tree, path)?)
+}
+
+/// The blob the index holds at `path`.
+///
+/// Stage 0 only: a conflicted path has stages 1 to 3 and no single "index
+/// version", which is the Conflicts screen's problem rather than this one's.
+fn index_bytes(repo: &gix::Repository, path: &str) -> Result<Option<Vec<u8>>> {
+    let index = repo
+        .index_or_empty()
+        .map_err(|e| Error::Diff(e.to_string()))?;
+
+    let Some(entry) = index.entry_by_path(path.into()) else {
+        return Ok(None);
+    };
+    // A submodule or a sparse directory entry has no line diff, the same way a
+    // tree entry that is not a blob does not.
+    if entry.mode.is_submodule() || entry.mode.is_sparse() {
+        return Ok(None);
+    }
+    blob_bytes(repo, Some(entry.id))
+}
+
+/// The file on disk at `path`, read as bytes.
+///
+/// A path that is not there reads as `None` — a deletion, not an error — and so
+/// does a directory, since a directory has no line diff.
+fn worktree_bytes(repo: &gix::Repository, path: &str) -> Result<Option<Vec<u8>>> {
+    let Some(workdir) = repo.workdir() else {
+        return Ok(None);
+    };
+    let full = workdir.join(path);
+    // Checked before reading rather than by matching the error afterwards:
+    // `ErrorKind::IsADirectory` is newer than this crate's MSRV.
+    if full.is_dir() {
+        return Ok(None);
+    }
+
+    match std::fs::read(&full) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(Error::Io(e)),
+    }
 }
 
 // --- Tree walking ---------------------------------------------------------

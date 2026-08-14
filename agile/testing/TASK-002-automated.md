@@ -12,7 +12,14 @@ cargo test --workspace     81 passed, 0 failed   (70 core, 11 tauri)
 npm test                  302 passed, 0 failed   (19 files)
 cargo fmt --all --check    clean
 cargo clippy --workspace --all-targets -- -D warnings   clean
+npm run check              8 ERRORS  <- see BUG-001
 ```
+
+**Correction.** This document originally recorded `npm run check` as clean. It
+was not: the gate was run at the start of the session, before these test files
+existed, and never run again before the commit. Eight type errors shipped in
+the test files this item added. Recorded as **BUG-001** and fixed in FEAT-003.
+`SWEEP-T002-04` fails on this commit, and passes from FEAT-003 onward.
 
 ## Coverage against the Amendment 10 floor of 70%
 
