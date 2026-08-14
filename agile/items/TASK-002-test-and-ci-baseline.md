@@ -2,7 +2,7 @@
 
 # TASK-002 — Test and CI baseline
 
-**Status:** Planned.
+**Status:** Done.
 **Branch:** `task/TASK-002-test-and-ci-baseline`.
 
 ## Problem

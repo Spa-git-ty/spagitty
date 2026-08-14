@@ -24,6 +24,10 @@ pub mod repo;
 pub mod shell;
 pub mod status;
 
+/// Repository fixtures, shared by the tests of every module that reads one.
+#[cfg(test)]
+mod fixture;
+
 /// Re-exported so callers can name gix types (`ThreadSafeRepository` and
 /// friends) without depending on gix themselves. There is one gix version in
 /// the workspace and this is where it comes from.
@@ -31,5 +35,5 @@ pub use gix;
 
 pub use error::{Error, Result};
 pub use graph::{GraphRow, LaneEdge, LaneState, ROW_PITCH};
-pub use refs::{RefChip, RefKind, RefIndex};
+pub use refs::{RefChip, RefIndex, RefKind};
 pub use repo::{HeadInfo, RepoInfo};

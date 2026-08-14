@@ -100,11 +100,11 @@ impl RefIndex {
             let current =
                 kind == RefKind::Branch && index.current_branch.as_deref() == Some(name.as_str());
 
-            index
-                .by_commit
-                .entry(id)
-                .or_default()
-                .push(RefChip { name, kind, current });
+            index.by_commit.entry(id).or_default().push(RefChip {
+                name,
+                kind,
+                current,
+            });
         }
 
         // Order within a commit: the current branch first, then local branches,
@@ -141,4 +141,176 @@ fn current_branch(repo: &gix::Repository) -> Option<String> {
     let head = repo.head().ok()?;
     let name = head.referent_name()?;
     Some(name.shorten().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fixture::Fixture;
+
+    fn names(chips: &[RefChip]) -> Vec<&str> {
+        chips.iter().map(|c| c.name.as_str()).collect()
+    }
+
+    #[test]
+    fn every_kind_of_ref_is_counted_once() {
+        let fixture = Fixture::woven();
+        let index = RefIndex::build(&fixture.open()).expect("index");
+        let counts = index.counts();
+
+        // main, feature/split-view, merged/already-in-main
+        assert_eq!(counts.branches, 3);
+        assert_eq!(counts.tags, 2, "one annotated and one lightweight");
+        assert_eq!(counts.remotes, 0, "the fixture has no remote");
+    }
+
+    #[test]
+    fn the_current_branch_is_known_and_marked() {
+        let fixture = Fixture::woven();
+        let index = RefIndex::build(&fixture.open()).expect("index");
+
+        assert_eq!(index.current_branch(), Some("main"));
+
+        let id = gix::ObjectId::from_hex(fixture.head().as_bytes()).expect("head id");
+        let chips = index.chips_for(&id);
+        let main = chips.iter().find(|c| c.name == "main").expect("main chip");
+        assert!(main.current);
+    }
+
+    #[test]
+    fn a_detached_head_has_no_current_branch() {
+        let fixture = Fixture::woven();
+        fixture.git(&["checkout", "-q", "--detach", "HEAD~1"]);
+
+        let index = RefIndex::build(&fixture.open()).expect("index");
+
+        assert_eq!(index.current_branch(), None);
+    }
+
+    #[test]
+    fn an_annotated_tag_lands_on_its_commit_rather_than_on_the_tag_object() {
+        // Without peeling, a tag chip would never appear: the walk only ever
+        // yields commits, and an annotated tag points at a tag object.
+        let fixture = Fixture::woven();
+        let index = RefIndex::build(&fixture.open()).expect("index");
+
+        let tagged = fixture.rev("v0.1.0^{commit}");
+        let id = gix::ObjectId::from_hex(tagged.as_bytes()).expect("tagged id");
+
+        assert!(names(&index.chips_for(&id)).contains(&"v0.1.0"));
+    }
+
+    #[test]
+    fn a_lightweight_tag_lands_on_its_commit_too() {
+        let fixture = Fixture::woven();
+        let index = RefIndex::build(&fixture.open()).expect("index");
+
+        let id = gix::ObjectId::from_hex(fixture.rev("v0.2.0").as_bytes()).expect("id");
+        assert!(names(&index.chips_for(&id)).contains(&"v0.2.0"));
+    }
+
+    #[test]
+    fn names_are_shortened_for_display() {
+        let fixture = Fixture::woven();
+        let index = RefIndex::build(&fixture.open()).expect("index");
+
+        let id = gix::ObjectId::from_hex(fixture.rev("feature/split-view").as_bytes()).expect("id");
+        let chips = index.chips_for(&id);
+
+        assert!(names(&chips).contains(&"feature/split-view"));
+        assert!(
+            chips.iter().all(|c| !c.name.starts_with("refs/")),
+            "a chip should never show its full ref path: {:?}",
+            names(&chips)
+        );
+    }
+
+    #[test]
+    fn the_current_branch_sorts_ahead_of_everything_else_on_its_commit() {
+        // The gutter is right-aligned and collapses overflow, so the chip that
+        // survives has to be the most important one.
+        let fixture = Fixture::woven();
+        fixture.git(&["branch", "aaa-sorts-first", "main"]);
+
+        let index = RefIndex::build(&fixture.open()).expect("index");
+        let id = gix::ObjectId::from_hex(fixture.head().as_bytes()).expect("id");
+        let chips = index.chips_for(&id);
+
+        assert_eq!(chips[0].name, "main");
+        assert!(chips[0].current);
+    }
+
+    #[test]
+    fn branches_sort_ahead_of_tags_on_the_same_commit() {
+        let fixture = Fixture::woven();
+        let index = RefIndex::build(&fixture.open()).expect("index");
+        let id = gix::ObjectId::from_hex(fixture.head().as_bytes()).expect("id");
+
+        let kinds: Vec<RefKind> = index.chips_for(&id).iter().map(|c| c.kind).collect();
+        let first_tag = kinds.iter().position(|k| *k == RefKind::Tag);
+        let last_branch = kinds.iter().rposition(|k| *k == RefKind::Branch);
+
+        if let (Some(tag), Some(branch)) = (first_tag, last_branch) {
+            assert!(branch < tag, "branches must come before tags: {kinds:?}");
+        }
+    }
+
+    #[test]
+    fn a_remote_tracking_branch_is_a_remote_chip_and_origin_head_is_not_a_chip() {
+        let fixture = Fixture::woven();
+        let head = fixture.head();
+        // A remote-tracking ref and the symbolic pointer git writes beside it.
+        fixture.git(&["update-ref", "refs/remotes/origin/main", &head]);
+        fixture.git(&[
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/main",
+        ]);
+
+        let index = RefIndex::build(&fixture.open()).expect("index");
+        let id = gix::ObjectId::from_hex(head.as_bytes()).expect("id");
+        let chips = index.chips_for(&id);
+
+        assert!(names(&chips).contains(&"origin/main"));
+        assert!(
+            !names(&chips).iter().any(|n| n.ends_with("/HEAD")),
+            "origin/HEAD is a pointer, not a branch anyone wants as a chip"
+        );
+        assert_eq!(index.counts().remotes, 1);
+    }
+
+    #[test]
+    fn refs_that_are_not_history_labels_are_ignored() {
+        // refs/stash exists in the fixture, and notes are written here.
+        let fixture = Fixture::woven();
+        fixture.git(&["notes", "add", "-m", "a note", "HEAD"]);
+
+        let index = RefIndex::build(&fixture.open()).expect("index");
+        let counts = index.counts();
+
+        assert_eq!(counts.branches + counts.remotes + counts.tags, 5);
+    }
+
+    #[test]
+    fn a_commit_with_no_refs_has_no_chips() {
+        let fixture = Fixture::woven();
+        let index = RefIndex::build(&fixture.open()).expect("index");
+        // "Rewrite line 3": inside the merged branch, but not its tip.
+        let id = gix::ObjectId::from_hex(fixture.rev("HEAD^2~1").as_bytes()).expect("id");
+
+        assert!(index.chips_for(&id).is_empty());
+    }
+
+    #[test]
+    fn an_empty_repository_has_no_refs_and_is_not_an_error() {
+        let fixture = Fixture::empty();
+        let index = RefIndex::build(&fixture.open()).expect("index");
+
+        assert_eq!(index.counts().branches, 0);
+        assert_eq!(
+            index.current_branch(),
+            Some("main"),
+            "the unborn branch is still named"
+        );
+    }
 }

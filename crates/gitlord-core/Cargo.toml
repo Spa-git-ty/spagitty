@@ -18,3 +18,8 @@ authors.workspace = true
 gix = "0.86"
 serde = { workspace = true }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+# Fixture repositories are built in a temporary directory and removed with it,
+# so tests never write anywhere a person keeps work.
+tempfile = "3"

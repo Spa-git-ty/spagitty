@@ -62,3 +62,89 @@ fn submodule_count(repo: &gix::Repository) -> Option<usize> {
         Err(_) => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fixture::Fixture;
+
+    fn counts_for(fixture: &Fixture) -> RepoCounts {
+        let repo = fixture.open();
+        let refs = RefIndex::build(&repo).expect("index");
+        counts(&repo, &refs).expect("counts")
+    }
+
+    #[test]
+    fn ref_derived_counts_come_from_the_index() {
+        let counts = counts_for(&Fixture::woven());
+
+        assert_eq!(counts.branches, Some(3));
+        assert_eq!(counts.tags, Some(2));
+    }
+
+    #[test]
+    fn counts_for_screens_that_do_not_exist_are_absent_rather_than_zero() {
+        // A wrong count is worse than no count: it is what people use to decide
+        // whether a screen is worth opening.
+        let counts = counts_for(&Fixture::dirty());
+
+        assert_eq!(
+            counts.commits, None,
+            "only the walk knows how many commits there are"
+        );
+        assert_eq!(counts.working, None);
+        assert_eq!(counts.conflicts, None);
+    }
+
+    #[test]
+    fn stash_entries_are_counted_from_the_reflog() {
+        let fixture = Fixture::woven();
+        assert_eq!(counts_for(&fixture).stashes, Some(1));
+
+        fixture.write("notes.md", "another change\n");
+        fixture.git(&["stash", "push", "-q", "-m", "second"]);
+
+        assert_eq!(counts_for(&fixture).stashes, Some(2));
+    }
+
+    #[test]
+    fn no_stash_is_none_rather_than_an_error() {
+        let fixture = Fixture::empty();
+        fixture.write("a.txt", "a\n");
+        fixture.git(&["add", "-A"]);
+        fixture.commit("Only commit");
+
+        assert_eq!(
+            counts_for(&fixture).stashes,
+            None,
+            "no refs/stash means no reflog to read"
+        );
+    }
+
+    #[test]
+    fn a_repository_without_submodules_reports_zero_rather_than_nothing() {
+        assert_eq!(counts_for(&Fixture::woven()).submodules, Some(0));
+    }
+
+    #[test]
+    fn declared_submodules_are_counted() {
+        let fixture = Fixture::woven();
+        fixture.write(
+            ".gitmodules",
+            "[submodule \"vendor/lib\"]\n\tpath = vendor/lib\n\turl = ../lib.git\n",
+        );
+        fixture.git(&["add", ".gitmodules"]);
+        fixture.commit("Declare a submodule");
+
+        assert_eq!(counts_for(&fixture).submodules, Some(1));
+    }
+
+    #[test]
+    fn an_empty_repository_counts_nothing_without_failing() {
+        let counts = counts_for(&Fixture::empty());
+
+        assert_eq!(counts.branches, Some(0));
+        assert_eq!(counts.tags, Some(0));
+        assert_eq!(counts.stashes, None);
+    }
+}

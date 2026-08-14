@@ -8,15 +8,44 @@ sweep, and how the fixture repository the sweeps assume is built.
 ## Headless
 
 ```sh
-cargo fmt --check
+cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 npm run check          # svelte-kit sync && svelte-check
+npm test               # vitest
+npm run coverage       # vitest with the Amendment 10 floor enforced
 ```
 
-A frontend test runner and coverage measurement arrive with TASK-002; until
-then `npm run check` is the only frontend gate, and coverage is unmeasured
-against the Amendment 10 floor of 70%.
+Coverage of first-party code is measured on both sides and both must clear the
+Amendment 10 floor of 70%:
+
+```sh
+cargo llvm-cov --workspace --ignore-filename-regex 'fixture\.rs' --summary-only
+npm run coverage
+```
+
+What counts, what does not, and which gate runs each command is in
+[ci.md](ci.md).
+
+## Fixtures in the Rust tests
+
+Anything that reads a repository is tested against a real one.
+`crates/gitlord-core/src/fixture.rs` builds them with the `git` binary — not
+with `gix`, because a fixture built by the library under test would agree with
+it by construction. `Fixture::empty()` is an initialised repository with no
+commits, `Fixture::woven()` the standard history below with a clean working
+copy, and `Fixture::dirty()` the same with work in progress. Each lives in a
+temporary directory that is removed with it.
+
+## Fixtures for the frontend tests
+
+Components are mounted for real against happy-dom; the helpers are in
+`src/testing/`. `mount.ts` renders a component and returns query handles;
+`graph-store.svelte.ts` and `repo-store.svelte.ts` are reactive stand-ins for
+the two stores the chrome reads. They hold `$state` rather than plain fields
+on purpose — a stub built from ordinary properties renders once and never
+updates, so every test about a change would pass by rendering the initial
+value.
 
 ## The fixture repository
 

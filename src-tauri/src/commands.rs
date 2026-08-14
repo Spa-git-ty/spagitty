@@ -106,7 +106,11 @@ pub fn open_repo(app: AppHandle, state: State<'_, AppState>, path: PathBuf) -> R
         _watcher: watcher,
     });
 
-    Ok(OpenResult { info, counts, token })
+    Ok(OpenResult {
+        info,
+        counts,
+        token,
+    })
 }
 
 /// Ask the walker for `count` more rows. Returns immediately; rows arrive on
@@ -176,7 +180,9 @@ pub fn close_repo(state: State<'_, AppState>) {
 
 #[tauri::command]
 pub fn metrics() -> Metrics {
-    Metrics { row_pitch: ROW_PITCH }
+    Metrics {
+        row_pitch: ROW_PITCH,
+    }
 }
 
 #[tauri::command]
@@ -192,5 +198,8 @@ pub fn about() -> About {
 #[tauri::command]
 pub fn launch_path(app: AppHandle) -> Option<PathBuf> {
     let _ = app.webview_windows();
-    std::env::args().nth(1).map(PathBuf::from).filter(|p| p.exists())
+    std::env::args()
+        .nth(1)
+        .map(PathBuf::from)
+        .filter(|p| p.exists())
 }

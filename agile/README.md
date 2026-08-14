@@ -36,7 +36,7 @@ written before the work is a guess rather than a record.
 | [FEAT-001](items/FEAT-001-graph-screen.md) | Graph screen | 1A | Done |
 | [FEAT-002](items/FEAT-002-diff-screen.md) | Diff screen | 1B | Done |
 | [TASK-001](items/TASK-001-records-baseline.md) | Records baseline | — | Done |
-| [TASK-002](items/TASK-002-test-and-ci-baseline.md) | Test and CI baseline | — | Planned |
+| [TASK-002](items/TASK-002-test-and-ci-baseline.md) | Test and CI baseline | — | Done |
 | [FEAT-003](items/FEAT-003-working-copy.md) | Working copy / Commit | 1C | Planned |
 | [FEAT-004](items/FEAT-004-branches.md) | Branches | 1F | Planned |
 | [FEAT-005](items/FEAT-005-stash.md) | Stash | 1G | Planned |
@@ -53,3 +53,4 @@ written before the work is a guess rather than a record.
 | [FEAT-016](items/FEAT-016-conflict-resolution-writes.md) | Conflict resolution writes | 1D | Backlog |
 | [FEAT-017](items/FEAT-017-forge-integration.md) | Forge integration | 1H | Backlog |
 | [FEAT-018](items/FEAT-018-fetch-and-push.md) | Fetch and push | chrome | Backlog |
+| [TASK-003](items/TASK-003-runtime-generic-tauri-layer.md) | Runtime-generic Tauri layer | — | Backlog |

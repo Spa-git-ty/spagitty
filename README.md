@@ -45,6 +45,7 @@ npm run tauri build    # release bundle
   is built
 - [docs/testing.md](docs/testing.md) — headless checks, the fixture repository,
   and how to run the app for a visual sweep
+- [docs/ci.md](docs/ci.md) — the six pipeline gates and what each one proves
 - [agile/](agile/) — work items, plans and test plans
 
 ## Naming

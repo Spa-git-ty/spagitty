@@ -176,14 +176,22 @@ impl LaneState {
                 }
                 let from = self.origin[l].unwrap_or(l);
                 let to = if self.active[l] == Some(id) { lane } else { l };
-                edges.push(LaneEdge { from, to, color: self.colors[l] });
+                edges.push(LaneEdge {
+                    from,
+                    to,
+                    color: self.colors[l],
+                });
             }
         }
         // Merge edges recorded by the previous row, which join a lane that
         // already existed rather than opening one of their own. If that lane is
         // the one arriving at this commit, the join lands on the node too.
         for join in std::mem::take(&mut self.joins) {
-            let to = if self.active[join.to] == Some(id) { lane } else { join.to };
+            let to = if self.active[join.to] == Some(id) {
+                lane
+            } else {
+                join.to
+            };
             edges.push(LaneEdge { to, ..join });
         }
 
@@ -289,7 +297,9 @@ where
         let (author_name, time) = match commit.author() {
             Ok(sig) => (
                 sig.name.to_string(),
-                sig.time().map(|t| t.seconds).unwrap_or_else(|_| info.commit_time.unwrap_or(0)),
+                sig.time()
+                    .map(|t| t.seconds)
+                    .unwrap_or_else(|_| info.commit_time.unwrap_or(0)),
             ),
             Err(_) => (String::new(), info.commit_time.unwrap_or(0)),
         };
@@ -384,7 +394,11 @@ fn initials(name: &str) -> String {
     let words: Vec<&str> = name.split_whitespace().collect();
     let letters: String = match words.len() {
         0 => return "?".to_string(),
-        1 => words[0].chars().filter(|c| c.is_alphanumeric()).take(2).collect(),
+        1 => words[0]
+            .chars()
+            .filter(|c| c.is_alphanumeric())
+            .take(2)
+            .collect(),
         _ => words
             .iter()
             .filter_map(|w| w.chars().find(|c| c.is_alphanumeric()))
@@ -419,7 +433,14 @@ mod tests {
         assert_eq!((a.lane, b.lane, c.lane), (0, 0, 0));
         assert_eq!((a.color, b.color, c.color), (0, 0, 0));
         assert!(a.edges.is_empty(), "nothing is drawn above the first row");
-        assert_eq!(b.edges, vec![LaneEdge { from: 0, to: 0, color: 0 }]);
+        assert_eq!(
+            b.edges,
+            vec![LaneEdge {
+                from: 0,
+                to: 0,
+                color: 0
+            }]
+        );
         assert_eq!(lanes.width(), 0, "a root releases its lane");
     }
 
@@ -437,20 +458,31 @@ mod tests {
         let r1 = lanes.step(main, &[base]);
         assert_eq!(r1.lane, 0);
         assert!(
-            r1.edges.contains(&LaneEdge { from: 0, to: 1, color: 1 }),
+            r1.edges.contains(&LaneEdge {
+                from: 0,
+                to: 1,
+                color: 1
+            }),
             "the branch-out elbow spans exactly the row below its node: {:?}",
             r1.edges
         );
 
         let r2 = lanes.step(side, &[base]);
-        assert_eq!(r2.lane, 1, "the side commit sits in the lane reserved for it");
+        assert_eq!(
+            r2.lane, 1,
+            "the side commit sits in the lane reserved for it"
+        );
         assert_eq!(r2.color, 1, "and keeps that lane's color");
 
         // Both lanes now wait for `base`; it converges them.
         let r3 = lanes.step(base, &[]);
         assert_eq!(r3.lane, 0, "convergence lands in the lowest waiting lane");
         assert!(
-            r3.edges.contains(&LaneEdge { from: 1, to: 0, color: 1 }),
+            r3.edges.contains(&LaneEdge {
+                from: 1,
+                to: 0,
+                color: 1
+            }),
             "the merge-in elbow keeps the incoming lane's color: {:?}",
             r3.edges
         );
@@ -485,7 +517,11 @@ mod tests {
         // is already waiting for. Opening a third lane here is what used to
         // make merge-heavy histories hundreds of lanes wide.
         lanes.step(b, &[d, c]);
-        assert_eq!(lanes.width(), 2, "no lane opened for an already-awaited commit");
+        assert_eq!(
+            lanes.width(),
+            2,
+            "no lane opened for an already-awaited commit"
+        );
     }
 
     /// Reusing a lane must not mean losing the edge: a merge into an existing
@@ -502,7 +538,11 @@ mod tests {
         // the colour of the lane it merges into.
         let row = lanes.step(c, &[]);
         assert!(
-            row.edges.contains(&LaneEdge { from: 0, to: 1, color: 1 }),
+            row.edges.contains(&LaneEdge {
+                from: 0,
+                to: 1,
+                color: 1
+            }),
             "the join edge must reach lane 1: {:?}",
             row.edges
         );
@@ -529,5 +569,200 @@ mod tests {
         assert_eq!(initials("Jean-Luc Picard Jr"), "JP");
         assert_eq!(initials(""), "?");
         assert_eq!(initials("   "), "?");
+    }
+}
+
+#[cfg(test)]
+mod walk_tests {
+    use super::*;
+    use crate::fixture::Fixture;
+    use crate::refs::RefIndex;
+
+    /// Walk the whole fixture and collect the rows.
+    fn rows(fixture: &Fixture) -> Vec<GraphRow> {
+        let repo = fixture.open();
+        let refs = RefIndex::build(&repo).expect("index");
+        let tips = all_tips(&repo).expect("tips");
+
+        let mut out = Vec::new();
+        let total = walk(&repo, tips, &refs, |row| {
+            out.push(row);
+            Flow::Continue
+        })
+        .expect("walk");
+
+        assert_eq!(
+            total,
+            out.len(),
+            "the walk's return value counts what it delivered"
+        );
+        out
+    }
+
+    #[test]
+    fn every_commit_is_delivered_once_in_index_order() {
+        let fixture = Fixture::woven();
+        let rows = rows(&fixture);
+
+        // Branches, remotes and HEAD — the same set `all_tips` walks from.
+        // Not `--all`, which would drag in the commits `git stash` writes and
+        // which the graph deliberately does not show as history.
+        let expected: usize = fixture
+            .git(&["rev-list", "--count", "--branches", "--remotes", "HEAD"])
+            .trim()
+            .parse()
+            .expect("a count");
+        assert_eq!(rows.len(), expected);
+
+        for (i, row) in rows.iter().enumerate() {
+            assert_eq!(row.index, i, "row indices are the walk's own order");
+        }
+
+        let mut ids: Vec<&str> = rows.iter().map(|r| r.id.as_str()).collect();
+        ids.sort_unstable();
+        let before = ids.len();
+        ids.dedup();
+        assert_eq!(ids.len(), before, "no commit is delivered twice");
+    }
+
+    #[test]
+    fn the_newest_commit_comes_first() {
+        // Down the screen is back in time; that is what the row order means.
+        let fixture = Fixture::woven();
+        let rows = rows(&fixture);
+
+        assert_eq!(rows[0].summary, "Merge feature/split-view");
+        assert_eq!(rows.last().expect("a last row").summary, "Initial import");
+    }
+
+    #[test]
+    fn a_row_carries_everything_needed_to_paint_it() {
+        let fixture = Fixture::woven();
+        let row = &rows(&fixture)[0];
+
+        assert_eq!(row.id, fixture.head());
+        assert_eq!(row.short, fixture.head()[..7]);
+        assert_eq!(row.author_name, "Ada Lovelace");
+        assert_eq!(row.initials, "AL");
+        assert_eq!(row.parents.len(), 2, "the tip of the fixture is a merge");
+        assert!(row.time > 0);
+    }
+
+    #[test]
+    fn the_summary_is_the_first_line_of_the_message() {
+        let fixture = Fixture::empty();
+        fixture.write("a.txt", "a\n");
+        fixture.git(&["add", "-A"]);
+        fixture.git(&["commit", "-q", "-m", "A subject", "-m", "A body paragraph."]);
+
+        let rows = rows(&fixture);
+
+        assert_eq!(rows[0].summary, "A subject");
+    }
+
+    #[test]
+    fn ref_chips_are_attached_to_the_commits_they_point_at() {
+        let fixture = Fixture::woven();
+        let rows = rows(&fixture);
+
+        let tip = &rows[0];
+        let names: Vec<&str> = tip.refs.iter().map(|c| c.name.as_str()).collect();
+        assert!(names.contains(&"main"));
+        assert!(names.contains(&"v0.2.0"));
+
+        let root = rows.last().expect("a last row");
+        assert!(root.refs.is_empty(), "the initial import carries no ref");
+    }
+
+    #[test]
+    fn a_merge_puts_its_second_parent_in_its_own_lane() {
+        let fixture = Fixture::woven();
+        let rows = rows(&fixture);
+
+        let widest = rows.iter().map(|r| r.lane).max().expect("a lane");
+        assert!(
+            widest >= 1,
+            "a branch that was merged has to occupy a second lane"
+        );
+
+        let merge = &rows[0];
+        assert_eq!(merge.lane, 0);
+        assert!(
+            rows.iter().skip(1).any(|r| !r.edges.is_empty()),
+            "the band below the merge has to carry its elbow"
+        );
+    }
+
+    #[test]
+    fn the_sink_can_stop_the_walk_before_the_end_of_history() {
+        // This is the backpressure the windowing in src-tauri relies on: no
+        // walk ever runs to the end of history to produce its first row.
+        let fixture = Fixture::woven();
+        let repo = fixture.open();
+        let refs = RefIndex::build(&repo).expect("index");
+        let tips = all_tips(&repo).expect("tips");
+
+        let mut seen = 0;
+        let total = walk(&repo, tips, &refs, |_| {
+            seen += 1;
+            if seen == 2 {
+                Flow::Stop
+            } else {
+                Flow::Continue
+            }
+        })
+        .expect("walk");
+
+        assert_eq!(seen, 2);
+        assert_eq!(total, 2);
+    }
+
+    #[test]
+    fn walking_an_empty_repository_says_it_is_empty() {
+        let fixture = Fixture::empty();
+        let repo = fixture.open();
+        let refs = RefIndex::build(&repo).expect("index");
+        let tips = all_tips(&repo).expect("tips");
+
+        assert!(tips.is_empty());
+        let error = walk(&repo, tips, &refs, |_| Flow::Continue).unwrap_err();
+        assert!(matches!(error, Error::EmptyRepository));
+    }
+
+    #[test]
+    fn all_tips_includes_a_branch_that_is_not_merged_into_head() {
+        // Walking from HEAD alone would hide it, which is the whole point.
+        let fixture = Fixture::woven();
+        fixture.git(&["switch", "-q", "-c", "chore/tooling", "main"]);
+        fixture.write("tools.txt", "tooling\n");
+        fixture.git(&["add", "tools.txt"]);
+        let unmerged = fixture.commit("Add a tooling note");
+        fixture.git(&["switch", "-q", "main"]);
+
+        let rows = rows(&fixture);
+
+        assert!(rows.iter().any(|r| r.id == unmerged));
+    }
+
+    #[test]
+    fn all_tips_does_not_repeat_a_commit_several_refs_point_at() {
+        let fixture = Fixture::woven();
+        fixture.git(&["branch", "another-name-for-main", "main"]);
+
+        let repo = fixture.open();
+        let tips = all_tips(&repo).expect("tips");
+
+        let mut sorted = tips.clone();
+        sorted.sort_unstable();
+        let before = sorted.len();
+        sorted.dedup();
+        assert_eq!(sorted.len(), before);
+    }
+
+    #[test]
+    fn short_ids_are_seven_characters() {
+        let fixture = Fixture::woven();
+        let id = gix::ObjectId::from_hex(fixture.head().as_bytes()).expect("id");
+        assert_eq!(short_id(&id).len(), 7);
     }
 }

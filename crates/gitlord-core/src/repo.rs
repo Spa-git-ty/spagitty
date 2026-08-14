@@ -76,7 +76,12 @@ pub fn info(repo: &gix::Repository) -> Result<RepoInfo> {
 /// repository with no commits yet, and the UI has to say so rather than fail.
 pub fn head(repo: &gix::Repository) -> HeadInfo {
     let Ok(mut head) = repo.head() else {
-        return HeadInfo { branch: None, detached: false, id: None, short: None };
+        return HeadInfo {
+            branch: None,
+            detached: false,
+            id: None,
+            short: None,
+        };
     };
 
     let branch = head.referent_name().map(|n| n.shorten().to_string());
@@ -89,5 +94,103 @@ pub fn head(repo: &gix::Repository) -> HeadInfo {
         branch,
         short: id.as_ref().map(short_id),
         id: id.map(|id| id.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fixture::Fixture;
+
+    #[test]
+    fn opening_a_path_that_is_not_there_names_the_path() {
+        let missing = std::path::Path::new("/nowhere/at/all");
+        let error = open(missing).unwrap_err();
+        assert!(matches!(error, Error::NotARepository(p) if p == missing));
+    }
+
+    #[test]
+    fn opening_a_directory_that_is_not_a_repository_is_not_a_repository() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        assert!(matches!(
+            open(dir.path()).unwrap_err(),
+            Error::NotARepository(_)
+        ));
+    }
+
+    #[test]
+    fn discovery_walks_upward_the_way_git_does() {
+        let fixture = Fixture::woven();
+        let nested = fixture.path().join("src/deep/nested");
+
+        let repo = open(&nested).expect("discovering from a subdirectory");
+
+        assert_eq!(
+            repo.workdir()
+                .expect("a working directory")
+                .canonicalize()
+                .ok(),
+            fixture.path().canonicalize().ok()
+        );
+    }
+
+    #[test]
+    fn info_names_the_repository_after_its_directory() {
+        let fixture = Fixture::woven();
+        let info = info(&fixture.open()).expect("info");
+
+        assert_eq!(
+            info.name,
+            fixture.path().file_name().unwrap().to_string_lossy()
+        );
+        assert!(!info.bare);
+        assert_eq!(info.head.branch.as_deref(), Some("main"));
+    }
+
+    #[test]
+    fn head_resolves_to_the_commit_it_points_at() {
+        let fixture = Fixture::woven();
+        let head = head(&fixture.open());
+
+        assert_eq!(head.id.as_deref(), Some(fixture.head().as_str()));
+        assert_eq!(head.short.as_deref(), Some(&fixture.head()[..7]));
+        assert!(!head.detached);
+    }
+
+    #[test]
+    fn an_unborn_head_is_a_repository_with_no_commits_rather_than_a_failure() {
+        let fixture = Fixture::empty();
+        let head = head(&fixture.open());
+
+        assert_eq!(
+            head.branch.as_deref(),
+            Some("main"),
+            "the branch exists before any commit"
+        );
+        assert_eq!(head.id, None);
+        assert_eq!(head.short, None);
+        assert!(!head.detached, "an unborn HEAD is not detached");
+    }
+
+    #[test]
+    fn a_detached_head_reports_no_branch_and_says_so() {
+        let fixture = Fixture::woven();
+        let target = fixture.rev("HEAD~1");
+        fixture.git(&["checkout", "-q", "--detach", &target]);
+
+        let head = head(&fixture.open());
+
+        assert!(head.detached);
+        assert_eq!(head.branch, None);
+        assert_eq!(head.id.as_deref(), Some(target.as_str()));
+    }
+
+    #[test]
+    fn a_sync_handle_reopens_as_the_same_repository() {
+        let fixture = Fixture::woven();
+        let sync = open_sync(fixture.path()).expect("sync handle");
+        let local = sync.to_thread_local();
+
+        assert_eq!(head(&local).id, head(&fixture.open()).id);
     }
 }

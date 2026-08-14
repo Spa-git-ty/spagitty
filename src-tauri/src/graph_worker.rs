@@ -101,7 +101,11 @@ pub fn spawn(app: AppHandle, path: PathBuf, token: u64) -> GraphWorker {
         .spawn(move || run(app, path, token, rx))
         .expect("spawning the graph worker");
 
-    GraphWorker { token, tx, handle: Some(handle) }
+    GraphWorker {
+        token,
+        tx,
+        handle: Some(handle),
+    }
 }
 
 fn run(app: AppHandle, path: PathBuf, token: u64, rx: Receiver<GraphCmd>) {
@@ -169,7 +173,12 @@ fn run(app: AppHandle, path: PathBuf, token: u64, rx: Receiver<GraphCmd>) {
 
     let _ = app.emit(
         DONE_EVENT,
-        DoneEvent { token, total, complete: !stopped && error.is_none(), error },
+        DoneEvent {
+            token,
+            total,
+            complete: !stopped && error.is_none(),
+            error,
+        },
     );
 }
 

@@ -681,3 +681,248 @@ mod tests {
         assert_eq!((stats.added, stats.removed), (0, 0));
     }
 }
+
+#[cfg(test)]
+mod repository_tests {
+    use super::*;
+    use crate::fixture::Fixture;
+
+    fn find<'a>(files: &'a [FileChange], path: &str) -> &'a FileChange {
+        files.iter().find(|f| f.path == path).unwrap_or_else(|| {
+            panic!(
+                "no {path} in {:?}",
+                files.iter().map(|f| &f.path).collect::<Vec<_>>()
+            )
+        })
+    }
+
+    #[test]
+    fn commit_detail_reads_both_signatures_and_the_message() {
+        let fixture = Fixture::empty();
+        fixture.write("a.txt", "a\n");
+        fixture.git(&["add", "-A"]);
+        fixture.git(&["commit", "-q", "-m", "A subject", "-m", "A body paragraph."]);
+        let id = fixture.head();
+
+        let detail = commit_detail(&fixture.open(), &id).expect("detail");
+
+        assert_eq!(detail.id, id);
+        assert_eq!(detail.short, id[..7]);
+        assert_eq!(detail.summary, "A subject");
+        assert_eq!(detail.body, "A body paragraph.");
+        assert_eq!(detail.author_name, "Ada Lovelace");
+        assert_eq!(detail.author_email, "ada@example.com");
+        assert_eq!(detail.committer_name, "Ada Lovelace");
+        assert!(detail.parents.is_empty(), "the first commit has no parent");
+        assert_eq!(detail.files.len(), 1);
+    }
+
+    #[test]
+    fn a_commit_with_no_body_reports_an_empty_body_rather_than_repeating_the_subject() {
+        let fixture = Fixture::woven();
+        let detail = commit_detail(&fixture.open(), &fixture.rev("HEAD^2~1")).expect("detail");
+
+        assert_eq!(detail.summary, "Rewrite line 3");
+        assert_eq!(detail.body, "");
+    }
+
+    #[test]
+    fn an_unknown_commit_says_which_one() {
+        let fixture = Fixture::woven();
+        let missing = "0".repeat(40);
+
+        let error = commit_detail(&fixture.open(), &missing).unwrap_err();
+
+        assert!(matches!(error, Error::UnknownCommit(id) if id == missing));
+    }
+
+    #[test]
+    fn commit_diff_totals_match_the_files_it_lists() {
+        let fixture = Fixture::woven();
+        let diff = commit_diff(&fixture.open(), &fixture.rev("HEAD^2~1")).expect("diff");
+
+        assert_eq!(diff.files.len(), 1);
+        let file = find(&diff.files, "core.txt");
+        assert_eq!((file.added, file.removed), (1, 1));
+        assert_eq!((diff.added, diff.removed), (1, 1));
+    }
+
+    #[test]
+    fn an_added_file_is_reported_as_added() {
+        let fixture = Fixture::woven();
+        let diff = commit_diff(&fixture.open(), &fixture.rev("HEAD^2")).expect("diff");
+
+        let file = find(&diff.files, "split.txt");
+        assert_eq!(file.status, FileStatus::Added);
+        assert_eq!(file.removed, 0);
+        assert!(file.added > 0);
+    }
+
+    #[test]
+    fn a_deleted_file_is_reported_as_deleted() {
+        let fixture = Fixture::woven();
+        fixture.remove("notes.md");
+        fixture.git(&["add", "-A"]);
+        let id = fixture.commit("Remove the notes");
+
+        let diff = commit_diff(&fixture.open(), &id).expect("diff");
+
+        let file = find(&diff.files, "notes.md");
+        assert_eq!(file.status, FileStatus::Deleted);
+        assert_eq!(file.added, 0);
+        assert!(file.removed > 0);
+    }
+
+    #[test]
+    fn the_first_commit_diffs_against_nothing() {
+        let fixture = Fixture::woven();
+        let root = fixture
+            .git(&["rev-list", "--max-parents=0", "HEAD"])
+            .trim()
+            .to_string();
+
+        let diff = commit_diff(&fixture.open(), &root).expect("diff");
+
+        assert!(
+            diff.files.len() >= 4,
+            "every file in the initial import is an addition"
+        );
+        assert!(diff.files.iter().all(|f| f.status == FileStatus::Added));
+        assert_eq!(diff.removed, 0);
+    }
+
+    #[test]
+    fn a_merge_is_diffed_against_its_first_parent() {
+        // Otherwise a merge would appear to change everything both sides did.
+        let fixture = Fixture::woven();
+        let diff = commit_diff(&fixture.open(), &fixture.head()).expect("diff");
+
+        let paths: Vec<&str> = diff.files.iter().map(|f| f.path.as_str()).collect();
+        assert!(
+            paths.contains(&"split.txt"),
+            "brought in by the merged branch: {paths:?}"
+        );
+    }
+
+    #[test]
+    fn a_binary_file_reports_no_line_counts() {
+        let fixture = Fixture::woven();
+        fixture.write_bytes("logo.bin", &[0x00, 0xff, 0x00, 0xfe]);
+        let id = fixture.commit_all("Change the binary");
+
+        let diff = commit_diff(&fixture.open(), &id).expect("diff");
+        let file = find(&diff.files, "logo.bin");
+
+        assert!(file.binary);
+        assert_eq!(
+            (file.added, file.removed),
+            (0, 0),
+            "a guess would read as a real count"
+        );
+    }
+
+    #[test]
+    fn file_diff_returns_the_hunks_of_one_file_only() {
+        let fixture = Fixture::woven();
+        let id = fixture.rev("HEAD^2~1");
+
+        let file = file_diff(&fixture.open(), &id, "core.txt").expect("file diff");
+
+        assert_eq!(file.path, "core.txt");
+        assert_eq!(file.status, FileStatus::Modified);
+        assert!(!file.binary);
+        assert_eq!(file.hunks.len(), 1);
+
+        let hunk = &file.hunks[0];
+        assert!(hunk.header.starts_with("@@ "));
+        assert!(hunk
+            .lines
+            .iter()
+            .any(|l| l.origin == LineOrigin::Removed && l.text == "line 3"));
+        assert!(hunk
+            .lines
+            .iter()
+            .any(|l| l.origin == LineOrigin::Added && l.text == "LINE THREE"));
+    }
+
+    #[test]
+    fn line_numbers_agree_with_git() {
+        let fixture = Fixture::woven();
+        let id = fixture.rev("HEAD^2~1");
+
+        let file = file_diff(&fixture.open(), &id, "core.txt").expect("file diff");
+        let hunk = &file.hunks[0];
+
+        let expected = fixture.git(&["show", "--unified=3", "--format=", &id]);
+        let header = expected
+            .lines()
+            .find(|l| l.starts_with("@@"))
+            .expect("a hunk header from git");
+
+        assert_eq!(header, hunk.header);
+    }
+
+    #[test]
+    fn a_binary_file_has_no_hunks_and_says_so() {
+        let fixture = Fixture::woven();
+        fixture.write_bytes("logo.bin", &[0x00, 0xff, 0x00, 0xfe]);
+        let id = fixture.commit_all("Change the binary");
+
+        let file = file_diff(&fixture.open(), &id, "logo.bin").expect("file diff");
+
+        assert!(file.binary);
+        assert!(file.hunks.is_empty());
+    }
+
+    #[test]
+    fn a_path_in_neither_side_of_the_commit_says_which_path() {
+        let fixture = Fixture::woven();
+        let id = fixture.rev("HEAD^2~1");
+
+        let error = file_diff(&fixture.open(), &id, "never/existed.txt").unwrap_err();
+
+        assert!(matches!(error, Error::UnknownPath(p) if p == "never/existed.txt"));
+    }
+
+    #[test]
+    fn a_path_that_exists_but_was_not_touched_diffs_to_nothing() {
+        // Not reachable from the Diff screen, which only offers the paths in
+        // the commit's own file list. Recorded so the behaviour is known: the
+        // file exists on both sides, so it reads as modified with no hunks —
+        // the same shape as a mode-only change.
+        let fixture = Fixture::woven();
+        let id = fixture.rev("HEAD^2~1");
+
+        let file = file_diff(&fixture.open(), &id, "notes.md").expect("file diff");
+
+        assert_eq!((file.added, file.removed), (0, 0));
+        assert!(file.hunks.is_empty());
+    }
+
+    #[test]
+    fn a_file_diff_for_an_unknown_commit_says_which_commit() {
+        let fixture = Fixture::woven();
+        let missing = "0".repeat(40);
+
+        let error = file_diff(&fixture.open(), &missing, "core.txt").unwrap_err();
+
+        assert!(matches!(error, Error::UnknownCommit(id) if id == missing));
+    }
+
+    #[test]
+    fn only_a_full_id_identifies_a_commit() {
+        // Every caller has the full id: rows carry it, and the Diff screen is
+        // opened with it. Abbreviations are a command-line convenience, and
+        // resolving them would mean deciding what to do about an ambiguous
+        // prefix — a question nothing here asks.
+        let fixture = Fixture::woven();
+        let full = fixture.head();
+        let short = &full[..7];
+
+        assert!(commit_detail(&fixture.open(), &full).is_ok());
+        assert!(matches!(
+            commit_detail(&fixture.open(), short).unwrap_err(),
+            Error::UnknownCommit(id) if id == short
+        ));
+    }
+}

@@ -1,0 +1,233 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# The pipeline, as six ordered gates. A gate that fails stops everything
+# downstream — that is what `needs:` buys here, and it is the point.
+#
+#   1 license -> 2 quality -> 3 tests -> 4 security -> 5 build -> 6 release
+#
+# `main` runs all six: a merge into main is a publish.
+# `dev` runs 1 to 4 and stops. Producing a dev build is a manual action, in
+# .github/workflows/prerelease.yml.
+#
+# What each gate proves, and why it sits where it does, is in docs/ci.md.
+
+name: gates
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # The Amendment 10 floor, in one place so no gate can disagree with another.
+  COVERAGE_FLOOR: 70
+
+jobs:
+  # --- Gate 1 -------------------------------------------------------------
+  # Cheapest and most certain first, so an obvious failure never burns a build.
+  license:
+    name: 1 · licenses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The project's own license and attribution files are present
+        run: |
+          test -f LICENSE
+          test -f NOTICE
+          grep -q "GPL-3.0-or-later" package.json
+          grep -q "GPL-3.0-or-later" Cargo.toml
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Rust dependency licenses
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check licenses bans sources
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: npm dependency licenses
+        run: |
+          npx --yes license-checker-rseidelsohn@4 \
+            --production \
+            --onlyAllow "MIT;ISC;BSD-2-Clause;BSD-3-Clause;Apache-2.0;0BSD;CC0-1.0;Unlicense;BlueOak-1.0.0;Python-2.0" \
+            --excludePrivatePackages
+
+  # --- Gate 2 -------------------------------------------------------------
+  quality:
+    name: 2 · code quality
+    needs: license
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/linux-deps
+
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  # --- Gate 3 -------------------------------------------------------------
+  tests:
+    name: 3 · tests and coverage
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: ./.github/actions/linux-deps
+
+      - name: Rust tests and coverage
+        run: |
+          cargo llvm-cov --workspace \
+            --ignore-filename-regex 'fixture\.rs' \
+            --fail-under-lines "$COVERAGE_FLOOR" \
+            --summary-only
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      # The thresholds live in vite.config.ts, so the same floor applies
+      # locally and here.
+      - name: Frontend tests and coverage
+        run: npm run coverage
+
+  # --- Gate 4 -------------------------------------------------------------
+  security:
+    name: 4 · security
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Rust advisories
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check advisories
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: npm advisories
+        run: npm audit --audit-level=high
+
+      - name: Secrets in the diff
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # --- Gate 5 -------------------------------------------------------------
+  # main only. `dev` stops after gate 4; its build is triggered by hand.
+  build:
+    name: 5 · build
+    needs: security
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
+          - os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/linux-deps
+        if: matrix.os == 'ubuntu-latest'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - run: npm run tauri build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlord-${{ matrix.os }}
+          path: |
+            target/release/bundle/**
+            src-tauri/target/release/bundle/**
+          if-no-files-found: warn
+
+  # --- Gate 6 -------------------------------------------------------------
+  release:
+    name: 6 · release
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Read the version out of the manifest
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      # A tag that already exists is a release that already happened. Moving it
+      # is forbidden (Amendment 14), so the job stops instead.
+      - name: Refuse to move an existing tag
+        run: |
+          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::error::${{ steps.version.outputs.tag }} already exists; bump the version instead"
+            exit 1
+          fi
+
+      - name: Tag and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git tag -a "${{ steps.version.outputs.tag }}" -m "GitLord ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "GitLord ${{ steps.version.outputs.tag }}" \
+            --generate-notes \
+            $(find artifacts -type f | tr '\n' ' ')

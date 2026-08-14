@@ -77,3 +77,42 @@ pub fn fetch(_repo: &Path, _remote: &str) -> Result<String> {
 pub fn push(_repo: &Path, _remote: &str, _refspec: &str) -> Result<String> {
     unimplemented!("built with the toolbar's Push action")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fixture::Fixture;
+
+    #[test]
+    fn the_git_version_is_reported_from_the_binary_on_path() {
+        let fixture = Fixture::empty();
+        let version = version(fixture.path()).expect("a git version");
+
+        assert!(version.starts_with("git version"), "unexpected: {version}");
+        assert_eq!(version.trim(), version, "the caller gets a clean string");
+    }
+
+    #[test]
+    fn a_failing_command_carries_gits_own_stderr() {
+        // git's message is almost always more useful than anything we would
+        // write in its place, so it is what the error holds.
+        let fixture = Fixture::empty();
+
+        let error = run(
+            fixture.path(),
+            &["rev-parse", "--verify", "refs/heads/nope"],
+        )
+        .unwrap_err();
+
+        match error {
+            Error::Git { command, stderr } => {
+                assert_eq!(command, "rev-parse --verify refs/heads/nope");
+                assert!(
+                    !stderr.is_empty(),
+                    "git said nothing, which cannot be right"
+                );
+            }
+            other => panic!("expected a Git error, got {other:?}"),
+        }
+    }
+}

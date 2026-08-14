@@ -21,7 +21,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tips = graph::all_tips(&repository)?;
 
     println!("{} tips, HEAD on {:?}", tips.len(), refs.current_branch());
-    println!("{:<4} {:<8} {:<5} {:<28} {}", "row", "sha", "lane", "edges (from>to:color)", "summary");
+    println!(
+        "{:<4} {:<8} {:<5} {:<28} summary",
+        "row", "sha", "lane", "edges (from>to:color)"
+    );
 
     let mut seen = 0;
     graph::walk(&repository, tips, &refs, |row| {

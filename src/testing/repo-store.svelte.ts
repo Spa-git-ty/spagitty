@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * A reactive stand-in for the repository store, for component tests.
+ *
+ * Reactive for the same reason as the graph stub: the chrome re-renders through
+ * Svelte's reactivity, and a stub built from plain properties would render the
+ * initial value and then never change.
+ *
+ * Lives outside `src/lib` so it is not counted as first-party code under
+ * Amendment 10.
+ */
+
+import type { RepoCounts, RepoInfo } from '$lib/types';
+
+const NO_COUNTS: RepoCounts = {
+	commits: null,
+	working: null,
+	conflicts: null,
+	branches: null,
+	stashes: null,
+	tags: null,
+	submodules: null
+};
+
+let info = $state<RepoInfo | null>(null);
+let counts = $state<RepoCounts>(NO_COUNTS);
+let error = $state<string | null>(null);
+let busy = $state(false);
+let generation = $state(0);
+let token = $state<number | null>(null);
+
+/** Calls the components made, for assertions. */
+export const calls = {
+	chosen: 0,
+	opened: [] as string[],
+	refreshed: 0,
+	closed: 0
+};
+
+export const control = {
+	setInfo(next: RepoInfo | null) {
+		info = next;
+	},
+	setCounts(next: RepoCounts) {
+		counts = next;
+	},
+	setError(next: string | null) {
+		error = next;
+	},
+	setBusy(next: boolean) {
+		busy = next;
+	},
+	setToken(next: number | null) {
+		token = next;
+	},
+	reset() {
+		info = null;
+		counts = NO_COUNTS;
+		error = null;
+		busy = false;
+		generation = 0;
+		token = null;
+		calls.chosen = 0;
+		calls.opened = [];
+		calls.refreshed = 0;
+		calls.closed = 0;
+	}
+};
+
+export const repo = {
+	get info() {
+		return info;
+	},
+	get counts() {
+		return counts;
+	},
+	get error() {
+		return error;
+	},
+	get busy() {
+		return busy;
+	},
+	get generation() {
+		return generation;
+	},
+	get token() {
+		return token;
+	},
+	setToken(next: number) {
+		token = next;
+	},
+	async open(path: string) {
+		calls.opened.push(path);
+		generation += 1;
+		return true;
+	},
+	async choose() {
+		calls.chosen += 1;
+		return true;
+	},
+	async refresh() {
+		calls.refreshed += 1;
+	},
+	setCommitCount(n: number) {
+		counts = { ...counts, commits: n };
+	},
+	async close() {
+		calls.closed += 1;
+		control.reset();
+	}
+};

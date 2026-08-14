@@ -132,5 +132,5 @@ later items depend on. Branches therefore **stack**: each item is cut from the
 previous item's branch, in item order. When a remote exists they merge into
 `dev` by pull request in that same order.
 
-There is no CI pipeline yet. It arrives with TASK-002, which adds the six
-Amendment 16 gates and describes them in `docs/ci.md`.
+CI is six ordered gates, described in [ci.md](ci.md). They have not run yet:
+there is no remote to run them on.
