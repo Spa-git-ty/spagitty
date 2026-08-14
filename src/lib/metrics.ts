@@ -94,6 +94,17 @@ export const REFS_GUTTER_W = 186;
 /** The design's lane column width: what five lanes need. */
 export const LANE_COL_W = laneColumnWidth(LANE_COLUMNS_MIN);
 
+// --- Diff screen columns --------------------------------------------------
+
+/** The file list beside a commit's diff. */
+export const DIFF_FILES_W = 210;
+
+/**
+ * Width of a line-number gutter, sized for five digits. Files longer than
+ * 99,999 lines push the column wider rather than truncating the number.
+ */
+export const DIFF_GUTTER_W = 44;
+
 // --- Lane elbow shape -----------------------------------------------------
 
 /**
@@ -134,7 +145,9 @@ export function applyMetrics(root: HTMLElement = document.documentElement): void
 		'rail-w': RAIL_W,
 		'detail-w': DETAIL_W,
 		'refs-gutter-w': REFS_GUTTER_W,
-		'lane-col-w': LANE_COL_W
+		'lane-col-w': LANE_COL_W,
+		'diff-files-w': DIFF_FILES_W,
+		'diff-gutter-w': DIFF_GUTTER_W
 	};
 	for (const [name, value] of Object.entries(px)) {
 		root.style.setProperty(`--${name}`, `${value}px`);

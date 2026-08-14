@@ -80,6 +80,64 @@ export interface CommitDetail {
 	files: ChangedFile[];
 }
 
+// --- Diff -----------------------------------------------------------------
+
+export type LineOrigin = 'context' | 'added' | 'removed';
+
+export interface DiffLine {
+	origin: LineOrigin;
+	/** 1-based line number in the old version. Null on an added line. */
+	old: number | null;
+	/** 1-based line number in the new version. Null on a removed line. */
+	new: number | null;
+	/** The line's text, without its terminator. */
+	text: string;
+}
+
+/** One run of changes plus its context — a `@@` block. */
+export interface Hunk {
+	oldStart: number;
+	oldLines: number;
+	newStart: number;
+	newLines: number;
+	header: string;
+	lines: DiffLine[];
+}
+
+/** A row in the Diff screen's file list. */
+export interface FileChange {
+	path: string;
+	status: FileStatus;
+	/**
+	 * No line diff exists: the file is binary, or one side was too large. In
+	 * both cases `added` and `removed` are 0 rather than a guess.
+	 */
+	binary: boolean;
+	tooLarge: boolean;
+	added: number;
+	removed: number;
+}
+
+export interface CommitDiff {
+	id: string;
+	short: string;
+	summary: string;
+	files: FileChange[];
+	/** Totals across every file, for the header. */
+	added: number;
+	removed: number;
+}
+
+export interface FileDiff {
+	path: string;
+	status: FileStatus;
+	binary: boolean;
+	tooLarge: boolean;
+	added: number;
+	removed: number;
+	hunks: Hunk[];
+}
+
 // --- Repository -----------------------------------------------------------
 
 export interface HeadInfo {

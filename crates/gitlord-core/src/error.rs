@@ -36,6 +36,9 @@ pub enum Error {
     #[error("no commit {0}")]
     UnknownCommit(String),
 
+    #[error("no file {0} in that commit")]
+    UnknownPath(String),
+
     /// A `git` subprocess failed. Carries git's own stderr, which is usually
     /// the most useful thing we can show.
     #[error("git {command} failed: {stderr}")]

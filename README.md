@@ -8,8 +8,8 @@ pick/squash/reword/drop, ours/theirs — with no invented vocabulary.
 
 ## Status
 
-Early. The application chrome and the Graph screen are implemented; the
-remaining screens are placeholders being built one at a time.
+Early. The application chrome, the Graph screen and the Diff screen are
+implemented; the remaining screens are placeholders being built one at a time.
 
 ## Stack
 

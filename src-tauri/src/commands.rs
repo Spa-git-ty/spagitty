@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
-use gitlord_core::diff::{self, CommitDetail};
+use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff};
 use gitlord_core::graph::ROW_PITCH;
 use gitlord_core::refs::RefIndex;
 use gitlord_core::repo::{self, RepoInfo};
@@ -152,6 +152,21 @@ pub fn snapshot(state: State<'_, AppState>) -> Result<Snapshot> {
 #[tauri::command]
 pub fn commit_detail(state: State<'_, AppState>, id: String) -> Result<CommitDetail> {
     state.with_session(|session| diff::commit_detail(&session.repo.to_thread_local(), &id))
+}
+
+/// The Diff screen's file list and header counts.
+///
+/// This reads every blob the commit touched, because `+n −m` per file cannot
+/// be known without diffing them. It is one call when the screen opens.
+#[tauri::command]
+pub fn commit_diff(state: State<'_, AppState>, id: String) -> Result<CommitDiff> {
+    state.with_session(|session| diff::commit_diff(&session.repo.to_thread_local(), &id))
+}
+
+/// The hunks of one file, fetched as that file is selected.
+#[tauri::command]
+pub fn file_diff(state: State<'_, AppState>, id: String, path: String) -> Result<FileDiff> {
+    state.with_session(|session| diff::file_diff(&session.repo.to_thread_local(), &id, &path))
 }
 
 #[tauri::command]

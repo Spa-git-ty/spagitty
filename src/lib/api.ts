@@ -8,7 +8,14 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import type { About, CommitDetail, OpenResult, Snapshot } from './types';
+import type {
+	About,
+	CommitDetail,
+	CommitDiff,
+	FileDiff,
+	OpenResult,
+	Snapshot
+} from './types';
 
 export function openRepo(path: string): Promise<OpenResult> {
 	return invoke('open_repo', { path });
@@ -34,6 +41,16 @@ export function snapshot(): Promise<Snapshot> {
 
 export function commitDetail(id: string): Promise<CommitDetail> {
 	return invoke('commit_detail', { id });
+}
+
+/** The Diff screen's file list and header counts. One call per commit. */
+export function commitDiff(id: string): Promise<CommitDiff> {
+	return invoke('commit_diff', { id });
+}
+
+/** One file's hunks, fetched as that file is opened. */
+export function fileDiff(id: string, path: string): Promise<FileDiff> {
+	return invoke('file_diff', { id, path });
 }
 
 export function about(): Promise<About> {

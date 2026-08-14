@@ -37,6 +37,9 @@
 	--fs-secondary: 11px;
 	--fs-mono: 10px;
 	--fs-title: 16px;
+	/* Source code, which is read rather than glanced at: --fs-mono is sized for
+	   short SHAs and chip labels and is too small for a wall of diff lines. */
+	--fs-code: 12px;
 	--lh-ui: 1.35;
 
 	/* Radii */

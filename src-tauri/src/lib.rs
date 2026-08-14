@@ -21,6 +21,8 @@ pub fn run() {
             commands::graph_restart,
             commands::snapshot,
             commands::commit_detail,
+            commands::commit_diff,
+            commands::file_diff,
             commands::metrics,
             commands::about,
             commands::launch_path,
