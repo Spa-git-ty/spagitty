@@ -2,7 +2,7 @@
 
 # FEAT-005 — Stash (1G)
 
-**Status:** Planned.
+**Status:** Done.
 **Branch:** `feature/FEAT-005-stash`.
 **Route:** `/stash`. **Rail:** "Stash", count `stashes`.
 

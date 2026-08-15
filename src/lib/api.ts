@@ -17,6 +17,7 @@ import type {
 	FileDiff,
 	OpenResult,
 	Snapshot,
+	StashEntry,
 	WorkingCopy
 } from './types';
 
@@ -108,6 +109,16 @@ export function checkout(name: string): Promise<void> {
 /** Create a branch. An empty `start` means HEAD. */
 export function createBranch(name: string, start: string, checkout: boolean): Promise<void> {
 	return invoke('create_branch', { name, start, checkout });
+}
+
+/** Every stash entry, newest first. */
+export function stashes(): Promise<StashEntry[]> {
+	return invoke('stashes');
+}
+
+/** Stash the working copy. Refused when there is nothing to stash. */
+export function stashPush(message: string, includeUntracked: boolean): Promise<void> {
+	return invoke('stash_push', { message, includeUntracked });
 }
 
 export function about(): Promise<About> {

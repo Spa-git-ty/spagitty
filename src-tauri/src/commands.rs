@@ -13,6 +13,7 @@ use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
 use gitlord_core::graph::ROW_PITCH;
 use gitlord_core::refs::RefIndex;
 use gitlord_core::repo::{self, RepoInfo};
+use gitlord_core::stash::{self, StashEntry};
 use gitlord_core::status::{self, RepoCounts, WorkingCopy};
 use gitlord_core::work;
 use gitlord_core::{Error, Result};
@@ -275,6 +276,24 @@ pub fn create_branch(
 ) -> Result<()> {
     state.with_session(|session| {
         branches::create(&session.repo.to_thread_local(), &name, &start, checkout)
+    })
+}
+
+/// Every stash entry, newest first. Ask `commit_diff` about an entry's `id` to
+/// see what is in it — a stash is a commit.
+#[tauri::command]
+pub fn stashes(state: State<'_, AppState>) -> Result<Vec<StashEntry>> {
+    state.with_session(|session| stash::list(&session.repo.to_thread_local()))
+}
+
+#[tauri::command]
+pub fn stash_push(
+    state: State<'_, AppState>,
+    message: String,
+    include_untracked: bool,
+) -> Result<()> {
+    state.with_session(|session| {
+        stash::push(&session.repo.to_thread_local(), &message, include_untracked)
     })
 }
 

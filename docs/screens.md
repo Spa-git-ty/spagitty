@@ -18,7 +18,7 @@ under Amendment 11.
 | 1D | Conflicts | `/conflicts` | yes | Stub | FEAT-008 |
 | 1E | Interactive rebase | `/rebase` | yes | Stub | FEAT-009 |
 | 1F | Branches | `/branches` | yes | Built | FEAT-004 |
-| 1G | Stash | `/stash` | yes | Stub | FEAT-005 |
+| 1G | Stash | `/stash` | yes | Built | FEAT-005 |
 | 1H | Pull requests | `/requests` | yes | Stub | FEAT-010 |
 | 1I | Log search | `/search` | yes | Stub | FEAT-007 |
 | 1J | All repositories | `/repos` | yes | Stub | FEAT-006 |
@@ -127,11 +127,24 @@ lives in config.
 
 ## 1G — Stash
 
-**Stub.** Planned in FEAT-005; pop, apply and drop deferred to FEAT-014.
+**Built.** `src/routes/stash/+page.svelte`, `src/lib/stash/`.
+Pop, apply and drop are deferred to FEAT-014.
 
-Stash entries drawn hanging off the commit each was made on, with its diff.
-The rail's Stash count is already real — it comes from the reflog of
-`refs/stash` in `crates/gitlord-core/src/status.rs`.
+Stash entries drawn hanging off the commit each was made on, with a detail
+panel showing what is in the selected one.
+
+There is no stash-diff code, and there does not need to be: a stash *is* a
+commit whose first parent is the commit the work was made on, so the detail
+panel asks `commit_diff` about the entry's id like any other commit, and
+`refs/stash`'s reflog is the list — `stash@{n}` is literally the nth entry.
+
+The lane is drawn with the graph's metrics but not its canvas. The canvas exists
+to keep scrolling flat across a hundred thousand rows; a stash list is a dozen,
+and a handful of SVG paths is the smaller thing that reads the same.
+
+Stashing is the only write. `git stash push` succeeds quietly with nothing to
+save, which from a button reads as a stash that happened and then vanished, so
+the core refuses that case with a reason instead.
 
 ## 1H — Pull requests
 

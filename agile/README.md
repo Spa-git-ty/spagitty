@@ -39,7 +39,7 @@ written before the work is a guess rather than a record.
 | [TASK-002](items/TASK-002-test-and-ci-baseline.md) | Test and CI baseline | — | Done |
 | [FEAT-003](items/FEAT-003-working-copy.md) | Working copy / Commit | 1C | Done |
 | [FEAT-004](items/FEAT-004-branches.md) | Branches | 1F | Done |
-| [FEAT-005](items/FEAT-005-stash.md) | Stash | 1G | Planned |
+| [FEAT-005](items/FEAT-005-stash.md) | Stash | 1G | Done |
 | [FEAT-006](items/FEAT-006-all-repositories.md) | All repositories | 1J | Planned |
 | [FEAT-007](items/FEAT-007-log-search.md) | Log search | 1I | Planned |
 | [FEAT-008](items/FEAT-008-conflicts.md) | Conflicts | 1D | Planned |

@@ -23,6 +23,7 @@ pub mod graph;
 pub mod refs;
 pub mod repo;
 pub mod shell;
+pub mod stash;
 pub mod status;
 pub mod work;
 

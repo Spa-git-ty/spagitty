@@ -195,6 +195,32 @@ export interface BranchRow {
 	merged: boolean;
 }
 
+// --- Stash ----------------------------------------------------------------
+
+/**
+ * One `stash@{n}`.
+ *
+ * A stash is a commit whose first parent is the commit the work was made on, so
+ * `commitDiff(entry.id)` shows what is in it — there is no separate stash-diff
+ * call, and there does not need to be.
+ */
+export interface StashEntry {
+	/** `n` in `stash@{n}`. 0 is the most recent. */
+	index: number;
+	/** `stash@{n}` — the name git itself uses. */
+	name: string;
+	id: string;
+	short: string;
+	/** What the entry says about itself: `On main: wip on notes`. */
+	message: string;
+	time: number;
+	authorName: string;
+	/** The commit the work was made on — the row it hangs off. */
+	parent: string;
+	parentShort: string;
+	parentSummary: string;
+}
+
 // --- Repository -----------------------------------------------------------
 
 export interface HeadInfo {

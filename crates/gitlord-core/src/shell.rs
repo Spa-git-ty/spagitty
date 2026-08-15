@@ -200,6 +200,25 @@ pub fn create_branch(repo: &Path, name: &str, start: &str, checkout_it: bool) ->
     Ok(())
 }
 
+/// Stash the working copy.
+///
+/// Through `git` because a stash is three writes at once — a commit, a ref and
+/// the working tree — and its on-disk shape is what every other tool reads as
+/// "a stash". An empty message means git writes its own default.
+pub fn stash_push(repo: &Path, message: &str, include_untracked: bool) -> Result<()> {
+    let mut args = vec!["stash", "push"];
+    if include_untracked {
+        args.push("--include-untracked");
+    }
+    if !message.is_empty() {
+        args.push("--message");
+        args.push(message);
+    }
+
+    run(repo, &args)?;
+    Ok(())
+}
+
 /// The message of the commit `HEAD` points at, for pre-filling an amend.
 pub fn head_message(repo: &Path) -> Result<String> {
     run(repo, &["log", "-1", "--pretty=%B"])
