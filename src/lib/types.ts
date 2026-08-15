@@ -165,6 +165,36 @@ export interface WorkingCopy {
 	conflicted: StatusEntry[];
 }
 
+// --- Branches -------------------------------------------------------------
+
+/** One row of the Branches screen. */
+export interface BranchRow {
+	/** Short name for display: `main`, `origin/main`. */
+	name: string;
+	/** The full ref, for anything that has to be unambiguous. */
+	fullName: string;
+	kind: RefKind;
+	current: boolean;
+	id: string;
+	short: string;
+	/** First line of the tip's message. */
+	summary: string;
+	authorName: string;
+	/** Author time of the tip, unix seconds. */
+	time: number;
+	/** Short name of the configured upstream, when there is one. */
+	upstream: string | null;
+	/**
+	 * Commits this branch has that its upstream does not, and the other way
+	 * round. Null when there is no upstream to compare against. As old as the
+	 * last fetch: nothing here talks to a network.
+	 */
+	ahead: number | null;
+	behind: number | null;
+	/** Fully contained in HEAD — the branch that is safe to forget. */
+	merged: boolean;
+}
+
 // --- Repository -----------------------------------------------------------
 
 export interface HeadInfo {

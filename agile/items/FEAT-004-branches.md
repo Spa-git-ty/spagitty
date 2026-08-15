@@ -2,7 +2,7 @@
 
 # FEAT-004 — Branches (1F)
 
-**Status:** Planned.
+**Status:** Done.
 **Branch:** `feature/FEAT-004-branches`.
 **Route:** `/branches`. **Rail:** "Branches", count `branches`.
 

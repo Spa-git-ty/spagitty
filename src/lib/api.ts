@@ -11,6 +11,7 @@ import { invoke } from '@tauri-apps/api/core';
 import type {
 	About,
 	CommitDetail,
+	BranchRow,
 	CommitDiff,
 	DiffSide,
 	FileDiff,
@@ -93,6 +94,20 @@ export function commit(subject: string, body: string, amend: boolean): Promise<s
 /** The message of the commit HEAD points at, for pre-filling an amend. */
 export function headMessage(): Promise<string> {
 	return invoke('head_message');
+}
+
+/** Every branch, with how far it has drifted. One call per refresh. */
+export function branches(): Promise<BranchRow[]> {
+	return invoke('branches');
+}
+
+export function checkout(name: string): Promise<void> {
+	return invoke('checkout', { name });
+}
+
+/** Create a branch. An empty `start` means HEAD. */
+export function createBranch(name: string, start: string, checkout: boolean): Promise<void> {
+	return invoke('create_branch', { name, start, checkout });
 }
 
 export function about(): Promise<About> {

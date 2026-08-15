@@ -167,6 +167,39 @@ pub fn commit(repo: &Path, subject: &str, body: &str, amend: bool) -> Result<Str
     Ok(run(repo, &["rev-parse", "HEAD"])?.trim().to_string())
 }
 
+/// Check out a branch.
+///
+/// Through `git` so that checkout filters, LFS smudging and post-checkout hooks
+/// all run, and so that a checkout which would overwrite uncommitted work is
+/// refused by git with its own message.
+/// `git switch`, not `git checkout`: `checkout` is overloaded — with a `--` it
+/// restores paths, without one it guesses between a branch and a revision.
+/// `switch` only ever changes branch, so a branch whose name looks like a path
+/// cannot be misread as one.
+pub fn checkout(repo: &Path, name: &str) -> Result<()> {
+    run(repo, &["switch", name])?;
+    Ok(())
+}
+
+/// Create a branch, optionally checking it out.
+///
+/// `start` may be empty, which means `HEAD` — the same default `git branch`
+/// has. Name validation is git's: it already knows every rule
+/// `git check-ref-format` enforces.
+pub fn create_branch(repo: &Path, name: &str, start: &str, checkout_it: bool) -> Result<()> {
+    let mut args: Vec<&str> = if checkout_it {
+        vec!["switch", "--create", name]
+    } else {
+        vec!["branch", name]
+    };
+    if !start.is_empty() {
+        args.push(start);
+    }
+
+    run(repo, &args)?;
+    Ok(())
+}
+
 /// The message of the commit `HEAD` points at, for pre-filling an amend.
 pub fn head_message(repo: &Path) -> Result<String> {
     run(repo, &["log", "-1", "--pretty=%B"])

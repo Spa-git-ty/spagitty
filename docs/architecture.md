@@ -27,6 +27,7 @@ compiles and is tested without a GUI, and its examples
 | `repo.rs` | Opening a repository, describing it, reading HEAD |
 | `graph.rs` | The log walk, lane assignment, lane colours, edges, `ROW_PITCH` |
 | `refs.rs` | `RefIndex` — commit id to the refs pointing at it |
+| `branches.rs` | Branch rows: drift, upstream, merged; checkout and create |
 | `diff.rs` | Commit detail, per-commit file lists, per-file hunks |
 | `status.rs` | The working-copy status walk, and the counts the nav rail shows |
 | `work.rs` | Changing the working copy: stage, unstage, commit |
@@ -54,7 +55,8 @@ forwards to the core.
 Commands registered today: `open_repo`, `close_repo`, `graph_request`,
 `graph_restart`, `snapshot`, `commit_detail`, `commit_diff`, `file_diff`,
 `working_copy`, `working_diff`, `stage`, `unstage`, `stage_hunk`,
-`unstage_hunk`, `commit`, `head_message`, `metrics`, `about`, `launch_path`.
+`unstage_hunk`, `commit`, `head_message`, `branches`, `checkout`,
+`create_branch`, `metrics`, `about`, `launch_path`.
 
 ### `src`
 

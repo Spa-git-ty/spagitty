@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
+use gitlord_core::branches::{self, BranchRow};
 use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
 use gitlord_core::graph::ROW_PITCH;
 use gitlord_core::refs::RefIndex;
@@ -244,6 +245,37 @@ pub fn commit(
 #[tauri::command]
 pub fn head_message(state: State<'_, AppState>) -> Result<String> {
     state.with_session(|session| work::head_message(&session.repo.to_thread_local()))
+}
+
+/// Every branch, with how far it has drifted. One call per refresh.
+///
+/// Opens the repository again rather than reusing the session handle. A branch
+/// upstream lives in `.git/config`, and `gix` reads config once when a
+/// repository is opened — so a `git branch --set-upstream-to` run while GitLord
+/// is open would be invisible until it was restarted, and the screen would
+/// report "no upstream" for a branch that has one. Re-discovery costs one
+/// directory walk; being quietly wrong about drift costs more.
+#[tauri::command]
+pub fn branches(state: State<'_, AppState>) -> Result<Vec<BranchRow>> {
+    state.with_session(|session| branches::list(&repo::open(&session.path)?))
+}
+
+#[tauri::command]
+pub fn checkout(state: State<'_, AppState>, name: String) -> Result<()> {
+    state.with_session(|session| branches::checkout(&session.repo.to_thread_local(), &name))
+}
+
+/// Create a branch. `start` empty means `HEAD`.
+#[tauri::command]
+pub fn create_branch(
+    state: State<'_, AppState>,
+    name: String,
+    start: String,
+    checkout: bool,
+) -> Result<()> {
+    state.with_session(|session| {
+        branches::create(&session.repo.to_thread_local(), &name, &start, checkout)
+    })
 }
 
 #[tauri::command]

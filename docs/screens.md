@@ -17,7 +17,7 @@ under Amendment 11.
 | 1C | Working copy | `/changes` | yes | Built | FEAT-003 |
 | 1D | Conflicts | `/conflicts` | yes | Stub | FEAT-008 |
 | 1E | Interactive rebase | `/rebase` | yes | Stub | FEAT-009 |
-| 1F | Branches | `/branches` | yes | Stub | FEAT-004 |
+| 1F | Branches | `/branches` | yes | Built | FEAT-004 |
 | 1G | Stash | `/stash` | yes | Stub | FEAT-005 |
 | 1H | Pull requests | `/requests` | yes | Stub | FEAT-010 |
 | 1I | Log search | `/search` | yes | Stub | FEAT-007 |
@@ -103,10 +103,27 @@ computed in Rust; `git rebase -i` executes it, for the reasons in the header of
 
 ## 1F — Branches
 
-**Stub.** Planned in FEAT-004; delete and rename deferred to FEAT-013.
+**Built.** `src/routes/branches/+page.svelte`, `src/lib/branches/`.
+Delete and rename are deferred to FEAT-013.
 
-Every branch, how far it has drifted, and what is safe to forget. Merged
-branches render dashed.
+Every branch, how far it has drifted, and what is safe to forget: branch,
+ahead/behind, last change, actions. Merged branches render dashed — nothing on
+them is only there — though the current branch never does, since saying
+"merged" about the branch you are on reads as "safe to delete".
+
+Ahead and behind are counted against the remote-tracking ref on disk, so they
+are as old as the last fetch. The footer says so; nothing on this screen talks
+to a network.
+
+Checking out goes through `git switch`, which only ever changes branch — unlike
+`git checkout`, which guesses between a branch, a revision and a path. A
+checkout that would overwrite uncommitted work is refused by git, with git's own
+message. Branch names are validated by git for the same reason: a second
+implementation of `check-ref-format` could only disagree with it.
+
+The branches command re-opens the repository rather than reusing the session
+handle, because `gix` reads config once at open time and a branch's upstream
+lives in config.
 
 ## 1G — Stash
 
