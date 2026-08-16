@@ -21,7 +21,7 @@ under Amendment 11.
 | 1G | Stash | `/stash` | yes | Built | FEAT-005 |
 | 1H | Pull requests | `/requests` | yes | Stub | FEAT-010 |
 | 1I | Log search | `/search` | yes | Stub | FEAT-007 |
-| 1J | All repositories | `/repos` | yes | Stub | FEAT-006 |
+| 1J | All repositories | `/repos` | yes | Built | FEAT-006 |
 | 1K | Settings | `/settings` | yes | Stub + real About | FEAT-011 |
 | 1L | Clone | modal | no | Not started | FEAT-012 |
 
@@ -163,10 +163,24 @@ line.
 
 ## 1J — All repositories
 
-**Stub.** Planned in FEAT-006. Reached from the toolbar's repository picker.
+**Built.** `src/routes/repos/+page.svelte`, `src/lib/repos/`.
+Reached from the toolbar's repository picker.
 
-Every repository you work in and which ones need attention. Repositories are
-read straight from disk; nothing is uploaded anywhere.
+Every repository you work in and which ones need attention: "Needs you" above
+"Nothing in progress", the second rendered dashed. A card carries the branch,
+the path, what the repository was last doing, and a chip for each thing going on
+— conflicts first, since those are what stop work.
+
+GitLord never goes looking for repositories. Opening one is the only way it
+joins the list, which lives in GitLord's own config directory as a plain JSON
+file of paths.
+
+Each card is read where the repository sits, without opening it as the current
+one, and without writing to it — there is a test that compares the index's
+modification time either side of the read. A path that has gone comes back as a
+card that says so rather than being dropped: a repository that moved is
+something to see, not something to forget quietly. Forgetting removes the row
+and never the directory.
 
 ## 1K — Settings
 

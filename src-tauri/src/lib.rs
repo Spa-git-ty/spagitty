@@ -8,6 +8,7 @@
 
 mod commands;
 mod graph_worker;
+mod recents;
 mod watch;
 
 pub fn run() {
@@ -36,6 +37,8 @@ pub fn run() {
             commands::create_branch,
             commands::stashes,
             commands::stash_push,
+            commands::recent_repos,
+            commands::forget_repo,
             commands::metrics,
             commands::about,
             commands::launch_path,

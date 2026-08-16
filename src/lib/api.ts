@@ -16,6 +16,7 @@ import type {
 	DiffSide,
 	FileDiff,
 	OpenResult,
+	RepoSummary,
 	Snapshot,
 	StashEntry,
 	WorkingCopy
@@ -119,6 +120,16 @@ export function stashes(): Promise<StashEntry[]> {
 /** Stash the working copy. Refused when there is nothing to stash. */
 export function stashPush(message: string, includeUntracked: boolean): Promise<void> {
 	return invoke('stash_push', { message, includeUntracked });
+}
+
+/** Every remembered repository, as a card. Reads each where it sits. */
+export function recentRepos(): Promise<RepoSummary[]> {
+	return invoke('recent_repos');
+}
+
+/** Remove a repository from GitLord's list. The directory is not touched. */
+export function forgetRepo(path: string): Promise<void> {
+	return invoke('forget_repo', { path });
 }
 
 export function about(): Promise<About> {

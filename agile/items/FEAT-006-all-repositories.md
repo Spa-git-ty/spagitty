@@ -2,7 +2,7 @@
 
 # FEAT-006 — All repositories (1J)
 
-**Status:** Planned.
+**Status:** Done.
 **Branch:** `feature/FEAT-006-all-repositories`.
 **Route:** `/repos`. **Rail:** "All repositories".
 

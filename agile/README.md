@@ -40,7 +40,7 @@ written before the work is a guess rather than a record.
 | [FEAT-003](items/FEAT-003-working-copy.md) | Working copy / Commit | 1C | Done |
 | [FEAT-004](items/FEAT-004-branches.md) | Branches | 1F | Done |
 | [FEAT-005](items/FEAT-005-stash.md) | Stash | 1G | Done |
-| [FEAT-006](items/FEAT-006-all-repositories.md) | All repositories | 1J | Planned |
+| [FEAT-006](items/FEAT-006-all-repositories.md) | All repositories | 1J | Done |
 | [FEAT-007](items/FEAT-007-log-search.md) | Log search | 1I | Planned |
 | [FEAT-008](items/FEAT-008-conflicts.md) | Conflicts | 1D | Planned |
 | [FEAT-009](items/FEAT-009-rebase.md) | Interactive rebase | 1E | Planned |

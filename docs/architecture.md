@@ -49,6 +49,7 @@ forwards to the core.
 | File | Holds |
 | --- | --- |
 | `commands.rs` | One `#[tauri::command]` per operation. No git logic. |
+| `recents.rs` | The list of repositories the user has opened — application state, not git state |
 | `graph_worker.rs` | A thread that walks history and emits batches |
 | `watch.rs` | Filesystem watcher over the git directory |
 | `lib.rs` | Command registration |
@@ -57,7 +58,8 @@ Commands registered today: `open_repo`, `close_repo`, `graph_request`,
 `graph_restart`, `snapshot`, `commit_detail`, `commit_diff`, `file_diff`,
 `working_copy`, `working_diff`, `stage`, `unstage`, `stage_hunk`,
 `unstage_hunk`, `commit`, `head_message`, `branches`, `checkout`,
-`create_branch`, `stashes`, `stash_push`, `metrics`, `about`, `launch_path`.
+`create_branch`, `stashes`, `stash_push`, `recent_repos`, `forget_repo`,
+`metrics`, `about`, `launch_path`.
 
 ### `src`
 

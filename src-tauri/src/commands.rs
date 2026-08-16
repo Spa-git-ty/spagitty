@@ -12,7 +12,7 @@ use gitlord_core::branches::{self, BranchRow};
 use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
 use gitlord_core::graph::ROW_PITCH;
 use gitlord_core::refs::RefIndex;
-use gitlord_core::repo::{self, RepoInfo};
+use gitlord_core::repo::{self, RepoInfo, RepoSummary};
 use gitlord_core::stash::{self, StashEntry};
 use gitlord_core::status::{self, RepoCounts, WorkingCopy};
 use gitlord_core::work;
@@ -21,6 +21,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 
 use crate::graph_worker::{self, GraphWorker};
+use crate::recents;
 use crate::watch::{self, RepoWatcher};
 
 /// One open repository and everything running against it.
@@ -98,7 +99,11 @@ pub fn open_repo(app: AppHandle, state: State<'_, AppState>, path: PathBuf) -> R
 
     let token = state.next_token.fetch_add(1, Ordering::Relaxed);
     let graph = graph_worker::spawn(app.clone(), info.path.clone(), token);
-    let watcher = watch::watch(app, &git_dir);
+    let watcher = watch::watch(app.clone(), &git_dir);
+
+    // Opening is the only way a repository joins the list. GitLord never goes
+    // looking for repositories on its own.
+    recents::remember(&app, &info.path);
 
     // Replacing the session drops the previous worker and watcher, which joins
     // their threads before we return.
@@ -295,6 +300,26 @@ pub fn stash_push(
     state.with_session(|session| {
         stash::push(&session.repo.to_thread_local(), &message, include_untracked)
     })
+}
+
+/// Every remembered repository, as a card.
+///
+/// Each is read where it sits, without becoming the open one: no walk, no
+/// worker, no watcher, and nothing written to it. A path that has gone comes
+/// back as a card that says so rather than being dropped — a repository that
+/// moved is something to see, not something to forget quietly.
+#[tauri::command]
+pub fn recent_repos(app: AppHandle) -> Vec<RepoSummary> {
+    recents::load(&app)
+        .iter()
+        .map(|path| repo::summary(path))
+        .collect()
+}
+
+/// Remove a repository from GitLord's list. The directory is not touched.
+#[tauri::command]
+pub fn forget_repo(app: AppHandle, path: PathBuf) {
+    recents::forget(&app, &path);
 }
 
 #[tauri::command]

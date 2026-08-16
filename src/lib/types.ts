@@ -258,6 +258,31 @@ export interface RepoCounts {
 	submodules: number | null;
 }
 
+/**
+ * One card on the All repositories screen.
+ *
+ * Read where the repository sits, without opening it as the current one.
+ * `present` false means the path is gone or is no longer a repository, and
+ * every other field is a default that means nothing.
+ */
+export interface RepoSummary {
+	path: string;
+	name: string;
+	present: boolean;
+	bare: boolean;
+	branch: string | null;
+	detached: boolean;
+	short: string | null;
+	/** First line of the tip's message, so a card says what it was last doing. */
+	summary: string | null;
+	time: number | null;
+	/** Distinct changed paths, or null for a bare repository. */
+	dirty: number | null;
+	conflicts: number | null;
+	stashes: number | null;
+	branches: number | null;
+}
+
 export interface OpenResult {
 	info: RepoInfo;
 	counts: RepoCounts;
