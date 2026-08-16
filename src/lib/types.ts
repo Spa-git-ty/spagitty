@@ -221,6 +221,71 @@ export interface StashEntry {
 	parentSummary: string;
 }
 
+// --- Conflicts ------------------------------------------------------------
+
+/**
+ * What the repository is in the middle of.
+ *
+ * Read from the repository's own state, never inferred from the presence of
+ * conflicts: merge, rebase, cherry-pick and revert all leave conflicts behind,
+ * and naming the wrong one sends someone to the wrong command to get out.
+ */
+export type ConflictOperation =
+	| 'merge'
+	| 'rebase'
+	| 'rebaseInteractive'
+	| 'cherryPick'
+	| 'revert'
+	| 'applyMailbox'
+	| 'bisect'
+	| 'none';
+
+/**
+ * Which sides a conflicted path has, which is the same thing as what kind of
+ * conflict it is.
+ */
+export type ConflictKind = 'bothModified' | 'bothAdded' | 'deletedByUs' | 'deletedByThem';
+
+export interface ConflictFile {
+	path: string;
+	kind: ConflictKind;
+}
+
+/** One version of a conflicted file. */
+export interface ConflictSide {
+	/** Empty when `binary` or `tooLarge`, because there is nothing honest to show. */
+	text: string;
+	lines: number;
+	bytes: number;
+	binary: boolean;
+	tooLarge: boolean;
+}
+
+/**
+ * The three index stages of one conflicted path, plus what is on disk.
+ *
+ * A missing side is `null` rather than an empty side: "deleted on that side"
+ * and "emptied on that side" are different things, and the second loses work if
+ * acted on.
+ */
+export interface ConflictSides {
+	path: string;
+	kind: ConflictKind;
+	/** Stage 1, the common ancestor. Null when both sides added the path. */
+	base: ConflictSide | null;
+	/** Stage 2 — ours, which is HEAD. */
+	ours: ConflictSide | null;
+	/** Stage 3 — theirs, the incoming side. */
+	theirs: ConflictSide | null;
+	/** The working-tree file, markers and all. Null when there is none on disk. */
+	merged: ConflictSide | null;
+}
+
+export interface ConflictState {
+	operation: ConflictOperation;
+	files: ConflictFile[];
+}
+
 // --- Repository -----------------------------------------------------------
 
 export interface HeadInfo {

@@ -15,7 +15,7 @@ under Amendment 11.
 | 1A | Graph | `/` | yes | Built | FEAT-001 |
 | 1B | Diff | `/diff` | no | Built | FEAT-002 |
 | 1C | Working copy | `/changes` | yes | Built | FEAT-003 |
-| 1D | Conflicts | `/conflicts` | yes | Stub | FEAT-008 |
+| 1D | Conflicts | `/conflicts` | yes | Built | FEAT-008 |
 | 1E | Interactive rebase | `/rebase` | yes | Stub | FEAT-009 |
 | 1F | Branches | `/branches` | yes | Built | FEAT-004 |
 | 1G | Stash | `/stash` | yes | Built | FEAT-005 |
@@ -88,10 +88,29 @@ not built.
 
 ## 1D — Conflicts
 
-**Stub.** Planned in FEAT-008; resolution writes deferred to FEAT-016.
+**Built.** `src/routes/conflicts/+page.svelte`, `src/lib/conflicts/`.
+Resolution writes are deferred to FEAT-016.
 
-Ours, the merged result, and theirs, side by side, read from index stages 2, 0
-and 3. Read-only in the first pass.
+Ours, the merged result and theirs, side by side, with the common ancestor
+behind a disclosure. The three come from the index: when git cannot merge two
+versions of a file it keeps all three — stage 1 the base, stage 2 ours, stage 3
+theirs — and leaves the working-tree file with markers in it. That is the whole
+data model, and `crates/gitlord-core/src/conflicts.rs` is a reader for it.
+
+Which stages exist *is* the kind of conflict. No stage 1 means both sides added
+the path; a missing stage 2 or 3 means that side deleted it, and the pane says
+so rather than rendering empty — an empty pane reads as "they emptied the file",
+which is a different thing and one that loses work if acted on.
+
+The operation in progress is read from the repository's own state, never
+inferred from the presence of conflicts. Merge, rebase, cherry-pick and revert
+all leave conflicts behind, and naming the wrong one sends someone to the wrong
+command to get out.
+
+Nothing on this screen writes — not the module, not the commands, not the
+markup. There is a test that reads the index's modification time either side of
+visiting every conflicted file. Mark resolved and Abort render disabled with
+FEAT-016 named on each.
 
 ## 1E — Interactive rebase
 

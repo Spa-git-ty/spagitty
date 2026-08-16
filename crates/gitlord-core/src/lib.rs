@@ -17,6 +17,7 @@
 //! which operations and why.
 
 pub mod branches;
+pub mod conflicts;
 pub mod diff;
 pub mod error;
 pub mod graph;

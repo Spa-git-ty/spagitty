@@ -29,6 +29,7 @@ compiles and is tested without a GUI, and its examples
 | `refs.rs` | `RefIndex` — commit id to the refs pointing at it |
 | `branches.rs` | Branch rows: drift, upstream, merged; checkout and create |
 | `diff.rs` | Commit detail, per-commit file lists, per-file hunks |
+| `conflicts.rs` | Index stages 1/2/3 of a conflicted path, and what operation is in progress |
 | `stash.rs` | Stash entries, read from the reflog of `refs/stash` |
 | `status.rs` | The working-copy status walk, and the counts the nav rail shows |
 | `work.rs` | Changing the working copy: stage, unstage, commit |
@@ -58,8 +59,8 @@ Commands registered today: `open_repo`, `close_repo`, `graph_request`,
 `graph_restart`, `snapshot`, `commit_detail`, `commit_diff`, `file_diff`,
 `working_copy`, `working_diff`, `stage`, `unstage`, `stage_hunk`,
 `unstage_hunk`, `commit`, `head_message`, `branches`, `checkout`,
-`create_branch`, `stashes`, `stash_push`, `recent_repos`, `forget_repo`,
-`metrics`, `about`, `launch_path`.
+`create_branch`, `conflicts`, `conflict_sides`, `stashes`, `stash_push`,
+`recent_repos`, `forget_repo`, `metrics`, `about`, `launch_path`.
 
 ### `src`
 

@@ -2,7 +2,7 @@
 
 # FEAT-008 — Conflicts (1D)
 
-**Status:** Planned.
+**Status:** Done.
 **Branch:** `feature/FEAT-008-conflicts`.
 **Route:** `/conflicts`. **Rail:** "Conflicts", count `conflicts`.
 

@@ -13,6 +13,8 @@ import type {
 	CommitDetail,
 	BranchRow,
 	CommitDiff,
+	ConflictSides,
+	ConflictState,
 	DiffSide,
 	FileDiff,
 	OpenResult,
@@ -120,6 +122,16 @@ export function stashes(): Promise<StashEntry[]> {
 /** Stash the working copy. Refused when there is nothing to stash. */
 export function stashPush(message: string, includeUntracked: boolean): Promise<void> {
 	return invoke('stash_push', { message, includeUntracked });
+}
+
+/** What is in progress and what is conflicted. Reads only; nothing is written. */
+export function conflicts(): Promise<ConflictState> {
+	return invoke('conflicts');
+}
+
+/** The three index stages of one conflicted path, plus the file on disk. */
+export function conflictSides(path: string): Promise<ConflictSides> {
+	return invoke('conflict_sides', { path });
 }
 
 /** Every remembered repository, as a card. Reads each where it sits. */

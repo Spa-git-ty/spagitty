@@ -35,6 +35,8 @@ pub fn run() {
             commands::branches,
             commands::checkout,
             commands::create_branch,
+            commands::conflicts,
+            commands::conflict_sides,
             commands::stashes,
             commands::stash_push,
             commands::recent_repos,

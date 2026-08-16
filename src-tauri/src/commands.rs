@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
 use gitlord_core::branches::{self, BranchRow};
+use gitlord_core::conflicts::{self, ConflictSides, ConflictState};
 use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
 use gitlord_core::graph::ROW_PITCH;
 use gitlord_core::refs::RefIndex;
@@ -300,6 +301,23 @@ pub fn stash_push(
     state.with_session(|session| {
         stash::push(&session.repo.to_thread_local(), &message, include_untracked)
     })
+}
+
+/// What operation is in progress, and every conflicted path.
+///
+/// Reads only. Taking a side, editing the merged result and marking a file
+/// resolved are FEAT-016 and have no command here at all — a disabled button
+/// backed by nothing is easier to explain than one backed by a half-written
+/// write path.
+#[tauri::command]
+pub fn conflicts(state: State<'_, AppState>) -> Result<ConflictState> {
+    state.with_session(|session| conflicts::state(&session.repo.to_thread_local()))
+}
+
+/// The three index stages of one conflicted path, plus the file on disk.
+#[tauri::command]
+pub fn conflict_sides(state: State<'_, AppState>, path: String) -> Result<ConflictSides> {
+    state.with_session(|session| conflicts::sides(&session.repo.to_thread_local(), &path))
 }
 
 /// Every remembered repository, as a card.

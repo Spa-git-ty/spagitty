@@ -138,17 +138,128 @@ impl Fixture {
         fixture.commit_all("Our change");
 
         // Expected to fail: stopping mid-merge is the point of this fixture.
-        let _ = Command::new("git")
-            .current_dir(fixture.dir.path())
-            .args(["merge", "theirs"])
-            .env("GIT_TERMINAL_PROMPT", "0")
-            .output();
+        fixture.merge_expecting_conflict("theirs");
+        fixture
+    }
 
+    /// A merge stopped by a file both sides *added*, so there is no stage 1.
+    pub fn added_on_both_sides() -> Self {
+        let fixture = Self::empty();
+
+        fixture.write("untouched.txt", "calm\n");
+        fixture.git(&["add", "-A"]);
+        fixture.commit("Base");
+
+        fixture.git(&["switch", "-q", "-c", "theirs"]);
+        fixture.write("both.txt", "their new file\n");
+        fixture.git(&["add", "both.txt"]);
+        fixture.commit("They add it");
+
+        fixture.git(&["switch", "-q", "main"]);
+        fixture.write("both.txt", "our new file\n");
+        fixture.git(&["add", "both.txt"]);
+        fixture.commit("We add it");
+
+        fixture.merge_expecting_conflict("theirs");
+        fixture
+    }
+
+    /// A merge stopped by a file one side deleted and the other changed, so one
+    /// of stages 2 and 3 is missing.
+    pub fn deleted_on_one_side() -> Self {
+        let fixture = Self::empty();
+
+        fixture.write("gone.txt", "one\ntwo\nthree\n");
+        fixture.git(&["add", "-A"]);
+        fixture.commit("Base");
+
+        fixture.git(&["switch", "-q", "-c", "theirs"]);
+        fixture.remove("gone.txt");
+        fixture.git(&["add", "-A"]);
+        fixture.commit("They delete it");
+
+        fixture.git(&["switch", "-q", "main"]);
+        fixture.write("gone.txt", "one\nOURS\nthree\n");
+        fixture.commit_all("We change it");
+
+        fixture.merge_expecting_conflict("theirs");
+        fixture
+    }
+
+    /// A merge stopped by a binary file both sides changed.
+    pub fn binary_conflict() -> Self {
+        let fixture = Self::empty();
+
+        fixture.write_bytes("logo.bin", &[0x00, 0x01, 0x02, b'b', b'i', b'n', 0x00]);
+        fixture.git(&["add", "-A"]);
+        fixture.commit("Base");
+
+        fixture.git(&["switch", "-q", "-c", "theirs"]);
+        fixture.write_bytes("logo.bin", &[0x00, 0x09, 0x09, b't', b'h', b'x', 0x00]);
+        fixture.commit_all("Their bytes");
+
+        fixture.git(&["switch", "-q", "main"]);
+        fixture.write_bytes("logo.bin", &[0x00, 0x07, 0x07, b'o', b'u', b'r', 0x00]);
+        fixture.commit_all("Our bytes");
+
+        fixture.merge_expecting_conflict("theirs");
+        fixture
+    }
+
+    /// A cherry-pick stopped by a conflict.
+    ///
+    /// The same conflicted index as [`Fixture::conflicted`], reached by a
+    /// different command — which is the point: the screen has to name what is
+    /// actually in progress rather than assume a merge.
+    pub fn cherry_pick_conflict() -> Self {
+        let fixture = Self::empty();
+
+        fixture.write("shared.txt", "one\ntwo\nthree\n");
+        fixture.git(&["add", "-A"]);
+        fixture.commit("Base");
+
+        fixture.git(&["switch", "-q", "-c", "theirs"]);
+        fixture.write("shared.txt", "one\nTHEIRS\nthree\n");
+        let picked = fixture.commit_all("Their change");
+
+        fixture.git(&["switch", "-q", "main"]);
+        fixture.write("shared.txt", "one\nOURS\nthree\n");
+        fixture.commit_all("Our change");
+
+        // Expected to fail: stopping mid-pick is the point of this fixture.
+        fixture.try_git(&["cherry-pick", &picked]);
         fixture
     }
 
     pub fn path(&self) -> &Path {
         self.dir.path()
+    }
+
+    /// Merge `branch`, expecting git to stop on a conflict.
+    ///
+    /// Asserts that it *did* conflict: a fixture that merged cleanly would
+    /// produce tests that pass by testing nothing.
+    fn merge_expecting_conflict(&self, branch: &str) {
+        let status = self.try_git(&["merge", branch]);
+        assert!(
+            !status,
+            "merging {branch} was meant to conflict but succeeded"
+        );
+    }
+
+    /// Run `git` and report whether it succeeded, rather than panicking. For
+    /// the commands a fixture *wants* to fail.
+    fn try_git(&self, args: &[&str]) -> bool {
+        Command::new("git")
+            .current_dir(self.dir.path())
+            .args(args)
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("HOME", self.dir.path())
+            .output()
+            .unwrap_or_else(|e| panic!("running git {args:?}: {e}"))
+            .status
+            .success()
     }
 
     /// Run `git` in the fixture, returning stdout. Panics on failure, since a
