@@ -2,7 +2,7 @@
 
 # FEAT-007 — Log search (1I)
 
-**Status:** Planned.
+**Status:** Done.
 **Branch:** `feature/FEAT-007-log-search`.
 **Route:** `/search`. **Rail:** "Log", hint `⌘F`.
 

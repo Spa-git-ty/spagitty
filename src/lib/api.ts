@@ -10,6 +10,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
 	About,
+	Blame,
 	CommitDetail,
 	BranchRow,
 	CommitDiff,
@@ -19,6 +20,7 @@ import type {
 	FileDiff,
 	OpenResult,
 	RepoSummary,
+	SearchQuery,
 	Snapshot,
 	StashEntry,
 	WorkingCopy
@@ -122,6 +124,26 @@ export function stashes(): Promise<StashEntry[]> {
 /** Stash the working copy. Refused when there is nothing to stash. */
 export function stashPush(message: string, includeUntracked: boolean): Promise<void> {
 	return invoke('stash_push', { message, includeUntracked });
+}
+
+/**
+ * Start a query. Resolves to the token its rows will carry.
+ *
+ * Rows arrive as `search-rows` events; the walk ends with `search-done`.
+ * Starting a query cancels whichever one was running.
+ */
+export function searchStart(query: SearchQuery): Promise<number> {
+	return invoke('search_start', { query });
+}
+
+/** Stop the running query. */
+export function searchStop(): Promise<void> {
+	return invoke('search_stop');
+}
+
+/** Who last touched each line. An empty revision means HEAD. */
+export function blame(path: string, revision: string): Promise<Blame> {
+	return invoke('blame', { path, revision });
 }
 
 /** What is in progress and what is conflicted. Reads only; nothing is written. */

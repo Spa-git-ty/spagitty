@@ -5,8 +5,8 @@
 //! This module is the **only** place in GitLord that spawns a process. Nothing
 //! else in `gitlord-core` shells out; if you need to, add it here.
 //!
-//! Everything GitLord *reads* — log walking, refs, diffing, blame, status — is
-//! done in-process with `gix`. But a specific set of operations is deliberately
+//! Everything GitLord *reads* — log walking, refs, diffing, status — is done
+//! in-process with `gix`. But a specific set of operations is deliberately
 //! **not** reimplemented in Rust:
 //!
 //! | Operation | Why we shell out |
@@ -22,6 +22,13 @@
 //! The rule of thumb: if the operation *mutates* state that the wider git
 //! ecosystem also reads, or if it delegates to something outside the repository,
 //! it belongs here. Read-only history questions belong in `gix`.
+//!
+//! **One read breaks that rule, and it is written down rather than quietly
+//! done.** [`blame`] shells out, because `gix::blame` 0.16 — the newest there
+//! is — panics on an ordinary history shape rather than returning an error. The
+//! rule stands; blame is an exception with a reason and an end condition, and
+//! it moves back in-process when the upstream defect is fixed. See [`blame`]
+//! itself for what exactly goes wrong.
 //!
 //! Nothing in this module is called by the Graph screen. It exists now so the
 //! boundary is drawn before the screens that need it are built.
@@ -222,6 +229,23 @@ pub fn stash_push(repo: &Path, message: &str, include_untracked: bool) -> Result
 /// The message of the commit `HEAD` points at, for pre-filling an amend.
 pub fn head_message(repo: &Path) -> Result<String> {
     run(repo, &["log", "-1", "--pretty=%B"])
+}
+
+/// Who last touched each line, as `--line-porcelain`.
+///
+/// The one **read** in this module, and the exception noted in the header.
+/// `gix::blame` panics — a failed internal assertion, not an error we could
+/// catch and report — when blaming a file at a merge commit whose history has
+/// an intervening commit that left the file alone. That is not an exotic shape;
+/// it is most files in most repositories. Every diff algorithm and both rename
+/// settings do it, and 0.16 is the newest published version.
+///
+/// So blame comes from `git` until that is fixed upstream, and it is worth
+/// being plain about the trade: this call spawns a process for a question the
+/// rest of the crate answers in memory. `--line-porcelain` repeats every header
+/// on every line, which makes the parser a loop rather than a state machine.
+pub fn blame(repo: &Path, revision: &str, path: &str) -> Result<String> {
+    run(repo, &["blame", "--line-porcelain", revision, "--", path])
 }
 
 // The functions below are stubs deliberately left unimplemented until the

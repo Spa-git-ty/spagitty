@@ -8,12 +8,14 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
+use gitlord_core::blame::{self, Blame};
 use gitlord_core::branches::{self, BranchRow};
 use gitlord_core::conflicts::{self, ConflictSides, ConflictState};
 use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
 use gitlord_core::graph::ROW_PITCH;
 use gitlord_core::refs::RefIndex;
 use gitlord_core::repo::{self, RepoInfo, RepoSummary};
+use gitlord_core::search::Query;
 use gitlord_core::stash::{self, StashEntry};
 use gitlord_core::status::{self, RepoCounts, WorkingCopy};
 use gitlord_core::work;
@@ -23,6 +25,7 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::graph_worker::{self, GraphWorker};
 use crate::recents;
+use crate::search_worker::{self, SearchWorker};
 use crate::watch::{self, RepoWatcher};
 
 /// One open repository and everything running against it.
@@ -40,6 +43,9 @@ struct Session {
 pub struct AppState {
     session: Mutex<Option<Session>>,
     next_token: AtomicU64,
+    /// The query running right now, if any. Replacing it cancels the one it
+    /// replaces — a search is restartable, not resumable.
+    search: Mutex<Option<SearchWorker>>,
 }
 
 impl AppState {
@@ -301,6 +307,37 @@ pub fn stash_push(
     state.with_session(|session| {
         stash::push(&session.repo.to_thread_local(), &message, include_untracked)
     })
+}
+
+/// Start a query. Returns the token its rows will carry.
+///
+/// Rows arrive as `search-rows` events and the walk ends with `search-done`.
+/// Starting a query cancels whichever one was running, so a store that sees
+/// rows from an older token can drop them without asking.
+#[tauri::command]
+pub fn search_start(app: AppHandle, state: State<'_, AppState>, query: Query) -> Result<u64> {
+    let path = state.with_session(|session| Ok(session.path.clone()))?;
+    let token = state.next_token.fetch_add(1, Ordering::Relaxed);
+
+    let worker = search_worker::spawn(app, path, query, token);
+    // Assigning drops the previous worker, which cancels it and joins its
+    // thread before this call returns.
+    *state.search.lock().expect("search lock") = Some(worker);
+
+    Ok(token)
+}
+
+/// Stop the running query. Leaving the screen is the ordinary caller.
+#[tauri::command]
+pub fn search_stop(state: State<'_, AppState>) {
+    *state.search.lock().expect("search lock") = None;
+}
+
+/// Who last touched each line of `path` at `revision`. An empty revision is
+/// `HEAD`.
+#[tauri::command]
+pub fn blame(state: State<'_, AppState>, path: String, revision: String) -> Result<Blame> {
+    state.with_session(|session| blame::file(&session.repo.to_thread_local(), &path, &revision))
 }
 
 /// What operation is in progress, and every conflicted path.

@@ -20,7 +20,7 @@ under Amendment 11.
 | 1F | Branches | `/branches` | yes | Built | FEAT-004 |
 | 1G | Stash | `/stash` | yes | Built | FEAT-005 |
 | 1H | Pull requests | `/requests` | yes | Stub | FEAT-010 |
-| 1I | Log search | `/search` | yes | Stub | FEAT-007 |
+| 1I | Log search | `/search` | yes | Built | FEAT-007 |
 | 1J | All repositories | `/repos` | yes | Built | FEAT-006 |
 | 1K | Settings | `/settings` | yes | Stub + real About | FEAT-011 |
 | 1L | Clone | modal | no | Not started | FEAT-012 |
@@ -175,10 +175,37 @@ vocabulary: the hosting service is a detail, not the language.
 
 ## 1I — Log search
 
-**Stub.** Planned in FEAT-007. Reached from the rail's filter field and `⌘F`.
+**Built.** `src/routes/search/+page.svelte`, `src/lib/search/`.
+Reached from the rail and by `⌘F` from any screen, which lands here with the
+first field focused — the focus travels in the URL (`?focus=1`) rather than
+through a store, so the shortcut and a bookmark behave identically.
 
-Find commits by author, path, message or date, and see who last touched each
-line.
+Find commits by author, path, message or date. The filters compose as AND and
+each is a chip saying exactly what is applied; the chips are derived from the
+fields rather than stored beside them, so the two cannot disagree.
+
+A search is the graph's revision walk with a predicate and without lanes.
+Lanes are absent on purpose: drawing them over a filtered subset would draw
+edges between commits that are not parent and child. The path filter uses git's
+own simplification rule — a commit TREESAME to *any* parent is skipped — which
+is what stops a merge being listed for a change it only carried across.
+
+Results stream as the walk finds them. Each query carries a token and starting
+one cancels the one before, so rows from an older query are dropped rather than
+rendered; that is what makes it safe to search on a keystroke.
+
+`↵` opens the commit in the side column — message, people, files — and `⌥↵`
+opens its hunks on the Diff screen, which is a different question.
+
+**Blame goes through the `git` binary**, and it is the one read in the
+application that does. `gix::blame` 0.16, the newest published version, panics
+on an ordinary history shape: a file blamed at a merge commit whose history
+contains an intervening commit that left the file alone. Every diff algorithm
+and both rename settings do it. The exception is recorded on `shell::blame`
+with its end condition — blame moves back in-process when that is fixed
+upstream. A binary file, a missing path and a directory each say which rather
+than rendering an empty list, because an empty list reads as a file nobody has
+ever touched.
 
 ## 1J — All repositories
 

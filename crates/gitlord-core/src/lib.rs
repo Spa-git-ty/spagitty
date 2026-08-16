@@ -16,6 +16,7 @@
 //! is the only module in this crate that spawns a process. See its header for
 //! which operations and why.
 
+pub mod blame;
 pub mod branches;
 pub mod conflicts;
 pub mod diff;
@@ -23,6 +24,7 @@ pub mod error;
 pub mod graph;
 pub mod refs;
 pub mod repo;
+pub mod search;
 pub mod shell;
 pub mod stash;
 pub mod status;

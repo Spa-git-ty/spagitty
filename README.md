@@ -9,8 +9,8 @@ pick/squash/reword/drop, ours/theirs — with no invented vocabulary.
 ## Status
 
 Early. The application chrome and the Graph, Diff, Working copy, Conflicts,
-Branches, Stash and All repositories screens are implemented; the remaining
-screens are placeholders being built one at a time.
+Branches, Stash, Log search and All repositories screens are implemented; the
+remaining screens are placeholders being built one at a time.
 
 ## Stack
 

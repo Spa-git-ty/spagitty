@@ -2,13 +2,14 @@
 
 //! GitLord's Tauri shell.
 //!
-//! This crate owns the window, the commands, and the two background workers
-//! (history walking and filesystem watching). All git logic lives in
-//! `gitlord-core`.
+//! This crate owns the window, the commands, and the background workers
+//! (history walking, log searching and filesystem watching). All git logic
+//! lives in `gitlord-core`.
 
 mod commands;
 mod graph_worker;
 mod recents;
+mod search_worker;
 mod watch;
 
 pub fn run() {
@@ -35,6 +36,9 @@ pub fn run() {
             commands::branches,
             commands::checkout,
             commands::create_branch,
+            commands::search_start,
+            commands::search_stop,
+            commands::blame,
             commands::conflicts,
             commands::conflict_sides,
             commands::stashes,

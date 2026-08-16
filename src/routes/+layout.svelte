@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import '../app.css';
 
@@ -82,6 +83,18 @@
 		};
 	});
 
+	/**
+	 * `⌘F` — or `Ctrl+F` where there is no command key — reaches Log search from
+	 * anywhere, with the first field focused. The focus is carried in the URL
+	 * rather than through a store, so the same shortcut and a bookmark behave
+	 * identically.
+	 */
+	function shortcut(event: KeyboardEvent) {
+		if (event.key !== 'f' || !(event.metaKey || event.ctrlKey) || event.altKey) return;
+		event.preventDefault();
+		goto('/search?focus=1');
+	}
+
 	// A newly opened repository means a fresh walk.
 	let lastGeneration = 0;
 	$effect(() => {
@@ -91,6 +104,8 @@
 		}
 	});
 </script>
+
+<svelte:window onkeydown={shortcut} />
 
 <div class="app">
 	<TitleBar />

@@ -41,7 +41,7 @@ written before the work is a guess rather than a record.
 | [FEAT-004](items/FEAT-004-branches.md) | Branches | 1F | Done |
 | [FEAT-005](items/FEAT-005-stash.md) | Stash | 1G | Done |
 | [FEAT-006](items/FEAT-006-all-repositories.md) | All repositories | 1J | Done |
-| [FEAT-007](items/FEAT-007-log-search.md) | Log search | 1I | Planned |
+| [FEAT-007](items/FEAT-007-log-search.md) | Log search | 1I | Done |
 | [FEAT-008](items/FEAT-008-conflicts.md) | Conflicts | 1D | Done |
 | [FEAT-009](items/FEAT-009-rebase.md) | Interactive rebase | 1E | Planned |
 | [FEAT-010](items/FEAT-010-pull-requests.md) | Pull requests | 1H | Planned |

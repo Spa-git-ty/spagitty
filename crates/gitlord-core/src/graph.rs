@@ -390,7 +390,7 @@ pub fn short_id(id: &ObjectId) -> String {
 /// Up to two uppercase letters for the node glyph.
 ///
 /// "Ada Lovelace" -> AL, "torvalds" -> TO, "" -> ?.
-fn initials(name: &str) -> String {
+pub(crate) fn initials(name: &str) -> String {
     let words: Vec<&str> = name.split_whitespace().collect();
     let letters: String = match words.len() {
         0 => return "?".to_string(),

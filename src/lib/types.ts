@@ -221,6 +221,84 @@ export interface StashEntry {
 	parentSummary: string;
 }
 
+// --- Log search -----------------------------------------------------------
+
+/**
+ * What to look for. Every field is optional and they compose as AND.
+ *
+ * Text matching is a case-insensitive substring, not a regular expression —
+ * regexes are explicit non-scope for this pass.
+ */
+export interface SearchQuery {
+	/** Matched against `Name <email>`, the way `git log --author` looks at it. */
+	author?: string | null;
+	/** Matched against the whole message, subject and body, like `--grep`. */
+	message?: string | null;
+	/** A path the commit changed, like `git log -- <path>`. */
+	path?: string | null;
+	/** Seconds since the unix epoch, like `--since`. */
+	since?: number | null;
+	/** Seconds since the unix epoch, like `--until`. */
+	until?: number | null;
+}
+
+/**
+ * One result: the graph's row without its lane.
+ *
+ * A filtered list has no lanes, and drawing them would draw edges between
+ * commits that are not parent and child.
+ */
+export interface SearchRow {
+	/** Position in the result list, not in history. */
+	index: number;
+	id: string;
+	short: string;
+	summary: string;
+	authorName: string;
+	authorEmail: string;
+	initials: string;
+	time: number;
+	refs: RefChip[];
+}
+
+export interface SearchRowsEvent {
+	token: number;
+	rows: SearchRow[];
+}
+
+export interface SearchDoneEvent {
+	token: number;
+	total: number;
+	/** True when the walk reached the end of history rather than being cancelled. */
+	complete: boolean;
+	error: string | null;
+}
+
+/** Why there is nothing to blame. Not an error — ordinary states of files. */
+export type NotBlamable = 'binary' | 'tooLarge' | 'notAFile' | 'empty';
+
+export interface BlameLine {
+	/** 1-based line number in the blamed file. */
+	line: number;
+	text: string;
+	commit: string;
+	short: string;
+	summary: string;
+	authorName: string;
+	time: number;
+	/** Where the line lived before, when it arrived under another name. */
+	sourcePath: string | null;
+}
+
+export interface Blame {
+	path: string;
+	/** The revision blamed, resolved to a full id. */
+	revision: string;
+	lines: BlameLine[];
+	/** Set when `lines` is empty for a reason worth stating. */
+	refused: NotBlamable | null;
+}
+
 // --- Conflicts ------------------------------------------------------------
 
 /**
@@ -389,6 +467,8 @@ export interface RepoChangedEvent {
 	worktree: boolean;
 }
 
+export const SEARCH_ROWS_EVENT = 'search-rows';
+export const SEARCH_DONE_EVENT = 'search-done';
 export const GRAPH_ROWS_EVENT = 'graph-rows';
 export const GRAPH_DONE_EVENT = 'graph-done';
 export const REPO_CHANGED_EVENT = 'repo-changed';

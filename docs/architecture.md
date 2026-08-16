@@ -30,6 +30,8 @@ compiles and is tested without a GUI, and its examples
 | `branches.rs` | Branch rows: drift, upstream, merged; checkout and create |
 | `diff.rs` | Commit detail, per-commit file lists, per-file hunks |
 | `conflicts.rs` | Index stages 1/2/3 of a conflicted path, and what operation is in progress |
+| `search.rs` | The filtered history walk behind Log search |
+| `blame.rs` | Who last touched each line — the one read that goes through `git` |
 | `stash.rs` | Stash entries, read from the reflog of `refs/stash` |
 | `status.rs` | The working-copy status walk, and the counts the nav rail shows |
 | `work.rs` | Changing the working copy: stage, unstage, commit |
@@ -52,6 +54,7 @@ forwards to the core.
 | `commands.rs` | One `#[tauri::command]` per operation. No git logic. |
 | `recents.rs` | The list of repositories the user has opened — application state, not git state |
 | `graph_worker.rs` | A thread that walks history and emits batches |
+| `search_worker.rs` | A thread per query; starting one cancels the one before |
 | `watch.rs` | Filesystem watcher over the git directory |
 | `lib.rs` | Command registration |
 
@@ -59,8 +62,9 @@ Commands registered today: `open_repo`, `close_repo`, `graph_request`,
 `graph_restart`, `snapshot`, `commit_detail`, `commit_diff`, `file_diff`,
 `working_copy`, `working_diff`, `stage`, `unstage`, `stage_hunk`,
 `unstage_hunk`, `commit`, `head_message`, `branches`, `checkout`,
-`create_branch`, `conflicts`, `conflict_sides`, `stashes`, `stash_push`,
-`recent_repos`, `forget_repo`, `metrics`, `about`, `launch_path`.
+`create_branch`, `search_start`, `search_stop`, `blame`, `conflicts`,
+`conflict_sides`, `stashes`, `stash_push`, `recent_repos`, `forget_repo`,
+`metrics`, `about`, `launch_path`.
 
 ### `src`
 
@@ -99,11 +103,20 @@ in one sentence:
 > delegates to something outside the repository, it shells out to `git`.
 > Read-only history questions are answered in-process with `gix`.
 
-So reads — log walking, refs, diffing, blame, status — are `gix`. Interactive
-rebase execution, hooks, LFS, submodule recursion, credential helpers,
-committing and staging are `git`. As further screens land, checkout, stash push
-and clone join the `git` side for the same reason, and the table in that header
-is extended in the same change that adds them.
+So reads — log walking, refs, diffing, status, the index's conflict stages — are
+`gix`. Interactive rebase execution, hooks, LFS, submodule recursion, credential
+helpers, committing, staging, checkout and stash push are `git`. As further
+screens land, clone joins the `git` side for the same reason, and the table in
+that header is extended in the same change that adds it.
+
+**One read breaks the rule, and it is written down rather than quietly done.**
+`shell::blame` shells out because `gix::blame` 0.16 — the newest published
+version — panics on an ordinary history shape rather than returning an error:
+a file blamed at a merge commit whose history contains an intervening commit
+that left the file alone. Every diff algorithm and both rename settings do it.
+The exception carries an end condition: blame moves back in-process when the
+upstream defect is fixed. It is the only read in the workspace that spawns a
+process.
 
 `gix` is MIT/Apache-2.0, which links cleanly into a GPL-3 program.
 
