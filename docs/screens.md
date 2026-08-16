@@ -19,7 +19,7 @@ under Amendment 11.
 | 1E | Interactive rebase | `/rebase` | yes | Built | FEAT-009 |
 | 1F | Branches | `/branches` | yes | Built | FEAT-004 |
 | 1G | Stash | `/stash` | yes | Built | FEAT-005 |
-| 1H | Pull requests | `/requests` | yes | Stub | FEAT-010 |
+| 1H | Pull requests | `/requests` | yes | Built (offline) | FEAT-010 |
 | 1I | Log search | `/search` | yes | Built | FEAT-007 |
 | 1J | All repositories | `/repos` | yes | Built | FEAT-006 |
 | 1K | Settings | `/settings` | yes | Stub + real About | FEAT-011 |
@@ -196,11 +196,30 @@ the core refuses that case with a reason instead.
 
 ## 1H — Pull requests
 
-**Stub.** Planned in FEAT-010 as an offline shell; forge integration is
-FEAT-017.
+**Built, offline.** `src/routes/requests/+page.svelte`, `src/lib/requests/`.
+Connecting a host is FEAT-017.
 
-What is waiting on you above what is waiting on everyone else. Host-agnostic
-vocabulary: the hosting service is a detail, not the language.
+What is waiting on you above what is waiting on everyone else: solid rows over
+dashed ones, with the detail panel beside them — the same two-group device All
+repositories uses.
+
+**GitLord talks to no hosting service, and cannot.** No HTTP client is linked
+into this application in either language, and there is a test that reads the
+manifests and the screen's own source to keep it that way. A screen with no way
+to make a request cannot make one, which is a stronger claim than any
+behavioural test could make.
+
+The empty state is the screen rather than a placeholder. "No account is
+connected", with a way to Settings → Accounts, tells the user the screen works
+and the account does not — which is the difference between this and the
+`ScreenStub` it replaces.
+
+`PullRequest` in `src/lib/types.ts` is FEAT-017's contract, written now so that
+connecting a host is a matter of filling it in rather than redesigning the
+screen around whatever one host's API happens to return. The vocabulary is
+host-agnostic throughout, and a test asserts no host's name appears anywhere in
+the screen — the kind of thing that rots the moment somebody adds "Open on
+<host>" without thinking.
 
 ## 1I — Log search
 

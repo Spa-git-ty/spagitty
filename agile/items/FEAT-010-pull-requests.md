@@ -2,7 +2,7 @@
 
 # FEAT-010 — Pull requests (1H)
 
-**Status:** Planned.
+**Status:** Done.
 **Branch:** `feature/FEAT-010-pull-requests`.
 **Route:** `/requests`. **Rail:** "Pull requests".
 

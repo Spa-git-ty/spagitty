@@ -221,6 +221,51 @@ export interface StashEntry {
 	parentSummary: string;
 }
 
+// --- Pull requests --------------------------------------------------------
+
+/**
+ * The shape a pull request takes on the screen.
+ *
+ * **This is FEAT-017's contract.** Nothing populates it today — GitLord talks
+ * to no hosting service — and it is defined now so that connecting a host is a
+ * matter of filling this in rather than redesigning the screen around whatever
+ * one host's API happens to return.
+ *
+ * The vocabulary is host-agnostic on purpose: "pull request", never a brand.
+ * The hosting service is a detail, not the language.
+ */
+export interface PullRequest {
+	/** The host's own identifier, whatever form it takes. */
+	id: string;
+	/** The number people say out loud: "#412". */
+	number: number;
+	title: string;
+	/** Display name of whoever opened it. */
+	authorName: string;
+	/** Seconds since the unix epoch. */
+	updated: number;
+	sourceBranch: string;
+	targetBranch: string;
+	draft: boolean;
+	/** Where it sits with reviewers. */
+	review: ReviewState;
+	/** Whether the host's checks passed. Null when the host runs none. */
+	checks: CheckState | null;
+	/** True when this one is waiting on the person using GitLord. */
+	needsYou: boolean;
+	/** Why it needs you, in one line, when it does. */
+	needsYouBecause: string | null;
+	changedFiles: number;
+	added: number;
+	removed: number;
+	/** Whether the host says it can merge. Null when the host has not said. */
+	mergeable: boolean | null;
+}
+
+export type ReviewState = 'awaitingReview' | 'changesRequested' | 'approved' | 'noReviewers';
+
+export type CheckState = 'passing' | 'failing' | 'running';
+
 // --- Interactive rebase ---------------------------------------------------
 
 /** What to do with one commit, in git's own vocabulary. */

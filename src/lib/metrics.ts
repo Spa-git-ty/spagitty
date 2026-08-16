@@ -116,6 +116,9 @@ export const REPO_CARD_W = 300;
 /** The lookup and blame column on the Log search screen. */
 export const SEARCH_SIDE_W = 280;
 
+/** The detail panel on the Pull requests screen. */
+export const REQUESTS_DETAIL_W = 300;
+
 // --- Lane elbow shape -----------------------------------------------------
 
 /**
@@ -161,7 +164,8 @@ export function applyMetrics(root: HTMLElement = document.documentElement): void
 		'diff-gutter-w': DIFF_GUTTER_W,
 		'changes-files-w': CHANGES_FILES_W,
 		'repo-card-w': REPO_CARD_W,
-		'search-side-w': SEARCH_SIDE_W
+		'search-side-w': SEARCH_SIDE_W,
+		'requests-detail-w': REQUESTS_DETAIL_W
 	};
 	for (const [name, value] of Object.entries(px)) {
 		root.style.setProperty(`--${name}`, `${value}px`);
