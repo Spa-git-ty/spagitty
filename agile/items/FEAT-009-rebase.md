@@ -2,7 +2,7 @@
 
 # FEAT-009 — Interactive rebase (1E)
 
-**Status:** Planned.
+**Status:** Done.
 **Branch:** `feature/FEAT-009-rebase`.
 **Route:** `/rebase`. **Rail:** "Rebase". Also the toolbar's Rebase button.
 

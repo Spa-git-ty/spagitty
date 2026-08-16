@@ -43,7 +43,7 @@ written before the work is a guess rather than a record.
 | [FEAT-006](items/FEAT-006-all-repositories.md) | All repositories | 1J | Done |
 | [FEAT-007](items/FEAT-007-log-search.md) | Log search | 1I | Done |
 | [FEAT-008](items/FEAT-008-conflicts.md) | Conflicts | 1D | Done |
-| [FEAT-009](items/FEAT-009-rebase.md) | Interactive rebase | 1E | Planned |
+| [FEAT-009](items/FEAT-009-rebase.md) | Interactive rebase | 1E | Done |
 | [FEAT-010](items/FEAT-010-pull-requests.md) | Pull requests | 1H | Planned |
 | [FEAT-011](items/FEAT-011-settings.md) | Settings | 1K | Planned |
 | [FEAT-012](items/FEAT-012-clone.md) | Clone | 1L | Planned |

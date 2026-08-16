@@ -36,6 +36,8 @@ pub fn run() {
             commands::branches,
             commands::checkout,
             commands::create_branch,
+            commands::rebase_todo,
+            commands::rebase_preview,
             commands::search_start,
             commands::search_stop,
             commands::blame,

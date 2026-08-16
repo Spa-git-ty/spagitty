@@ -30,6 +30,7 @@ compiles and is tested without a GUI, and its examples
 | `branches.rs` | Branch rows: drift, upstream, merged; checkout and create |
 | `diff.rs` | Commit detail, per-commit file lists, per-file hunks |
 | `conflicts.rs` | Index stages 1/2/3 of a conflicted path, and what operation is in progress |
+| `rebase.rs` | The interactive-rebase todo list and its preview. Plans only; runs nothing |
 | `search.rs` | The filtered history walk behind Log search |
 | `blame.rs` | Who last touched each line — the one read that goes through `git` |
 | `stash.rs` | Stash entries, read from the reflog of `refs/stash` |
@@ -62,9 +63,9 @@ Commands registered today: `open_repo`, `close_repo`, `graph_request`,
 `graph_restart`, `snapshot`, `commit_detail`, `commit_diff`, `file_diff`,
 `working_copy`, `working_diff`, `stage`, `unstage`, `stage_hunk`,
 `unstage_hunk`, `commit`, `head_message`, `branches`, `checkout`,
-`create_branch`, `search_start`, `search_stop`, `blame`, `conflicts`,
-`conflict_sides`, `stashes`, `stash_push`, `recent_repos`, `forget_repo`,
-`metrics`, `about`, `launch_path`.
+`create_branch`, `rebase_todo`, `rebase_preview`, `search_start`, `search_stop`,
+`blame`, `conflicts`, `conflict_sides`, `stashes`, `stash_push`, `recent_repos`,
+`forget_repo`, `metrics`, `about`, `launch_path`.
 
 ### `src`
 

@@ -13,6 +13,7 @@ use gitlord_core::branches::{self, BranchRow};
 use gitlord_core::conflicts::{self, ConflictSides, ConflictState};
 use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
 use gitlord_core::graph::ROW_PITCH;
+use gitlord_core::rebase::{self, Edit, Preview, Todo};
 use gitlord_core::refs::RefIndex;
 use gitlord_core::repo::{self, RepoInfo, RepoSummary};
 use gitlord_core::search::Query;
@@ -46,6 +47,13 @@ pub struct AppState {
     /// The query running right now, if any. Replacing it cancels the one it
     /// replaces — a search is restartable, not resumable.
     search: Mutex<Option<SearchWorker>>,
+    /// The todo list the Rebase screen is planning against.
+    ///
+    /// Kept here rather than round-tripped through the webview on every
+    /// keystroke: the preview is recomputed on every edit, and sending the
+    /// whole list back each time would be both wasteful and a way for the
+    /// screen to plan against a list the repository never produced.
+    rebase_todo: Mutex<Option<Todo>>,
 }
 
 impl AppState {
@@ -307,6 +315,34 @@ pub fn stash_push(
     state.with_session(|session| {
         stash::push(&session.repo.to_thread_local(), &message, include_untracked)
     })
+}
+
+/// The todo list `git rebase -i <upstream>` would open, before any edit.
+///
+/// Generated rather than read: running `git rebase -i` to see the file it opens
+/// would start a rebase, which is the thing the Rebase screen exists to avoid.
+#[tauri::command]
+pub fn rebase_todo(state: State<'_, AppState>, upstream: String) -> Result<Todo> {
+    let todo =
+        state.with_session(|session| rebase::todo(&session.repo.to_thread_local(), &upstream))?;
+
+    *state.rebase_todo.lock().expect("rebase lock") = Some(todo.clone());
+    Ok(todo)
+}
+
+/// What a plan would produce.
+///
+/// Pure: a fold over the edits against the todo already read. No repository is
+/// touched, and there is no path from here to `shell::rebase_interactive` —
+/// executing a plan is FEAT-015.
+#[tauri::command]
+pub fn rebase_preview(state: State<'_, AppState>, edits: Vec<Edit>) -> Result<Preview> {
+    let guard = state.rebase_todo.lock().expect("rebase lock");
+    let todo = guard
+        .as_ref()
+        .ok_or_else(|| Error::NotStageable("no rebase is being planned".into()))?;
+
+    Ok(rebase::plan(todo, &edits))
 }
 
 /// Start a query. Returns the token its rows will carry.

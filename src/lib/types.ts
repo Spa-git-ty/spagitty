@@ -221,6 +221,66 @@ export interface StashEntry {
 	parentSummary: string;
 }
 
+// --- Interactive rebase ---------------------------------------------------
+
+/** What to do with one commit, in git's own vocabulary. */
+export type RebaseAction = 'pick' | 'squash' | 'reword' | 'drop';
+
+/** One row of the todo list, as `git rebase -i` would open it. */
+export interface TodoRow {
+	id: string;
+	short: string;
+	summary: string;
+	authorName: string;
+	time: number;
+	/** Paths this commit changed. What the conflict heuristic compares. */
+	paths: string[];
+}
+
+export interface RebaseTodo {
+	/** The commit the rebase would replay onto. */
+	upstream: string;
+	upstreamShort: string;
+	/** Oldest first — a rebase replays forwards. */
+	rows: TodoRow[];
+	/** True when the range was longer than the cap and was cut. */
+	truncated: boolean;
+}
+
+/** One entry of the plan. The plan is the complete list, and its order is the order. */
+export interface RebaseEdit {
+	id: string;
+	action: RebaseAction;
+}
+
+/** One row of the result: what a commit would become. */
+export interface PreviewRow {
+	id: string;
+	short: string;
+	summary: string;
+	/** Commits folded into this one, oldest first. Empty for a plain pick. */
+	absorbed: string[];
+	reworded: boolean;
+	/**
+	 * An earlier row in the plan touched a path this one also touches, so
+	 * replaying it may not apply cleanly. A heuristic — knowing for certain
+	 * means performing the merges, which is execution.
+	 */
+	mayConflict: boolean;
+}
+
+export interface RebasePreview {
+	rows: PreviewRow[];
+	dropped: string[];
+	/**
+	 * Set when the plan cannot be executed as written. Dropping everything is
+	 * not one of these — an empty result is a legitimate thing to look at.
+	 */
+	refusal: string | null;
+	/** True when the plan would leave no commits at all. */
+	emptiesTheBranch: boolean;
+}
+
 // --- Log search -----------------------------------------------------------
 
 /**

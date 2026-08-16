@@ -19,6 +19,9 @@ import type {
 	DiffSide,
 	FileDiff,
 	OpenResult,
+	RebaseEdit,
+	RebasePreview,
+	RebaseTodo,
 	RepoSummary,
 	SearchQuery,
 	Snapshot,
@@ -124,6 +127,25 @@ export function stashes(): Promise<StashEntry[]> {
 /** Stash the working copy. Refused when there is nothing to stash. */
 export function stashPush(message: string, includeUntracked: boolean): Promise<void> {
 	return invoke('stash_push', { message, includeUntracked });
+}
+
+/**
+ * The todo list `git rebase -i <upstream>` would open, before any edit.
+ *
+ * Generated rather than read: opening the real one would start a rebase.
+ */
+export function rebaseTodo(upstream: string): Promise<RebaseTodo> {
+	return invoke('rebase_todo', { upstream });
+}
+
+/**
+ * What a plan would produce.
+ *
+ * The todo itself stays in Rust — only the edits cross, since the preview is
+ * recomputed on every change.
+ */
+export function rebasePreview(edits: RebaseEdit[]): Promise<RebasePreview> {
+	return invoke('rebase_preview', { edits });
 }
 
 /**

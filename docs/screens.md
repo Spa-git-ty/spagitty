@@ -16,7 +16,7 @@ under Amendment 11.
 | 1B | Diff | `/diff` | no | Built | FEAT-002 |
 | 1C | Working copy | `/changes` | yes | Built | FEAT-003 |
 | 1D | Conflicts | `/conflicts` | yes | Built | FEAT-008 |
-| 1E | Interactive rebase | `/rebase` | yes | Stub | FEAT-009 |
+| 1E | Interactive rebase | `/rebase` | yes | Built | FEAT-009 |
 | 1F | Branches | `/branches` | yes | Built | FEAT-004 |
 | 1G | Stash | `/stash` | yes | Built | FEAT-005 |
 | 1H | Pull requests | `/requests` | yes | Stub | FEAT-010 |
@@ -114,11 +114,40 @@ FEAT-016 named on each.
 
 ## 1E — Interactive rebase
 
-**Stub.** Planned in FEAT-009; execution deferred to FEAT-015.
+**Built.** `src/routes/rebase/+page.svelte`, `src/lib/rebase/`.
+Execution is deferred to FEAT-015.
 
-Plan a history rewrite and see the result before anything runs. The plan is
-computed in Rust; `git rebase -i` executes it, for the reasons in the header of
-`crates/gitlord-core/src/shell.rs`.
+Plan a history rewrite and see the result before anything runs. Interactive
+rebase is feared because the todo list is edited blind — you choose squash and
+reword against a list of short ids and find out what you did afterwards — so
+this screen is the preview, which is the half that carries the value and none
+of the risk.
+
+The todo list is **generated, not parsed**. Running `git rebase -i` to read the
+file it opens would start a rebase, which is the thing this screen exists to
+avoid; the list is `upstream..HEAD` walked oldest first with merges excluded,
+which is what git itself lists, and there is a test comparing it against
+`git rev-list --reverse --no-merges`.
+
+The plan is the complete list and its order *is* the reordering. The preview is
+a fold of it, recomputed after every edit, so the plan and the picture of the
+plan cannot disagree. A squash folds upward, which is the direction git folds;
+a plan whose first row is a squash has nothing above it and is refused with
+that reason.
+
+Rows move by drag **and** from the keyboard (`⌥↑` / `⌥↓`). Drag alone is
+untestable headlessly and unusable for some people, and the store owns the
+ordering so the component only reports intent.
+
+"May conflict" is a heuristic and the screen uses that word: two commits in the
+plan touching one path mark the later one. Knowing for certain means performing
+the merges, which is execution. Claiming a clean result GitLord cannot prove
+would be the worse lie.
+
+Nothing runs. `shell::rebase_interactive` is still `unimplemented!()`, there is
+no command that could reach it, and Apply renders disabled saying so. A test
+asserts the repository is untouched after any amount of editing — no rebase in
+progress, HEAD where it was, working copy clean.
 
 ## 1F — Branches
 
