@@ -1,10 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { appWindow } from '$lib/chrome/window';
 	import { repo } from '$lib/repo.svelte';
-	import { theme } from '$lib/theme.svelte';
-	import Chip from '$lib/ui/Chip.svelte';
 	import RefChip from '$lib/ui/RefChip.svelte';
 	import { version } from '$lib/version';
 
@@ -49,10 +46,14 @@
 
 	<span class="spacer"></span>
 
-	<Chip onclick={() => theme.toggle()} title="Switch between light and dark">
-		{theme.isDark ? 'light' : 'dark'}
-	</Chip>
-	<Chip onclick={() => goto('/search')} title="Log search">⌘K</Chip>
+	<!--
+		What the title bar says is what it knows: which repository, which branch,
+		what this build is. The theme belongs to Settings → Appearance, which is
+		the one place it is set; a second control here would be a second thing to
+		keep in step. There was also a `⌘K` chip that opened Log search — the
+		shortcut is `⌘F`, and writing a macOS key name on every platform for a
+		combination that does nothing is worse than no hint at all.
+	-->
 	<span class="note" title={version.license}>{version.licenseShort} · v{version.number}</span>
 
 	<div class="controls">

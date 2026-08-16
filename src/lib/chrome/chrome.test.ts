@@ -145,11 +145,25 @@ describe('TitleBar', () => {
 		view.destroy();
 	});
 
-	it('reaches the log search', () => {
+	it('carries no shortcut hint, because the one it carried was wrong', () => {
+		// It said `⌘K` and opened Log search; the shortcut is `⌘F`, and the
+		// notation was macOS's on every platform. A hint nobody can act on is
+		// worse than none.
 		const view = render(TitleBar, {});
-		const search = view.all('.chip').find((c) => c.textContent?.includes('⌘K'));
-		click(search as HTMLElement);
-		expect(goto).toHaveBeenCalledWith('/search');
+
+		expect(view.text()).not.toContain('⌘K');
+
+		view.destroy();
+	});
+
+	it('carries no theme control, because Settings owns the theme', () => {
+		// Two controls for one preference is two things to keep in step.
+		const view = render(TitleBar, {});
+		const labels = view.all('.chip').map((chip) => chip.textContent?.trim());
+
+		expect(labels).not.toContain('dark');
+		expect(labels).not.toContain('light');
+
 		view.destroy();
 	});
 });

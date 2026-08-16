@@ -23,10 +23,11 @@
 	/**
 	 * Lane colors come from the stylesheet, so switching theme repaints without
 	 * any color literal living in TypeScript. Re-resolved whenever the theme
-	 * changes; `theme.value` is read here purely to create that dependency.
+	 * changes; `theme.id` is read here purely to create that dependency, and it
+	 * names the family as well as the mode — switching family repaints too.
 	 */
 	function resolveColors(el: HTMLElement): { lanes: string[]; nodeText: string } {
-		void theme.value;
+		void theme.id;
 		const styles = getComputedStyle(el);
 		const lanes: string[] = [];
 		for (let i = 0; i < LANE_COLOR_COUNT; i++) {
@@ -48,7 +49,7 @@
 		void first;
 		void last;
 		void columns;
-		void theme.value;
+		void theme.id;
 
 		const dpr = window.devicePixelRatio || 1;
 		const pixelWidth = Math.round(width * dpr);

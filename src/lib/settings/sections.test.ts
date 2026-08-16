@@ -16,6 +16,7 @@ vi.mock('$lib/api', () => ({
 
 import * as api from '$lib/api';
 import { theme } from '$lib/theme.svelte';
+import { FAMILIES, paletteOf } from '$lib/themes';
 import AccountsSection from './AccountsSection.svelte';
 import AdvancedSection from './AdvancedSection.svelte';
 import AppearanceSection from './AppearanceSection.svelte';
@@ -71,7 +72,8 @@ beforeEach(async () => {
 	});
 	licenses.mockResolvedValue(LIST);
 	about.mockResolvedValue({ version: '0.1.0', commit: 'abc1234', license: 'GPL-3.0-or-later' });
-	theme.set('light');
+	theme.setFamily('catppuccin');
+	theme.setMode('light');
 });
 
 describe('IdentitySection', () => {
@@ -188,14 +190,66 @@ describe('BehaviourSection', () => {
 });
 
 describe('AppearanceSection', () => {
-	it('marks the theme in use and switches to the other one', () => {
+	it('marks the mode in use and switches to the other one', () => {
 		const mounted = render(AppearanceSection, {});
 
 		const [light, dark] = mounted.all('button.chip');
 		expect(light.classList.contains('active')).toBe(true);
 
 		click(dark);
-		expect(theme.value).toBe('dark');
+		expect(theme.mode).toBe('dark');
+
+		mounted.destroy();
+	});
+
+	it('offers every family, marking the one in use', () => {
+		const mounted = render(AppearanceSection, {});
+
+		const families = mounted.all('.family');
+		expect(families).toHaveLength(FAMILIES.length);
+		expect(families[0].classList.contains('active')).toBe(true);
+		expect(mounted.text()).toContain('Gruvbox');
+
+		mounted.destroy();
+	});
+
+	it('applies a family when it is chosen', () => {
+		const mounted = render(AppearanceSection, {});
+
+		click(mounted.all('.family')[1]);
+
+		expect(theme.family).toBe('dracula');
+		expect(document.documentElement.style.getPropertyValue('--bg')).toBe(
+			paletteOf('dracula', theme.mode).bg
+		);
+
+		mounted.destroy();
+	});
+
+	it('names each family the way that family names the variant in use', () => {
+		// "Mocha" says more to somebody who chose Catppuccin than "dark" does,
+		// and the name follows the mode: Latte and Alucard in light, Mocha and
+		// Dracula in dark.
+		const light = render(AppearanceSection, {});
+		expect(light.text()).toContain('Latte');
+		expect(light.text()).toContain('Alucard');
+		light.destroy();
+
+		theme.setMode('dark');
+		const dark = render(AppearanceSection, {});
+		expect(dark.text()).toContain('Mocha');
+		expect(dark.text()).not.toContain('Alucard');
+		dark.destroy();
+	});
+
+	it('shows each family in the mode that is on, not in the other one', () => {
+		// A light preview of a theme about to be used in the dark is a preview
+		// of something the user will never see.
+		theme.setMode('dark');
+		const mounted = render(AppearanceSection, {});
+
+		const first = mounted.all('.family')[0].querySelector('.chip-colour') as HTMLElement;
+		expect(first.style.background).toBe(paletteOf('catppuccin', 'dark').bg);
 
 		mounted.destroy();
 	});

@@ -5,8 +5,13 @@
  *
  * The token *structure* is fixed by the design handoff — bg, panel, ink, muted,
  * line, soft, placeholder, accent, selection, stripe, plus five lane colors.
- * The hex values below are the wireframe placeholders and are expected to be
- * replaced by the real visual system; the names are not.
+ *
+ * The values below are the **default family's** palettes — Catppuccin Latte and
+ * Mocha — and they exist for one frame: they are what paints before any
+ * JavaScript has run. Every palette, including these two, lives in
+ * src/lib/themes.ts, and theme.svelte.ts writes the chosen one onto <html> as
+ * inline custom properties, which override everything here. Editing a colour in
+ * this file changes the first paint and nothing else; edit themes.ts.
  *
  * Structural metrics (row pitch, rail width, lane pitch, ...) are deliberately
  * NOT defined here. They live in src/lib/metrics.ts, which is the single source
@@ -15,22 +20,22 @@
  */
 
 :root {
-	--bg: #ffffff;
-	--panel: #faf9f7;
-	--ink: #1a1a1a;
-	--muted: rgba(0, 0, 0, 0.5);
-	--line: rgba(0, 0, 0, 0.22);
-	--soft: rgba(0, 0, 0, 0.1);
-	--placeholder: rgba(0, 0, 0, 0.16);
-	--accent: #2a78d6;
-	--selection: rgba(42, 120, 214, 0.1);
-	--stripe: rgba(0, 0, 0, 0.035);
+	--bg: #eff1f5;
+	--panel: #e6e9ef;
+	--ink: #4c4f69;
+	--muted: rgba(76, 79, 105, 0.72);
+	--line: rgba(76, 79, 105, 0.26);
+	--soft: rgba(76, 79, 105, 0.12);
+	--placeholder: rgba(76, 79, 105, 0.3);
+	--accent: #1e66f5;
+	--selection: rgba(30, 102, 245, 0.14);
+	--stripe: rgba(76, 79, 105, 0.05);
 
-	--lane-1: #2a78d6;
-	--lane-2: #7a5cc4;
-	--lane-3: #c0559b;
-	--lane-4: #c8862a;
-	--lane-5: #3f9d6a;
+	--lane-1: #1e66f5;
+	--lane-2: #8839ef;
+	--lane-3: #d20f39;
+	--lane-4: #179299;
+	--lane-5: #2e7d1f;
 
 	/* Type scale */
 	--fs-ui: 13px;
@@ -56,16 +61,23 @@
 }
 
 :root[data-theme='dark'] {
-	--bg: #1b1e24;
-	--panel: #20242b;
-	--ink: #e9e8e4;
-	--muted: rgba(255, 255, 255, 0.52);
-	--line: rgba(255, 255, 255, 0.2);
-	--soft: rgba(255, 255, 255, 0.09);
-	--placeholder: rgba(255, 255, 255, 0.2);
-	--accent: #5ba4ee;
-	--selection: rgba(91, 164, 238, 0.14);
-	--stripe: rgba(255, 255, 255, 0.035);
+	--bg: #1e1e2e;
+	--panel: #181825;
+	--ink: #cdd6f4;
+	--muted: rgba(205, 214, 244, 0.6);
+	--line: rgba(205, 214, 244, 0.24);
+	--soft: rgba(205, 214, 244, 0.11);
+	--placeholder: rgba(205, 214, 244, 0.26);
+	--accent: #89b4fa;
+	--selection: rgba(137, 180, 250, 0.18);
+	--stripe: rgba(205, 214, 244, 0.05);
+	--on-accent: #1e1e2e;
+
+	--lane-1: #89b4fa;
+	--lane-2: #cba6f7;
+	--lane-3: #f5c2e7;
+	--lane-4: #fab387;
+	--lane-5: #a6e3a1;
 }
 
 * {

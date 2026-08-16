@@ -39,12 +39,15 @@ an honest empty one.
 
 Persistent across every screen, built with FEAT-001.
 
-- **Title bar** — repository name, current branch, theme toggle, build identity,
-  window buttons. The window is undecorated, so the title bar is also the drag
-  handle and `src/lib/chrome/ResizeEdges.svelte` provides the resize edges.
-- **Toolbar** — repository and branch pickers, Undo/Redo, Fetch, Push, Branch,
-  Stash, Rebase, and the primary Commit button. Actions that are not built yet
-  say so on hover rather than failing silently when clicked.
+- **Title bar** — repository name, current branch, build identity, window
+  buttons. The window is undecorated, so the title bar is also the drag handle
+  and `src/lib/chrome/ResizeEdges.svelte` provides the resize edges.
+  It carries no theme control — Settings → Appearance is the one place the
+  theme is set — and no shortcut hint: it used to show `⌘K` for Log search,
+  when the shortcut is `⌘F` and the notation was macOS's on every platform.
+- **Toolbar** — repository and branch pickers, Undo/Redo, Clone, Fetch, Push,
+  Branch, Stash, Rebase, and the primary Commit button. Actions that are not
+  built yet say so on hover rather than failing silently when clicked.
 - **Nav rail** — the only answer to "where am I": the active item and the route
   are the same fact. Counts are right-aligned; `·` means "not computed yet", and
   screens that do not exist report `·` rather than a number that would be wrong.
@@ -294,6 +297,29 @@ the Pull requests screen points.
 
 **Nothing here needs an open repository.** With none, the identity falls back to
 the global scope alone and every other section is unaffected.
+
+**Appearance is the only place the theme is set.** Four families — Catppuccin,
+Dracula, Tokyo Night, Gruvbox — each with a light and a dark variant, named the
+way the family names them. Each is shown as its own four colours in the mode
+that is currently on, because a light preview of a theme about to be used in the
+dark is a preview of something nobody will see. The title bar's toggle is gone;
+one preference with two controls is two things to keep in step.
+
+The palettes are **data**, in `src/lib/themes.ts`, applied to `<html>` as custom
+properties by `src/lib/theme.svelte.ts`. Eight blocks of CSS would be the same
+sixteen tokens written eight times with nothing able to check them; as data they
+are tested, and what is tested is the thing that matters about a colour —
+whether it can be read. `src/lib/themes.test.ts` computes WCAG contrast for all
+eight, compositing the translucent tokens over what shows through them, and
+holds ordinary text to 4.5:1 and secondary text, the accent and every lane
+colour to 3:1. Three published values failed that and were adjusted rather than
+shipped: Latte's pink, peach and yellow are invisible as lanes on its own
+background, and Tokyo Night Day's blue cannot carry white text. Each departure
+is marked where it is made.
+
+`src/app.css` carries the default family's two palettes. They are the boot
+values — what paints before any JavaScript runs — and nothing else; editing a
+colour there changes the first frame and not the theme.
 
 **The identity is read with `gix` and written with `git`.** That is the
 `shell.rs` rule applied without an exception: `.git/config` and `~/.gitconfig`
