@@ -22,6 +22,7 @@ pub mod conflicts;
 pub mod diff;
 pub mod error;
 pub mod graph;
+pub mod identity;
 pub mod rebase;
 pub mod refs;
 pub mod repo;

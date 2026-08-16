@@ -80,8 +80,9 @@ and its guarantees are not.
 - **The screen working with networking disabled** (criterion 2's second half)
   needs the network actually turned off; SWEEP-1H-07. The dependency test above
   is the stronger half of the same claim and does run.
-- **The Settings → Accounts link landing somewhere useful** depends on FEAT-011,
-  which is the next item; until it lands the link reaches the Settings screen,
-  which is honest rather than broken. SWEEP-1H-03.
+- **The Settings → Accounts link landing somewhere useful** depended on
+  FEAT-011, which has since landed: the link now opens Settings on its Accounts
+  section, and which section a fragment selects is covered by FEAT-011's own
+  tests. SWEEP-1H-03.
 - `src/routes/requests/+page.svelte` is outside the coverage scope, like every
   screen shell.

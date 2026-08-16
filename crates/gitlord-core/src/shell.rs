@@ -231,6 +231,35 @@ pub fn head_message(repo: &Path) -> Result<String> {
     run(repo, &["log", "-1", "--pretty=%B"])
 }
 
+/// Set a config key in one scope.
+///
+/// Config is state the whole git ecosystem reads — the user's own `git`, their
+/// prompt, their editor, their hooks — so it is written by `git config` rather
+/// than by us rewriting an INI file. `scope` is `--global` or `--local`, and it
+/// is always passed explicitly: inferring it is how a repository-local identity
+/// silently becomes a global one.
+pub fn set_config(repo: &Path, scope: &str, key: &str, value: &str) -> Result<()> {
+    run(repo, &["config", scope, key, value])?;
+    Ok(())
+}
+
+/// Remove a config key from one scope.
+///
+/// `--unset`, not an empty value. An empty `user.email` is a *configured* empty
+/// email, which git will commit with; an unset one falls back to the next
+/// scope, which is what clearing a field means.
+///
+/// Unsetting a key that is not there is not an error here: `git config --unset`
+/// exits 5 in that case, and "it is already gone" is the outcome the caller
+/// asked for.
+pub fn unset_config(repo: &Path, scope: &str, key: &str) -> Result<()> {
+    match run(repo, &["config", scope, "--unset", key]) {
+        Ok(_) => Ok(()),
+        Err(Error::Git { stderr, .. }) if stderr.is_empty() => Ok(()),
+        Err(other) => Err(other),
+    }
+}
+
 /// Who last touched each line, as `--line-porcelain`.
 ///
 /// The one **read** in this module, and the exception noted in the header.

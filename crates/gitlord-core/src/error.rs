@@ -36,6 +36,9 @@ pub enum Error {
     #[error("could not read the working copy: {0}")]
     Status(String),
 
+    #[error("could not read the git configuration: {0}")]
+    Config(String),
+
     #[error("{0}")]
     NotStageable(String),
 

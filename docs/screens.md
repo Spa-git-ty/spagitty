@@ -22,7 +22,7 @@ under Amendment 11.
 | 1H | Pull requests | `/requests` | yes | Built (offline) | FEAT-010 |
 | 1I | Log search | `/search` | yes | Built | FEAT-007 |
 | 1J | All repositories | `/repos` | yes | Built | FEAT-006 |
-| 1K | Settings | `/settings` | yes | Stub + real About | FEAT-011 |
+| 1K | Settings | `/settings` | yes | Built | FEAT-011 |
 | 1L | Clone | modal | no | Not started | FEAT-012 |
 
 "Stub" means the route exists and renders `src/lib/ui/ScreenStub.svelte`, which
@@ -278,12 +278,62 @@ and never the directory.
 
 ## 1K — Settings
 
-**Stub with a real About footer.** Planned in FEAT-011.
+**Built.** `src/routes/settings/+page.svelte`, `src/lib/settings/`.
 
-The About footer is not deferred: GPL-3 asks that a user can obtain the source
-corresponding to the exact build they are running, so the version, license and
-the commit stamped in at build time are shown from the first commit, along with
-the trademark notice.
+Five sections behind a chip index — You, Accounts, Behaviour, Appearance,
+Advanced — because these are read rarely and changed rarely, and one route that
+says which part of itself is showing is easier to link to than five rail
+entries. The section is in the URL fragment, so `/settings#accounts` lands where
+the Pull requests screen points.
+
+**Nothing here needs an open repository.** With none, the identity falls back to
+the global scope alone and every other section is unaffected.
+
+**The identity is read with `gix` and written with `git`.** That is the
+`shell.rs` rule applied without an exception: `.git/config` and `~/.gitconfig`
+are state the whole ecosystem reads, so writing them goes through `git config`;
+reading them does not. `crates/gitlord-core/src/identity.rs` is both halves.
+
+**The scope is a parameter, never inferred.** Writing to the wrong one is the
+quiet mistake this screen is shaped around — a repository-local identity that
+silently became global is found months later on somebody else's commits. So both
+values report which file they came from, the fields say which one they are
+editing, and changing scope refills them rather than carrying a typed value
+across. A value coming from the system configuration or the environment is named
+as such rather than as a scope GitLord writes, because editing the global field
+would not change it.
+
+**Clearing unsets the key.** `git config --unset`, not an empty string. An empty
+`user.email` is a *configured* empty email, which git will happily commit with;
+an unset one falls back to the next scope, which is what "clear" means.
+
+**A toggle that does nothing yet says so.** The three behaviour toggles persist
+in GitLord's own config directory beside the repository list, with the same
+lenient-parse-or-default treatment for the same reason. None of them is honoured
+yet, and each names the item that will honour it — FEAT-019, FEAT-015,
+FEAT-020. Narrowing the claim to the truth is better than a switch that silently
+does nothing.
+
+**About carries the GPL-3 obligations**, and they were never deferred: the
+version, the license, the commit stamped in at build time, and the trademark
+notice were in the stub's footer from the first commit. They moved into this
+section rather than disappearing while it was rebuilt.
+
+The dependency license list is **generated at build time from the two
+lockfiles**, not typed — a hand-written list is wrong by the next update.
+`src-tauri/licenses.rs` reads `cargo metadata` for the Rust half and
+`package-lock.json` for the npm half, and lists only what is *linked*: build and
+development dependencies are not distributed, so describing them as part of the
+binary would be wrong. `cargo-about` was the plan and was dropped — requiring a
+build tool on every machine and every CI runner is a cost this avoids, since
+cargo already reads the lockfile.
+
+A list that cannot be generated **degrades rather than failing the build**. A
+checkout with no `node_modules`, or an environment where `cargo metadata` cannot
+run offline, produces a shorter list and a note saying what is missing and why.
+The degradation is itself tested, because an untested fallback is a fallback that
+does not work. A package declaring no license is listed as "not declared" rather
+than omitted: an incomplete list that looks complete is the worse failure.
 
 ## 1L — Clone
 

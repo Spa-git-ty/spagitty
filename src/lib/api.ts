@@ -18,12 +18,17 @@ import type {
 	ConflictState,
 	DiffSide,
 	FileDiff,
+	Identity,
+	IdentityKey,
+	IdentityScope,
+	Licenses,
 	OpenResult,
 	RebaseEdit,
 	RebasePreview,
 	RebaseTodo,
 	RepoSummary,
 	SearchQuery,
+	Settings,
 	Snapshot,
 	StashEntry,
 	WorkingCopy
@@ -190,6 +195,38 @@ export function forgetRepo(path: string): Promise<void> {
 
 export function about(): Promise<About> {
 	return invoke('about');
+}
+
+/** Every dependency this build is made of. Generated from the lockfiles. */
+export function licenses(): Promise<Licenses> {
+	return invoke('licenses');
+}
+
+/** `user.name` and `user.email`, per scope, and which one is in effect. */
+export function identity(): Promise<Identity> {
+	return invoke('identity');
+}
+
+/**
+ * Write one identity key in one scope, resolving to the identity as it now
+ * stands. A blank value unsets the key rather than storing an empty string.
+ */
+export function setIdentity(
+	scope: IdentityScope,
+	key: IdentityKey,
+	value: string
+): Promise<Identity> {
+	return invoke('set_identity', { scope, key, value });
+}
+
+/** GitLord's own behaviour toggles. */
+export function settings(): Promise<Settings> {
+	return invoke('settings');
+}
+
+/** Store the behaviour toggles. Rejects when the write did not reach the disk. */
+export function setSettings(settings: Settings): Promise<void> {
+	return invoke('set_settings', { settings });
 }
 
 export function launchPath(): Promise<string | null> {

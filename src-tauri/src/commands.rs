@@ -13,6 +13,7 @@ use gitlord_core::branches::{self, BranchRow};
 use gitlord_core::conflicts::{self, ConflictSides, ConflictState};
 use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
 use gitlord_core::graph::ROW_PITCH;
+use gitlord_core::identity::{self, Identity, Key, Scope};
 use gitlord_core::rebase::{self, Edit, Preview, Todo};
 use gitlord_core::refs::RefIndex;
 use gitlord_core::repo::{self, RepoInfo, RepoSummary};
@@ -24,9 +25,11 @@ use gitlord_core::{Error, Result};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 
+use crate::about::{About, Licenses};
 use crate::graph_worker::{self, GraphWorker};
 use crate::recents;
 use crate::search_worker::{self, SearchWorker};
+use crate::settings::Settings;
 use crate::watch::{self, RepoWatcher};
 
 /// One open repository and everything running against it.
@@ -86,16 +89,6 @@ pub struct Metrics {
     /// Mirrored by ROW_PITCH in src/lib/metrics.ts. The frontend asserts these
     /// agree at boot, so the two definitions cannot silently drift apart.
     pub row_pitch: u32,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct About {
-    pub version: &'static str,
-    /// The commit this binary was built from, for the GPL-3 "corresponding
-    /// source" obligation.
-    pub commit: &'static str,
-    pub license: &'static str,
 }
 
 /// Open a repository (or the one containing `path`) and start its graph worker.
@@ -427,11 +420,74 @@ pub fn metrics() -> Metrics {
 
 #[tauri::command]
 pub fn about() -> About {
-    About {
-        version: env!("CARGO_PKG_VERSION"),
-        commit: env!("GITLORD_COMMIT"),
-        license: "GPL-3.0-or-later",
+    crate::about::about()
+}
+
+/// Every dependency this binary is made of, with its license.
+///
+/// Generated from the lockfiles at build time rather than typed, so it cannot
+/// quietly fall behind a `cargo update`. A build that could not generate it
+/// returns the reason instead of an empty list.
+#[tauri::command]
+pub fn licenses() -> Licenses {
+    crate::about::licenses()
+}
+
+/// `user.name` and `user.email`, per scope, and which one is in effect.
+///
+/// Settings does not need an open repository: with none, the global and system
+/// configuration is read on its own and the local scope is reported as absent.
+#[tauri::command]
+pub fn identity(state: State<'_, AppState>) -> Result<Identity> {
+    let guard = state.session.lock().expect("session lock");
+    match guard.as_ref() {
+        Some(session) => Ok(identity::read(&session.repo.to_thread_local())),
+        None => identity::read_global(),
     }
+}
+
+/// Write one identity key in one scope. A blank value unsets the key.
+///
+/// The scope is what the user chose on the screen and is never inferred here.
+/// Writing to the local scope needs a repository to write into; writing to the
+/// global one does not, and runs wherever GitLord was started.
+#[tauri::command]
+pub fn set_identity(
+    state: State<'_, AppState>,
+    scope: Scope,
+    key: Key,
+    value: String,
+) -> Result<Identity> {
+    let open = state
+        .session
+        .lock()
+        .expect("session lock")
+        .as_ref()
+        .map(|session| session.path.clone());
+
+    let directory = match (scope, open) {
+        (_, Some(path)) => path,
+        (Scope::Local, None) => return Err(Error::NoRepository),
+        (Scope::Global, None) => std::env::current_dir()?,
+    };
+
+    identity::write(&directory, scope, key, &value)?;
+    identity(state)
+}
+
+/// GitLord's own behaviour toggles.
+#[tauri::command]
+pub fn settings(app: AppHandle) -> Settings {
+    crate::settings::load(&app)
+}
+
+/// Store the behaviour toggles.
+///
+/// A failed write is reported rather than swallowed: a toggle that did not
+/// persist looks exactly like one that did, until the next restart.
+#[tauri::command]
+pub fn set_settings(app: AppHandle, settings: Settings) -> std::result::Result<(), String> {
+    crate::settings::save(&app, settings)
 }
 
 /// The path the app was launched with, if any: `gitlord /path/to/repo`.

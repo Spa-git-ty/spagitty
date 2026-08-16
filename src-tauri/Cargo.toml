@@ -17,6 +17,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+# The build script reads `cargo metadata` and `package-lock.json` to generate
+# the dependency license list. Already a runtime dependency; no new tool.
+serde_json = { workspace = true }
 
 [dependencies]
 gitlord-core = { workspace = true }

@@ -38,9 +38,8 @@ no network client. Most of these tickets are therefore about what the screen
 
 - **Priority:** P2
 - **Steps:** Press **Settings → Accounts**.
-- **Expected:** The Settings screen opens. Once FEAT-011 lands it opens on the
-  Accounts section; before then, landing on Settings is the honest outcome and
-  passes this ticket.
+- **Expected:** The Settings screen opens **on the Accounts section**, since
+  FEAT-011 has landed. The address ends `#accounts`.
 - **Result:**
 
 ### SWEEP-1H-04 — No host is named anywhere

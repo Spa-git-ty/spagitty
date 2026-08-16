@@ -6,10 +6,12 @@
 //! (history walking, log searching and filesystem watching). All git logic
 //! lives in `gitlord-core`.
 
+mod about;
 mod commands;
 mod graph_worker;
 mod recents;
 mod search_worker;
+mod settings;
 mod watch;
 
 pub fn run() {
@@ -49,6 +51,11 @@ pub fn run() {
             commands::forget_repo,
             commands::metrics,
             commands::about,
+            commands::licenses,
+            commands::identity,
+            commands::set_identity,
+            commands::settings,
+            commands::set_settings,
             commands::launch_path,
         ])
         .run(tauri::generate_context!())

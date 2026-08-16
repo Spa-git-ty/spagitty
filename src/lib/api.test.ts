@@ -70,6 +70,42 @@ describe('command names and arguments', () => {
 		expect(invoked).toHaveBeenCalledWith('about');
 	});
 
+	it('asks for the dependency licenses without arguments', async () => {
+		await api.licenses();
+		expect(invoked).toHaveBeenCalledWith('licenses');
+	});
+
+	it('asks for the identity without arguments', async () => {
+		await api.identity();
+		expect(invoked).toHaveBeenCalledWith('identity');
+	});
+
+	it('sends the scope, the key and the value when writing an identity', async () => {
+		// The scope is what makes this safe: inferring it is how a
+		// repository-local identity silently becomes a global one.
+		await api.setIdentity('local', 'email', 'ada@work.example');
+		expect(invoked).toHaveBeenCalledWith('set_identity', {
+			scope: 'local',
+			key: 'email',
+			value: 'ada@work.example'
+		});
+	});
+
+	it('asks for the behaviour toggles without arguments', async () => {
+		await api.settings();
+		expect(invoked).toHaveBeenCalledWith('settings');
+	});
+
+	it('sends the whole settings object when storing it', async () => {
+		const settings = {
+			signCommits: true,
+			confirmHistoryRewrite: false,
+			showGitCommands: true
+		};
+		await api.setSettings(settings);
+		expect(invoked).toHaveBeenCalledWith('set_settings', { settings });
+	});
+
 	it('asks for the launch path without arguments', async () => {
 		await api.launchPath();
 		expect(invoked).toHaveBeenCalledWith('launch_path');

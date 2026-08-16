@@ -549,6 +549,66 @@ export interface About {
 	license: string;
 }
 
+// --- Settings -------------------------------------------------------------
+
+/** A configuration file GitLord will write to. Never inferred — always chosen. */
+export type IdentityScope = 'global' | 'local';
+
+/** The two keys the Settings screen edits, and no others. */
+export type IdentityKey = 'name' | 'email';
+
+/**
+ * Where the value git would actually use comes from.
+ *
+ * Wider than `IdentityScope`, because a value can come from somewhere GitLord
+ * will not write: saying "system" out loud is what explains why editing the
+ * global field did not change the effective value.
+ */
+export type IdentityOrigin = 'unset' | 'system' | 'global' | 'local' | 'environment';
+
+export interface IdentityValue {
+	/** What git would use. */
+	effective: string | null;
+	origin: IdentityOrigin;
+	/** What each writable scope holds, so an override can be shown beside what it hides. */
+	global: string | null;
+	local: string | null;
+}
+
+export interface Identity {
+	name: IdentityValue;
+	email: IdentityValue;
+	/** False when no repository is open: the local scope is neither read nor written. */
+	repository: boolean;
+}
+
+/** GitLord's own behaviour toggles, stored in its config directory. */
+export interface Settings {
+	signCommits: boolean;
+	confirmHistoryRewrite: boolean;
+	showGitCommands: boolean;
+}
+
+export interface Dependency {
+	name: string;
+	version: string;
+	/** Null where the package declares none — listed as "not declared", never hidden. */
+	license: string | null;
+}
+
+/**
+ * Every dependency this build is made of, generated from the lockfiles.
+ *
+ * `generated` false means the build could not produce the list; `notes` says
+ * why. An empty list with no explanation would read as "no dependencies".
+ */
+export interface Licenses {
+	generated: boolean;
+	notes: string[];
+	rust: Dependency[];
+	npm: Dependency[];
+}
+
 // --- Events ---------------------------------------------------------------
 
 /** Payload of `graph-rows`: one streamed chunk. */
