@@ -549,6 +549,62 @@ export interface About {
 	license: string;
 }
 
+// --- Clone ----------------------------------------------------------------
+
+/**
+ * Why a clone cannot start.
+ *
+ * Every one of these is knowable without touching the network, which is the
+ * point: the user is told while they are typing rather than after a round trip.
+ */
+export type CloneProblemKind =
+	| 'noUrl'
+	| 'unusableUrl'
+	| 'noParent'
+	| 'missingParent'
+	| 'destinationNotEmpty';
+
+export interface CloneProblem {
+	kind: CloneProblemKind;
+	/** The path the problem is about, where there is one. */
+	detail?: string;
+}
+
+/** Where a clone would land, and what is wrong with that. */
+export interface ClonePlan {
+	name: string | null;
+	/** The exact path that will be created — what the screen shows. */
+	destination: string | null;
+	/** True when the destination does not exist yet, so cancelling may remove it. */
+	createsDestination: boolean;
+	problem: CloneProblem | null;
+	/** The sentence to show. Written by the core, so there is only one of them. */
+	message: string | null;
+}
+
+/** One step of git's own progress reporting. */
+export interface CloneProgress {
+	phase: string;
+	percent: number | null;
+	/** git's own words, shown when there is no percentage. */
+	line: string;
+}
+
+/** Payload of `clone-progress`. */
+export interface CloneProgressEvent extends CloneProgress {
+	token: number;
+}
+
+/** Payload of `clone-done`: the clone for `token` stopped, one way or another. */
+export interface CloneDoneEvent {
+	token: number;
+	ok: boolean;
+	/** False for a clone that failed on its own; true for one the user stopped. */
+	cancelled: boolean;
+	error: string | null;
+	path: string;
+}
+
 // --- Settings -------------------------------------------------------------
 
 /** A configuration file GitLord will write to. Never inferred — always chosen. */
@@ -632,6 +688,8 @@ export interface RepoChangedEvent {
 	worktree: boolean;
 }
 
+export const CLONE_PROGRESS_EVENT = 'clone-progress';
+export const CLONE_DONE_EVENT = 'clone-done';
 export const SEARCH_ROWS_EVENT = 'search-rows';
 export const SEARCH_DONE_EVENT = 'search-done';
 export const GRAPH_ROWS_EVENT = 'graph-rows';

@@ -6,6 +6,8 @@
 	import '../app.css';
 
 	import * as api from '$lib/api';
+	import CloneModal from '$lib/clone/CloneModal.svelte';
+	import { clone } from '$lib/clone/store.svelte';
 	import NavRail from '$lib/chrome/NavRail.svelte';
 	import ResizeEdges from '$lib/chrome/ResizeEdges.svelte';
 	import TitleBar from '$lib/chrome/TitleBar.svelte';
@@ -38,6 +40,9 @@
 			// Listeners go up before anything can emit, so the first batch of a
 			// walk is never missed.
 			cleanups.push(await graph.attach());
+			// A clone survives navigation, so its listener belongs to the shell
+			// rather than to whichever screen started it.
+			cleanups.push(await clone.attach());
 
 			const off: UnlistenFn = await listen<RepoChangedEvent>(
 				REPO_CHANGED_EVENT,
@@ -116,6 +121,12 @@
 		{@render children()}
 	</div>
 </div>
+
+<!--
+	Mounted here rather than by a screen: a clone keeps running while the user
+	navigates, and a modal owned by a screen would go with it.
+-->
+<CloneModal />
 
 <!-- The window is undecorated, so it provides its own resize edges. -->
 <ResizeEdges />

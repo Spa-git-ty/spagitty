@@ -10,6 +10,7 @@ use std::sync::Mutex;
 
 use gitlord_core::blame::{self, Blame};
 use gitlord_core::branches::{self, BranchRow};
+use gitlord_core::clone::{self, Plan};
 use gitlord_core::conflicts::{self, ConflictSides, ConflictState};
 use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
 use gitlord_core::graph::ROW_PITCH;
@@ -26,6 +27,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 
 use crate::about::{About, Licenses};
+use crate::clone_worker::{self, CloneWorker};
 use crate::graph_worker::{self, GraphWorker};
 use crate::recents;
 use crate::search_worker::{self, SearchWorker};
@@ -57,6 +59,13 @@ pub struct AppState {
     /// whole list back each time would be both wasteful and a way for the
     /// screen to plan against a list the repository never produced.
     rebase_todo: Mutex<Option<Todo>>,
+    /// The clone running right now, if any.
+    ///
+    /// One at a time: a second clone is refused rather than queued. Two is not
+    /// a workflow anyone asked for, and the state it needs — a list of running
+    /// clones, each with its own progress — is more machinery than the problem
+    /// has.
+    clone: Mutex<Option<CloneWorker>>,
 }
 
 impl AppState {
@@ -398,6 +407,61 @@ pub fn recent_repos(app: AppHandle) -> Vec<RepoSummary> {
         .iter()
         .map(|path| repo::summary(path))
         .collect()
+}
+
+/// Where a clone would land, and what is wrong with that.
+///
+/// Recomputed as the user types, because every refusal here is knowable without
+/// the network: telling somebody after a round trip what they could have been
+/// told while typing is the failure this exists to avoid.
+#[tauri::command]
+pub fn clone_plan(url: String, parent: PathBuf) -> Plan {
+    clone::plan(&url, &parent)
+}
+
+/// Start a clone. Returns the token its progress will carry.
+///
+/// Progress arrives as `clone-progress` events and the clone ends with
+/// `clone-done`. The plan is recomputed here rather than taken from the caller:
+/// a destination that filled up between the last keystroke and the button is
+/// still a destination this must refuse.
+#[tauri::command]
+pub fn clone_start(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    url: String,
+    parent: PathBuf,
+) -> Result<u64> {
+    if state.clone.lock().expect("clone lock").is_some() {
+        return Err(Error::NotStageable(
+            "a clone is already running; wait for it or stop it first".into(),
+        ));
+    }
+
+    let plan = clone::plan(&url, &parent);
+    let destination = match (&plan.problem, plan.destination) {
+        (Some(problem), _) => return Err(Error::NotStageable(problem.message())),
+        (None, Some(destination)) => destination,
+        (None, None) => return Err(Error::NotStageable("there is nowhere to clone to".into())),
+    };
+
+    let token = state.next_token.fetch_add(1, Ordering::Relaxed);
+    let worker = clone_worker::spawn(app, url, destination, plan.creates_destination, token)?;
+
+    *state.clone.lock().expect("clone lock") = Some(worker);
+    Ok(token)
+}
+
+/// Stop the running clone, and forget it either way.
+///
+/// One command for both "the user pressed Stop" and "it finished, let go of
+/// it", because they are the same operation: dropping the worker kills a
+/// process that is still running and joins a thread that is not. Cancelling
+/// removes the destination only if the clone created it — a directory that was
+/// already there is left exactly as it was found.
+#[tauri::command]
+pub fn clone_release(state: State<'_, AppState>) {
+    *state.clone.lock().expect("clone lock") = None;
 }
 
 /// Remove a repository from GitLord's list. The directory is not touched.

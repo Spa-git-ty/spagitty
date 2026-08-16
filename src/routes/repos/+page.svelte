@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { clone } from '$lib/clone/store.svelte';
 	import RepoCard from '$lib/repos/RepoCard.svelte';
 	import { repos } from '$lib/repos/store.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
@@ -34,6 +35,7 @@
 		<div class="right">
 			{#if repos.loading}<span class="note">Reading…</span>{/if}
 			<Btn disabled={repos.busy} onclick={() => repos.load()}>Refresh</Btn>
+			<Btn disabled={repos.busy} onclick={() => clone.show()}>Clone…</Btn>
 			<Btn primary disabled={repos.busy} onclick={() => repos.choose()}>
 				Open repository…
 			</Btn>
@@ -52,9 +54,12 @@
 					It never goes looking for one. Open a directory and it will be remembered
 					here.
 				</p>
-				<Btn primary disabled={repos.busy} onclick={() => repos.choose()}>
-					Open repository…
-				</Btn>
+				<div class="row">
+					<Btn primary disabled={repos.busy} onclick={() => repos.choose()}>
+						Open repository…
+					</Btn>
+					<Btn disabled={repos.busy} onclick={() => clone.show()}>Clone…</Btn>
+				</div>
 			</div>
 		{:else}
 			{#if needing.length > 0}
@@ -172,6 +177,12 @@
 
 	.empty p {
 		margin: 0;
+	}
+
+	.row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
 	}
 
 	.error {

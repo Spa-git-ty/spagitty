@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { clone } from '$lib/clone/store.svelte';
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 
@@ -19,11 +20,20 @@
 	interface ToolItem {
 		glyph: string;
 		label: string;
+		/** Where it goes, for the actions that are a screen. */
 		href?: string;
+		/** What it does, for the actions that are not. */
+		act?: () => void;
 		title?: string;
 	}
 
 	const actions: ToolItem[] = [
+		{
+			glyph: '⎘',
+			label: 'Clone',
+			title: 'Bring a repository in',
+			act: () => clone.show()
+		},
 		{ glyph: '⇩', label: 'Fetch', title: PENDING },
 		{ glyph: '⇧', label: 'Push', title: PENDING },
 		{ glyph: '⑃', label: 'Branch', href: '/branches' },
@@ -67,7 +77,7 @@
 		<button
 			class="tool"
 			title={action.title}
-			onclick={() => action.href && goto(action.href)}
+			onclick={() => (action.act ? action.act() : action.href && goto(action.href))}
 		>
 			<span aria-hidden="true">{action.glyph}</span>
 			<span>{action.label}</span>

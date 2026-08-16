@@ -18,6 +18,7 @@
 
 pub mod blame;
 pub mod branches;
+pub mod clone;
 pub mod conflicts;
 pub mod diff;
 pub mod error;

@@ -15,6 +15,7 @@
 //! | **Hooks** | `pre-commit`, `commit-msg`, `pre-push` and friends are arbitrary executables with an environment contract, and users expect the same behavior they get on the CLI. `git` already runs them correctly. |
 //! | **LFS** | LFS is a filter/smudge protocol implemented by a separate binary that git invokes via config. Bypassing git means bypassing LFS, and checkouts silently produce pointer files. |
 //! | **Submodule recursion** | Recursive init/update/sync spans nested repositories with their own config, URLs and credentials. `git submodule` is the reference implementation. |
+//! | **Cloning** | The first operation that needs credentials, and therefore the one credential helpers exist for. It is also transport — the smart protocol over HTTPS or SSH — which is the largest thing in git that is not worth a second implementation. |
 //! | **Credential helpers** | Helpers are external programs resolved through config with a documented stdin/stdout protocol, and they are where OS keychain integration already lives. Reimplementing the protocol would mean reimplementing every helper's quirks. |
 //! | **Committing** | `pre-commit` and `commit-msg` hooks have to run, and a signed commit goes through the user's configured GPG or SSH program. Writing the commit object ourselves would silently skip both, so a commit made in GitLord would differ from the same commit made on the command line. |
 //! | **Staging** | The index is the most-read piece of shared state there is: the user's own `git status`, their prompt, their editor's gutter and their hooks all read it. Writing it ourselves — including through `git apply --cached` for a single hunk — keeps the on-disk format and its locking in git's hands. |
@@ -260,6 +261,34 @@ pub fn unset_config(repo: &Path, scope: &str, key: &str) -> Result<()> {
     }
 }
 
+/// Start a clone and hand the caller the running process.
+///
+/// The one function here that does not wait for git to finish. A clone can take
+/// minutes, has to be cancellable, and reports progress as it goes — so the
+/// caller owns the child, reads its stderr, and kills it if the user changes
+/// their mind. Everything else in this module is a command that ends.
+///
+/// Through `git` because this is the operation credential helpers exist for:
+/// they are external programs resolved through config, and they are where OS
+/// keychain integration already lives. `GIT_TERMINAL_PROMPT=0` still holds, so
+/// a repository whose credentials no helper can supply fails with git's message
+/// rather than hanging on a prompt there is no terminal for.
+///
+/// `--progress` because git only reports progress when stderr is a terminal,
+/// and here it is a pipe.
+pub fn clone_start(url: &str, destination: &Path) -> Result<std::process::Child> {
+    use std::process::Stdio;
+
+    Ok(Command::new("git")
+        .args(["clone", "--progress", "--recurse-submodules", "--", url])
+        .arg(destination)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?)
+}
+
 /// Who last touched each line, as `--line-porcelain`.
 ///
 /// The one **read** in this module, and the exception noted in the header.
@@ -309,6 +338,63 @@ mod tests {
 
         assert!(version.starts_with("git version"), "unexpected: {version}");
         assert_eq!(version.trim(), version, "the caller gets a clean string");
+    }
+
+    #[test]
+    fn a_clone_produces_the_same_repository_git_clone_would() {
+        // Criterion 1, over a local path so the test needs no network. The
+        // clone is a real `git clone`, which is the whole point of the boundary.
+        let source = Fixture::woven();
+        let into = tempfile::tempdir().expect("temp dir");
+        let destination = into.path().join("project");
+
+        let status = clone_start(&source.path().to_string_lossy(), &destination)
+            .expect("starting the clone")
+            .wait()
+            .expect("waiting for the clone");
+
+        assert!(status.success(), "the clone failed");
+        assert!(
+            destination.join(".git").is_dir(),
+            "a repository was created"
+        );
+
+        let cloned = crate::repo::open(&destination).expect("opening the clone");
+        assert_eq!(
+            crate::repo::head(&cloned).id.as_deref(),
+            Some(source.head().as_str()),
+            "the clone is at the same commit"
+        );
+    }
+
+    #[test]
+    fn a_clone_reports_progress_on_stderr_rather_than_running_silently() {
+        // Criterion 4's data half: without `--progress`, git writes nothing to
+        // a pipe and the screen would sit frozen for the whole clone.
+        use std::io::Read;
+
+        let source = Fixture::woven();
+        let into = tempfile::tempdir().expect("temp dir");
+
+        let mut child = clone_start(
+            &source.path().to_string_lossy(),
+            &into.path().join("project"),
+        )
+        .expect("starting the clone");
+
+        let mut noise = String::new();
+        child
+            .stderr
+            .take()
+            .expect("piped stderr")
+            .read_to_string(&mut noise)
+            .expect("reading stderr");
+        child.wait().expect("waiting for the clone");
+
+        assert!(
+            crate::clone::progress(noise.lines().next().unwrap_or_default()).is_some(),
+            "git said nothing: {noise:?}"
+        );
     }
 
     #[test]

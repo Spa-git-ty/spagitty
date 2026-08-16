@@ -2,7 +2,8 @@
 
 # FEAT-012 — Clone (1L)
 
-**Status:** Planned.
+**Status:** Built. Plan in `agile/plans/FEAT-012-plan.md`, tests in
+`agile/testing/FEAT-012-automated.md` and `-sweep.md`.
 **Branch:** `feature/FEAT-012-clone`.
 **Surface:** a modal, reachable from All repositories and from the toolbar's
 repository picker. No route of its own.

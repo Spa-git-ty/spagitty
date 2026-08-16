@@ -70,6 +70,27 @@ describe('command names and arguments', () => {
 		expect(invoked).toHaveBeenCalledWith('about');
 	});
 
+	it('sends the address and the folder when planning a clone', async () => {
+		await api.clonePlan('https://example.com/owner/project.git', '/work');
+		expect(invoked).toHaveBeenCalledWith('clone_plan', {
+			url: 'https://example.com/owner/project.git',
+			parent: '/work'
+		});
+	});
+
+	it('sends the address and the folder when starting a clone', async () => {
+		await api.cloneStart('https://example.com/owner/project.git', '/work');
+		expect(invoked).toHaveBeenCalledWith('clone_start', {
+			url: 'https://example.com/owner/project.git',
+			parent: '/work'
+		});
+	});
+
+	it('releases a clone without arguments', async () => {
+		await api.cloneRelease();
+		expect(invoked).toHaveBeenCalledWith('clone_release');
+	});
+
 	it('asks for the dependency licenses without arguments', async () => {
 		await api.licenses();
 		expect(invoked).toHaveBeenCalledWith('licenses');

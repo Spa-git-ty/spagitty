@@ -13,6 +13,7 @@ import type {
 	Blame,
 	CommitDetail,
 	BranchRow,
+	ClonePlan,
 	CommitDiff,
 	ConflictSides,
 	ConflictState,
@@ -186,6 +187,36 @@ export function conflictSides(path: string): Promise<ConflictSides> {
 /** Every remembered repository, as a card. Reads each where it sits. */
 export function recentRepos(): Promise<RepoSummary[]> {
 	return invoke('recent_repos');
+}
+
+/**
+ * Where a clone would land, and what is wrong with that.
+ *
+ * Recomputed as the user types: every refusal is knowable without the network.
+ */
+export function clonePlan(url: string, parent: string): Promise<ClonePlan> {
+	return invoke('clone_plan', { url, parent });
+}
+
+/**
+ * Start a clone. Resolves to the token its progress will carry.
+ *
+ * Progress arrives as `clone-progress` events; the clone ends with
+ * `clone-done`. Rejects when a clone is already running, or when the plan is
+ * refused — the plan is recomputed in Rust, so a destination that filled up
+ * since the last keystroke is still refused.
+ */
+export function cloneStart(url: string, parent: string): Promise<number> {
+	return invoke('clone_start', { url, parent });
+}
+
+/**
+ * Stop the running clone and let go of it — the same call for "the user pressed
+ * Stop" and "it finished". Cancelling removes the destination only if the clone
+ * created it.
+ */
+export function cloneRelease(): Promise<void> {
+	return invoke('clone_release');
 }
 
 /** Remove a repository from GitLord's list. The directory is not touched. */

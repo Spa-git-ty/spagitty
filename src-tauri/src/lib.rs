@@ -7,6 +7,7 @@
 //! lives in `gitlord-core`.
 
 mod about;
+mod clone_worker;
 mod commands;
 mod graph_worker;
 mod recents;
@@ -49,6 +50,9 @@ pub fn run() {
             commands::stash_push,
             commands::recent_repos,
             commands::forget_repo,
+            commands::clone_plan,
+            commands::clone_start,
+            commands::clone_release,
             commands::metrics,
             commands::about,
             commands::licenses,

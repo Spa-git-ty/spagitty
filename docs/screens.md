@@ -23,11 +23,17 @@ under Amendment 11.
 | 1I | Log search | `/search` | yes | Built | FEAT-007 |
 | 1J | All repositories | `/repos` | yes | Built | FEAT-006 |
 | 1K | Settings | `/settings` | yes | Built | FEAT-011 |
-| 1L | Clone | modal | no | Not started | FEAT-012 |
+| 1L | Clone | modal | no | Built | FEAT-012 |
 
-"Stub" means the route exists and renders `src/lib/ui/ScreenStub.svelte`, which
-states what the screen will be rather than pretending to be it. A half-built
-screen that looks real is harder to read than an honest empty one.
+**Every screen in the handoff is built.** What remains deferred is named on the
+screen that defers it — writes the Conflicts screen does not perform, the rebase
+it plans but does not run, the host the Pull requests screen cannot connect to.
+Each says so in place rather than being absent.
+
+`src/lib/ui/ScreenStub.svelte` is no longer rendered by any route. It stays
+because it is how the next unbuilt screen says what it will be rather than
+pretending to be it: a half-built screen that looks real is harder to read than
+an honest empty one.
 
 ## The chrome
 
@@ -337,7 +343,48 @@ than omitted: an incomplete list that looks complete is the worse failure.
 
 ## 1L — Clone
 
-**Not started.** Planned in FEAT-012 as a modal rather than a route.
+**Built.** `src/lib/clone/`, mounted by `src/routes/+layout.svelte`.
+Reached from the toolbar and from All repositories.
 
-Bring a repository in. Goes through the `git` binary so credential helpers and
-the OS keychain work as they do on the command line.
+Bring a repository in: an address, a folder, and the exact path it will land at
+shown before anything runs.
+
+**A modal owned by the layout, not by a screen.** A clone survives navigation —
+it takes minutes on a large repository, and pressing something in the nav rail
+while it runs must not cancel it. A modal owned by a screen would go with the
+screen.
+
+**The clone goes through the `git` binary**, which is the point of the item: it
+is the first operation that needs credentials, and credential helpers are
+external programs resolved through config — the place OS keychain integration
+already lives. `GIT_TERMINAL_PROMPT=0` still holds, so a repository whose
+credentials no helper can supply fails with git's own message instead of hanging
+on a prompt there is no terminal for. **GitLord never asks for a password
+itself.**
+
+**Everything that can be refused is refused before the process starts.** An
+unusable address, a folder that is not there, a destination that already has
+something in it: each is computed by `clone::plan` as the user types, and each
+is knowable without the network. Telling somebody after a round trip what they
+could have been told while typing is the failure this avoids. An existing
+*empty* destination is allowed, because `git clone` allows it — matching git's
+rule rather than inventing a stricter one is what makes a GitLord clone the same
+as a command-line clone.
+
+**Progress is git's, parsed rather than invented.** `git clone --progress`
+writes each phase to stderr terminated by a carriage return rather than a
+newline, and `clone::progress` reads one line at a time. A line it does not
+recognise is still shown, so a change to a format git does not promise degrades
+to "no percentage" rather than "no progress". The same reading is where a
+failure's message comes from: stderr is both channels, and it is read here.
+
+**Cancelling removes only what the clone created.** Whether the destination
+existed is decided before the process starts and remembered; a directory the
+user already had is left exactly as it was found, partial contents and all,
+because that is not GitLord's to delete. The removal happens after the child is
+reaped, never after the kill signal, or the two race and files reappear behind
+it.
+
+**A failed clone leaves no entry in the repository list**, and that falls out of
+the existing design rather than needing a rule: the list is written by opening a
+repository, and the clone offers to open only what succeeded.

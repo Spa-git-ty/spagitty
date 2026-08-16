@@ -39,7 +39,13 @@ export const calls = {
 	closed: 0
 };
 
+/** Makes the next `open` report failure, for the paths that handle one. */
+let openFails = false;
+
 export const control = {
+	failNextOpen() {
+		openFails = true;
+	},
 	setInfo(next: RepoInfo | null) {
 		info = next;
 	},
@@ -56,6 +62,7 @@ export const control = {
 		token = next;
 	},
 	reset() {
+		openFails = false;
 		info = null;
 		counts = NO_COUNTS;
 		error = null;
@@ -93,6 +100,10 @@ export const repo = {
 	},
 	async open(path: string) {
 		calls.opened.push(path);
+		if (openFails) {
+			openFails = false;
+			return false;
+		}
 		generation += 1;
 		return true;
 	},
