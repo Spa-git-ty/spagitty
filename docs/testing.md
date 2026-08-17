@@ -2,7 +2,7 @@
 
 # Testing
 
-How GitLord is checked: what runs headless, how the app is driven for a visual
+How GitLumiere is checked: what runs headless, how the app is driven for a visual
 sweep, and how the fixture repository the sweeps assume is built.
 
 ## Headless
@@ -30,7 +30,7 @@ What counts, what does not, and which gate runs each command is in
 ## Fixtures in the Rust tests
 
 Anything that reads a repository is tested against a real one.
-`crates/gitlord-core/src/fixture.rs` builds them with the `git` binary — not
+`crates/gitlumiere-core/src/fixture.rs` builds them with the `git` binary — not
 with `gix`, because a fixture built by the library under test would agree with
 it by construction. `Fixture::empty()` is an initialised repository with no
 commits, `Fixture::woven()` the standard history below with a clean working
@@ -57,7 +57,7 @@ both staged and unstaged changes.
 Build it in a scratch directory — **never inside this repository**:
 
 ```sh
-FIX=/tmp/gitlord-fixture
+FIX=/tmp/gitlumiere-fixture
 mkdir -p "$FIX" && cd "$FIX"
 git init -q -b main
 git config user.name "Ada Lovelace"
@@ -118,7 +118,7 @@ The Conflicts screen needs a repository stopped mid-merge, which is a state the
 other screens should not be tested against. Build it separately:
 
 ```sh
-CFL=/tmp/gitlord-conflict
+CFL=/tmp/gitlumiere-conflict
 mkdir -p "$CFL" && cd "$CFL"
 git init -q -b main
 git config user.name "Ada Lovelace"
@@ -142,7 +142,7 @@ git merge theirs || true    # stops with a conflict, which is the point
 The application is driven for real, not screenshotted from a mock.
 
 ```sh
-npm run tauri dev -- -- -- /tmp/gitlord-fixture
+npm run tauri dev -- -- -- /tmp/gitlumiere-fixture
 ```
 
 The trailing path is passed to the binary and read by the `launch_path`
@@ -177,7 +177,7 @@ the polite option — nothing steals focus from whatever is on screen:
 Xvfb :99 -screen 0 1600x1000x24 -nolisten tcp &
 
 env -u WAYLAND_DISPLAY DISPLAY=:99 GDK_BACKEND=x11 \
-    npm run tauri dev -- -- -- /tmp/gitlord-fixture
+    npm run tauri dev -- -- -- /tmp/gitlumiere-fixture
 ```
 
 `-u WAYLAND_DISPLAY` is the part that is easy to miss: with it set, GTK prefers

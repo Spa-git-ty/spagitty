@@ -16,13 +16,13 @@ export function describeOrigin(origin: IdentityOrigin): string {
 		case 'unset':
 			return 'Not set anywhere. Git refuses to commit without it.';
 		case 'system':
-			return 'From this machine’s system configuration, which GitLord does not write.';
+			return 'From this machine’s system configuration, which GitLumiere does not write.';
 		case 'global':
 			return 'From your global configuration.';
 		case 'local':
 			return 'From this repository.';
 		case 'environment':
-			return 'From the environment GitLord was started in, which GitLord does not write.';
+			return 'From the environment GitLumiere was started in, which GitLumiere does not write.';
 	}
 }
 

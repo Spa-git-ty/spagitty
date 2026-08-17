@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Generate GitLord's application icon set.
+"""Generate GitLumiere's application icon set.
 
 The icon is an original mark: a commit lane with a branch elbow and three
 nodes, drawn with the same geometry language as the Graph screen. It uses the
-lane palette, not Git's orange, and none of the Git logo's shapes — GitLord must
+lane palette, not Git's orange, and none of the Git logo's shapes — GitLumiere must
 never ship anything that could read as the Git project's mark.
 
 This script is the icon's source form. Regenerate with:

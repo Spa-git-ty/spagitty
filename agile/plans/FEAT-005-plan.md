@@ -47,8 +47,8 @@ what it would do, and the panel names the terminal command that does it today.
 
 ## Files
 
-- `crates/gitlord-core/src/stash.rs` — new
-- `crates/gitlord-core/src/shell.rs` — `stash_push`
+- `crates/gitlumiere-core/src/stash.rs` — new
+- `crates/gitlumiere-core/src/shell.rs` — `stash_push`
 - `src-tauri/src/commands.rs`, `lib.rs` — two commands
 - `src/lib/types.ts`, `src/lib/api.ts`
 - `src/lib/stash/{store.svelte.ts,StashList.svelte,StashDetail.svelte}`

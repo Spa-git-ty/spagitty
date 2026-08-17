@@ -6,7 +6,7 @@ Test tickets for the Conflicts screen (1D).
 
 **Fixture.** A throwaway repository you can put into a real merge conflict, and
 a second clean one. Keep a terminal open in the conflicted repository: almost
-every ticket is "does GitLord agree with `git`".
+every ticket is "does GitLumiere agree with `git`".
 
 Build the conflicted state:
 
@@ -44,7 +44,7 @@ git merge theirs        # expected to stop
 - **Steps:** Read the Conflicts entry in the nav rail.
 - **Expected:** A number, equal to the number of conflicted files, not `·`.
   Resolve one in the terminal (`git checkout --ours shared.txt && git add
-  shared.txt`), return to GitLord and refresh — the count follows. Acceptance
+  shared.txt`), return to GitLumiere and refresh — the count follows. Acceptance
   criterion 2.
 - **Result:**
 
@@ -55,7 +55,7 @@ git merge theirs        # expected to stop
   `git show :2:shared.txt` for Ours, `git show :3:shared.txt` for Theirs, and
   `git show :1:shared.txt` for the Common ancestor disclosure.
 - **Expected:** Identical, line for line, including any trailing newline —
-  GitLord shows the index's own content, not a re-rendering of it. Acceptance
+  GitLumiere shows the index's own content, not a re-rendering of it. Acceptance
   criterion 3.
 - **Result:**
 
@@ -123,7 +123,7 @@ git merge theirs        # expected to stop
 - **Priority:** P1
 - **Steps:**
   1. In the terminal: `stat -c %y .git/index` and `git status --porcelain > /tmp/before`.
-  2. In GitLord, page through **every** conflicted file, expand every Common
+  2. In GitLumiere, page through **every** conflicted file, expand every Common
      ancestor disclosure, and press **Refresh** three times.
   3. `stat -c %y .git/index`, `ls .git/index.lock`, and
      `git status --porcelain > /tmp/after; diff /tmp/before /tmp/after`.
@@ -157,14 +157,14 @@ git merge theirs        # expected to stop
   branches, then merge).
 - **Steps:** Open it.
 - **Expected:** Each pane says the side is binary and how many bytes it is,
-  rather than rendering bytes as text. GitLord calls the same files binary that
+  rather than rendering bytes as text. GitLumiere calls the same files binary that
   `git diff` does.
 - **Result:**
 
-### SWEEP-1D-13 — Resolving outside GitLord while the screen is open
+### SWEEP-1D-13 — Resolving outside GitLumiere while the screen is open
 
 - **Priority:** P2
-- **Steps:** With a file open in GitLord, resolve it in the terminal
+- **Steps:** With a file open in GitLumiere, resolve it in the terminal
   (`git checkout --ours <path> && git add <path>`), then press **Refresh**.
 - **Expected:** The file leaves the pager and the screen moves to the first
   remaining conflict rather than showing three sides of a file that is no longer

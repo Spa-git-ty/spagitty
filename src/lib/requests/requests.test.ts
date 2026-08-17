@@ -216,7 +216,7 @@ describe('RequestDetail', () => {
 	});
 
 	it('disables every action and names what would build it', () => {
-		// Reviewing, approving and merging all need a host, and GitLord talks
+		// Reviewing, approving and merging all need a host, and GitLumiere talks
 		// to none. A control that looks live and does nothing is worse than one
 		// that explains itself.
 		requests.present([request()]);
@@ -276,7 +276,7 @@ describe('the promises this screen makes', () => {
 			expect(declared).not.toContain(name);
 		}
 
-		for (const manifest of ['Cargo.toml', 'crates/gitlord-core/Cargo.toml', 'src-tauri/Cargo.toml']) {
+		for (const manifest of ['Cargo.toml', 'crates/gitlumiere-core/Cargo.toml', 'src-tauri/Cargo.toml']) {
 			const text = readFileSync(join(process.cwd(), manifest), 'utf8');
 			for (const crate of ['reqwest', 'ureq', 'hyper', 'isahc', 'attohttpc', 'curl']) {
 				expect(text).not.toMatch(new RegExp(`^\\s*${crate}\\s*=`, 'm'));

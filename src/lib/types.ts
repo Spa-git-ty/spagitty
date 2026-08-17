@@ -3,7 +3,7 @@
 /**
  * Wire types shared with the Rust core.
  *
- * These mirror the `serde` shapes in `crates/gitlord-core` and
+ * These mirror the `serde` shapes in `crates/gitlumiere-core` and
  * `src-tauri/src/commands.rs`, which all carry
  * `#[serde(rename_all = "camelCase")]`. Keep the two in step.
  */
@@ -234,7 +234,7 @@ export interface StashEntry {
 /**
  * The shape a pull request takes on the screen.
  *
- * **This is FEAT-017's contract.** Nothing populates it today — GitLord talks
+ * **This is FEAT-017's contract.** Nothing populates it today — GitLumiere talks
  * to no hosting service — and it is defined now so that connecting a host is a
  * matter of filling this in rather than redesigning the screen around whatever
  * one host's API happens to return.
@@ -259,7 +259,7 @@ export interface PullRequest {
 	review: ReviewState;
 	/** Whether the host's checks passed. Null when the host runs none. */
 	checks: CheckState | null;
-	/** True when this one is waiting on the person using GitLord. */
+	/** True when this one is waiting on the person using GitLumiere. */
 	needsYou: boolean;
 	/** Why it needs you, in one line, when it does. */
 	needsYouBecause: string | null;
@@ -308,7 +308,7 @@ export interface RebaseEdit {
 	 * The new message, for a `reword`.
 	 *
 	 * Collected on screen rather than at execution time: "at execution time"
-	 * means git opening an editor on a terminal GitLord does not have. A reword
+	 * means git opening an editor on a terminal GitLumiere does not have. A reword
 	 * carrying no message is executed as a plain pick.
 	 */
 	message?: string | null;
@@ -640,7 +640,7 @@ export interface CloneDoneEvent {
 
 // --- Settings -------------------------------------------------------------
 
-/** A configuration file GitLord will write to. Never inferred — always chosen. */
+/** A configuration file GitLumiere will write to. Never inferred — always chosen. */
 export type IdentityScope = 'global' | 'local';
 
 /** The two keys the Settings screen edits, and no others. */
@@ -649,7 +649,7 @@ export type IdentityKey = 'name' | 'email';
 /**
  * Where the value git would actually use comes from.
  *
- * Wider than `IdentityScope`, because a value can come from somewhere GitLord
+ * Wider than `IdentityScope`, because a value can come from somewhere GitLumiere
  * will not write: saying "system" out loud is what explains why editing the
  * global field did not change the effective value.
  */
@@ -671,7 +671,7 @@ export interface Identity {
 	repository: boolean;
 }
 
-/** GitLord's own behaviour toggles, stored in its config directory. */
+/** GitLumiere's own behaviour toggles, stored in its config directory. */
 export interface Settings {
 	signCommits: boolean;
 	confirmHistoryRewrite: boolean;
@@ -733,7 +733,7 @@ export type CommandOutcome =
 	| { kind: 'started' };
 
 /**
- * One `git` command GitLord actually ran, recorded at the spawn site.
+ * One `git` command GitLumiere actually ran, recorded at the spawn site.
  *
  * Reads are absent by design: log walking, refs, diff and status happen
  * in-process and have no command line. Nothing is invented for them.

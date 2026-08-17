@@ -34,7 +34,7 @@
 
 	<dl class="facts">
 		<dt class="note">Version</dt>
-		<dd>GitLord v{about?.version ?? version.number}</dd>
+		<dd>GitLumiere v{about?.version ?? version.number}</dd>
 		<dt class="note">Build</dt>
 		<dd class="mono">{about?.commit ?? version.commit}</dd>
 		<dt class="note">License</dt>
@@ -42,7 +42,7 @@
 	</dl>
 
 	<p class="note">
-		GitLord is free software under the GNU General Public License, version 3 or later. The
+		GitLumiere is free software under the GNU General Public License, version 3 or later. The
 		commit above identifies the source this binary was built from, so the corresponding source
 		can be obtained for this exact build.
 	</p>
@@ -114,12 +114,12 @@
 		<p class="note">
 			Generated at build time from <span class="mono">Cargo.lock</span> and
 			<span class="mono">package-lock.json</span>, and covering what is linked into this
-			binary — the tools that build and test GitLord are not part of it and are not listed.
+			binary — the tools that build and test GitLumiere are not part of it and are not listed.
 		</p>
 	{/if}
 
 	<p class="note trademark">
-		GitLord is not affiliated with, endorsed by, or sponsored by the Git project or the
+		GitLumiere is not affiliated with, endorsed by, or sponsored by the Git project or the
 		Software Freedom Conservancy. Git and the Git logo are trademarks of the Software Freedom
 		Conservancy.
 	</p>

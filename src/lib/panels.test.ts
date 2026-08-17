@@ -11,7 +11,7 @@ import {
 } from './panels.svelte';
 import { DETAIL_W, RAIL_W } from './metrics';
 
-const KEY = 'gitlord.panels';
+const KEY = 'gitlumiere.panels';
 
 function stubStorage(initial: Record<string, string> = {}) {
 	const store = new Map(Object.entries(initial));

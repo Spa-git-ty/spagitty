@@ -8,3 +8,5 @@ node_modules/
 THIRD-PARTY-LICENSES.md
 .DS_Store
 *.log
+run_claude_job.sh
+.claude/

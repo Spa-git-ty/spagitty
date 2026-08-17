@@ -299,7 +299,7 @@ function diamond(ctx: CanvasRenderingContext2D, x: number, y: number, r: number)
  * A square with rounded corners, centred on `x, y` and sized so that it reads
  * as the same weight as a circle of radius `r` beside it.
  *
- * `roundRect` would be shorter, but it is not in every webview GitLord ships
+ * `roundRect` would be shorter, but it is not in every webview GitLumiere ships
  * against, and a merge node that silently stops being drawn is worse than four
  * arcs written out.
  */

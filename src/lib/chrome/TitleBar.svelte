@@ -21,7 +21,7 @@
 	 * minimize and maximize controls there are.
 	 *
 	 * Deliberately neither macOS traffic lights nor Windows' full-height filled
-	 * blocks: small, evenly weighted glyph buttons that read as GitLord's own,
+	 * blocks: small, evenly weighted glyph buttons that read as GitLumiere's own,
 	 * and entirely colourless — they use the theme's neutral tokens and nothing
 	 * else, including the close button.
 	 */
@@ -42,7 +42,7 @@
 	tabindex="-1"
 	aria-label="Window"
 >
-	<span class="name">GitLord</span>
+	<span class="name">GitLumiere</span>
 
 	<!--
 		Where every repository is, open or not. First in the strip because it is

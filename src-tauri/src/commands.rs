@@ -1,30 +1,30 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //! Tauri commands. This layer is deliberately thin: it holds the open session,
-//! forwards to `gitlord-core`, and converts errors to strings for the webview.
+//! forwards to `gitlumiere-core`, and converts errors to strings for the webview.
 //! No git logic lives here.
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
-use gitlord_core::blame::{self, Blame};
-use gitlord_core::branches::{self, BranchRow};
-use gitlord_core::clone::{self, Plan};
-use gitlord_core::conflicts::{self, ConflictSides, ConflictState};
-use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
-use gitlord_core::graph::ROW_PITCH;
-use gitlord_core::identity::{self, Identity, Key, Scope};
-use gitlord_core::ops::{self, Integration, ResetMode, StashAction};
-use gitlord_core::rebase::{self, Edit, Preview, Todo};
-use gitlord_core::record::{self, Executed};
-use gitlord_core::refs::RefIndex;
-use gitlord_core::repo::{self, RepoInfo, RepoSummary};
-use gitlord_core::search::Query;
-use gitlord_core::stash::{self, StashEntry};
-use gitlord_core::status::{self, RepoCounts, WorkingCopy};
-use gitlord_core::work;
-use gitlord_core::{Error, Result};
+use gitlumiere_core::blame::{self, Blame};
+use gitlumiere_core::branches::{self, BranchRow};
+use gitlumiere_core::clone::{self, Plan};
+use gitlumiere_core::conflicts::{self, ConflictSides, ConflictState};
+use gitlumiere_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
+use gitlumiere_core::graph::ROW_PITCH;
+use gitlumiere_core::identity::{self, Identity, Key, Scope};
+use gitlumiere_core::ops::{self, Integration, ResetMode, StashAction};
+use gitlumiere_core::rebase::{self, Edit, Preview, Todo};
+use gitlumiere_core::record::{self, Executed};
+use gitlumiere_core::refs::RefIndex;
+use gitlumiere_core::repo::{self, RepoInfo, RepoSummary};
+use gitlumiere_core::search::Query;
+use gitlumiere_core::stash::{self, StashEntry};
+use gitlumiere_core::status::{self, RepoCounts, WorkingCopy};
+use gitlumiere_core::work;
+use gitlumiere_core::{Error, Result};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 
@@ -42,7 +42,7 @@ use crate::watch::{self, RepoWatcher};
 /// `AppHandle` and must be shut down before the repository handle goes away.
 struct Session {
     path: PathBuf,
-    repo: gitlord_core::gix::ThreadSafeRepository,
+    repo: gitlumiere_core::gix::ThreadSafeRepository,
     graph: GraphWorker,
     /// The refs the graph is rooted at, empty for every branch.
     ///
@@ -134,7 +134,7 @@ pub fn open_repo(app: AppHandle, state: State<'_, AppState>, path: PathBuf) -> R
     );
     let watcher = watch::watch(app.clone(), &git_dir);
 
-    // Opening is the only way a repository joins the list. GitLord never goes
+    // Opening is the only way a repository joins the list. GitLumiere never goes
     // looking for repositories on its own.
     recents::remember(&app, &info.path);
 
@@ -317,7 +317,7 @@ pub fn head_message(state: State<'_, AppState>) -> Result<String> {
 ///
 /// Opens the repository again rather than reusing the session handle. A branch
 /// upstream lives in `.git/config`, and `gix` reads config once when a
-/// repository is opened — so a `git branch --set-upstream-to` run while GitLord
+/// repository is opened — so a `git branch --set-upstream-to` run while GitLumiere
 /// is open would be invisible until it was restarted, and the screen would
 /// report "no upstream" for a branch that has one. Re-discovery costs one
 /// directory walk; being quietly wrong about drift costs more.
@@ -393,7 +393,7 @@ pub fn rebase_preview(state: State<'_, AppState>, edits: Vec<Edit>) -> Result<Pr
 // --- History operations -----------------------------------------------------
 //
 // Every command below writes. They share one shape on purpose: forward to
-// `gitlord_core::ops`, and let the error come back as git's own sentence. No
+// `gitlumiere_core::ops`, and let the error come back as git's own sentence. No
 // confirmation happens here — the screen asks, because a backend that prompted
 // could not be scripted or tested — and no operation is inferred from another.
 // "Reset" is three commands in the menu because it is three different things.
@@ -647,7 +647,7 @@ pub fn clone_release(state: State<'_, AppState>) {
     *state.clone.lock().expect("clone lock") = None;
 }
 
-/// Remove a repository from GitLord's list. The directory is not touched.
+/// Remove a repository from GitLumiere's list. The directory is not touched.
 #[tauri::command]
 pub fn forget_repo(app: AppHandle, path: PathBuf) {
     recents::forget(&app, &path);
@@ -658,7 +658,7 @@ pub fn close_repo(state: State<'_, AppState>) {
     *state.session.lock().expect("session lock") = None;
 }
 
-/// Every `git` command GitLord has executed since `since`, oldest first.
+/// Every `git` command GitLumiere has executed since `since`, oldest first.
 ///
 /// The panel subscribes to [`crate::command_log::EXECUTED_EVENT`] for new
 /// entries, so this is the catch-up call: what ran before the panel was opened,
@@ -713,7 +713,7 @@ pub fn identity(state: State<'_, AppState>) -> Result<Identity> {
 ///
 /// The scope is what the user chose on the screen and is never inferred here.
 /// Writing to the local scope needs a repository to write into; writing to the
-/// global one does not, and runs wherever GitLord was started.
+/// global one does not, and runs wherever GitLumiere was started.
 #[tauri::command]
 pub fn set_identity(
     state: State<'_, AppState>,
@@ -738,7 +738,7 @@ pub fn set_identity(
     identity(state)
 }
 
-/// GitLord's own behaviour toggles.
+/// GitLumiere's own behaviour toggles.
 #[tauri::command]
 pub fn settings(app: AppHandle) -> Settings {
     crate::settings::load(&app)
@@ -753,7 +753,7 @@ pub fn set_settings(app: AppHandle, settings: Settings) -> std::result::Result<(
     crate::settings::save(&app, settings)
 }
 
-/// The path the app was launched with, if any: `gitlord /path/to/repo`.
+/// The path the app was launched with, if any: `gitlumiere /path/to/repo`.
 #[tauri::command]
 pub fn launch_path(app: AppHandle) -> Option<PathBuf> {
     let _ = app.webview_windows();

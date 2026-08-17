@@ -32,7 +32,7 @@ pub struct About {
 pub fn about() -> About {
     About {
         version: env!("CARGO_PKG_VERSION"),
-        commit: env!("GITLORD_COMMIT"),
+        commit: env!("GITLUMIERE_COMMIT"),
         license: "GPL-3.0-or-later",
     }
 }

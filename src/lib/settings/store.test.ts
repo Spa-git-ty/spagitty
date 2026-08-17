@@ -81,7 +81,7 @@ describe('load', () => {
 
 	it('keeps About when the identity cannot be read, and says what failed', async () => {
 		// The license and the commit are an obligation. A git configuration
-		// GitLord cannot parse must not take them off the screen.
+		// GitLumiere cannot parse must not take them off the screen.
 		identity.mockRejectedValueOnce('could not read the git configuration: broken');
 		await settings.load();
 

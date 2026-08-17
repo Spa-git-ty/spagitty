@@ -4,7 +4,7 @@
  * Window controls for our own decorations.
  *
  * The window is created with `decorations: false`, so the platform draws no
- * title bar and GitLord draws its own — the 30px bar from the design, with its
+ * title bar and GitLumiere draws its own — the 30px bar from the design, with its
  * traffic lights. That means we also own what the platform used to provide:
  * dragging, resizing, and the close/minimize/maximize buttons.
  *

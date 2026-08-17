@@ -5,11 +5,11 @@
 //! Useful for checking lane assignment against `git log --graph --date-order`
 //! without starting the app.
 //!
-//!     cargo run -p gitlord-core --example graph-dump -- /path/to/repo [limit]
+//!     cargo run -p gitlumiere-core --example graph-dump -- /path/to/repo [limit]
 
-use gitlord_core::graph::{self, Flow};
-use gitlord_core::refs::RefIndex;
-use gitlord_core::repo;
+use gitlumiere_core::graph::{self, Flow};
+use gitlumiere_core::refs::RefIndex;
+use gitlumiere_core::repo;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);

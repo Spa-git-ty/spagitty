@@ -8,13 +8,13 @@
  * stylesheet (via `applyMetrics`). There is no second `26` anywhere in the
  * frontend, and no `height: 26px` in any component.
  *
- * The Rust side mirrors ROW_PITCH in `crates/gitlord-core/src/graph.rs` because
+ * The Rust side mirrors ROW_PITCH in `crates/gitlumiere-core/src/graph.rs` because
  * lane elbows are described in row units there; that mirror is asserted against
  * this value at startup by `metrics_match`.
  */
 
 /** Height of one commit row, in CSS pixels. The graph's fundamental unit. */
-export const ROW_PITCH = 26;
+export const ROW_PITCH = 30;
 
 /**
  * Horizontal distance between two lanes.
@@ -26,12 +26,12 @@ export const ROW_PITCH = 26;
  * 100%.
  *
  * It was 15 while nodes were 11px initials discs, itself retuned down from 24
- * after measuring GitLord against GitKraken on the same repository. Going back
+ * after measuring GitLumiere against GitKraken on the same repository. Going back
  * up costs width, and the trade is deliberate: a graph whose nodes say *who*
  * earns the pixels, and the message column is still the wider of the two at
  * five lanes.
  */
-export const LANE_PITCH = 22;
+export const LANE_PITCH = 26;
 
 /**
  * x of lane 0. Lanes therefore sit at 14, 36, 58, 80, 102.
@@ -39,7 +39,7 @@ export const LANE_PITCH = 22;
  * At least `NODE_R`, or the first lane's portrait is clipped by the column's
  * own left edge.
  */
-export const LANE_X0 = 14;
+export const LANE_X0 = 16;
 
 /**
  * Radius of a commit node — the author's portrait.
@@ -49,7 +49,7 @@ export const LANE_X0 = 14;
  * while still leaving daylight between two stacked heads at the 26px row pitch.
  * A pixel larger and the column reads as a solid stripe of faces.
  */
-export const NODE_R = 8.5;
+export const NODE_R = 11;
 
 /**
  * Radius of a merge node.

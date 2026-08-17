@@ -299,7 +299,7 @@ describe('view', () => {
 		diff.setView('split');
 		diff.setView('unified');
 		// Storage still says split; init is what reads it back.
-		localStorage.setItem('gitlord.diffView', 'split');
+		localStorage.setItem('gitlumiere.diffView', 'split');
 		diff.init();
 		expect(diff.view).toBe('split');
 	});
@@ -307,7 +307,7 @@ describe('view', () => {
 	it('ignores a stored value that is not a view', () => {
 		stubStorage();
 		diff.setView('unified');
-		localStorage.setItem('gitlord.diffView', 'sideways');
+		localStorage.setItem('gitlumiere.diffView', 'sideways');
 		diff.init();
 		expect(diff.view).toBe('unified');
 	});

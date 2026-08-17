@@ -5,7 +5,7 @@
  *
  * Three unrelated things live behind one screen, and they are kept apart here
  * because they are stored in three different places: the identity is git's own
- * configuration, the toggles are GitLord's preferences file, and the build
+ * configuration, the toggles are GitLumiere's preferences file, and the build
  * identity and license list are compiled in. A failure in one must not blank the
  * others — About in particular, since the license and the commit are an
  * obligation rather than a convenience.

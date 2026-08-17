@@ -8,10 +8,10 @@ A modal owned by the layout, a pure planner in the core, and a worker thread
 that streams git's own progress. Three pieces, because the clone itself is the
 only part that needs a process and it is the only part that can be cancelled.
 
-- **`crates/gitlord-core/src/clone.rs`** — the destination a URL and a parent
+- **`crates/gitlumiere-core/src/clone.rs`** — the destination a URL and a parent
   directory produce, what is wrong with it before anything runs, and a parser
   for git's progress lines. All of it pure or read-only.
-- **`crates/gitlord-core/src/shell.rs`** — gains `clone_start`, which spawns
+- **`crates/gitlumiere-core/src/shell.rs`** — gains `clone_start`, which spawns
   `git clone --progress` and hands the caller the child.
 - **`src-tauri/src/clone_worker.rs`** — one thread per clone: reads stderr,
   emits progress, reports the end. Cancelling kills the child.
@@ -53,7 +53,7 @@ recognise is still shown, because git's own words are better than "working…".
 **Cancelling removes only what the clone created.** Whether the destination
 existed is decided *before* the process starts and remembered. If it did, the
 directory is left exactly as it was found — the partial contents of a cancelled
-clone inside a directory the user already had is not something GitLord may
+clone inside a directory the user already had is not something GitLumiere may
 delete. If it did not, the directory is removed after the child is confirmed
 dead, and not before.
 
@@ -73,7 +73,7 @@ machinery than the problem has.
 
 ## Files
 
-- `crates/gitlord-core/src/clone.rs` — new; `shell.rs` gains `clone_start`;
+- `crates/gitlumiere-core/src/clone.rs` — new; `shell.rs` gains `clone_start`;
   `lib.rs`
 - `src-tauri/src/clone_worker.rs` — new; `commands.rs`, `lib.rs`
 - `src/lib/types.ts`, `src/lib/api.ts`

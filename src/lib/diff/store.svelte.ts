@@ -17,7 +17,7 @@ import type { CommitDiff, FileDiff } from '../types';
 
 export type DiffView = 'unified' | 'split';
 
-const VIEW_KEY = 'gitlord.diffView';
+const VIEW_KEY = 'gitlumiere.diffView';
 
 let commitId = $state<string | null>(null);
 let commit = $state<CommitDiff | null>(null);

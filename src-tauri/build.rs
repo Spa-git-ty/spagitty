@@ -14,7 +14,7 @@ fn main() {
         .filter(|o| o.status.success())
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .unwrap_or_else(|| "unknown".into());
-    println!("cargo:rustc-env=GITLORD_COMMIT={sha}");
+    println!("cargo:rustc-env=GITLUMIERE_COMMIT={sha}");
 
     // The other half of the same obligation: what this binary is made of. The
     // list is generated from the lockfiles rather than typed, and a build that

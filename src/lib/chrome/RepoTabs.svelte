@@ -16,7 +16,7 @@
 	/**
 	 * The repositories open as tabs.
 	 *
-	 * A tab is a place to go back to, not a live session — GitLord's backend
+	 * A tab is a place to go back to, not a live session — GitLumiere's backend
 	 * holds one repository at a time, and switching re-opens the one clicked and
 	 * restores the screen and the selection it was left on. `workspace.svelte.ts`
 	 * carries the reasoning; the honest consequence is that a switch costs a

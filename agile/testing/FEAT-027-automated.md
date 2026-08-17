@@ -28,7 +28,7 @@ name and branch chip the bar no longer shows).
 
 | Test | Asserts |
 | --- | --- |
-| `keeps saying which program this is, whatever is open` | The bar shows "GitLord" even with a repository open — the name and branch moved to the toolbar and the tab |
+| `keeps saying which program this is, whatever is open` | The bar shows "GitLumiere" even with a repository open — the name and branch moved to the toolbar and the tab |
 | `offers the way back to every repository` | The All repositories button routes to `/repos` |
 | `shows the open repositories as tabs, with the active one marked` | Two tabs in order, the second marked active |
 

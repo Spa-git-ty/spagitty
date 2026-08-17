@@ -8,7 +8,7 @@
 
 ## Problem
 
-The rail has a Pull requests entry pointing at a placeholder. Nothing in GitLord
+The rail has a Pull requests entry pointing at a placeholder. Nothing in GitLumiere
 talks to a hosting service, and by the author's decision nothing will in this
 pass.
 

@@ -20,7 +20,7 @@ development is built by the script recorded in `docs/testing.md`.
 ### SWEEP-1A-01 — A repository opens and paints
 
 - **Priority:** P1
-- **Preconditions:** GitLord running, no repository open.
+- **Preconditions:** GitLumiere running, no repository open.
 - **Steps:**
   1. Press **Open repository…** in the nav rail footer.
   2. Choose the fixture repository.
@@ -108,10 +108,10 @@ development is built by the script recorded in `docs/testing.md`.
 ### SWEEP-1A-09 — The graph follows the repository
 
 - **Priority:** P1
-- **Preconditions:** Fixture open in GitLord and in a terminal.
+- **Preconditions:** Fixture open in GitLumiere and in a terminal.
 - **Steps:**
   1. In the terminal, commit something on the current branch.
-  2. Watch GitLord without touching it.
+  2. Watch GitLumiere without touching it.
   3. In the terminal, run a `git checkout` of another branch.
 - **Expected:** The new commit appears at the top within about a second, and the
   branch chip moves with it. Checking out changes the title bar and toolbar
@@ -144,7 +144,7 @@ development is built by the script recorded in `docs/testing.md`.
 - **Steps:**
   1. Drag the splitter between the rail and the graph to its extremes.
   2. Drag the detail panel's splitter likewise.
-  3. Close and reopen GitLord.
+  3. Close and reopen GitLumiere.
 - **Expected:** Neither panel can be dragged to uselessness — the rail stops
   between 140px and 340px, the detail panel between 200px and 520px. Widths
   come back after a restart.
@@ -163,7 +163,7 @@ development is built by the script recorded in `docs/testing.md`.
 ### SWEEP-1A-14 — Window chrome
 
 - **Priority:** P3
-- **Preconditions:** GitLord running.
+- **Preconditions:** GitLumiere running.
 - **Steps:** Drag the title bar, drag each window edge and corner, then use the
   minimise, maximise and close buttons.
 - **Expected:** The window moves and resizes from every edge and corner. All

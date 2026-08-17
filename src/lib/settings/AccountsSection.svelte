@@ -4,7 +4,7 @@
 	 * The empty state the Pull requests screen points at.
 	 *
 	 * There is nothing to connect to yet, and this says exactly that rather than
-	 * offering a button that would fail. GitLord links no HTTP client in either
+	 * offering a button that would fail. GitLumiere links no HTTP client in either
 	 * language — there is a test asserting it — so an account cannot be
 	 * connected by this build at all, and nothing here writes to the OS keychain.
 	 */
@@ -17,7 +17,7 @@
 	</header>
 
 	<p class="note">
-		GitLord reads pull requests from whichever service hosts a repository, and no service is
+		GitLumiere reads pull requests from whichever service hosts a repository, and no service is
 		connected. Connecting one — the host, an ssh key and a token in the OS keychain — is
 		FEAT-017.
 	</p>

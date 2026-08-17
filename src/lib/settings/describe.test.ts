@@ -27,7 +27,7 @@ describe('describeOrigin', () => {
 		for (const sentence of sentences) expect(sentence.length).toBeGreaterThan(0);
 	});
 
-	it('names the two files GitLord does not write', () => {
+	it('names the two files GitLumiere does not write', () => {
 		// Why the effective value did not change is the question these answer.
 		expect(describeOrigin('system')).toContain('does not write');
 		expect(describeOrigin('environment')).toContain('does not write');

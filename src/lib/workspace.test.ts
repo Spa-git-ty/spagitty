@@ -15,7 +15,7 @@ function stubStorage() {
 	return store;
 }
 
-const KEY = 'gitlord.workspace';
+const KEY = 'gitlumiere.workspace';
 
 beforeEach(() => {
 	stubStorage();
@@ -26,13 +26,13 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('naming a tab', () => {
 	it('is the directory, which is what a person calls a repository', () => {
-		expect(nameOf('/home/ada/work/gitlord')).toBe('gitlord');
-		expect(nameOf('/home/ada/work/gitlord/')).toBe('gitlord');
-		expect(nameOf('C:\\work\\gitlord')).toBe('gitlord');
+		expect(nameOf('/home/ada/work/gitlumiere')).toBe('gitlumiere');
+		expect(nameOf('/home/ada/work/gitlumiere/')).toBe('gitlumiere');
+		expect(nameOf('C:\\work\\gitlumiere')).toBe('gitlumiere');
 	});
 
 	it('falls back to the whole path when there is no directory to take', () => {
-		expect(nameOf('gitlord')).toBe('gitlord');
+		expect(nameOf('gitlumiere')).toBe('gitlumiere');
 	});
 });
 

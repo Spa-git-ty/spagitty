@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * GitLord's palettes.
+ * GitLumiere's palettes.
  *
  * Four families, each with a light and a dark variant. They are **data**, not
  * stylesheets: eight `:root[data-theme=…]` blocks would be the same eleven

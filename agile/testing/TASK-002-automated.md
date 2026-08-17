@@ -32,7 +32,7 @@ Both clear the floor. `cargo llvm-cov` reports no branch data on this
 toolchain, which is why that column is empty; the Rust figure is regions and
 lines.
 
-**Scope.** Rust excludes `crates/gitlord-core/src/fixture.rs`: it is test
+**Scope.** Rust excludes `crates/gitlumiere-core/src/fixture.rs`: it is test
 scaffolding, and counting a helper every test exercises would lift the number
 without any product code being tested. The frontend counts `src/lib/**` only —
 `src/testing/**` is scaffolding for the same reason, and `src/routes/**` holds

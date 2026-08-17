@@ -15,7 +15,7 @@ unsigned commits and no indication that the switch did nothing.
 
 Signing is not a flag, it is a dependency on a program the user configured —
 GPG or an ssh signer — that can prompt for a passphrase, fail with an unhelpful
-message, or not be configured at all. GitLord commits through the `git` binary
+message, or not be configured at all. GitLumiere commits through the `git` binary
 precisely so the configured signer runs, but a signing failure has to be
 reported as a signing failure rather than as "commit failed", and that is the
 work.
@@ -35,7 +35,7 @@ work.
 
 ## Non-scope
 
-- Key management. GitLord does not create, import or store signing keys, and
+- Key management. GitLumiere does not create, import or store signing keys, and
   does not write to the OS keychain — that boundary is FEAT-017's.
 
 ## Notes for whoever picks this up

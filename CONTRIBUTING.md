@@ -1,10 +1,10 @@
-# Contributing to GitLord
+# Contributing to GitLumiere
 
 Thanks for wanting to help.
 
 ## License of contributions
 
-GitLord is licensed **GPL-3.0-or-later**. By contributing, you agree that your
+GitLumiere is licensed **GPL-3.0-or-later**. By contributing, you agree that your
 contribution is licensed under GPL-3.0-or-later. There is no CLA and no
 copyright assignment — you keep the copyright to your work.
 
@@ -94,7 +94,7 @@ These come from the design handoff and hold across every screen:
 - **Structural numbers are shared constants, never literals.** The 26px commit
   row pitch, 186px rail, 270px detail panel, and 24px lane pitch each have
   exactly one definition (`src/lib/metrics.ts`, mirrored in
-  `crates/gitlord-core/src/graph.rs`). If you find yourself typing `26`, use the
+  `crates/gitlumiere-core/src/graph.rs`). If you find yourself typing `26`, use the
   constant.
 - **Never block on walking the whole history.** The graph streams in windows and
   paints progressively.

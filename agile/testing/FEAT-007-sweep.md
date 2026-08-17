@@ -7,7 +7,7 @@ Test tickets for the Log search screen (1I).
 **Fixture.** Two repositories: the one from `docs/testing.md`, and a large one —
 a clone of something with tens of thousands of commits — for the streaming and
 performance tickets. Keep a terminal open in each; most tickets are "does
-GitLord agree with `git log`".
+GitLumiere agree with `git log`".
 
 | Field | Meaning |
 | --- | --- |
@@ -22,7 +22,7 @@ GitLord agree with `git log`".
 - **Steps:** Type a name into **author** and press Search. Compare against
   `git log --branches --remotes HEAD -i --author=<name> --format=%H`.
 - **Expected:** The same commits. Use `--branches --remotes HEAD` and not
-  `--all` — `--all` includes the stash, and GitLord does not search stashes.
+  `--all` — `--all` includes the stash, and GitLumiere does not search stashes.
   Acceptance criterion 1.
 - **Result:**
 
@@ -44,7 +44,7 @@ GitLord agree with `git log`".
   `git log --branches --remotes HEAD -- <path>`.
 - **Expected:** The same commits, and in particular the **merge commit is
   absent** where git omits it — git simplifies away a merge that is TREESAME to
-  one of its parents, and so does GitLord. A list that includes extra merges is
+  one of its parents, and so does GitLumiere. A list that includes extra merges is
   a failure of this ticket, not a nicety.
 - **Result:**
 

@@ -3,7 +3,7 @@
 /**
  * Pull requests.
  *
- * GitLord talks to no hosting service, and by decision nothing here will in
+ * GitLumiere talks to no hosting service, and by decision nothing here will in
  * this pass. What this store holds is the shape the screen renders once a host
  * *is* connected — the list, the selection, and whether an account exists at
  * all — so that FEAT-017 fills it in rather than redesigning the screen.
@@ -34,7 +34,7 @@ export const requests = {
 		return openId;
 	},
 
-	/** What is waiting on the person using GitLord. The screen leads with these. */
+	/** What is waiting on the person using GitLumiere. The screen leads with these. */
 	get needingYou(): PullRequest[] {
 		return list.filter((request) => request.needsYou);
 	},

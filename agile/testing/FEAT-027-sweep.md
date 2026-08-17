@@ -13,7 +13,7 @@
 
 - **Priority:** P1
 - **Steps:** Open one repository from All repositories, a second from the `+`
-  menu, and a third by launching `gitlord /path/to/repo`.
+  menu, and a third by launching `gitlumiere /path/to/repo`.
 - **Expected:** A tab for each, the newest active, none duplicated.
 - **Result:**
 
@@ -73,7 +73,7 @@
 ### SWEEP-027-08 — A repository that has moved
 
 - **Priority:** P3
-- **Steps:** Open a repository, quit, rename its directory, reopen GitLord and
+- **Steps:** Open a repository, quit, rename its directory, reopen GitLumiere and
   click its tab.
 - **Expected:** A failure reported in the notice, the tab still there to close.
   Not a blank screen.

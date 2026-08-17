@@ -702,7 +702,6 @@
 		align-items: center;
 		cursor: pointer;
 		contain: layout paint;
-		border-radius: var(--r-row);
 	}
 
 	.row.stripe {
@@ -852,8 +851,8 @@
 	 */
 	.avatar {
 		flex: none;
-		width: 1.6em;
-		height: 1.6em;
+		width: 2em;
+		height: 2em;
 		border-radius: 50%;
 		box-shadow: 0 0 0 1px var(--line);
 	}

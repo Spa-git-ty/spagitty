@@ -33,11 +33,11 @@ import { applyMetrics, ROW_PITCH } from './metrics';
  * the one place to change them.
  */
 export const TYPE_BASE: Record<string, number> = {
-	'fs-ui': 13,
-	'fs-secondary': 11,
-	'fs-mono': 10,
-	'fs-title': 16,
-	'fs-code': 12
+	'fs-ui': 15.6,
+	'fs-secondary': 13.2,
+	'fs-mono': 12,
+	'fs-title': 19.2,
+	'fs-code': 14.4
 };
 
 export const TEXT_MIN = 0.9;
@@ -48,8 +48,8 @@ export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 2;
 export const ZOOM_STEP = 0.1;
 
-const TEXT_KEY = 'gitlord.scale.text';
-const ZOOM_KEY = 'gitlord.scale.zoom';
+const TEXT_KEY = 'gitlumiere.scale.text';
+const ZOOM_KEY = 'gitlumiere.scale.zoom';
 
 let text = $state(1);
 let zoom = $state(1);

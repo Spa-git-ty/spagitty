@@ -79,7 +79,7 @@
 			<span class="note">
 				The identity is git's own configuration and is written with <span class="mono"
 					>git config</span
-				>. Everything else on this screen is GitLord's own and is stored beside its list of
+				>. Everything else on this screen is GitLumiere's own and is stored beside its list of
 				repositories.
 			</span>
 		{/if}

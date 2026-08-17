@@ -2,10 +2,10 @@
 
 //! What the host needs arranged before the webview starts.
 //!
-//! Nothing here is git or GitLord: it is the small set of platform facts that
+//! Nothing here is git or GitLumiere: it is the small set of platform facts that
 //! have to be true by the time WebKitGTK builds its first frame.
 
-/// The value GitLord wants for `WEBKIT_DISABLE_DMABUF_RENDERER`, given what the
+/// The value GitLumiere wants for `WEBKIT_DISABLE_DMABUF_RENDERER`, given what the
 /// environment already says.
 ///
 /// WebKitGTK's DMABuf renderer fails on several Linux driver and compositor

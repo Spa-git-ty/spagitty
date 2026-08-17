@@ -26,7 +26,7 @@
 //! new lane one row down, then runs straight; a merge runs straight down its own
 //! lane and bends into the node in the last row before it.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use gix::ObjectId;
 use serde::Serialize;
@@ -39,7 +39,7 @@ use crate::refs::{RefChip, RefIndex};
 /// This mirrors `ROW_PITCH` in `src/lib/metrics.ts`, which is the source of
 /// truth for the frontend. It exists here because lane geometry is described in
 /// row units, and the two must not drift; `metrics_match` asserts they agree.
-pub const ROW_PITCH: u32 = 26;
+pub const ROW_PITCH: u32 = 30;
 
 /// Lane colors cycle through this many values. A lane keeps the color it was
 /// allocated for its whole lifetime, so a long-lived branch keeps one color.
@@ -111,6 +111,8 @@ pub struct LaneState {
     /// Merge edges that route into a lane which already exists, to be drawn in
     /// the band above the *next* row alongside that lane's own segment.
     joins: Vec<LaneEdge>,
+    /// Commits that have already been visited in the walk.
+    visited: HashSet<ObjectId>,
     next_color: usize,
     row: usize,
 }
@@ -163,6 +165,8 @@ impl LaneState {
 
     /// Advance by one commit.
     pub fn step(&mut self, id: ObjectId, parents: &[ObjectId]) -> RowLanes {
+        self.visited.insert(id);
+
         // Which lanes were waiting for this commit? The lowest one becomes the
         // node's lane; any others are duplicate edges that converge here.
         let mut mine: Option<usize> = None;
@@ -242,8 +246,16 @@ impl LaneState {
         match parents.split_first() {
             None => self.active[lane] = None,
             Some((first, rest)) => {
-                self.active[lane] = Some(*first);
+                if self.visited.contains(first) {
+                    self.active[lane] = None;
+                } else {
+                    self.active[lane] = Some(*first);
+                }
+
                 for parent in rest {
+                    if self.visited.contains(parent) {
+                        continue;
+                    }
                     match self.active.iter().position(|slot| *slot == Some(*parent)) {
                         // Already awaited: draw an edge into that lane and let
                         // the two lines converge there.
@@ -873,5 +885,27 @@ mod walk_tests {
         let fixture = Fixture::woven();
         let id = gix::ObjectId::from_hex(fixture.head().as_bytes()).expect("id");
         assert_eq!(short_id(&id).len(), 7);
+    }
+
+    #[test]
+    fn already_visited_parents_do_not_leave_dangling_edges() {
+        let mut state = LaneState::new();
+        let c1 = gix::ObjectId::from_hex(b"1111111111111111111111111111111111111111").unwrap();
+        let c2 = gix::ObjectId::from_hex(b"2222222222222222222222222222222222222222").unwrap();
+        let c3 = gix::ObjectId::from_hex(b"3333333333333333333333333333333333333333").unwrap();
+
+        // c1 is a tip that branches into c2
+        state.step(c1, &[c2]);
+        // c2 is visited
+        state.step(c2, &[c3]);
+        // c4 is a merge commit visited later whose second parent is c1 (which was already visited)
+        let c4 = gix::ObjectId::from_hex(b"4444444444444444444444444444444444444444").unwrap();
+        state.step(c4, &[c3, c1]);
+        // c3 is root commit
+        let row = state.step(c3, &[]);
+
+        // c3 has no parents, all lanes should be closed
+        assert_eq!(state.width(), 0);
+        assert!(!row.edges.iter().any(|e| e.from != 0 && e.to != 0));
     }
 }

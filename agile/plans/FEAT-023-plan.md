@@ -58,7 +58,7 @@ for the scroll, so their cells are already in the right place.
 | `src/lib/graph/highlight.ts` | Reduced to `byAuthor`. |
 | `src/lib/metrics.ts` | The geometry constants. |
 | `src/app.css` | `--graph-bg`, `--graph-line`. |
-| `crates/gitlord-core/src/graph.rs`, `src/lib/types.ts` | `author_email` on the row. |
+| `crates/gitlumiere-core/src/graph.rs`, `src/lib/types.ts` | `author_email` on the row. |
 
 ## Steps
 

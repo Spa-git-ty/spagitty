@@ -10,7 +10,7 @@ having been weighed.
 
 Three layers, each ignorant of the one above it.
 
-1. **`crates/gitlord-core`** — all git reading, via `gix`. No Tauri types, no
+1. **`crates/gitlumiere-core`** — all git reading, via `gix`. No Tauri types, no
    window handles, no events. `graph::walk` produces `GraphRow` values, each
    carrying everything needed to paint that row with no global state: index,
    ids, summary, author, initials, time, lane, colour, parents, ref chips, and
@@ -40,7 +40,7 @@ parent lists and recomputing on every render.
 **One row pitch, defined twice on purpose, asserted equal.** Lane elbows are
 described in row units in Rust, and the stylesheet needs the pitch in CSS
 pixels. Rather than let the two drift, `ROW_PITCH` exists in
-`crates/gitlord-core/src/graph.rs` and `src/lib/metrics.ts`, and the frontend
+`crates/gitlumiere-core/src/graph.rs` and `src/lib/metrics.ts`, and the frontend
 compares them at boot and logs an error if they disagree.
 
 **Lane column capped at twelve.** Measured on `cli/cli`: twelve columns is where
@@ -50,7 +50,7 @@ column. The reasoning and the measurements are recorded in the doc comment on
 
 ## Files
 
-- `crates/gitlord-core/src/{graph,refs,repo,status,error,shell}.rs`
+- `crates/gitlumiere-core/src/{graph,refs,repo,status,error,shell}.rs`
 - `src-tauri/src/{commands,graph_worker,watch,lib}.rs`
 - `src/lib/graph/{store.svelte.ts,lanes.ts,CommitRows.svelte,LaneCanvas.svelte,CommitDetail.svelte}`
 - `src/lib/chrome/{TitleBar,Toolbar,NavRail,ResizeEdges}.svelte`, `window.ts`

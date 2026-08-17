@@ -6,7 +6,7 @@
 	import type { ExecutedCommand } from '$lib/types';
 
 	/**
-	 * What GitLord ran, as a drawer along the bottom of the shell.
+	 * What GitLumiere ran, as a drawer along the bottom of the shell.
 	 *
 	 * A drawer rather than a toast: a command worth showing is a command worth
 	 * reading twice, and `Notice` deliberately holds one message at a time.
@@ -82,14 +82,14 @@
 				</li>
 			{:else}
 				<li class="empty note">
-					Nothing has been run yet. This fills as GitLord executes commands.
+					Nothing has been run yet. This fills as GitLumiere executes commands.
 				</li>
 			{/each}
 		</ol>
 
 		<!--
 			Said plainly rather than left to be inferred: an empty-looking log
-			next to a screen full of history would otherwise read as GitLord
+			next to a screen full of history would otherwise read as GitLumiere
 			hiding what it did, when in fact reading history never runs `git` at
 			all.
 		-->

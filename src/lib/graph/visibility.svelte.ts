@@ -47,7 +47,7 @@ interface Stored {
 	pinned: string[];
 }
 
-const KEY_PREFIX = 'gitlord.graph.visibility:';
+const KEY_PREFIX = 'gitlumiere.graph.visibility:';
 
 let repoKey = $state<string | null>(null);
 let mode = $state<Mode>('all');
@@ -122,7 +122,7 @@ function roots(): string[] {
  *
  * That is the checked-out branch, its upstream, and — as the closest usable
  * stand-in for "its target branch", which no git repository actually records —
- * the branch it is based on. GitLord takes that to be the current branch's
+ * the branch it is based on. GitLumiere takes that to be the current branch's
  * upstream where there is one, plus whichever local branch fully contains the
  * current branch's merge base, which in practice is `main` or `master`.
  *

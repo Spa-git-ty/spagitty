@@ -12,7 +12,7 @@ cargo test      272 passed, 0 failed
 
 The count moved from 790 to 789 because 16 portrait tests and one merge-node
 test arrived while 18 tests for `ancestry`, `ghostPath` and `rowOfRef` left with
-the code they covered, to `~/claudetrashbin/gitlord-FEAT-023/`.
+the code they covered, to `~/claudetrashbin/gitlumiere-FEAT-023/`.
 
 ## Coverage
 

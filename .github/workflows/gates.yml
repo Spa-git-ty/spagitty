@@ -183,7 +183,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: gitlord-${{ matrix.os }}
+          name: gitlumiere-${{ matrix.os }}
           path: |
             target/release/bundle/**
             src-tauri/target/release/bundle/**
@@ -225,9 +225,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git tag -a "${{ steps.version.outputs.tag }}" -m "GitLord ${{ steps.version.outputs.tag }}"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "GitLumiere ${{ steps.version.outputs.tag }}"
           git push origin "${{ steps.version.outputs.tag }}"
           gh release create "${{ steps.version.outputs.tag }}" \
-            --title "GitLord ${{ steps.version.outputs.tag }}" \
+            --title "GitLumiere ${{ steps.version.outputs.tag }}" \
             --generate-notes \
             $(find artifacts -type f | tr '\n' ' ')

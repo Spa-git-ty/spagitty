@@ -16,7 +16,7 @@ formality.
 
 | # | Gate | Runs | Proves |
 | --- | --- | --- | --- |
-| 1 | License | `cargo deny check licenses bans sources`, `license-checker-rseidelsohn` over the npm production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with GitLord shipping under GPL-3 |
+| 1 | License | `cargo deny check licenses bans sources`, `license-checker-rseidelsohn` over the npm production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with GitLumiere shipping under GPL-3 |
 | 2 | Code quality | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `npm run check` | Formatting, lints and types across both languages |
 | 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `npm run coverage` | The suite passes and first-party coverage meets the Amendment 10 floor of 70% |
 | 4 | Security | `cargo deny check advisories`, `npm audit --audit-level=high`, `gitleaks` over the diff | No known-vulnerable dependency, no secret in the change |
@@ -57,7 +57,7 @@ Cheapest and most certain first, so an obvious failure never burns a full build.
 Only first-party code counts, in either direction — dependencies neither
 inflate the number nor deflate it.
 
-- **Rust**: the workspace, with `crates/gitlord-core/src/fixture.rs` excluded.
+- **Rust**: the workspace, with `crates/gitlumiere-core/src/fixture.rs` excluded.
   It is test scaffolding, and counting a helper that every test exercises would
   lift the figure without any product code being tested.
 - **Frontend**: `src/lib/**`. `src/testing/**` is excluded for the same reason,

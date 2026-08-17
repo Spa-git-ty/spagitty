@@ -9,12 +9,12 @@ Two halves in two places, because they are two different kinds of state.
 - **`repo::summary(path)`** in the core describes a repository *where it sits*,
   without making it the open one: no walk, no worker, no watcher.
 - **`src-tauri/src/recents.rs`** holds the list of paths. That is application
-  state — a record of what the user opened — so it belongs in GitLord's own
+  state — a record of what the user opened — so it belongs in GitLumiere's own
   config directory beside their other preferences, not in a git module.
 
 ## Decisions
 
-**GitLord never goes looking for repositories.** Opening one is the only way it
+**GitLumiere never goes looking for repositories.** Opening one is the only way it
 joins the list. A filesystem scan would be faster to write and would mean the
 application crawling directories it was never pointed at; the screen says so in
 its footer, and the promise is worth more than the convenience.
@@ -30,7 +30,7 @@ for exactly that reason.)
 **A missing path is a card, not a deletion.** The list is the user's own record
 of where their work is. A repository that has moved is something they should
 see; dropping the row would hide the only clue to where it went. The card keeps
-the path visible and says GitLord has not touched it.
+the path visible and says GitLumiere has not touched it.
 
 **`summary` never fails.** One bad entry must not take the screen down with it,
 so a broken path returns a card that says so rather than an error that loses the
@@ -51,7 +51,7 @@ says so permanently.
 
 ## Files
 
-- `crates/gitlord-core/src/repo.rs` — `RepoSummary`, `summary`
+- `crates/gitlumiere-core/src/repo.rs` — `RepoSummary`, `summary`
 - `src-tauri/src/recents.rs` — new; `src-tauri/src/commands.rs`, `lib.rs`
 - `src/lib/types.ts`, `src/lib/api.ts`, `src/lib/metrics.ts`
 - `src/lib/repos/{store.svelte.ts,RepoCard.svelte}`

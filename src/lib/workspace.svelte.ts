@@ -5,7 +5,7 @@
  *
  * # One backend, several tabs
  *
- * GitLord's Rust side holds **one** repository at a time: one `AppState.session`,
+ * GitLumiere's Rust side holds **one** repository at a time: one `AppState.session`,
  * one graph worker, one filesystem watcher. That is deliberate and it is not
  * what this store changes. A tab here is a *place to go back to*, not a live
  * session — switching re-opens the repository and puts the view back where it
@@ -40,7 +40,7 @@ export interface Place {
 	selected: string | null;
 }
 
-const STORAGE_KEY = 'gitlord.workspace';
+const STORAGE_KEY = 'gitlumiere.workspace';
 
 /**
  * How many tabs are kept.
@@ -121,7 +121,7 @@ export const workspace = {
 	},
 
 	/**
-	 * Close a tab. The repository is untouched — it stays in GitLord's list and
+	 * Close a tab. The repository is untouched — it stays in GitLumiere's list and
 	 * in the `+` menu; only this session's tab goes.
 	 *
 	 * Returns the path that should be shown next: the neighbour to the right,

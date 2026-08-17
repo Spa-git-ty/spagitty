@@ -6,7 +6,7 @@ Test tickets for the Settings screen (1K).
 
 **What this screen is.** Five sections behind a chip index: You, Accounts,
 Behaviour, Appearance, Advanced. The identity is git's own configuration and is
-read and written through it; the behaviour toggles are GitLord's own and are
+read and written through it; the behaviour toggles are GitLumiere's own and are
 stored in its config directory; About carries the GPL-3 obligations. Nothing on
 this screen needs an open repository.
 
@@ -34,7 +34,7 @@ tests refuse to cover, which is why they are here.
 ### SWEEP-1K-02 — It works with no repository open
 
 - **Priority:** P1
-- **Preconditions:** GitLord started with no repository, or the open one closed.
+- **Preconditions:** GitLumiere started with no repository, or the open one closed.
 - **Steps:** Open Settings and visit all five sections.
 - **Expected:** Every section renders. **You** shows the global identity and
   says "No repository is open, so only the global configuration is offered";
@@ -102,7 +102,7 @@ tests refuse to cover, which is why they are here.
 ### SWEEP-1K-08 — Toggles survive a restart
 
 - **Priority:** P1
-- **Steps:** In **Behaviour**, switch all three toggles. Quit GitLord
+- **Steps:** In **Behaviour**, switch all three toggles. Quit GitLumiere
   completely and start it again. Return to Behaviour.
 - **Expected:** All three are as you left them. Acceptance criterion 4.
 - **Result:**
@@ -119,10 +119,10 @@ tests refuse to cover, which is why they are here.
 ### SWEEP-1K-10 — A hand-edited settings file does not stop the application
 
 - **Priority:** P2
-- **Steps:** Quit GitLord. Find `settings.json` in GitLord's config directory
-  (`~/.config/gitlord/` or the platform equivalent), replace its contents with
-  `{` and save. Start GitLord and open Behaviour.
-- **Expected:** GitLord starts. The toggles show their defaults — sign off, ask
+- **Steps:** Quit GitLumiere. Find `settings.json` in GitLumiere's config directory
+  (`~/.config/gitlumiere/` or the platform equivalent), replace its contents with
+  `{` and save. Start GitLumiere and open Behaviour.
+- **Expected:** GitLumiere starts. The toggles show their defaults — sign off, ask
   before rewriting **on**, show commands off. No error dialog, no crash.
 - **Result:**
 

@@ -27,9 +27,9 @@ use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread::JoinHandle;
 
-use gitlord_core::graph::{self, Flow, GraphRow, BATCH};
-use gitlord_core::refs::RefIndex;
-use gitlord_core::repo;
+use gitlumiere_core::graph::{self, Flow, GraphRow, BATCH};
+use gitlumiere_core::refs::RefIndex;
+use gitlumiere_core::repo;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
@@ -110,7 +110,7 @@ pub fn spawn(
 ) -> GraphWorker {
     let (tx, rx) = std::sync::mpsc::channel();
     let handle = std::thread::Builder::new()
-        .name(format!("gitlord-graph-{token}"))
+        .name(format!("gitlumiere-graph-{token}"))
         .spawn(move || run(app, path, token, visible, pinned, rx))
         .expect("spawning the graph worker");
 
@@ -145,7 +145,7 @@ fn run(
     let mut batch: Vec<GraphRow> = Vec::with_capacity(BATCH);
     let mut stopped = false;
 
-    let result = (|| -> gitlord_core::Result<usize> {
+    let result = (|| -> gitlumiere_core::Result<usize> {
         let repo = repo::open(&path)?;
         let refs = RefIndex::build(&repo)?;
         let tips = graph::tips_for(&repo, &visible)?;

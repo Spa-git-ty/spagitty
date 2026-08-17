@@ -223,12 +223,12 @@ mod tests {
         let fixture = Fixture::woven();
         fixture.write("core.txt", "work in progress\n");
 
-        push(&fixture.open(), "  from gitlord  ", false).expect("push");
+        push(&fixture.open(), "  from gitlumiere  ", false).expect("push");
 
         assert_eq!(fixture.git(&["status", "--porcelain"]).trim(), "");
         let entries = list(&fixture.open()).expect("list");
         assert_eq!(entries.len(), 2);
-        assert!(entries[0].message.contains("from gitlord"));
+        assert!(entries[0].message.contains("from gitlumiere"));
     }
 
     #[test]

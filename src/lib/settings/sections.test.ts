@@ -274,7 +274,7 @@ describe('AdvancedSection', () => {
 		const mounted = render(AdvancedSection, {});
 		const text = mounted.text();
 
-		expect(text).toContain('GitLord v0.1.0');
+		expect(text).toContain('GitLumiere v0.1.0');
 		expect(text).toContain('abc1234');
 		expect(text).toContain('GPL-3.0-or-later');
 		expect(text).toContain('Software Freedom Conservancy');

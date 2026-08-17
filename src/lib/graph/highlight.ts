@@ -13,7 +13,7 @@
  * `ancestry`, `ghostPath` and `rowOfRef`. FEAT-023 removed the hover effect
  * they served — dimming most of the screen as the pointer crosses it makes the
  * graph flicker — and they went with it, to
- * `~/claudetrashbin/gitlord-FEAT-023/` rather than into a delete.
+ * `~/claudetrashbin/gitlumiere-FEAT-023/` rather than into a delete.
  *
  * Everything here is a pure function over a row accessor, so it is testable
  * without a repository and without a DOM.

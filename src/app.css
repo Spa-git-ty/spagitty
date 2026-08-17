@@ -37,14 +37,14 @@
 	--lane-4: #179299;
 	--lane-5: #2e7d1f;
 
-	/* Type scale */
-	--fs-ui: 13px;
-	--fs-secondary: 11px;
-	--fs-mono: 10px;
-	--fs-title: 16px;
+	/* Type scale (+20%) */
+	--fs-ui: 15.6px;
+	--fs-secondary: 13.2px;
+	--fs-mono: 12px;
+	--fs-title: 19.2px;
 	/* Source code, which is read rather than glanced at: --fs-mono is sized for
 	   short SHAs and chip labels and is too small for a wall of diff lines. */
-	--fs-code: 12px;
+	--fs-code: 14.4px;
 	--lh-ui: 1.35;
 
 	/*
@@ -129,8 +129,9 @@ body {
 	color: var(--ink);
 	font-family: var(--font-ui);
 	font-size: var(--fs-ui);
-	line-height: var(--lh-ui);
-	-webkit-font-smoothing: antialiased;
+	-webkit-font-smoothing: subpixel-antialiased;
+	-moz-osx-font-smoothing: auto;
+	text-rendering: optimizeLegibility;
 }
 
 /* The chrome owns the whole window; nothing outside it scrolls. */

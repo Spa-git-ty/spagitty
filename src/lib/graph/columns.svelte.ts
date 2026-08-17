@@ -23,7 +23,7 @@
  * `localStorage`, keyed by repository path, alongside the panel widths and the
  * theme. This is view state for one person on one machine: putting it in the
  * repository would mean a layout choice arriving in someone else's checkout,
- * and putting it in GitLord's config directory would mean a backend round trip
+ * and putting it in GitLumiere's config directory would mean a backend round trip
  * before the first paint of a screen that has to be instant.
  */
 
@@ -67,7 +67,7 @@ interface Layout {
 	widths: Partial<Record<ColumnId, number>>;
 }
 
-const KEY_PREFIX = 'gitlord.graph.columns:';
+const KEY_PREFIX = 'gitlumiere.graph.columns:';
 
 let repoKey = $state<string | null>(null);
 let order = $state<ColumnId[]>([...DEFAULT_ORDER]);

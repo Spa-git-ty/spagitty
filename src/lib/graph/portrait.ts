@@ -3,7 +3,7 @@
 /**
  * Author portraits, computed from the email.
  *
- * GitKraken shows a fetched picture on every node. GitLord shows a generated
+ * GitKraken shows a fetched picture on every node. GitLumiere shows a generated
  * one, and that is a decision rather than a shortcut — the same one
  * [`./avatar`] records for initials, and it survived being asked again when the
  * heads got bigger:

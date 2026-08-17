@@ -5,7 +5,7 @@
 Test tickets for the Pull requests screen (1H).
 
 **What this screen is in this pass.** The layout and an honest empty state. No
-account can be connected and no request can be fetched, because GitLord contains
+account can be connected and no request can be fetched, because GitLumiere contains
 no network client. Most of these tickets are therefore about what the screen
 *says* and what it *does not do*.
 
@@ -28,7 +28,7 @@ no network client. Most of these tickets are therefore about what the screen
 
 - **Priority:** P1
 - **Steps:** Read the body.
-- **Expected:** It says no account is connected, explains that GitLord reads
+- **Expected:** It says no account is connected, explains that GitLumiere reads
   pull requests from whichever service hosts the repository, and says connecting
   one is not built yet. It does **not** say "not built yet" about the screen —
   the screen works; the account does not. Acceptance criterion 1.
@@ -68,7 +68,7 @@ no network client. Most of these tickets are therefore about what the screen
 
 - **Priority:** P1
 - **Steps:** Read the footer.
-- **Expected:** It states plainly that GitLord does not talk to any hosting
+- **Expected:** It states plainly that GitLumiere does not talk to any hosting
   service, that there is no network client in the build, and that this screen
   makes no request.
 - **Result:**
@@ -77,7 +77,7 @@ no network client. Most of these tickets are therefore about what the screen
 
 - **Priority:** P1
 - **Steps:** Disable networking entirely on the machine (turn off Wi-Fi and
-  unplug, or `sudo ip link set <iface> down`). Start GitLord, open a repository,
+  unplug, or `sudo ip link set <iface> down`). Start GitLumiere, open a repository,
   and use the Pull requests screen.
 - **Expected:** Identical behaviour. No spinner, no timeout, no error, no delay.
   Acceptance criterion 2. Re-enable networking afterwards.
@@ -87,9 +87,9 @@ no network client. Most of these tickets are therefore about what the screen
 
 - **Priority:** P1
 - **Steps:** With a packet capture running (`sudo tcpdump -i any -n 'tcp port
-  80 or tcp port 443'`), start GitLord, open a repository, and visit the Pull
+  80 or tcp port 443'`), start GitLumiere, open a repository, and visit the Pull
   requests screen several times.
-- **Expected:** No traffic from the GitLord process at all. This is the ticket
+- **Expected:** No traffic from the GitLumiere process at all. This is the ticket
   that actually proves the non-scope; the automated test proves only that no
   client is linked in.
 - **Result:**

@@ -167,7 +167,7 @@
 	}
 
 	.glyph {
-		font-size: 15px;
+		font-size: var(--fs-ui);
 		line-height: 1;
 	}
 
@@ -197,7 +197,7 @@
 		gap: 6px;
 		width: 100%;
 		padding: 6px 10px;
-		font-size: 12px;
+		font-size: var(--fs-secondary);
 		text-align: left;
 		border-left: 3px solid transparent;
 	}

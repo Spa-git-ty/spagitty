@@ -8,7 +8,7 @@
 
 ## Problem
 
-A repository mid-merge is the moment a git client is most needed and GitLord
+A repository mid-merge is the moment a git client is most needed and GitLumiere
 currently says the least: the Conflicts count is a `·` and the screen is a
 placeholder. The user is left reading conflict markers in an editor with no view
 of what the two sides actually were.

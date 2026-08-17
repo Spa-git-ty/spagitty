@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! Git operations for GitLord.
+//! Git operations for GitLumiere.
 //!
 //! Everything here is UI-agnostic: no Tauri, no window handles, no events. The
 //! Tauri layer (`src-tauri`) is a thin adapter that calls into this crate and

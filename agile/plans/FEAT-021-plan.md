@@ -15,7 +15,7 @@ that, and having it in two places means two things to keep in step.
 
 **The application has no visual system.** `src/app.css` says so itself: the hex
 values are "wireframe placeholders and are expected to be replaced by the real
-visual system; the names are not." That is why GitLord reads as a white program
+visual system; the names are not." That is why GitLumiere reads as a white program
 and a black program rather than a designed one. The token *structure* is right
 and every colour in the application already comes through it — there is no hex
 literal anywhere outside `app.css`, and `LaneCanvas.svelte:28` resolves the lane
@@ -79,8 +79,8 @@ Gains a family beside the mode.
   `document.documentElement.style`, and keeps setting `data-theme` to the mode —
   `app.css` still keys its own two blocks off it, and it is what a stylesheet
   would need if one is ever added.
-- Storage: `gitlord.theme` keeps holding the **mode**, so an existing install's
-  choice survives; `gitlord.theme.family` is new. Both are read leniently — an
+- Storage: `gitlumiere.theme` keeps holding the **mode**, so an existing install's
+  choice survives; `gitlumiere.theme.family` is new. Both are read leniently — an
   unknown value falls back rather than throwing, as today.
 
 `theme.value` becomes `theme.id`. Its two readers are `LaneCanvas.svelte`

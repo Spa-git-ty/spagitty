@@ -15,7 +15,7 @@ Covered by the same run as FEAT-027: 824 frontend tests, `npm run check` clean.
 | `groups the actions rather than running them together` | Two dividers for three groups |
 
 The old `reaches the commit screen from the primary button` moved to
-`~/claudetrashbin/gitlord-FEAT-028/toolbar-commit-button.test.ts` with the
+`~/claudetrashbin/gitlumiere-FEAT-028/toolbar-commit-button.test.ts` with the
 button it covered.
 
 ## What is not covered by automation

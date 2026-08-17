@@ -19,8 +19,8 @@ cargo clippy --workspace --all-targets -- -D warnings   clean
 | Frontend (`src/lib/**`) | 96.47% | 84.62% | 94.44% | 97.28% |
 | `src/lib/search/**` | 92.66% | 72.95% | 96.66% | 95.03% |
 | Rust workspace | 87.80% | — | 76.77% | 86.53% |
-| `crates/gitlord-core/src/search.rs` | 94.76% | — | 88.10% | 96.39% |
-| `crates/gitlord-core/src/blame.rs` | 95.68% | — | 83.72% | 95.86% |
+| `crates/gitlumiere-core/src/search.rs` | 94.76% | — | 88.10% | 96.39% |
+| `crates/gitlumiere-core/src/blame.rs` | 95.68% | — | 83.72% | 95.86% |
 | `src-tauri/src/search_worker.rs` | 0.00% | — | 0.00% | 0.00% |
 
 `search_worker.rs` is a Tauri thread that emits events to a webview, the same
@@ -108,4 +108,4 @@ diff algorithm and both rename settings. Bisected against the project's own
 that breaks it is ordinary rather than exotic. Raised with the author, who chose
 the shell route; the exception, its reason and its end condition are recorded on
 `shell::blame` and in `docs/architecture.md`. Criterion 5 holds by construction
-now, since GitLord and `git blame` are the same program.
+now, since GitLumiere and `git blame` are the same program.

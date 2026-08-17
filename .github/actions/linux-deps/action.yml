@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Tauri 2's Linux system dependencies. Needed by every job that compiles the
-# `gitlord` crate — which includes the test and lint gates, not just the build,
+# `gitlumiere` crate — which includes the test and lint gates, not just the build,
 # because the crate links against webkit2gtk to compile at all.
 
 name: Linux build dependencies

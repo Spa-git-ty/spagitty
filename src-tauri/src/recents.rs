@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! The list of repositories GitLord has been shown.
+//! The list of repositories GitLumiere has been shown.
 //!
 //! This is application state, not repository state, so it lives here rather
-//! than in `gitlord-core`: it is a record of what the *user* opened, and it
-//! belongs to GitLord's own config directory alongside their other preferences.
+//! than in `gitlumiere-core`: it is a record of what the *user* opened, and it
+//! belongs to GitLumiere's own config directory alongside their other preferences.
 //!
-//! GitLord never goes looking for repositories. It remembers what it has been
+//! GitLumiere never goes looking for repositories. It remembers what it has been
 //! given and nothing else — no filesystem scan, no home-directory crawl, and
 //! nothing leaves the machine.
 
@@ -41,7 +41,7 @@ pub fn remember(app: &AppHandle, repo: &Path) {
 
 /// Forget one path.
 ///
-/// The repository on disk is not touched. This removes a row from GitLord's
+/// The repository on disk is not touched. This removes a row from GitLumiere's
 /// own list and nothing else — the one destructive-sounding action on the
 /// screen that is not destructive at all.
 pub fn forget(app: &AppHandle, repo: &Path) {
@@ -103,7 +103,7 @@ mod tests {
     fn a_hand_edited_file_that_is_not_a_list_does_not_stop_the_application() {
         // The file sits in the user's config directory and invites editing.
         // Truncated JSON, an object, a list of numbers — none of it may be the
-        // reason GitLord will not start.
+        // reason GitLumiere will not start.
         for corrupt in ["{", "{\"repos\": []}", "[1, 2, 3]", "null", "not json"] {
             assert_eq!(parse(corrupt), Vec::<PathBuf>::new(), "for {corrupt:?}");
         }

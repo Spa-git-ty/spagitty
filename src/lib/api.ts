@@ -234,7 +234,7 @@ export function cloneRelease(): Promise<void> {
 	return invoke('clone_release');
 }
 
-/** Remove a repository from GitLord's list. The directory is not touched. */
+/** Remove a repository from GitLumiere's list. The directory is not touched. */
 export function forgetRepo(path: string): Promise<void> {
 	return invoke('forget_repo', { path });
 }
@@ -265,7 +265,7 @@ export function setIdentity(
 	return invoke('set_identity', { scope, key, value });
 }
 
-/** GitLord's own behaviour toggles. */
+/** GitLumiere's own behaviour toggles. */
 export function settings(): Promise<Settings> {
 	return invoke('settings');
 }
@@ -376,7 +376,7 @@ export function push(remote = '', refspec = '', force = false): Promise<string> 
 }
 
 /**
- * Every `git` command GitLord has run since `since`, oldest first.
+ * Every `git` command GitLumiere has run since `since`, oldest first.
  *
  * New ones also arrive as `git-command` events; this is the catch-up read for
  * what ran before the panel was opened.

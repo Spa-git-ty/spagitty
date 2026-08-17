@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from './theme.svelte';
 import { DEFAULT_FAMILY, paletteOf, properties } from './themes';
 
-const MODE_KEY = 'gitlord.theme';
-const FAMILY_KEY = 'gitlord.theme.family';
+const MODE_KEY = 'gitlumiere.theme';
+const FAMILY_KEY = 'gitlumiere.theme.family';
 
 function stubStorage(initial: Record<string, string> = {}) {
 	const store = new Map(Object.entries(initial));

@@ -20,10 +20,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
-use gitlord_core::graph::{all_tips, Flow};
-use gitlord_core::refs::RefIndex;
-use gitlord_core::repo;
-use gitlord_core::search::{self, Query, SearchRow, BATCH};
+use gitlumiere_core::graph::{all_tips, Flow};
+use gitlumiere_core::refs::RefIndex;
+use gitlumiere_core::repo;
+use gitlumiere_core::search::{self, Query, SearchRow, BATCH};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
@@ -68,7 +68,7 @@ pub fn spawn(app: AppHandle, path: PathBuf, query: Query, token: u64) -> SearchW
     let flag = cancelled.clone();
 
     let handle = std::thread::Builder::new()
-        .name(format!("gitlord-search-{token}"))
+        .name(format!("gitlumiere-search-{token}"))
         .spawn(move || run(app, path, query, token, &flag))
         .expect("spawning the search worker");
 
@@ -82,7 +82,7 @@ fn run(app: AppHandle, path: PathBuf, query: Query, token: u64, cancelled: &Atom
     let mut total = 0usize;
     let mut batch: Vec<SearchRow> = Vec::with_capacity(BATCH);
 
-    let result = (|| -> gitlord_core::Result<usize> {
+    let result = (|| -> gitlumiere_core::Result<usize> {
         let repo = repo::open(&path)?;
         let refs = RefIndex::build(&repo)?;
         let tips = all_tips(&repo)?;

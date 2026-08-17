@@ -57,7 +57,7 @@ Persistent across every screen, built with FEAT-001.
 **Built.** `src/routes/+page.svelte`, `src/lib/graph/`.
 
 The centre of gravity, and the application's primary navigation surface rather
-than a read-only report: almost every operation GitLord can perform is reachable
+than a read-only report: almost every operation GitLumiere can perform is reachable
 from a right-click here.
 
 A streamed, virtualised commit list with a lane canvas, a configurable column
@@ -168,7 +168,7 @@ Ours, the merged result and theirs, side by side, with the common ancestor
 behind a disclosure. The three come from the index: when git cannot merge two
 versions of a file it keeps all three — stage 1 the base, stage 2 ours, stage 3
 theirs — and leaves the working-tree file with markers in it. That is the whole
-data model, and `crates/gitlord-core/src/conflicts.rs` is a reader for it.
+data model, and `crates/gitlumiere-core/src/conflicts.rs` is a reader for it.
 
 Which stages exist *is* the kind of conflict. No stage 1 means both sides added
 the path; a missing stage 2 or 3 means that side deleted it, and the pane says
@@ -214,7 +214,7 @@ ordering so the component only reports intent.
 
 "May conflict" is a heuristic and the screen uses that word: two commits in the
 plan touching one path mark the later one. Knowing for certain means performing
-the merges, which is execution. Claiming a clean result GitLord cannot prove
+the merges, which is execution. Claiming a clean result GitLumiere cannot prove
 would be the worse lie.
 
 Nothing runs. `shell::rebase_interactive` is still `unimplemented!()`, there is
@@ -276,7 +276,7 @@ What is waiting on you above what is waiting on everyone else: solid rows over
 dashed ones, with the detail panel beside them — the same two-group device All
 repositories uses.
 
-**GitLord talks to no hosting service, and cannot.** No HTTP client is linked
+**GitLumiere talks to no hosting service, and cannot.** No HTTP client is linked
 into this application in either language, and there is a test that reads the
 manifests and the screen's own source to keep it that way. A screen with no way
 to make a request cannot make one, which is a stronger claim than any
@@ -338,8 +338,8 @@ Every repository you work in and which ones need attention: "Needs you" above
 the path, what the repository was last doing, and a chip for each thing going on
 — conflicts first, since those are what stop work.
 
-GitLord never goes looking for repositories. Opening one is the only way it
-joins the list, which lives in GitLord's own config directory as a plain JSON
+GitLumiere never goes looking for repositories. Opening one is the only way it
+joins the list, which lives in GitLumiere's own config directory as a plain JSON
 file of paths.
 
 Each card is read where the repository sits, without opening it as the current
@@ -388,7 +388,7 @@ colour there changes the first frame and not the theme.
 **The identity is read with `gix` and written with `git`.** That is the
 `shell.rs` rule applied without an exception: `.git/config` and `~/.gitconfig`
 are state the whole ecosystem reads, so writing them goes through `git config`;
-reading them does not. `crates/gitlord-core/src/identity.rs` is both halves.
+reading them does not. `crates/gitlumiere-core/src/identity.rs` is both halves.
 
 **The scope is a parameter, never inferred.** Writing to the wrong one is the
 quiet mistake this screen is shaped around — a repository-local identity that
@@ -396,7 +396,7 @@ silently became global is found months later on somebody else's commits. So both
 values report which file they came from, the fields say which one they are
 editing, and changing scope refills them rather than carrying a typed value
 across. A value coming from the system configuration or the environment is named
-as such rather than as a scope GitLord writes, because editing the global field
+as such rather than as a scope GitLumiere writes, because editing the global field
 would not change it.
 
 **Clearing unsets the key.** `git config --unset`, not an empty string. An empty
@@ -404,7 +404,7 @@ would not change it.
 an unset one falls back to the next scope, which is what "clear" means.
 
 **A toggle that does nothing yet says so.** The three behaviour toggles persist
-in GitLord's own config directory beside the repository list, with the same
+in GitLumiere's own config directory beside the repository list, with the same
 lenient-parse-or-default treatment for the same reason. A toggle that is not
 honoured yet names the item that will honour it — signing is still waiting on
 FEAT-019 — because narrowing the claim to the truth is better than a switch that
@@ -412,7 +412,7 @@ silently does nothing.
 
 **"Show the git command behind each action" is honoured** (FEAT-020). It adds a
 Commands button to the toolbar and a palette command; both open a drawer listing
-what GitLord actually ran, newest first, with the exit code and git's own stderr
+what GitLumiere actually ran, newest first, with the exit code and git's own stderr
 under anything that failed. The lines come from `record.rs`, written by the
 module that spawns the process, so the panel shows the flags the shell layer
 added rather than what a screen believed it asked for. Reads are absent and the
@@ -463,7 +463,7 @@ is the first operation that needs credentials, and credential helpers are
 external programs resolved through config — the place OS keychain integration
 already lives. `GIT_TERMINAL_PROMPT=0` still holds, so a repository whose
 credentials no helper can supply fails with git's own message instead of hanging
-on a prompt there is no terminal for. **GitLord never asks for a password
+on a prompt there is no terminal for. **GitLumiere never asks for a password
 itself.**
 
 **Everything that can be refused is refused before the process starts.** An
@@ -472,7 +472,7 @@ something in it: each is computed by `clone::plan` as the user types, and each
 is knowable without the network. Telling somebody after a round trip what they
 could have been told while typing is the failure this avoids. An existing
 *empty* destination is allowed, because `git clone` allows it — matching git's
-rule rather than inventing a stricter one is what makes a GitLord clone the same
+rule rather than inventing a stricter one is what makes a GitLumiere clone the same
 as a command-line clone.
 
 **Progress is git's, parsed rather than invented.** `git clone --progress`
@@ -485,7 +485,7 @@ failure's message comes from: stderr is both channels, and it is read here.
 **Cancelling removes only what the clone created.** Whether the destination
 existed is decided before the process starts and remembered; a directory the
 user already had is left exactly as it was found, partial contents and all,
-because that is not GitLord's to delete. The removal happens after the child is
+because that is not GitLumiere's to delete. The removal happens after the child is
 reaped, never after the kill signal, or the two race and files reappear behind
 it.
 

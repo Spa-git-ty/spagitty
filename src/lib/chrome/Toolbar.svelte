@@ -107,7 +107,7 @@
 		<span class="vr" style="height: 26px"></span>
 		<button
 			class="tool"
-			title="What GitLord has run"
+			title="What GitLumiere has run"
 			aria-pressed={commandLog.open}
 			onclick={() => commandLog.toggle()}
 		>

@@ -3,7 +3,7 @@
 /**
  * Author avatars, computed from the name alone.
  *
- * GitKraken fetches a picture from the hosting provider. GitLord does not, and
+ * GitKraken fetches a picture from the hosting provider. GitLumiere does not, and
  * that is a decision rather than a shortcut: the graph would otherwise make a
  * network request per distinct author on a screen that is already the app's
  * most performance-sensitive surface, and it would leak the repository's

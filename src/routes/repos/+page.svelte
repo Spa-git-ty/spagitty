@@ -49,7 +49,7 @@
 			<p class="note">Reading…</p>
 		{:else if repos.cards.length === 0}
 			<div class="empty">
-				<p class="note">GitLord has not been shown a repository yet.</p>
+				<p class="note">GitLumiere has not been shown a repository yet.</p>
 				<p class="note">
 					It never goes looking for one. Open a directory and it will be remembered
 					here.

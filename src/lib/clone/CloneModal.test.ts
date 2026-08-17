@@ -165,9 +165,9 @@ describe('CloneModal', () => {
 		mounted.destroy();
 	});
 
-	it('says GitLord never asks for a password itself', async () => {
+	it('says GitLumiere never asks for a password itself', async () => {
 		// Criterion 5's honest half: credentials come from a helper or the clone
-		// fails with git's message. GitLord collects no passwords.
+		// fails with git's message. GitLumiere collects no passwords.
 		clone.show();
 		const mounted = render(CloneModal, {});
 

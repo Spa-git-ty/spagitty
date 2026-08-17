@@ -15,7 +15,7 @@
 
 import { DETAIL_W, RAIL_W } from './metrics';
 
-const STORAGE_KEY = 'gitlord.panels';
+const STORAGE_KEY = 'gitlumiere.panels';
 
 export const RAIL_MIN = 140;
 export const RAIL_MAX = 340;

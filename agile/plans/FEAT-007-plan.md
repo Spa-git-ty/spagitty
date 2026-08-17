@@ -59,7 +59,7 @@ list that reads like a file nobody has ever touched.
 
 ## Files
 
-- `crates/gitlord-core/src/search.rs`, `blame.rs` — new; `lib.rs`
+- `crates/gitlumiere-core/src/search.rs`, `blame.rs` — new; `lib.rs`
 - `src-tauri/src/search_worker.rs` — new; `commands.rs`, `lib.rs`
 - `src/lib/types.ts`, `src/lib/api.ts`
 - `src/lib/search/{store.svelte.ts,QueryBar.svelte,ResultRows.svelte,BlameStrip.svelte}`
