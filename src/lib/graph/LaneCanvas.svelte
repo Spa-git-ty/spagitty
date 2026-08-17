@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { graph } from '$lib/graph/store.svelte';
 	import { drawLanes } from '$lib/graph/lanes';
+	import { forgetPortraits } from '$lib/graph/portrait';
 	import { LANE_COLOR_COUNT, laneColorVar } from '$lib/metrics';
 	import { scale } from '$lib/scale.svelte';
 	import { theme } from '$lib/theme.svelte';
@@ -15,10 +16,8 @@
 		height: number;
 		/** Lane columns the column is currently sized for. */
 		columns: number;
-		/** Rows to keep at full strength; null when no highlight is running. */
+		/** Rows to keep at full strength; null when nothing is dimmed. */
 		highlight?: Set<number> | null;
-		/** The ghost branch's rows, from a hovered commit to its nearest ref. */
-		ghost?: number[];
 		/** Rows carrying stashes, and how many each has. */
 		stashes?: Map<number, number>;
 	}
@@ -31,7 +30,6 @@
 		height,
 		columns,
 		highlight = null,
-		ghost = [],
 		stashes
 	}: Props = $props();
 
@@ -43,7 +41,7 @@
 	 * changes; `theme.id` is read here purely to create that dependency, and it
 	 * names the family as well as the mode — switching family repaints too.
 	 */
-	function resolveColors(el: HTMLElement): { lanes: string[]; nodeText: string } {
+	function resolveColors(el: HTMLElement): { lanes: string[]; nodeRing: string } {
 		void theme.id;
 		const styles = getComputedStyle(el);
 		const lanes: string[] = [];
@@ -52,9 +50,23 @@
 		}
 		return {
 			lanes,
-			nodeText: styles.getPropertyValue('--on-accent').trim() || '#fff'
+			// The graph column's own fill: a portrait is ringed in the colour
+			// behind it, so the lane line stops at the head rather than running
+			// visibly into it.
+			nodeRing: styles.getPropertyValue('--graph-bg').trim() || '#888'
 		};
 	}
+
+	/**
+	 * Portraits are rendered with resolved colours, so a theme change makes
+	 * every cached face wrong. Dropping them here — beside the one other thing
+	 * that reads the palette — keeps the invalidation next to what it
+	 * invalidates.
+	 */
+	$effect(() => {
+		void theme.id;
+		forgetPortraits();
+	});
 
 	$effect(() => {
 		const el = canvas;
@@ -68,7 +80,6 @@
 		void columns;
 		void theme.id;
 		void highlight;
-		void ghost;
 		void stashes;
 		// Row pitch and lane spacing both move with these, so a zoom is a
 		// repaint even when nothing scrolled.
@@ -86,7 +97,7 @@
 
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-		const { lanes, nodeText } = resolveColors(el);
+		const { lanes, nodeRing } = resolveColors(el);
 		drawLanes({
 			ctx,
 			width,
@@ -96,12 +107,11 @@
 			last,
 			row: (index) => graph.row(index),
 			colors: lanes,
-			nodeText,
+			nodeRing,
 			columns,
 			pitch,
 			zoom,
 			highlight,
-			ghost,
 			stashes
 		});
 	});

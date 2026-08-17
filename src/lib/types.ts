@@ -43,7 +43,15 @@ export interface GraphRow {
 	/** First line of the commit message. */
 	summary: string;
 	authorName: string;
-	/** Up to two uppercase letters, drawn inside the node. */
+	/**
+	 * The author's email, lower-cased, or empty where the signature has none.
+	 *
+	 * What the node's portrait is generated from: one person commits under
+	 * several spellings of their name over a career, and the address is what
+	 * makes those one face.
+	 */
+	authorEmail: string;
+	/** Up to two uppercase letters. The fallback where no portrait can be drawn. */
 	initials: string;
 	/** Author time, unix seconds. */
 	time: number;

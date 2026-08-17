@@ -19,32 +19,56 @@ export const ROW_PITCH = 26;
 /**
  * Horizontal distance between two lanes.
  *
- * Retuned from 24 after comparing GitLord and GitKraken side by side on the
- * same repository: the identical history was spreading across roughly twice
- * the width, which pushes the message column — the part people actually read —
- * off the right of the window on any history more than a few branches deep.
+ * This number is set by the node, not the other way round: a lane closer than
+ * a node is wide draws lines through faces. FEAT-023 put an author's portrait
+ * on the node, so `2 × NODE_R + LANE_STROKE` is 20.5 and the pitch has to clear
+ * it — 22 leaves a pixel and a half of background between two adjacent heads at
+ * 100%.
  *
- * Fifteen is the tightest pitch that still leaves a clear gap between two
- * adjacent lane strokes and their nodes: `2 × NODE_R + LANE_STROKE` is 13, so
- * neighbouring nodes keep two pixels of background between them at 100%.
- * Going tighter makes two parallel long-lived branches read as one thick line.
+ * It was 15 while nodes were 11px initials discs, itself retuned down from 24
+ * after measuring GitLord against GitKraken on the same repository. Going back
+ * up costs width, and the trade is deliberate: a graph whose nodes say *who*
+ * earns the pixels, and the message column is still the wider of the two at
+ * five lanes.
  */
-export const LANE_PITCH = 15;
-
-/** x of lane 0. Lanes therefore sit at 12, 27, 42, 57, 72. */
-export const LANE_X0 = 12;
+export const LANE_PITCH = 22;
 
 /**
- * Radius of a commit node.
+ * x of lane 0. Lanes therefore sit at 14, 36, 58, 80, 102.
  *
- * Bound to `LANE_PITCH`: a node wider than half the pitch collides with its
- * neighbour, and one much smaller stops being a click target. Reduced from 8
- * alongside the pitch, since the two only look right together.
+ * At least `NODE_R`, or the first lane's portrait is clipped by the column's
+ * own left edge.
  */
-export const NODE_R = 5.5;
+export const LANE_X0 = 14;
 
-/** Stroke width of a lane line. */
-export const LANE_STROKE = 2;
+/**
+ * Radius of a commit node — the author's portrait.
+ *
+ * Seventeen pixels across, plus a 2px ring in the column's own colour: the
+ * smallest a generated face reads as a face rather than as a coloured dot,
+ * while still leaving daylight between two stacked heads at the 26px row pitch.
+ * A pixel larger and the column reads as a solid stripe of faces.
+ */
+export const NODE_R = 8.5;
+
+/**
+ * Radius of a merge node.
+ *
+ * A merge is not a person's work in the way a commit is — it is the moment two
+ * lines join — so it is drawn as a plain dot in the lane colour rather than as
+ * a face, which is what the reference does and what makes a merge findable by
+ * scanning. Half the portrait, so it reads as a smaller kind of event.
+ */
+export const MERGE_R = 4.5;
+
+/**
+ * Stroke width of a lane line.
+ *
+ * Widened with the nodes: a 2px line arriving at an 18px head looks like a
+ * thread tied to a stone. 2.5 keeps the lane readable against the graph
+ * column's own fill without turning two adjacent lanes into one band.
+ */
+export const LANE_STROKE = 2.5;
 
 /**
  * Lane columns the design specifies, and the width the column is sized for by
@@ -158,15 +182,17 @@ export const REQUESTS_DETAIL_W = 300;
  * points are expressed as fractions of ROW_PITCH so the curve keeps its shape
  * if the pitch is ever retuned.
  *
- * Shortened from 0.65/0.58 with the lane pitch. A control point that long made
- * every crossing occupy a full row, so a branch two lanes over drifted sideways
- * through three rows before it settled — the "wandering lanes" that made the
- * graph read as wider than it is. At 0.40/0.34 the curve leaves and arrives
- * vertically but reaches its new lane in the upper half of the row, which is
- * the short elbow GitKraken draws.
+ * Shortened from 0.65/0.58 with the lane pitch, then lengthened again to
+ * 0.55/0.45 when the lane pitch grew for the portraits. The two numbers move
+ * together for one reason: the elbow has to cross a wider gap in the same row,
+ * and a control point too short for the distance turns the curve into a
+ * diagonal with a visible kink at each end. At 0.55/0.45 it still leaves and
+ * arrives vertically — so it meets the straight runs cleanly — while spending
+ * most of the row on the crossing itself, which is the smooth sweep the
+ * reference draws.
  */
-export const ELBOW_C1 = ROW_PITCH * 0.4;
-export const ELBOW_C2 = ROW_PITCH * 0.34;
+export const ELBOW_C1 = ROW_PITCH * 0.55;
+export const ELBOW_C2 = ROW_PITCH * 0.45;
 
 // --- Derived --------------------------------------------------------------
 

@@ -22,6 +22,7 @@ function row(index: number, overrides: Partial<GraphRow> = {}): GraphRow {
 		short: `${index}`.padStart(7, 'a'),
 		summary: `commit ${index}`,
 		authorName: 'Ada Lovelace',
+		authorEmail: 'ada@example.com',
 		initials: 'AL',
 		// One row per day, so every row is a landmark unless a test says otherwise.
 		time: 1_700_000_000 - index * 86_400,

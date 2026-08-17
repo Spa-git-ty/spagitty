@@ -97,6 +97,37 @@ retuned in FEAT-022 against `docs/reference/gitkraken-commit-graph.md`, which
 also records what this graph deliberately will **not** do: no dragging commits,
 no inline message editing, no manual lane layout, no independent graph zoom.
 
+### Nodes, lanes and the column (FEAT-023)
+
+A node is the **author's portrait**, generated from their email — Boring
+Avatars' marble construction rebuilt over the theme's own lane palette in
+`src/lib/graph/portrait.ts`. Nothing is fetched: a picture per author would be a
+request per author on the app's most performance-sensitive screen, would hand
+the repository's committer list to whichever service was asked, and would make
+an offline repository look different from an online one. The face is a function
+of the address, so it is the same on every machine and every launch. One
+description, two renderers — canvas for the node, CSS gradients for the Author
+column — so a person has one face on the screen.
+
+A **merge is a plain dot**, not a face: it is the moment two lines join rather
+than one person's work, and putting the merge author's portrait on it would
+claim they wrote the branch it swallowed.
+
+The lane column is a **surface of its own** — `--graph-bg`, a mix of `--panel`
+and `--bg` so every palette gets one — bounded by a hairline, painted per row so
+it scrolls with the rows rather than a frame behind them.
+
+Geometry moved with the faces: node radius 8.5, lane pitch 22, stroke 2.5, elbow
+control points 0.55/0.45. A five-lane column is 129px where it was 96px. FEAT-022
+had taken it down from 150px because the graph crowded the messages; a third of
+that comes back, deliberately, because a face needs room.
+
+**Hovering dims nothing.** Hovering a branch label used to grey out every commit
+outside it and hovering a row drew a dashed ghost line to its nearest reference.
+Both fire on a pointer that is only passing through, so the screen flickered as
+the mouse crossed it. The author filter still dims, because it is a standing
+question the user typed rather than a side effect of where the pointer is.
+
 ## 1B — Diff
 
 **Built.** `src/routes/diff/+page.svelte`, `src/lib/diff/`.

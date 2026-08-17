@@ -96,6 +96,23 @@
 	--lane-5: #a6e3a1;
 }
 
+/*
+ * The graph column's own surface.
+ *
+ * Derived from the palette rather than added to it: every theme already
+ * declares `--panel` and `--bg`, and mixing them gives a column that sits a
+ * step away from the rows in whichever direction that theme's panel goes. A
+ * pair of literal colours per palette would be sixteen more values to keep in
+ * step for a shade nobody chooses deliberately.
+ *
+ * Declared once, outside the palette blocks, because `var()` resolves where it
+ * is used — a theme switch changes `--panel` and this follows.
+ */
+:root {
+	--graph-bg: color-mix(in srgb, var(--panel) 62%, var(--bg));
+	--graph-line: var(--line);
+}
+
 * {
 	box-sizing: border-box;
 }

@@ -53,6 +53,7 @@ function row(index: number, id = `${index}`.padStart(40, 'a')): GraphRow {
 		short: id.slice(0, 7),
 		summary: `commit ${index}`,
 		authorName: 'Ada Lovelace',
+		authorEmail: 'ada@example.com',
 		initials: 'AL',
 		time: 1_700_000_000 - index * 60,
 		lane: 0,

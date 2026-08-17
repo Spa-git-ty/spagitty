@@ -32,6 +32,7 @@ function graphRow(): GraphRow {
 		short: 'bbbbbbb',
 		summary: 'Rewrite line 3 in core',
 		authorName: 'Ada Lovelace',
+		authorEmail: 'ada@example.com',
 		initials: 'AL',
 		time: 1_700_000_000,
 		lane: 0,

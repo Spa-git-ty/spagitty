@@ -71,7 +71,15 @@ pub struct GraphRow {
     pub short: String,
     pub summary: String,
     pub author_name: String,
-    /// Up to two uppercase letters, drawn inside the node.
+    /// The author's email, lower-cased.
+    ///
+    /// Carried because it is what identifies a person across the several names
+    /// one human commits under, and the graph draws a portrait generated from
+    /// it. Empty when the signature has none, which git allows; the frontend
+    /// falls back to the name.
+    pub author_email: String,
+    /// Up to two uppercase letters. The fallback where a portrait cannot be
+    /// drawn, and what the Author column shows beside a message.
     pub initials: String,
     /// Author time, seconds since the unix epoch.
     pub time: i64,
@@ -334,14 +342,15 @@ where
 
         // An unparseable signature is not worth dropping a commit over; fall
         // back to the walk's own commit time, which is already known.
-        let (author_name, time) = match commit.author() {
+        let (author_name, author_email, time) = match commit.author() {
             Ok(sig) => (
                 sig.name.to_string(),
+                sig.email.to_string().to_lowercase(),
                 sig.time()
                     .map(|t| t.seconds)
                     .unwrap_or_else(|_| info.commit_time.unwrap_or(0)),
             ),
-            Err(_) => (String::new(), info.commit_time.unwrap_or(0)),
+            Err(_) => (String::new(), String::new(), info.commit_time.unwrap_or(0)),
         };
 
         let summary = commit
@@ -362,6 +371,7 @@ where
             short: short_id(&id),
             summary,
             author_name,
+            author_email,
             initials,
             time,
             lane,
@@ -738,6 +748,10 @@ mod walk_tests {
         assert_eq!(row.id, fixture.head());
         assert_eq!(row.short, fixture.head()[..7]);
         assert_eq!(row.author_name, "Ada Lovelace");
+        assert_eq!(
+            row.author_email, "ada@example.com",
+            "the portrait is generated from this, so it has to survive the walk"
+        );
         assert_eq!(row.initials, "AL");
         assert_eq!(row.parents.len(), 2, "the tip of the fixture is a merge");
         assert!(row.time > 0);

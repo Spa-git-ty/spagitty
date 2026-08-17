@@ -15,11 +15,13 @@ import {
 	ELBOW_C1,
 	ELBOW_C2,
 	LANE_STROKE,
+	MERGE_R,
 	NODE_R,
 	ROW_PITCH,
 	laneX,
 	rowCenterY
 } from '../metrics';
+import { portraitTile, seedOf } from './portrait';
 import type { GraphRow } from '../types';
 
 const TAU = Math.PI * 2;
@@ -35,8 +37,14 @@ export interface LaneDrawOptions {
 	row: (index: number) => GraphRow | undefined;
 	/** Resolved lane colors, in cycle order. */
 	colors: string[];
-	/** Color for the initials inside a node. */
-	nodeText: string;
+	/**
+	 * Colour of the ring around a portrait, and of the graph column behind it.
+	 *
+	 * The ring is painted in the *background* colour rather than the lane's, so
+	 * a head sitting on its own lane line reads as a bead on a thread rather
+	 * than as a blob the line runs into.
+	 */
+	nodeRing: string;
 	/** Lane columns the canvas is currently sized for. */
 	columns: number;
 	/** Row height in effect. `scale.pitch`, not the design constant. */
@@ -44,18 +52,16 @@ export interface LaneDrawOptions {
 	/** Interface zoom, which scales the horizontal geometry and the node. */
 	zoom?: number;
 	/**
-	 * Rows to paint at full strength while everything else fades. Null means no
-	 * highlight is running, which is not the same as an empty set — an empty set
-	 * fades every row, and that is what hovering a branch with no visible
-	 * commits would otherwise do.
+	 * Rows to paint at full strength while everything else fades. Null means
+	 * nothing is dimmed, which is not the same as an empty set — an empty set
+	 * fades every row.
+	 *
+	 * Only the author filter uses this now. Hovering a branch used to dim
+	 * everything outside it, and that came out in FEAT-023: a hover is a
+	 * pointer resting somewhere, and answering it by draining the colour out of
+	 * most of the screen makes the graph flicker as the mouse crosses it.
 	 */
 	highlight?: Set<number> | null;
-	/**
-	 * Row indices from a hovered commit up to the nearest reference — the ghost
-	 * branch. Drawn dashed, over everything, because it is an answer to a
-	 * question just asked rather than part of the history's shape.
-	 */
-	ghost?: number[];
 	/**
 	 * Rows carrying a stash, and how many. A stash is a commit hanging off the
 	 * row it was made on, so it is drawn beside that row's node rather than
@@ -77,12 +83,11 @@ export function drawLanes(options: LaneDrawOptions): void {
 		last,
 		row,
 		colors,
-		nodeText,
+		nodeRing,
 		columns,
 		pitch = ROW_PITCH,
 		zoom = 1,
 		highlight = null,
-		ghost = [],
 		stashes
 	} = options;
 
@@ -134,11 +139,8 @@ export function drawLanes(options: LaneDrawOptions): void {
 	ctx.globalAlpha = 1;
 
 	const radius = NODE_R * zoom;
-	const mono = getComputedStyle(ctx.canvas).getPropertyValue('--font-mono') || 'monospace';
-
-	ctx.textAlign = 'center';
-	ctx.textBaseline = 'middle';
-	ctx.font = `${Math.round(7 * zoom)}px ${mono}`;
+	const ratio = devicePixelRatio();
+	const tileSize = Math.max(8, Math.round(radius * 2 * ratio));
 
 	for (let i = first; i <= last; i++) {
 		const commit = row(i);
@@ -149,42 +151,95 @@ export function drawLanes(options: LaneDrawOptions): void {
 		if (y < -radius || y > height + radius) continue;
 
 		ctx.globalAlpha = alphaFor(i);
-		ctx.fillStyle = colors[commit.color % colors.length];
+		const lane = colors[commit.color % colors.length];
 
-		// A merge is a different kind of event and gets a different shape, so
-		// the two are told apart at a glance rather than by counting the lines
-		// arriving at them.
+		// A merge is the moment two lines join rather than one person's work, so
+		// it is a plain dot in the lane's colour. Giving it a face would claim
+		// the merge commit's author drew the branch it swallowed.
 		if (commit.parents.length > 1) {
-			roundedSquare(ctx, x, y, radius, radius * 0.45);
-		} else {
+			ctx.fillStyle = lane;
 			ctx.beginPath();
-			ctx.arc(x, y, radius, 0, TAU);
+			ctx.arc(x, y, MERGE_R * zoom, 0, TAU);
+			ctx.fill();
+		} else {
+			drawHead(ctx, commit, x, y, radius, tileSize, colors, lane, nodeRing);
 		}
-		ctx.fill();
-
-		ctx.fillStyle = nodeText;
-		ctx.fillText(commit.initials, x, y);
 
 		// A stash sits to the right of the commit it was made on, joined by a
 		// short stub: a diamond, so it is not mistaken for a commit at a glance.
 		const count = stashes?.get(i) ?? 0;
 		if (count > 0) {
-			const at = x + radius * 2.1;
-			ctx.strokeStyle = colors[commit.color % colors.length];
+			const at = x + radius * 1.7;
+			ctx.strokeStyle = lane;
 			ctx.lineWidth = LANE_STROKE * zoom;
 			ctx.beginPath();
 			ctx.moveTo(x + radius, y);
-			ctx.lineTo(at - radius * 0.7, y);
+			ctx.lineTo(at - radius * 0.55, y);
 			ctx.stroke();
 
-			ctx.fillStyle = colors[commit.color % colors.length];
-			diamond(ctx, at, y, radius * 0.75);
+			ctx.fillStyle = lane;
+			diamond(ctx, at, y, radius * 0.5);
 			ctx.fill();
 		}
 	}
 	ctx.globalAlpha = 1;
+}
 
-	drawGhost(ctx, ghost, row, columns, pitch, zoom, scrollTop, colors);
+/**
+ * One commit's node: the author's portrait, clipped to a circle, ringed in the
+ * column's own background colour and outlined in the lane's.
+ *
+ * The portrait comes from `portrait.ts` pre-rendered at device resolution and
+ * cached, because this runs for every visible node on every scroll frame. When
+ * a portrait cannot be produced — no 2d context, which happens in tests and in
+ * a webview that has run out of canvases — the node falls back to a filled disc
+ * in the lane colour, so the graph never loses its shape over a decoration.
+ */
+function drawHead(
+	ctx: CanvasRenderingContext2D,
+	commit: GraphRow,
+	x: number,
+	y: number,
+	radius: number,
+	tileSize: number,
+	colors: string[],
+	lane: string,
+	ring: string
+): void {
+	const tile = portraitTile(seedOf(commit.authorEmail ?? '', commit.authorName), tileSize, colors);
+
+	// The gap that separates a head from the line running behind it. Two pixels,
+	// not the lane's own stroke width — a thicker halo eats the daylight between
+	// vertically adjacent heads.
+	ctx.fillStyle = ring;
+	ctx.beginPath();
+	ctx.arc(x, y, radius + 2, 0, TAU);
+	ctx.fill();
+
+	if (tile) {
+		ctx.save();
+		ctx.beginPath();
+		ctx.arc(x, y, radius, 0, TAU);
+		ctx.clip();
+		ctx.drawImage(tile as CanvasImageSource, x - radius, y - radius, radius * 2, radius * 2);
+		ctx.restore();
+	} else {
+		ctx.fillStyle = lane;
+		ctx.beginPath();
+		ctx.arc(x, y, radius, 0, TAU);
+		ctx.fill();
+	}
+
+	ctx.strokeStyle = lane;
+	ctx.lineWidth = 2;
+	ctx.beginPath();
+	ctx.arc(x, y, radius, 0, TAU);
+	ctx.stroke();
+}
+
+/** The device pixel ratio, guarded for the environments that have no window. */
+function devicePixelRatio(): number {
+	return typeof window === 'undefined' ? 1 : Math.min(3, Math.max(1, window.devicePixelRatio || 1));
 }
 
 /**

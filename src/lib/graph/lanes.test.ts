@@ -2,7 +2,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { drawLanes, lanesNeeded, visibleRange } from './lanes';
-import { LANE_COLUMNS_MIN, NODE_R, ROW_PITCH, laneX, rowCenterY } from '../metrics';
+import { LANE_COLUMNS_MIN, MERGE_R, NODE_R, ROW_PITCH, laneX, rowCenterY } from '../metrics';
 import type { GraphRow, LaneEdge } from '../types';
 
 function row(index: number, lane = 0, edges: LaneEdge[] = []): GraphRow {
@@ -12,6 +12,7 @@ function row(index: number, lane = 0, edges: LaneEdge[] = []): GraphRow {
 		short: `${index}`.padStart(7, '0'),
 		summary: `commit ${index}`,
 		authorName: 'Ada Lovelace',
+		authorEmail: 'ada@example.com',
 		initials: 'AL',
 		time: 1_700_000_000 - index * 60,
 		lane,
@@ -135,7 +136,7 @@ function draw(rows: GraphRow[], first: number, last: number) {
 		last,
 		row: lookup(rows),
 		colors: ['red', 'green', 'blue', 'orange', 'purple'],
-		nodeText: 'white',
+		nodeRing: '#101010',
 		columns: LANE_COLUMNS_MIN
 	});
 	return { ctx, calls };
@@ -180,19 +181,40 @@ describe('drawLanes', () => {
 	});
 
 	it('draws nodes on top of the edges that reach them', () => {
+		// Every lane segment is a `lineTo` or a `bezierCurveTo`; a node is arcs.
+		// Asserting against the path commands rather than against `stroke`
+		// keeps this true now that a node strokes its own ring.
 		const rows = [row(0), row(1, 0, [{ from: 0, to: 0, color: 0 }])];
 		const { calls } = draw(rows, 0, 1);
-		const lastStroke = calls.map((c) => c.op).lastIndexOf('stroke');
-		const firstArc = calls.map((c) => c.op).indexOf('arc');
-		expect(firstArc).toBeGreaterThan(lastStroke);
+
+		const ops = calls.map((c) => c.op);
+		const lastEdge = Math.max(ops.lastIndexOf('lineTo'), ops.lastIndexOf('bezierCurveTo'));
+		expect(ops.indexOf('arc')).toBeGreaterThan(lastEdge);
 	});
 
 	it('draws one node per visible row, at its lane and row centre', () => {
 		const rows = [row(0, 0), row(1, 2), row(2, 1)];
 		const { calls } = draw(rows, 0, 2);
-		const arcs = calls.filter((c) => c.op === 'arc');
-		expect(arcs).toHaveLength(3);
-		expect(arcs[1].args.slice(0, 3)).toEqual([laneX(2), rowCenterY(1), NODE_R]);
+
+		// A head is several arcs at one centre — the ring behind it, the clip,
+		// and the outline — so the node is identified by its radius.
+		const heads = calls.filter((c) => c.op === 'arc' && c.args[2] === NODE_R);
+		const centres = new Set(heads.map((c) => `${c.args[0]},${c.args[1]}`));
+
+		expect(centres.size).toBe(3);
+		expect(centres.has(`${laneX(2)},${rowCenterY(1)}`)).toBe(true);
+	});
+
+	it('draws a merge as a plain dot rather than a face', () => {
+		// A merge is the moment two lines join, not a person's work — giving it
+		// the merge author's portrait would claim they wrote the branch it
+		// swallowed.
+		const merge = { ...row(0, 0), parents: ['a'.repeat(40), 'b'.repeat(40)] };
+		const { calls } = draw([merge, row(1, 0)], 0, 1);
+
+		const radii = calls.filter((c) => c.op === 'arc').map((c) => c.args[2]);
+		expect(radii).toContain(MERGE_R);
+		expect(radii.filter((r) => r === NODE_R).length).toBeGreaterThan(0);
 	});
 
 	it('skips a node scrolled out of the canvas', () => {
@@ -208,7 +230,7 @@ describe('drawLanes', () => {
 			last: 199,
 			row: lookup(rows),
 			colors: ['red'],
-			nodeText: 'white',
+			nodeRing: '#101010',
 			columns: LANE_COLUMNS_MIN
 		});
 		const arcs = calls.filter((c) => c.op === 'arc');

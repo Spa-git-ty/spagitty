@@ -4,8 +4,8 @@
 	import LaneCanvas from '$lib/graph/LaneCanvas.svelte';
 	import GraphHeader from '$lib/graph/GraphHeader.svelte';
 	import { lanesNeeded, visibleRange } from '$lib/graph/lanes';
-	import { ancestry, byAuthor, ghostPath, rowOfRef } from '$lib/graph/highlight';
-	import { avatarColor, initials } from '$lib/graph/avatar';
+	import { byAuthor } from '$lib/graph/highlight';
+	import { portraitBackground, seedOf } from '$lib/graph/portrait';
 	import { columns } from '$lib/graph/columns.svelte';
 	import { overlay } from '$lib/graph/overlay.svelte';
 	import { visibility } from '$lib/graph/visibility.svelte';
@@ -110,37 +110,23 @@
 	const laneWidth = $derived(laneColumnWidth(laneCount, scale.zoom));
 	const shown = $derived(columns.shown);
 
-	// --- Hover ------------------------------------------------------------
-
-	/** The branch label under the pointer, if any. Drives the highlight. */
-	let hoveredRef = $state<string | null>(null);
-	/** The row under the pointer, for the ghost branch. */
-	let hoveredRow = $state<number | null>(null);
+	// --- Dimming ----------------------------------------------------------
 
 	/**
-	 * Which rows stay bright.
+	 * Which rows stay bright. Null means nothing is dimmed, which is not the
+	 * same as an empty set — an empty set dims everything.
 	 *
-	 * A hovered branch wins over the author filter: the filter is a standing
-	 * question and the hover is one being asked right now. Null means nothing is
-	 * dimmed, which is not the same as an empty set — an empty set dims
-	 * everything.
+	 * The author filter is the only thing that dims now. Hovering a branch label
+	 * used to grey out every commit outside that branch, and hovering a row drew
+	 * a dashed ghost line up to its nearest reference; both came out in
+	 * FEAT-023. A hover is the pointer resting somewhere on its way elsewhere,
+	 * and answering it by draining the colour out of most of the screen makes
+	 * the graph flicker as the mouse crosses it. The filter is a standing
+	 * question the user typed, which is a different thing and keeps its answer.
 	 */
 	const highlight = $derived.by(() => {
 		void graph.version;
-
-		if (hoveredRef !== null) {
-			const tip = rowOfRef(hoveredRef, (i) => graph.row(i), graph.count);
-			if (tip !== null) return ancestry(tip, (i) => graph.row(i), graph.count);
-		}
-
 		return byAuthor(columns.author, (i) => graph.row(i), range.first, range.last + 1);
-	});
-
-	/** The dashed line from a bare commit to its nearest reference. */
-	const ghost = $derived.by(() => {
-		void graph.version;
-		if (hoveredRow === null || hoveredRef !== null) return [];
-		return ghostPath(hoveredRow, (i) => graph.row(i), graph.count);
 	});
 
 	/** Row index -> how many stashes hang off it. */
@@ -508,8 +494,6 @@
 						onclick={(event) => click(event, row.index)}
 						ondblclick={() => onopen?.(row.id)}
 						oncontextmenu={(event) => openMenu(event, 'Commit', commitMenu(row))}
-						onmouseenter={() => (hoveredRow = row.index)}
-						onmouseleave={() => (hoveredRow = null)}
 					>
 						{#each shown as column (column.id)}
 							{#if column.id === 'refs'}
@@ -541,8 +525,6 @@
 												if (chip.kind !== 'tag') act.checkoutBranch(chip.name);
 											}}
 											oncontextmenu={(event) => openMenu(event, 'Reference', refMenu(chip, row))}
-											onmouseenter={() => (hoveredRef = chip.name)}
-											onmouseleave={() => (hoveredRef = null)}
 										>
 											<RefChip {chip} />
 										</span>
@@ -563,11 +545,19 @@
 								</div>
 							{:else if column.id === 'author'}
 								<div class="cell text author" style="width: {column.width}px">
+									<!--
+										The same portrait the node carries, from the same
+										seed — one face per person on the screen, so the
+										author column and the graph agree about who is who.
+									-->
 									<span
 										class="avatar"
-										style="background: {avatarColor(row.authorName)}"
-										aria-hidden="true">{initials(row.authorName)}</span
-									>
+										style="background: {portraitBackground(
+											seedOf(row.authorEmail, row.authorName)
+										)}"
+										title={row.authorEmail || row.authorName}
+										aria-hidden="true"
+									></span>
 									<span class="ellipsis" title={row.authorName}>{row.authorName}</span>
 								</div>
 							{:else if column.id === 'time'}
@@ -593,7 +583,6 @@
 			height={viewportHeight}
 			columns={laneCount}
 			{highlight}
-			{ghost}
 			stashes={stashRows}
 		/>
 	</div>
@@ -652,6 +641,21 @@
 
 	.row.stripe {
 		background: var(--stripe);
+	}
+
+	/*
+	 * The graph is a surface of its own, not a gap between two columns.
+	 *
+	 * Each row paints its own slice of it, which is what keeps the fill aligned
+	 * with the rows as they are translated during a scroll — a single element
+	 * behind the scroller would have to be positioned against `scrollTop` by
+	 * hand and would lag it by a frame. The canvas draws on top of these slices.
+	 */
+	.lane-space {
+		background: var(--graph-bg);
+		box-shadow:
+			inset 1px 0 0 var(--graph-line),
+			inset -1px 0 0 var(--graph-line);
 	}
 
 	.row:hover {
@@ -742,16 +746,18 @@
 		Sized in `em` so the disc tracks the text-size dial rather than staying a
 		fixed dot beside text that grew around it.
 	*/
+	/*
+	 * A portrait, not initials: the background is a set of radial gradients from
+	 * `portrait.ts`, so there is nothing to centre inside it and nothing to
+	 * read. The ring is the row's own colour, which keeps a light portrait from
+	 * bleeding into a light row.
+	 */
 	.avatar {
 		flex: none;
-		display: grid;
-		place-items: center;
-		width: 1.5em;
-		height: 1.5em;
+		width: 1.6em;
+		height: 1.6em;
 		border-radius: 50%;
-		font-size: 0.75em;
-		letter-spacing: 0;
-		color: var(--on-accent);
+		box-shadow: 0 0 0 1px var(--line);
 	}
 
 	.wip {
