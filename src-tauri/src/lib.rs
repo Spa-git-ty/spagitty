@@ -8,6 +8,7 @@
 
 mod about;
 mod clone_worker;
+mod command_log;
 mod commands;
 mod graph_worker;
 mod recents;
@@ -76,7 +77,15 @@ pub fn run() {
             commands::settings,
             commands::set_settings,
             commands::launch_path,
+            commands::git_commands,
+            commands::clear_git_commands,
         ])
+        .setup(|app| {
+            // Registered before any command can run, so the first execution of
+            // the session is already being forwarded.
+            command_log::forward_to(app.handle().clone());
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("starting GitLord");
 }

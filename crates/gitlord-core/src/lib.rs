@@ -15,6 +15,11 @@
 //! to the `git` binary instead. That is the entire contents of [`shell`], and it
 //! is the only module in this crate that spawns a process. See its header for
 //! which operations and why.
+//!
+//! Because there is exactly one such module, there is exactly one place that
+//! knows what was executed: [`record`] holds it, written by [`shell`] as it
+//! spawns, and read by the Settings toggle "Show the git command behind each
+//! action".
 
 pub mod blame;
 pub mod branches;
@@ -26,6 +31,7 @@ pub mod graph;
 pub mod identity;
 pub mod ops;
 pub mod rebase;
+pub mod record;
 pub mod refs;
 pub mod repo;
 pub mod search;

@@ -36,28 +36,104 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Instant;
 
 use crate::error::{Error, Result};
+use crate::record::{self, Outcome};
 
-/// Run `git` in `repo` and return stdout on success.
+/// Build the `git` command every function here spawns.
 ///
-/// `GIT_TERMINAL_PROMPT=0` stops git from blocking on a tty prompt we have no
-/// terminal for — credential requests must come back to us as a failure so the
-/// UI can ask, rather than hanging the app forever.
-fn run(repo: &Path, args: &[&str]) -> Result<String> {
-    let output = Command::new("git")
+/// One place, so the invariants hold for all of them: the working directory is
+/// the repository, and `GIT_TERMINAL_PROMPT=0` stops git blocking on a tty
+/// prompt we have no terminal for — credential requests must come back as a
+/// failure the UI can act on, rather than hanging the app forever.
+fn command(repo: &Path, args: &[&str]) -> Command {
+    let mut command = Command::new("git");
+    command
         .current_dir(repo)
         .args(args)
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .output()?;
+        .env("GIT_TERMINAL_PROMPT", "0");
+    command
+}
+
+/// Run a prepared command to completion, record what happened, and turn a
+/// non-zero exit into [`Error::Git`].
+///
+/// Every spawn in this module ends here or in [`record_spawn`], which is what
+/// makes [`crate::record`] a record of what ran rather than of what someone
+/// remembered to log. Adding a spawn that bypasses both is the one mistake this
+/// shape is meant to make obvious.
+fn finish(mut command: Command, args: &[&str]) -> Result<String> {
+    let started = Instant::now();
+    let output = command.output();
+    let elapsed = started.elapsed().as_millis() as u64;
+
+    let output = match output {
+        Ok(output) => output,
+        Err(error) => {
+            // git missing from PATH, or the repository gone from under us. It
+            // never ran, and that is worth showing in the log too — an empty
+            // log next to a failed operation reads as "GitLord did nothing".
+            record::push(
+                args,
+                Outcome::Failed {
+                    code: None,
+                    stderr: error.to_string(),
+                },
+                elapsed,
+            );
+            return Err(error.into());
+        }
+    };
 
     if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        record::push(
+            args,
+            Outcome::Failed {
+                code: output.status.code(),
+                stderr: stderr.clone(),
+            },
+            elapsed,
+        );
         return Err(Error::Git {
             command: args.join(" "),
-            stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            stderr,
         });
     }
+
+    record::push(args, Outcome::Ok, elapsed);
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+/// Spawn a prepared command without waiting, and record it as started.
+///
+/// Only [`clone_start`] uses this: a clone runs for minutes and is cancellable,
+/// so waiting for its outcome before recording would hide the one command the
+/// user is most likely to be asking about while it runs.
+fn record_spawn(mut command: Command, args: &[&str]) -> Result<std::process::Child> {
+    match command.spawn() {
+        Ok(child) => {
+            record::push(args, Outcome::Started, 0);
+            Ok(child)
+        }
+        Err(error) => {
+            record::push(
+                args,
+                Outcome::Failed {
+                    code: None,
+                    stderr: error.to_string(),
+                },
+                0,
+            );
+            Err(error.into())
+        }
+    }
+}
+
+/// Run `git` in `repo` and return stdout on success.
+fn run(repo: &Path, args: &[&str]) -> Result<String> {
+    finish(command(repo, args), args)
 }
 
 /// The `git` version on PATH, or an error if there is no usable `git`.
@@ -74,10 +150,8 @@ fn run_with_stdin(repo: &Path, args: &[&str], input: &str) -> Result<String> {
     use std::io::Write;
     use std::process::Stdio;
 
-    let mut child = Command::new("git")
-        .current_dir(repo)
-        .args(args)
-        .env("GIT_TERMINAL_PROMPT", "0")
+    let started = Instant::now();
+    let mut child = command(repo, args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -91,12 +165,25 @@ fn run_with_stdin(repo: &Path, args: &[&str], input: &str) -> Result<String> {
     }
 
     let output = child.wait_with_output()?;
+    let elapsed = started.elapsed().as_millis() as u64;
+
     if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        record::push(
+            args,
+            Outcome::Failed {
+                code: output.status.code(),
+                stderr: stderr.clone(),
+            },
+            elapsed,
+        );
         return Err(Error::Git {
             command: args.join(" "),
-            stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            stderr,
         });
     }
+
+    record::push(args, Outcome::Ok, elapsed);
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
@@ -279,14 +366,28 @@ pub fn unset_config(repo: &Path, scope: &str, key: &str) -> Result<()> {
 pub fn clone_start(url: &str, destination: &Path) -> Result<std::process::Child> {
     use std::process::Stdio;
 
-    Ok(Command::new("git")
-        .args(["clone", "--progress", "--recurse-submodules", "--", url])
-        .arg(destination)
+    // The one command with no repository to run in — it is what creates one —
+    // so it is built by hand rather than through `command`, and the working
+    // directory is left as the process's own.
+    let into = destination.to_string_lossy().into_owned();
+    let args = [
+        "clone",
+        "--progress",
+        "--recurse-submodules",
+        "--",
+        url,
+        &into,
+    ];
+
+    let mut command = Command::new("git");
+    command
+        .args(args)
         .env("GIT_TERMINAL_PROMPT", "0")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?)
+        .stderr(Stdio::piped());
+
+    record_spawn(command, &args)
 }
 
 /// Who last touched each line, as `--line-porcelain`.
@@ -443,21 +544,14 @@ pub fn rebase(repo: &Path, onto: &str, upstream: &str, branch: &str) -> Result<(
 /// screen's preview already shows will happen.
 pub fn rebase_interactive(repo: &Path, upstream: &str, todo: &str) -> Result<()> {
     let scripts = SequenceScripts::write(repo, todo)?;
+    let args = ["rebase", "--interactive", upstream];
 
-    let output = Command::new("git")
-        .current_dir(repo)
-        .args(["rebase", "--interactive", upstream])
-        .env("GIT_TERMINAL_PROMPT", "0")
+    let mut command = command(repo, &args);
+    command
         .env("GIT_SEQUENCE_EDITOR", scripts.sequence_editor())
-        .env("GIT_EDITOR", scripts.message_editor())
-        .output()?;
+        .env("GIT_EDITOR", scripts.message_editor());
 
-    if !output.status.success() {
-        return Err(Error::Git {
-            command: format!("rebase --interactive {upstream}"),
-            stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
-        });
-    }
+    finish(command, &args)?;
     Ok(())
 }
 
@@ -723,6 +817,87 @@ mod tests {
             crate::clone::progress(noise.lines().next().unwrap_or_default()).is_some(),
             "git said nothing: {noise:?}"
         );
+    }
+
+    #[test]
+    fn every_execution_reaches_the_record_with_the_flags_this_module_added() {
+        let _gate = crate::record::test_gate();
+        // The point of recording here rather than in a screen: `--prune` and
+        // `--all` are added on the way down, and a screen reporting "git fetch"
+        // would be describing a command nobody ran.
+        let fixture = Fixture::woven();
+        let before = crate::record::recent(0).last().map_or(0, |entry| entry.seq);
+
+        let _ = fetch(fixture.path(), "");
+
+        let entry = crate::record::recent(before)
+            .into_iter()
+            .find(|entry| entry.argv.get(1).map(String::as_str) == Some("fetch"))
+            .expect("the fetch was recorded");
+
+        assert_eq!(entry.line(), "git fetch --prune --progress --all");
+    }
+
+    #[test]
+    fn a_failing_command_is_recorded_with_its_exit_code_and_gits_words() {
+        let _gate = crate::record::test_gate();
+        let fixture = Fixture::empty();
+        let before = crate::record::recent(0).last().map_or(0, |entry| entry.seq);
+
+        let _ = run(
+            fixture.path(),
+            &["rev-parse", "--verify", "refs/heads/nope"],
+        );
+
+        let entry = crate::record::recent(before)
+            .into_iter()
+            .find(|entry| entry.argv.contains(&"refs/heads/nope".to_string()))
+            .expect("the failure was recorded");
+
+        match entry.outcome {
+            crate::record::Outcome::Failed { code, stderr } => {
+                assert_eq!(code, Some(128), "git's own exit code is kept");
+                assert!(!stderr.is_empty(), "git's message is kept");
+            }
+            other => panic!("expected a failure, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_clone_is_recorded_at_spawn_with_its_credentials_removed() {
+        let _gate = crate::record::test_gate();
+        // Nothing waits for a clone, so the record cannot wait either — and the
+        // URL is the one argument in GitLord that can carry a live secret.
+        let source = Fixture::woven();
+        let into = tempfile::tempdir().expect("temp dir");
+        let before = crate::record::recent(0).last().map_or(0, |entry| entry.seq);
+
+        // A URL git will fail on, which is fine: the record is written at spawn
+        // and the failure arrives later, on the child nobody is waiting for.
+        let url = format!(
+            "https://maxmya:ghp_secret@example.invalid{}",
+            source.path().display()
+        );
+        let mut child = clone_start(&url, &into.path().join("project")).expect("git was spawned");
+
+        let entry = crate::record::recent(before)
+            .into_iter()
+            .find(|entry| entry.argv.get(1).map(String::as_str) == Some("clone"))
+            .expect("the clone was recorded");
+
+        assert_eq!(entry.outcome, crate::record::Outcome::Started);
+        assert!(
+            !entry.line().contains("ghp_secret"),
+            "a credential reached the log: {}",
+            entry.line()
+        );
+        assert!(
+            entry.line().contains("maxmya:***@example.invalid"),
+            "the URL stopped being recognisable: {}",
+            entry.line()
+        );
+
+        let _ = child.wait();
     }
 
     #[test]

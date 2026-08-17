@@ -8,6 +8,8 @@
 	import * as api from '$lib/api';
 	import CloneModal from '$lib/clone/CloneModal.svelte';
 	import { clone } from '$lib/clone/store.svelte';
+	import CommandLog from '$lib/commandlog/CommandLog.svelte';
+	import { commandLog } from '$lib/commandlog/store.svelte';
 	import NavRail from '$lib/chrome/NavRail.svelte';
 	import ResizeEdges from '$lib/chrome/ResizeEdges.svelte';
 	import TitleBar from '$lib/chrome/TitleBar.svelte';
@@ -20,6 +22,7 @@
 	import { panels } from '$lib/panels.svelte';
 	import { repo } from '$lib/repo.svelte';
 	import { scale } from '$lib/scale.svelte';
+	import { settings } from '$lib/settings/store.svelte';
 	import Dialog from '$lib/ui/Dialog.svelte';
 	import Notice from '$lib/ui/Notice.svelte';
 	import Splitter from '$lib/ui/Splitter.svelte';
@@ -53,6 +56,16 @@
 			// A clone survives navigation, so its listener belongs to the shell
 			// rather than to whichever screen started it.
 			cleanups.push(await clone.attach());
+			// Recording starts with the app, not with the panel: turning the
+			// toggle on mid-session should show what has already run.
+			cleanups.push(await commandLog.attach());
+
+			// The toggles are read once, here, rather than by the Settings
+			// screen alone. Everything that consults them — the confirmation
+			// before a history rewrite, the command log — is reachable without
+			// ever opening Settings, and until this read lands they answer from
+			// the defaults instead of from what the user chose.
+			settings.load();
 
 			const off: UnlistenFn = await listen<RepoChangedEvent>(
 				REPO_CHANGED_EVENT,
@@ -173,6 +186,12 @@
 -->
 <Dialog />
 <Notice />
+
+<!--
+	The record of what GitLord ran. Mounted by the shell for the same reason as
+	the dialog: a command started on one screen finishes wherever the user is.
+-->
+<CommandLog />
 
 <!-- The window is undecorated, so it provides its own resize edges. -->
 <ResizeEdges />

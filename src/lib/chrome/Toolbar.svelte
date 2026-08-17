@@ -2,7 +2,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { clone } from '$lib/clone/store.svelte';
+	import { commandLog } from '$lib/commandlog/store.svelte';
 	import { repo } from '$lib/repo.svelte';
+	import { settings } from '$lib/settings/store.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 
 	const head = $derived(repo.info?.head ?? null);
@@ -83,6 +85,23 @@
 			<span>{action.label}</span>
 		</button>
 	{/each}
+
+	<!--
+		Only when the toggle is on. The feature is opt-in, and a button for it
+		sitting in the chrome of every session would be a second, quieter answer
+		to a question Settings already asks.
+	-->
+	{#if settings.settings.showGitCommands}
+		<span class="vr" style="height: 26px"></span>
+		<button
+			class="tool"
+			title="What GitLord has run"
+			aria-pressed={commandLog.open}
+			onclick={() => commandLog.toggle()}
+		>
+			<span aria-hidden="true">≡</span><span>Commands</span>
+		</button>
+	{/if}
 
 	<span class="spacer"></span>
 

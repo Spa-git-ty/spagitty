@@ -15,12 +15,14 @@
 
 import { goto } from '$app/navigation';
 
+import { commandLog } from '$lib/commandlog/store.svelte';
 import { fetchAll, pushCurrent } from '$lib/graph/actions';
 import { columns, type ColumnId } from '$lib/graph/columns.svelte';
 import { visibility } from '$lib/graph/visibility.svelte';
 import { palette, type Command } from '$lib/palette/store.svelte';
 import { repo } from '$lib/repo.svelte';
 import { scale } from '$lib/scale.svelte';
+import { settings } from '$lib/settings/store.svelte';
 import { theme } from '$lib/theme.svelte';
 
 /** The modifier as this platform writes it. Display only. */
@@ -184,6 +186,21 @@ function repository(): Command[] {
 			keywords: ['upload', 'publish', 'remote'],
 			run: () => pushCurrent()
 		}),
+		{
+			id: 'repo.commands',
+			title: 'Show git commands',
+			group: 'Repository',
+			keywords: ['log', 'transcript', 'what ran', 'cli'],
+			// Gated on the Settings toggle rather than hidden: a command listed with
+			// the reason it cannot run is how the palette says the feature exists and
+			// where it is turned on.
+			enabled: () => settings.settings.showGitCommands,
+			unavailable: () =>
+				settings.settings.showGitCommands
+					? null
+					: 'Turn on \u201cShow the git command behind each action\u201d in Settings',
+			run: () => commandLog.toggle()
+		},
 		repoCommand({
 			id: 'repo.refresh',
 			title: 'Refresh repository',

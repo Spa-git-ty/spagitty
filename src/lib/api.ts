@@ -18,6 +18,7 @@ import type {
 	ConflictSides,
 	ConflictState,
 	DiffSide,
+	ExecutedCommand,
 	FileDiff,
 	Identity,
 	IdentityKey,
@@ -372,4 +373,19 @@ export function fetch(remote = ''): Promise<string> {
 /** Push. `force` is `--force-with-lease`, never a plain force. */
 export function push(remote = '', refspec = '', force = false): Promise<string> {
 	return invoke('push', { remote, refspec, force });
+}
+
+/**
+ * Every `git` command GitLord has run since `since`, oldest first.
+ *
+ * New ones also arrive as `git-command` events; this is the catch-up read for
+ * what ran before the panel was opened.
+ */
+export function gitCommands(since = 0): Promise<ExecutedCommand[]> {
+	return invoke('git_commands', { since });
+}
+
+/** Forget the recorded commands. */
+export function clearGitCommands(): Promise<void> {
+	return invoke('clear_git_commands');
 }

@@ -2,8 +2,12 @@
 
 # FEAT-020 — Show the git command behind each action
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
-**Screen:** every screen that writes; the toggle is on Settings (1K).
+**Status:** Built. Plan in `agile/plans/FEAT-020-plan.md`, tests in
+`agile/testing/FEAT-020-automated.md` and `agile/testing/FEAT-020-sweep.md`.
+Branch `feature/FEAT-020-show-git-commands`, cut from FEAT-022's tip because the
+operations it records were added there.
+**Screen:** every screen that writes; the toggle is on Settings (1K), and the
+panel is opened from the toolbar or the command palette.
 
 ## Problem
 
@@ -47,3 +51,42 @@ back out to the UI is a design decision rather than a string.
 ## Dependencies
 
 FEAT-011 (the toggle).
+
+## What was built
+
+- `crates/gitlord-core/src/record.rs` — a process-wide ring buffer of the last
+  200 executions (argv, outcome, exit code, duration), written by `shell.rs`
+  itself. Every spawn now goes through `shell::finish` or `shell::record_spawn`,
+  so a spawn added later cannot bypass the record.
+- Credentials in a URL are stripped **on the way into** the buffer
+  (`record::redact`), never on the way out, so an entry never holds the secret.
+- A clone is recorded at spawn as `started`: nothing waits for it, and a record
+  that waited would appear minutes after the user asked what was running.
+- `src-tauri/src/command_log.rs` forwards each entry as the `git-command` event;
+  `git_commands(since)` is the catch-up read.
+- `src/lib/commandlog/` — the store and the drawer, mounted once by the shell,
+  reached from a toolbar button and the palette, both gated on the toggle.
+- The shell now reads the settings on start. Until this change the toggles were
+  read only when the Settings screen mounted, so anything else consulting them —
+  including the confirmation before a history rewrite — answered from the
+  defaults.
+
+## Acceptance criteria
+
+1. With the toggle off, nothing about the app changes and the panel cannot be
+   reached. ✔
+2. With it on, a Commands button appears and lists what has run this session,
+   including what ran before the toggle was flipped. ✔
+3. The line shown is the command as spawned, with the flags the shell layer
+   added — `git fetch --prune --progress --all`, not `git fetch`. ✔
+4. A failed command shows its exit code and git's own stderr. ✔
+5. A clone's URL never shows its credentials. ✔
+6. The panel states that reads are answered in-process and run no command. ✔
+7. Reading history, refs, diffs or status produces no entries. ✔
+
+## Not built, deliberately
+
+- Re-running or editing a command from the log (non-scope, above).
+- Persisting the log across restarts: this is a window on the current session.
+- A *predicted* command shown before an action runs. That is a different claim
+  from a record of what ran, and would need its own item.

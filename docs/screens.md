@@ -374,10 +374,24 @@ an unset one falls back to the next scope, which is what "clear" means.
 
 **A toggle that does nothing yet says so.** The three behaviour toggles persist
 in GitLord's own config directory beside the repository list, with the same
-lenient-parse-or-default treatment for the same reason. None of them is honoured
-yet, and each names the item that will honour it — FEAT-019, FEAT-015,
-FEAT-020. Narrowing the claim to the truth is better than a switch that silently
-does nothing.
+lenient-parse-or-default treatment for the same reason. A toggle that is not
+honoured yet names the item that will honour it — signing is still waiting on
+FEAT-019 — because narrowing the claim to the truth is better than a switch that
+silently does nothing.
+
+**"Show the git command behind each action" is honoured** (FEAT-020). It adds a
+Commands button to the toolbar and a palette command; both open a drawer listing
+what GitLord actually ran, newest first, with the exit code and git's own stderr
+under anything that failed. The lines come from `record.rs`, written by the
+module that spawns the process, so the panel shows the flags the shell layer
+added rather than what a screen believed it asked for. Reads are absent and the
+drawer says why: history, refs, diffs and status are answered in-process and
+have no command line at all.
+
+The toggles are read by the shell on start, not only by this screen. Everything
+that consults them — the confirmation before a history rewrite, the command
+log — is reachable without ever opening Settings, and before that read landed
+they answered from the defaults instead of from what the user chose.
 
 **About carries the GPL-3 obligations**, and they were never deferred: the
 version, the license, the commit stamped in at build time, and the trademark

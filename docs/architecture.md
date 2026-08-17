@@ -155,6 +155,39 @@ process.
 
 `gix` is MIT/Apache-2.0, which links cleanly into a GPL-3 program.
 
+### What ran, recorded at the boundary
+
+Because there is one module that spawns, there is one place that knows what was
+executed. `crates/gitlord-core/src/record.rs` holds it: a process-wide ring
+buffer of the last 200 executions, written by `shell.rs` itself as each command
+finishes — argv, outcome, exit code, duration.
+
+That location is the whole point of the feature. A screen composing its own
+"the command behind this button" string would be describing what it *asked
+for*: it would not know that a fetch carries `--prune --progress`, that a force
+push is `--force-with-lease`, or that reverting a merge gained `-m 1` on the way
+down. The record is written where the process is started, so it is evidence
+rather than a claim, and every spawn goes through `shell::finish` or
+`shell::record_spawn` so a new one cannot quietly skip it.
+
+Two consequences worth stating:
+
+- **Reads are absent, deliberately.** Log walking, refs, diff and status are
+  in-process and have no command line. Nothing is synthesised for them, and the
+  panel says so — inventing a `git log` GitLord never ran would teach the user
+  an invocation that does not exist.
+- **Credentials are removed on the way in, not on the way out.** A clone URL can
+  carry a token (`https://user:token@host/repo.git`), so `record::redact` strips
+  the userinfo before the entry is stored. An entry that never held the secret
+  cannot leak it through the copy button or a later reader who assumes display
+  was doing the work.
+
+`src-tauri/src/command_log.rs` registers the one observer at startup and
+forwards each entry as the `git-command` event; `commands::git_commands(since)`
+is the catch-up read for what happened before the panel was opened. The webview
+side is `src/lib/commandlog/`, mounted once by the shell, revealed by the
+Settings toggle "Show the git command behind each action" (FEAT-020).
+
 ## Data flow: opening a repository
 
 1. `repo.open(path)` calls `open_repo`.

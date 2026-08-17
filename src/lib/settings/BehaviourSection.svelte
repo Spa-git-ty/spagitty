@@ -29,8 +29,11 @@
 		{
 			key: 'showGitCommands',
 			label: 'Show the git command behind each action',
-			what: 'Print the equivalent command line for every action GitLord performs.',
-			pending: 'FEAT-020 — actions do not report their command yet.'
+			// Not "the equivalent command line": what is shown is the command that
+			// ran, recorded where it was spawned. Reads never run one, and the
+			// panel says so rather than inventing one.
+			what: 'Adds a Commands panel listing every git command GitLord executes.',
+			pending: null
 		}
 	];
 </script>

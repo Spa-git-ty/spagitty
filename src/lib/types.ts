@@ -713,6 +713,34 @@ export interface RepoChangedEvent {
 	worktree: boolean;
 }
 
+/**
+ * How one executed `git` command ended.
+ *
+ * `started` is a clone: nothing waits for it, so its outcome arrives long after
+ * the line is worth showing.
+ */
+export type CommandOutcome =
+	| { kind: 'ok' }
+	| { kind: 'failed'; code: number | null; stderr: string }
+	| { kind: 'started' };
+
+/**
+ * One `git` command GitLord actually ran, recorded at the spawn site.
+ *
+ * Reads are absent by design: log walking, refs, diff and status happen
+ * in-process and have no command line. Nothing is invented for them.
+ */
+export interface ExecutedCommand {
+	/** Monotonic within the app's run. Used to ask for everything newer. */
+	seq: number;
+	atMs: number;
+	/** The whole command, `git` first, with any URL credentials already removed. */
+	argv: string[];
+	outcome: CommandOutcome;
+	/** Wall time in milliseconds. Zero for a command that was only started. */
+	durationMs: number;
+}
+
 export const CLONE_PROGRESS_EVENT = 'clone-progress';
 export const CLONE_DONE_EVENT = 'clone-done';
 export const SEARCH_ROWS_EVENT = 'search-rows';
@@ -720,3 +748,4 @@ export const SEARCH_DONE_EVENT = 'search-done';
 export const GRAPH_ROWS_EVENT = 'graph-rows';
 export const GRAPH_DONE_EVENT = 'graph-done';
 export const REPO_CHANGED_EVENT = 'repo-changed';
+export const GIT_COMMAND_EVENT = 'git-command';

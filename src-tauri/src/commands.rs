@@ -17,6 +17,7 @@ use gitlord_core::graph::ROW_PITCH;
 use gitlord_core::identity::{self, Identity, Key, Scope};
 use gitlord_core::ops::{self, Integration, ResetMode, StashAction};
 use gitlord_core::rebase::{self, Edit, Preview, Todo};
+use gitlord_core::record::{self, Executed};
 use gitlord_core::refs::RefIndex;
 use gitlord_core::repo::{self, RepoInfo, RepoSummary};
 use gitlord_core::search::Query;
@@ -124,7 +125,13 @@ pub fn open_repo(app: AppHandle, state: State<'_, AppState>, path: PathBuf) -> R
     let git_dir = local.git_dir().to_path_buf();
 
     let token = state.next_token.fetch_add(1, Ordering::Relaxed);
-    let graph = graph_worker::spawn(app.clone(), info.path.clone(), token, Vec::new(), Vec::new());
+    let graph = graph_worker::spawn(
+        app.clone(),
+        info.path.clone(),
+        token,
+        Vec::new(),
+        Vec::new(),
+    );
     let watcher = watch::watch(app.clone(), &git_dir);
 
     // Opening is the only way a repository joins the list. GitLord never goes
@@ -464,8 +471,7 @@ pub fn rebase_onto(
 /// Check out a commit with no branch attached.
 #[tauri::command]
 pub fn checkout_detached(state: State<'_, AppState>, revision: String) -> Result<()> {
-    state
-        .with_session(|session| ops::checkout_detached(&session.repo.to_thread_local(), &revision))
+    state.with_session(|session| ops::checkout_detached(&session.repo.to_thread_local(), &revision))
 }
 
 /// Rename a local branch.
@@ -501,11 +507,7 @@ pub fn delete_tag(state: State<'_, AppState>, name: String) -> Result<()> {
 
 /// Apply, pop or drop a stash entry.
 #[tauri::command]
-pub fn stash_action(
-    state: State<'_, AppState>,
-    index: usize,
-    action: StashAction,
-) -> Result<()> {
+pub fn stash_action(state: State<'_, AppState>, index: usize, action: StashAction) -> Result<()> {
     state.with_session(|session| ops::stash(&session.repo.to_thread_local(), index, action))
 }
 
@@ -654,6 +656,22 @@ pub fn forget_repo(app: AppHandle, path: PathBuf) {
 #[tauri::command]
 pub fn close_repo(state: State<'_, AppState>) {
     *state.session.lock().expect("session lock") = None;
+}
+
+/// Every `git` command GitLord has executed since `since`, oldest first.
+///
+/// The panel subscribes to [`crate::command_log::EXECUTED_EVENT`] for new
+/// entries, so this is the catch-up call: what ran before the panel was opened,
+/// or while the webview was reloading. `since` of 0 is everything still held.
+#[tauri::command]
+pub fn git_commands(since: u64) -> Vec<Executed> {
+    record::recent(since)
+}
+
+/// Forget the recorded commands. The user's action, from the panel.
+#[tauri::command]
+pub fn clear_git_commands() {
+    record::clear();
 }
 
 #[tauri::command]

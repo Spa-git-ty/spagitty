@@ -6,7 +6,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto }));
 
+// Only `settings` is replaced: the rest of the API surface is what the other
+// commands in this file call, and stubbing it wholesale would test the stub.
+vi.mock('$lib/api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/api')>()),
+	inTauri: () => true,
+	settings: () => Promise.resolve(toggles),
+	identity: () => Promise.reject(new Error('not under test')),
+	licenses: () => Promise.reject(new Error('not under test')),
+	about: () => Promise.reject(new Error('not under test'))
+}));
+
+let toggles = { signCommits: false, confirmHistoryRewrite: true, showGitCommands: false };
+
 import { registerCommands } from './commands';
+import { settings } from '../settings/store.svelte';
 import { palette } from './store.svelte';
 import { columns } from '../graph/columns.svelte';
 import { scale } from '../scale.svelte';
@@ -52,6 +66,21 @@ describe('registerCommands', () => {
 		const fetch = find('repo.fetch');
 		expect(fetch.enabled?.()).toBe(false);
 		expect(fetch.unavailable?.()).toBe('No repository open');
+	});
+
+	it('offers the command log only once the Settings toggle is on', async () => {
+		toggles = { ...toggles, showGitCommands: false };
+		await settings.load();
+
+		const command = find('repo.commands');
+		expect(command.enabled?.()).toBe(false);
+		expect(command.unavailable?.()).toContain('Settings');
+
+		toggles = { ...toggles, showGitCommands: true };
+		await settings.load();
+
+		expect(command.enabled?.()).toBe(true);
+		expect(command.unavailable?.()).toBeNull();
 	});
 
 	it('leaves navigation enabled without a repository', () => {

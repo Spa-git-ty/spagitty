@@ -91,12 +91,7 @@ pub fn integrate(repo: &gix::Repository, source: &str, how: Integration) -> Resu
 /// `upstream` bounds what moves. When it is empty the whole branch moves, which
 /// is the plain "rebase this onto that". When it is a commit, only what is
 /// *after* it moves, which is the graph's "rebase these N commits onto".
-pub fn rebase_onto(
-    repo: &gix::Repository,
-    onto: &str,
-    upstream: &str,
-    branch: &str,
-) -> Result<()> {
+pub fn rebase_onto(repo: &gix::Repository, onto: &str, upstream: &str, branch: &str) -> Result<()> {
     let workdir = workdir(repo)?;
     if upstream.is_empty() {
         shell::rebase(workdir, "", onto, branch)
@@ -135,12 +130,7 @@ pub fn delete_branch(repo: &gix::Repository, name: &str, force: bool) -> Result<
 }
 
 /// Create a tag at `target`, annotated when `message` is not empty.
-pub fn create_tag(
-    repo: &gix::Repository,
-    name: &str,
-    target: &str,
-    message: &str,
-) -> Result<()> {
+pub fn create_tag(repo: &gix::Repository, name: &str, target: &str, message: &str) -> Result<()> {
     shell::create_tag(workdir(repo)?, name, target, message)
 }
 
