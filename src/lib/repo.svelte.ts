@@ -9,6 +9,7 @@
 
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import * as api from './api';
+import { workspace } from './workspace.svelte';
 import type { RepoCounts, RepoInfo } from './types';
 
 const NO_COUNTS: RepoCounts = {
@@ -65,6 +66,10 @@ export const repo = {
 			counts = result.counts;
 			token = result.token;
 			generation += 1;
+			// Every way into a repository lands here — the tab strip, the All
+			// repositories screen, the launch argument, a finished clone — so
+			// this is the one place that has to record it as open.
+			workspace.opened(result.info.path);
 			return true;
 		} catch (e) {
 			error = String(e);

@@ -27,6 +27,7 @@
 	import Notice from '$lib/ui/Notice.svelte';
 	import Splitter from '$lib/ui/Splitter.svelte';
 	import { theme } from '$lib/theme.svelte';
+	import { workspace } from '$lib/workspace.svelte';
 	import { REPO_CHANGED_EVENT, type RepoChangedEvent } from '$lib/types';
 
 	let { children } = $props();
@@ -42,6 +43,8 @@
 		scale.init();
 		// After the metrics, so stored panel widths win over the defaults.
 		panels.init();
+		// The tab strip, before anything can open a repository into it.
+		workspace.init();
 		registerCommands();
 
 		if (!api.inTauri()) return;

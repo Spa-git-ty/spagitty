@@ -1,11 +1,20 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+
 	import { appWindow } from '$lib/chrome/window';
-	import { repo } from '$lib/repo.svelte';
-	import RefChip from '$lib/ui/RefChip.svelte';
+	import RepoTabs from '$lib/chrome/RepoTabs.svelte';
 	import { version } from '$lib/version';
 
-	const head = $derived(repo.info?.head ?? null);
+	/**
+	 * The title bar is the workspace bar: what this program is, the way back to
+	 * every repository, and the ones open right now.
+	 *
+	 * The branch used to be here as a chip. It is on the toolbar's branch picker
+	 * one row below and on the active tab, and three copies of one fact is two
+	 * too many — so the bar says the name of the program and gets out of the way.
+	 */
 
 	/**
 	 * The window has no platform decorations, so these are the only close,
@@ -33,16 +42,22 @@
 	tabindex="-1"
 	aria-label="Window"
 >
-	<span class="name">{repo.info?.name ?? 'GitLord'}</span>
+	<span class="name">GitLord</span>
 
-	{#if head}
-		<span class="muted" aria-hidden="true">·</span>
-		{#if head.branch}
-			<RefChip chip={{ name: head.branch, kind: 'branch', current: true }} />
-		{:else if head.short}
-			<RefChip chip={{ name: `detached at ${head.short}`, kind: 'branch', current: false }} />
-		{/if}
-	{/if}
+	<!--
+		Where every repository is, open or not. First in the strip because it is
+		the way back when nothing is open, and because that is where the reference
+		puts its equivalent.
+	-->
+	<button
+		class="all"
+		class:active={page.url.pathname === '/repos'}
+		onclick={() => goto('/repos')}
+	>
+		All repositories
+	</button>
+
+	<RepoTabs />
 
 	<span class="spacer"></span>
 
@@ -120,7 +135,29 @@
 		background: var(--soft);
 	}
 
+	.all {
+		flex: none;
+		padding: 3px 10px;
+		border-radius: var(--r-pill);
+		color: var(--muted);
+		font-size: var(--fs-secondary);
+		white-space: nowrap;
+	}
+
+	.all:hover {
+		color: var(--ink);
+		background: var(--soft);
+	}
+
+	.all.active {
+		color: var(--ink);
+		background: var(--soft);
+	}
+
+	/* Bold, because it is the one thing on this bar that is not a control: it
+	   says which program you are looking at, and everything else says state. */
 	.name {
+		font-weight: 700;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;

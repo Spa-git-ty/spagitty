@@ -34,6 +34,7 @@ import ResizeEdges from './ResizeEdges.svelte';
 import TitleBar from './TitleBar.svelte';
 import Toolbar from './Toolbar.svelte';
 import { version } from '$lib/version';
+import { workspace } from '$lib/workspace.svelte';
 
 function info(branch: string | null = 'main', detached = false): RepoInfo {
 	return {
@@ -72,20 +73,38 @@ describe('TitleBar', () => {
 		view.destroy();
 	});
 
-	it('shows the repository and its branch', () => {
+	it('keeps saying which program this is, whatever is open', () => {
+		// FEAT-027: the bar used to show the repository's name and its branch.
+		// Both are one row below on the toolbar's pickers, and the repository is
+		// also its own tab — three copies of one fact is two too many.
 		repoControl.setInfo(info('main'));
 		const view = render(TitleBar, {});
 
-		expect(view.get('.name').textContent).toBe('fixture');
-		expect(view.text()).toContain('main');
+		expect(view.get('.name').textContent).toBe('GitLord');
 		view.destroy();
 	});
 
-	it('says where a detached HEAD is rather than showing nothing', () => {
-		repoControl.setInfo(info(null, true));
+	it('offers the way back to every repository', () => {
 		const view = render(TitleBar, {});
 
-		expect(view.text()).toContain('detached at aaaaaaa');
+		click(view.get('.all'));
+
+		expect(goto).toHaveBeenCalledWith('/repos');
+		view.destroy();
+	});
+
+	it('shows the open repositories as tabs, with the active one marked', () => {
+		workspace.clear();
+		workspace.opened('/repos/fixture');
+		workspace.opened('/repos/other');
+
+		const view = render(TitleBar, {});
+
+		const labels = view.all('.tab .label').map((element) => element.textContent);
+		expect(labels).toEqual(['fixture', 'other']);
+		expect(view.get('.tab.active .label').textContent).toBe('other');
+
+		workspace.clear();
 		view.destroy();
 	});
 
@@ -192,40 +211,40 @@ describe('Toolbar', () => {
 		view.destroy();
 	});
 
-	it('counts what a commit would actually contain, which is what is staged', () => {
-		// Not `working`: a working copy with ten changed files and one staged
-		// would otherwise offer to "Commit 10 files" and commit one.
+	it('does not offer to commit, because it cannot', () => {
+		// FEAT-028: committing belongs to the Working copy screen, which has the
+		// message box, the staged list and its own Commit. The button here could
+		// only navigate, and a primary button that says "Commit 3 files" and
+		// then does not commit is a button that lies.
 		repoControl.setCounts(counts({ working: 10, staged: 3 }));
-		const many = render(Toolbar, {});
-		expect(many.text()).toContain('Commit 3 files');
-		many.destroy();
-
-		repoControl.setCounts(counts({ working: 10, staged: 1 }));
-		const one = render(Toolbar, {});
-		expect(one.text()).toContain('Commit 1 file');
-		one.destroy();
-	});
-
-	it('says plain "Commit" when nothing is staged or the count is unknown', () => {
-		for (const staged of [null, 0]) {
-			repoControl.setCounts(counts({ staged }));
-			const view = render(Toolbar, {});
-
-			expect(view.text()).toContain('Commit');
-			expect(view.text()).not.toContain('Commit 0 files');
-			view.destroy();
-		}
-	});
-
-	it('says which actions are not built rather than failing silently', () => {
 		const view = render(Toolbar, {});
-		const labels = ['Fetch', 'Push', 'Undo', 'Redo'];
 
-		for (const label of labels) {
+		expect(view.text()).not.toContain('Commit');
+		view.destroy();
+	});
+
+	it('says which actions are still not built, and no longer lies about the ones that are', () => {
+		const view = render(Toolbar, {});
+
+		for (const label of ['Undo', 'Redo']) {
 			const button = view.all('.tool').find((b) => b.textContent?.includes(label));
 			expect(button?.getAttribute('title')).toBe('Not built yet');
 		}
 
+		// FEAT-022 built these two; the toolbar had gone on claiming otherwise.
+		for (const label of ['Fetch', 'Push']) {
+			const button = view.all('.tool').find((b) => b.textContent?.includes(label));
+			expect(button?.getAttribute('title')).not.toBe('Not built yet');
+		}
+
+		view.destroy();
+	});
+
+	it('groups the actions rather than running them together', () => {
+		const view = render(Toolbar, {});
+
+		// Two dividers for three groups: history, remote, branch.
+		expect(view.all('.actions .vr')).toHaveLength(2);
 		view.destroy();
 	});
 
@@ -259,13 +278,6 @@ describe('Toolbar', () => {
 		view.destroy();
 	});
 
-	it('reaches the commit screen from the primary button', () => {
-		const view = render(Toolbar, {});
-		const commit = view.all('button').find((b) => b.textContent?.includes('Commit'));
-		click(commit as HTMLElement);
-		expect(goto).toHaveBeenCalledWith('/changes');
-		view.destroy();
-	});
 });
 
 describe('NavRail', () => {

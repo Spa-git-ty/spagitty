@@ -240,6 +240,28 @@ export const graph = {
 		});
 	},
 
+	/** The selected commit's id, which survives a walk the row index does not. */
+	get selectedId(): string | null {
+		return selectedId;
+	},
+
+	/**
+	 * Ask for a commit to be selected once the walk reaches it.
+	 *
+	 * Used when a repository is reopened from its tab: the row index a selection
+	 * had last time means nothing after a fresh walk, but the id does. The same
+	 * machinery a ref-move already uses — `selectionUnverified` — carries it
+	 * until the row arrives, and gives up honestly if the walk completes without
+	 * it, which is what a rewritten history looks like.
+	 */
+	want(id: string): void {
+		selectedId = id;
+		selectionUnverified = true;
+		selectedIndex = null;
+		detail = null;
+		detailError = null;
+	},
+
 	/** Select a row and load its detail panel. */
 	select(index: number): void {
 		const row = buffer[index];

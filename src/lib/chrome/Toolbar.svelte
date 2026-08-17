@@ -3,19 +3,18 @@
 	import { goto } from '$app/navigation';
 	import { clone } from '$lib/clone/store.svelte';
 	import { commandLog } from '$lib/commandlog/store.svelte';
+	import { fetchAll, pushCurrent } from '$lib/graph/actions';
 	import { repo } from '$lib/repo.svelte';
 	import { settings } from '$lib/settings/store.svelte';
-	import Btn from '$lib/ui/Btn.svelte';
 
 	const head = $derived(repo.info?.head ?? null);
-	/** Staged is what a commit would actually contain, so that is what it counts. */
-	const staged = $derived(repo.counts.staged);
 
 	/**
-	 * Actions that need network, hooks or a working-copy write are not built
-	 * yet. They stay in the toolbar because the chrome is persistent and its
-	 * shape is part of the design — but they say so when you point at them
-	 * rather than failing silently when clicked.
+	 * Actions that are still not built say so when you point at them, rather
+	 * than failing silently when clicked. Fetch and Push used to be among them
+	 * and no longer are: FEAT-022 built both, and a button that claims to be
+	 * unbuilt while the palette runs the same operation is a worse lie than the
+	 * original one.
 	 */
 	const PENDING = 'Not built yet';
 
@@ -29,25 +28,32 @@
 		title?: string;
 	}
 
-	const actions: ToolItem[] = [
-		{
-			glyph: '⎘',
-			label: 'Clone',
-			title: 'Bring a repository in',
-			act: () => clone.show()
-		},
-		{ glyph: '⇩', label: 'Fetch', title: PENDING },
-		{ glyph: '⇧', label: 'Push', title: PENDING },
-		{ glyph: '⑃', label: 'Branch', href: '/branches' },
-		{ glyph: '▤', label: 'Stash', href: '/stash' },
-		{ glyph: '✎', label: 'Rebase', href: '/rebase' }
+	/**
+	 * Three groups, divided: what has happened, what talks to a remote, and what
+	 * moves work about. Grouping is how a row of eight glyphs becomes something
+	 * you can aim at without reading every label.
+	 */
+	const GROUPS: ToolItem[][] = [
+		[
+			{ glyph: '↺', label: 'Undo', title: PENDING },
+			{ glyph: '↻', label: 'Redo', title: PENDING }
+		],
+		[
+			{ glyph: '⇩', label: 'Fetch', title: 'Fetch every remote, pruning', act: () => fetchAll() },
+			{
+				glyph: '⇧',
+				label: 'Push',
+				title: 'Push the current branch',
+				act: () => pushCurrent()
+			},
+			{ glyph: '⎘', label: 'Clone', title: 'Bring a repository in', act: () => clone.show() }
+		],
+		[
+			{ glyph: '⑃', label: 'Branch', href: '/branches' },
+			{ glyph: '▤', label: 'Stash', href: '/stash' },
+			{ glyph: '✎', label: 'Rebase', href: '/rebase' }
+		]
 	];
-
-	function commitLabel(): string {
-		if (staged === null) return 'Commit';
-		if (staged === 0) return 'Commit';
-		return staged === 1 ? 'Commit 1 file' : `Commit ${staged} files`;
-	}
 </script>
 
 <div class="toolbar">
@@ -68,23 +74,29 @@
 		</div>
 	</div>
 
-	<span class="vr" style="height: 26px"></span>
-
-	<button class="tool" title={PENDING}><span aria-hidden="true">↺</span><span>Undo</span></button>
-	<button class="tool" title={PENDING}><span aria-hidden="true">↻</span><span>Redo</span></button>
-
-	<span class="vr" style="height: 26px"></span>
-
-	{#each actions as action (action.label)}
-		<button
-			class="tool"
-			title={action.title}
-			onclick={() => (action.act ? action.act() : action.href && goto(action.href))}
-		>
-			<span aria-hidden="true">{action.glyph}</span>
-			<span>{action.label}</span>
-		</button>
-	{/each}
+	<!--
+		The actions sit in the middle of the bar rather than packed against the
+		pickers: they belong to the repository as a whole, and on a wide window a
+		left-packed row leaves them stranded beside the branch name with an ocean
+		to their right.
+	-->
+	<div class="actions">
+		{#each GROUPS as group, index (index)}
+			{#if index > 0}
+				<span class="vr" style="height: 26px"></span>
+			{/if}
+			{#each group as action (action.label)}
+				<button
+					class="tool"
+					title={action.title}
+					onclick={() => (action.act ? action.act() : action.href && goto(action.href))}
+				>
+					<span aria-hidden="true">{action.glyph}</span>
+					<span>{action.label}</span>
+				</button>
+			{/each}
+		{/each}
+	</div>
 
 	<!--
 		Only when the toggle is on. The feature is opt-in, and a button for it
@@ -103,9 +115,12 @@
 		</button>
 	{/if}
 
-	<span class="spacer"></span>
-
-	<Btn primary onclick={() => goto('/changes')}>{commitLabel()}</Btn>
+	<!--
+		No Commit button. Committing is the Working copy screen's job — it has the
+		message box, the staged list and its own Commit — and a second one here
+		was a button that could not do what it said: it navigated. The staged
+		count went with it, to the screen that can act on it.
+	-->
 </div>
 
 <style>
@@ -171,7 +186,10 @@
 		color: var(--accent);
 	}
 
-	.spacer {
-		flex: 1;
+	.actions {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		margin: 0 auto;
 	}
 </style>
