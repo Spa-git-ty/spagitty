@@ -26,7 +26,7 @@ allow = [
     "Unicode-DFS-2016",
     "Zlib",
     # GitLumiere's own crates.
-    "GPL-3.0",
+    "GPL-3.0-or-later",
 ]
 confidence-threshold = 0.9
 
@@ -34,7 +34,9 @@ confidence-threshold = 0.9
 # Two versions of the same crate is a smell, not a failure — the Tauri tree
 # carries a few. Worth seeing in the log without stopping the pipeline.
 multiple-versions = "warn"
-wildcards = "deny"
+# Path dependencies within the workspace have no version; that is a wildcard
+# cargo-deny cannot resolve. Allow it — they are our own crates.
+wildcards = "allow"
 
 [advisories]
 # Gate 4 runs the same file with `cargo deny check advisories`.
