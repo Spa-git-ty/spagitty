@@ -37,6 +37,25 @@ commits, `Fixture::woven()` the standard history below with a clean working
 copy, and `Fixture::dirty()` the same with work in progress. Each lives in a
 temporary directory that is removed with it.
 
+## The one test that crosses the language boundary
+
+`ROW_PITCH` exists twice: in `src/lib/metrics.ts`, which is the source of truth,
+and in `crates/gitlumiere-core/src/graph.rs`, which describes lane elbows in row
+units and so needs the same number. Two copies of a constant in two languages
+drift, and in FEAT-029 they did — the geometry moved on one side while doc
+comments on both sides claimed a test was holding them together. There was no
+such test.
+
+`graph::tests::row_pitch_matches_the_frontend` is that test. It resolves
+`src/lib/metrics.ts` from `CARGO_MANIFEST_DIR`, reads the `export const
+ROW_PITCH` declaration out of the file, and asserts it against the crate's
+constant, failing with both values named so the message says which side moved.
+
+It is the only test here that reads another language's source, and it earns that
+by being the only constant duplicated across the boundary. Anything else needing
+to cross should go through the existing IPC types rather than growing a second
+file-reading test.
+
 ## Fixtures for the frontend tests
 
 Components are mounted for real against happy-dom; the helpers are in

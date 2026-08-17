@@ -117,10 +117,11 @@ The lane column is a **surface of its own** — `--graph-bg`, a mix of `--panel`
 and `--bg` so every palette gets one — bounded by a hairline, painted per row so
 it scrolls with the rows rather than a frame behind them.
 
-Geometry moved with the faces: node radius 8.5, lane pitch 22, stroke 2.5, elbow
-control points 0.55/0.45. A five-lane column is 129px where it was 96px. FEAT-022
-had taken it down from 150px because the graph crowded the messages; a third of
-that comes back, deliberately, because a face needs room.
+Geometry moved with the faces: node radius 11, lane pitch 26, stroke 2.5, elbow
+control points 0.55/0.45. A five-lane column is 149px where it was 96px. FEAT-022
+had taken it down from 150px because the graph crowded the messages; FEAT-023 put
+129px back and FEAT-029 the rest, deliberately, because a face needs room — and
+a face at 8.5px radius was still being read as a coloured dot.
 
 **Hovering dims nothing.** Hovering a branch label used to grey out every commit
 outside it and hovering a row drew a dashed ghost line to its nearest reference.

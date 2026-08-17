@@ -129,6 +129,7 @@ body {
 	color: var(--ink);
 	font-family: var(--font-ui);
 	font-size: var(--fs-ui);
+	line-height: var(--lh-ui);
 	-webkit-font-smoothing: subpixel-antialiased;
 	-moz-osx-font-smoothing: auto;
 	text-rendering: optimizeLegibility;
