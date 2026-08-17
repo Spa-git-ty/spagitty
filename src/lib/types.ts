@@ -296,7 +296,32 @@ export interface RebaseTodo {
 export interface RebaseEdit {
 	id: string;
 	action: RebaseAction;
+	/**
+	 * The new message, for a `reword`.
+	 *
+	 * Collected on screen rather than at execution time: "at execution time"
+	 * means git opening an editor on a terminal GitLord does not have. A reword
+	 * carrying no message is executed as a plain pick.
+	 */
+	message?: string | null;
 }
+
+// --- History operations ---------------------------------------------------
+
+/**
+ * How far back a reset takes the index and the working tree.
+ *
+ * `hard` is the one that loses uncommitted work, and it is the reason this is a
+ * union of three names rather than a boolean called `force`: every screen that
+ * offers it has to spell out which one it is offering.
+ */
+export type ResetMode = 'soft' | 'mixed' | 'hard';
+
+/** What dropping one branch onto another can turn into. */
+export type Integration = 'merge' | 'mergeNoFastForward' | 'fastForward' | 'rebase';
+
+/** What to do with a stash entry. */
+export type StashAction = 'apply' | 'pop' | 'drop';
 
 /** One row of the result: what a commit would become. */
 export interface PreviewRow {

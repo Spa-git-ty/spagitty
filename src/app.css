@@ -47,10 +47,26 @@
 	--fs-code: 12px;
 	--lh-ui: 1.35;
 
-	/* Radii */
-	--r-field: 3px;
-	--r-pill: 9px;
-	--r-button: 12px;
+	/*
+	 * Radii.
+	 *
+	 * Boot values only, like the colours above: `applyMetrics()` rewrites every
+	 * one of these except `--r-pill` as an inline custom property at zoom time,
+	 * so a zoomed interface rounds proportionally instead of keeping 6px
+	 * corners on a box twice the size. `--r-pill` is exempt because a radius
+	 * past half the box is already clamped by the browser.
+	 *
+	 * The scale is deliberately gentle at the small end and generous at the
+	 * large: a 6px field beside a 999px chip reads as one system, where 6px
+	 * beside 8px reads as an accident.
+	 */
+	--r-field: 6px;
+	--r-pill: 999px;
+	--r-button: 14px;
+	/** A commit row's hover and selection fill. */
+	--r-row: 6px;
+	/** Panels, cards, modals — anything that is a surface rather than a control. */
+	--r-panel: 8px;
 
 	--font-ui:
 		system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -160,4 +176,93 @@ a {
 :focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 1px;
+}
+
+/* --- The moving glow -----------------------------------------------------
+ *
+ * A light that travels around the edge of a primary action, plus a halo that
+ * breathes. It marks the one control on a screen that is the thing to do next,
+ * and it is applied by `.glow` rather than by a component's own stylesheet so
+ * that "important" stays a single decision made in one place.
+ *
+ * The travelling part is a conic gradient painted into the border ring:
+ * `border-box` for the gradient, `padding-box` for the fill, and a transparent
+ * border for the ring to show through. No pseudo-element, so nothing depends on
+ * a parent not having made a stacking context — which is the failure mode of
+ * every `::before { z-index: -1 }` version of this effect.
+ *
+ * `@property` is what makes an angle animatable at all; without the
+ * registration the browser treats `--glow-angle` as an unanimatable string and
+ * the gradient simply sits still. That is the intended degradation: a browser
+ * without `@property` gets a static accent ring and the breathing halo, not a
+ * broken button.
+ */
+
+@property --glow-angle {
+	syntax: '<angle>';
+	initial-value: 0deg;
+	inherits: false;
+}
+
+@keyframes glow-travel {
+	to {
+		--glow-angle: 360deg;
+	}
+}
+
+@keyframes glow-breathe {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 transparent;
+	}
+	50% {
+		box-shadow: 0 0 12px 1px var(--glow-halo);
+	}
+}
+
+.glow {
+	/*
+	 * The bright head of the travelling light. Derived from the accent rather
+	 * than being its own colour, so every theme gets a glow that belongs to it.
+	 */
+	--glow-halo: color-mix(in srgb, var(--accent) 45%, transparent);
+	--glow-head: color-mix(in srgb, var(--accent) 30%, white);
+
+	position: relative;
+	border: 2px solid transparent;
+	background:
+		linear-gradient(var(--accent), var(--accent)) padding-box,
+		conic-gradient(
+				from var(--glow-angle),
+				var(--accent) 0turn,
+				var(--glow-head) 0.12turn,
+				var(--accent) 0.3turn,
+				var(--accent) 1turn
+			)
+			border-box;
+	animation:
+		glow-travel 3.2s linear infinite,
+		glow-breathe 3.2s ease-in-out infinite;
+}
+
+/* A control that cannot be pressed is not the thing to do next. */
+.glow:disabled {
+	animation: none;
+	background: var(--accent) padding-box;
+	border-color: var(--line);
+}
+
+/*
+ * Respected without exception. A pulsing, rotating light in the corner of the
+ * eye is exactly what this setting exists to stop, and the button is still
+ * clearly the primary one without it — it keeps the accent fill and a static
+ * ring.
+ */
+@media (prefers-reduced-motion: reduce) {
+	.glow {
+		animation: none;
+		background:
+			linear-gradient(var(--accent), var(--accent)) padding-box,
+			linear-gradient(var(--glow-head), var(--accent)) border-box;
+	}
 }

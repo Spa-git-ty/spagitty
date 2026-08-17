@@ -147,6 +147,15 @@ pub fn summary(path: &Path) -> RepoSummary {
     }
 }
 
+/// The working directory to run `git` in.
+///
+/// One definition, because every write in the crate needs it and a bare
+/// repository has to be refused by all of them with the same sentence.
+pub fn workdir(repo: &gix::Repository) -> Result<&Path> {
+    repo.workdir()
+        .ok_or_else(|| Error::NotStageable("a bare repository has no working copy".into()))
+}
+
 pub fn info(repo: &gix::Repository) -> Result<RepoInfo> {
     let path = repo
         .workdir()

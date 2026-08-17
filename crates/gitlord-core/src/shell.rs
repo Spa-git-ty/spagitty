@@ -34,7 +34,7 @@
 //! Nothing in this module is called by the Graph screen. It exists now so the
 //! boundary is drawn before the screens that need it are built.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::error::{Error, Result};
@@ -306,24 +306,352 @@ pub fn blame(repo: &Path, revision: &str, path: &str) -> Result<String> {
     run(repo, &["blame", "--line-porcelain", revision, "--", path])
 }
 
-// The functions below are stubs deliberately left unimplemented until the
-// screens that need them are built, so that the boundary is documented and
-// discoverable now rather than being drawn ad hoc later.
+// --- History rewriting and moving ------------------------------------------
+//
+// Everything below mutates refs, the index or the working tree, which is the
+// rule at the top of this file: it goes through `git`. Two further reasons
+// apply to this group in particular. Every one of them writes `ORIG_HEAD` and a
+// reflog entry, which is the *only* thing that makes these operations
+// recoverable — a reimplementation that forgot either would turn "undo" into
+// "restore from backup". And each of them can stop half-way with conflicts, in
+// which case the repository is left in a documented state (`MERGE_HEAD`,
+// `rebase-merge/`, `CHERRY_PICK_HEAD`) that the user's own `git` and GitLord's
+// Conflicts screen both already know how to read.
+
+/// How far back a reset takes the index and the working tree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ResetMode {
+    /// Move the branch. Index and working tree untouched — the changes become
+    /// staged.
+    Soft,
+    /// Move the branch and reset the index. Working tree untouched.
+    Mixed,
+    /// Move everything. **Uncommitted work is gone.**
+    Hard,
+}
+
+impl ResetMode {
+    fn flag(self) -> &'static str {
+        match self {
+            ResetMode::Soft => "--soft",
+            ResetMode::Mixed => "--mixed",
+            ResetMode::Hard => "--hard",
+        }
+    }
+}
+
+/// Move the current branch to `commit`.
+pub fn reset(repo: &Path, commit: &str, mode: ResetMode) -> Result<()> {
+    run(repo, &["reset", mode.flag(), commit])?;
+    Ok(())
+}
+
+/// Create a commit that undoes `commit`.
+///
+/// `--no-edit` so the message git writes ("Revert \"…\"") is used rather than
+/// an editor being opened against a terminal that does not exist. Reverting a
+/// merge needs `-m 1`, which git otherwise refuses to guess; the first parent is
+/// the mainline in every case GitLord can show, because that is what the graph's
+/// first parent *is*.
+pub fn revert(repo: &Path, commit: &str, is_merge: bool) -> Result<()> {
+    let mut args = vec!["revert", "--no-edit"];
+    if is_merge {
+        args.push("-m");
+        args.push("1");
+    }
+    args.push(commit);
+
+    run(repo, &args)?;
+    Ok(())
+}
+
+/// Replay `commits` onto the current branch, oldest first.
+///
+/// One `git cherry-pick` with every commit on it rather than a loop: git then
+/// owns the sequencer state, so a conflict half-way through leaves a repository
+/// that `git cherry-pick --continue` can finish. A loop of single picks would
+/// stop with no record that more were meant to follow.
+pub fn cherry_pick(repo: &Path, commits: &[String]) -> Result<()> {
+    if commits.is_empty() {
+        return Ok(());
+    }
+    let mut args = vec!["cherry-pick"];
+    args.extend(commits.iter().map(String::as_str));
+
+    run(repo, &args)?;
+    Ok(())
+}
+
+/// Merge `source` into the current branch.
+///
+/// `--no-edit` for the same reason as [`revert`]. `ff_only` is the graph's
+/// "Fast-forward" action, which is a *different request* from a merge that
+/// happens to fast-forward: it asks git to refuse rather than to create a merge
+/// commit, and that refusal is the answer the user wanted.
+pub fn merge(repo: &Path, source: &str, ff_only: bool, no_ff: bool) -> Result<()> {
+    let mut args = vec!["merge", "--no-edit"];
+    if ff_only {
+        args.push("--ff-only");
+    } else if no_ff {
+        args.push("--no-ff");
+    }
+    args.push(source);
+
+    run(repo, &args)?;
+    Ok(())
+}
+
+/// Replay commits onto `onto`.
+///
+/// The three-argument form covers every case the graph offers:
+///
+/// - *Rebase this branch onto that one* — `upstream` is the target, `onto` is
+///   empty, `branch` is empty (meaning HEAD).
+/// - *Rebase onto this commit* — the same, with a commit id instead of a name.
+/// - *Rebase these N commits onto that branch* — `onto` is the target,
+///   `upstream` is the parent of the oldest selected commit, and the range
+///   between them is what moves.
+pub fn rebase(repo: &Path, onto: &str, upstream: &str, branch: &str) -> Result<()> {
+    let mut args = vec!["rebase"];
+    if !onto.is_empty() {
+        args.push("--onto");
+        args.push(onto);
+    }
+    args.push(upstream);
+    if !branch.is_empty() {
+        args.push(branch);
+    }
+
+    run(repo, &args)?;
+    Ok(())
+}
 
 /// Execute a planned interactive rebase. The todo list is produced in Rust by
 /// the Rebase screen; `git` performs it.
-pub fn rebase_interactive(_repo: &Path, _onto: &str, _todo: &str) -> Result<()> {
-    unimplemented!("built with the Rebase screen")
+///
+/// The todo reaches git through `GIT_SEQUENCE_EDITOR`, which git runs with the
+/// path of the todo file it just wrote. Ours does not edit it — it overwrites
+/// it with the plan the user built on screen. That is the documented way to
+/// drive `rebase -i` without a terminal, and it means git is still the thing
+/// executing the rebase, with its own state directory, reflog and conflict
+/// handling intact.
+///
+/// `GIT_EDITOR` is pointed at an accept-as-is script for the same reason: a
+/// `squash` opens an editor on the combined message, and there is no terminal
+/// for it to open on. Accepting git's prepared message is what the Rebase
+/// screen's preview already shows will happen.
+pub fn rebase_interactive(repo: &Path, upstream: &str, todo: &str) -> Result<()> {
+    let scripts = SequenceScripts::write(repo, todo)?;
+
+    let output = Command::new("git")
+        .current_dir(repo)
+        .args(["rebase", "--interactive", upstream])
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_SEQUENCE_EDITOR", scripts.sequence_editor())
+        .env("GIT_EDITOR", scripts.message_editor())
+        .output()?;
+
+    if !output.status.success() {
+        return Err(Error::Git {
+            command: format!("rebase --interactive {upstream}"),
+            stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        });
+    }
+    Ok(())
 }
 
+/// The two little programs a non-interactive `rebase -i` needs, on disk.
+///
+/// They live under the git directory rather than in the system temp directory
+/// so that they are on the same filesystem as the repository, cannot be swept
+/// by a temp cleaner mid-rebase, and are obvious to anyone looking at why a
+/// rebase behaved the way it did.
+struct SequenceScripts {
+    sequence: PathBuf,
+    message: PathBuf,
+}
+
+impl SequenceScripts {
+    fn write(repo: &Path, todo: &str) -> Result<Self> {
+        // Asked for rather than assumed to be `.git`: in a linked worktree it
+        // is a file pointing elsewhere, and in a submodule it is somewhere else
+        // again. `--absolute-git-dir` because the scripts are invoked with
+        // whatever working directory git happens to have at the time.
+        let git_dir = run(repo, &["rev-parse", "--absolute-git-dir"])?;
+        let dir = PathBuf::from(git_dir.trim()).join("gitlord");
+        std::fs::create_dir_all(&dir)?;
+
+        let plan = dir.join("rebase-todo");
+        std::fs::write(&plan, todo)?;
+
+        let (sequence, message) = if cfg!(windows) {
+            let sequence = dir.join("sequence-editor.bat");
+            std::fs::write(
+                &sequence,
+                format!("@echo off\r\ncopy /Y \"{}\" %1 >nul\r\n", plan.display()),
+            )?;
+            let message = dir.join("message-editor.bat");
+            std::fs::write(&message, "@echo off\r\nexit /b 0\r\n")?;
+            (sequence, message)
+        } else {
+            let sequence = dir.join("sequence-editor.sh");
+            std::fs::write(
+                &sequence,
+                format!("#!/bin/sh\ncat '{}' > \"$1\"\n", plan.display()),
+            )?;
+            let message = dir.join("message-editor.sh");
+            std::fs::write(&message, "#!/bin/sh\nexit 0\n")?;
+            make_executable(&sequence)?;
+            make_executable(&message)?;
+            (sequence, message)
+        };
+
+        Ok(Self { sequence, message })
+    }
+
+    fn sequence_editor(&self) -> String {
+        quoted(&self.sequence)
+    }
+
+    fn message_editor(&self) -> String {
+        quoted(&self.message)
+    }
+}
+
+/// git runs the editor through a shell, so a path with a space in it — which is
+/// every path under a Windows user profile, and plenty on macOS — has to arrive
+/// already quoted.
+fn quoted(path: &Path) -> String {
+    format!("\"{}\"", path.display())
+}
+
+#[cfg(unix)]
+fn make_executable(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let mut permissions = std::fs::metadata(path)?.permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(path, permissions)?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn make_executable(_path: &Path) -> Result<()> {
+    Ok(())
+}
+
+// --- Refs -------------------------------------------------------------------
+
+/// Check out a commit without a branch — a detached HEAD.
+///
+/// `switch --detach`, not `checkout`, and for the reason in [`checkout`]: a
+/// revision that looks like a path cannot be misread as one.
+pub fn checkout_detached(repo: &Path, revision: &str) -> Result<()> {
+    run(repo, &["switch", "--detach", revision])?;
+    Ok(())
+}
+
+/// Rename a branch.
+///
+/// `-m`, never `-M`: forcing would clobber an existing branch of the target
+/// name, which is a destroyed branch presented as a rename.
+pub fn rename_branch(repo: &Path, from: &str, to: &str) -> Result<()> {
+    run(repo, &["branch", "-m", from, to])?;
+    Ok(())
+}
+
+/// Delete a branch.
+///
+/// `force` is `-D`, which deletes a branch whose commits are not merged
+/// anywhere — the one that actually loses work. It is never the default and
+/// never inferred: the caller has to have been told what it means and asked.
+pub fn delete_branch(repo: &Path, name: &str, force: bool) -> Result<()> {
+    run(repo, &["branch", if force { "-D" } else { "-d" }, name])?;
+    Ok(())
+}
+
+/// Create a tag. An empty `message` makes a lightweight tag, a message makes an
+/// annotated one — which is the distinction git itself draws.
+pub fn create_tag(repo: &Path, name: &str, target: &str, message: &str) -> Result<()> {
+    let mut args = vec!["tag"];
+    if !message.is_empty() {
+        args.push("--annotate");
+        args.push("--message");
+        args.push(message);
+    }
+    args.push(name);
+    if !target.is_empty() {
+        args.push(target);
+    }
+
+    run(repo, &args)?;
+    Ok(())
+}
+
+/// Delete a tag, locally.
+pub fn delete_tag(repo: &Path, name: &str) -> Result<()> {
+    run(repo, &["tag", "--delete", name])?;
+    Ok(())
+}
+
+// --- Stash ------------------------------------------------------------------
+
+/// Restore a stash and remove it. Through `git` for the same reason as
+/// [`stash_push`]: a pop is a working-tree write and a ref delete at once.
+pub fn stash_pop(repo: &Path, index: usize) -> Result<()> {
+    run(repo, &["stash", "pop", &format!("stash@{{{index}}}")])?;
+    Ok(())
+}
+
+/// Restore a stash and keep it.
+pub fn stash_apply(repo: &Path, index: usize) -> Result<()> {
+    run(repo, &["stash", "apply", &format!("stash@{{{index}}}")])?;
+    Ok(())
+}
+
+/// Forget a stash.
+///
+/// The one operation here that only removes. The commit survives in the reflog
+/// for git's own expiry window, and the caller is told the id before it goes —
+/// see the Stash screen, which shows it in the confirmation.
+pub fn stash_drop(repo: &Path, index: usize) -> Result<()> {
+    run(repo, &["stash", "drop", &format!("stash@{{{index}}}")])?;
+    Ok(())
+}
+
+// --- Network ----------------------------------------------------------------
+
 /// Fetch. Goes through `git` so credential helpers and the OS keychain work.
-pub fn fetch(_repo: &Path, _remote: &str) -> Result<String> {
-    unimplemented!("built with the toolbar's Fetch action")
+///
+/// `--prune` so a branch deleted on the remote stops appearing in the graph as
+/// a lane that goes nowhere. An empty `remote` means git's own default.
+pub fn fetch(repo: &Path, remote: &str) -> Result<String> {
+    let mut args = vec!["fetch", "--prune", "--progress"];
+    if remote.is_empty() {
+        args.push("--all");
+    } else {
+        args.push(remote);
+    }
+    run(repo, &args)
 }
 
 /// Push. Same reason as [`fetch`], plus `pre-push` hooks.
-pub fn push(_repo: &Path, _remote: &str, _refspec: &str) -> Result<String> {
-    unimplemented!("built with the toolbar's Push action")
+///
+/// `--force-with-lease` rather than `--force` when a force is asked for: it
+/// refuses if the remote moved since the last fetch, which is the case where a
+/// plain force destroys somebody else's work.
+pub fn push(repo: &Path, remote: &str, refspec: &str, force: bool) -> Result<String> {
+    let mut args = vec!["push", "--progress"];
+    if force {
+        args.push("--force-with-lease");
+    }
+    if !remote.is_empty() {
+        args.push(remote);
+        if !refspec.is_empty() {
+            args.push(refspec);
+        }
+    }
+    run(repo, &args)
 }
 
 #[cfg(test)]

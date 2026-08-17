@@ -3,6 +3,15 @@
 	import Chip from '$lib/ui/Chip.svelte';
 	import { theme } from '$lib/theme.svelte';
 	import { FAMILIES, paletteOf, type Mode } from '$lib/themes';
+	import {
+		scale,
+		TEXT_MAX,
+		TEXT_MIN,
+		TEXT_STEP,
+		ZOOM_MAX,
+		ZOOM_MIN,
+		ZOOM_STEP
+	} from '$lib/scale.svelte';
 
 	/**
 	 * The palette: which family, and light or dark within it.
@@ -83,6 +92,51 @@
 		The first time GitLord runs it takes light or dark from the system preference and opens on
 		{FAMILIES[0].name}. Choosing here replaces both until they are changed again.
 	</p>
+
+	<div class="hr"></div>
+
+	<div class="row">
+		<span class="note label">Text</span>
+		<input
+			class="slider"
+			type="range"
+			min={TEXT_MIN}
+			max={TEXT_MAX}
+			step={TEXT_STEP}
+			value={scale.text}
+			aria-label="Text size"
+			oninput={(event) => scale.setText(Number(event.currentTarget.value))}
+		/>
+		<span class="mono muted reading">{Math.round(scale.text * 100)}%</span>
+		<Chip onclick={() => scale.setText(1)}>Reset</Chip>
+	</div>
+
+	<p class="note">
+		Scales the type and the commit-row height with it, so a bigger message is not clipped by the
+		row it sits in. Everything else keeps its size.
+	</p>
+
+	<div class="row">
+		<span class="note label">Zoom</span>
+		<input
+			class="slider"
+			type="range"
+			min={ZOOM_MIN}
+			max={ZOOM_MAX}
+			step={ZOOM_STEP}
+			value={scale.zoom}
+			aria-label="Interface zoom"
+			oninput={(event) => scale.setZoom(Number(event.currentTarget.value))}
+		/>
+		<span class="mono muted reading">{Math.round(scale.zoom * 100)}%</span>
+		<Chip onclick={() => scale.setZoom(1)}>Reset</Chip>
+	</div>
+
+	<p class="note">
+		Scales the whole interface — panels, gutters, lane spacing, corner radii and type together.
+		<span class="mono">Ctrl</span> with <span class="mono">+</span>,
+		<span class="mono">−</span> or <span class="mono">0</span> does the same from anywhere.
+	</p>
 </section>
 
 <style>
@@ -160,6 +214,20 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+
+	.slider {
+		flex: 1;
+		min-width: 0;
+		max-width: 260px;
+		accent-color: var(--accent);
+	}
+
+	/* Fixed width so the number does not shift the Reset chip as it changes. */
+	.reading {
+		width: 44px;
+		flex: none;
+		text-align: right;
 	}
 
 	p {

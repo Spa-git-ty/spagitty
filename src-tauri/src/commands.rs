@@ -15,6 +15,7 @@ use gitlord_core::conflicts::{self, ConflictSides, ConflictState};
 use gitlord_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
 use gitlord_core::graph::ROW_PITCH;
 use gitlord_core::identity::{self, Identity, Key, Scope};
+use gitlord_core::ops::{self, Integration, ResetMode, StashAction};
 use gitlord_core::rebase::{self, Edit, Preview, Todo};
 use gitlord_core::refs::RefIndex;
 use gitlord_core::repo::{self, RepoInfo, RepoSummary};
@@ -42,6 +43,14 @@ struct Session {
     path: PathBuf,
     repo: gitlord_core::gix::ThreadSafeRepository,
     graph: GraphWorker,
+    /// The refs the graph is rooted at, empty for every branch.
+    ///
+    /// Held here rather than in the webview because a walk is restarted by the
+    /// filesystem watcher as well as by the user: a ref moving must not quietly
+    /// reset Solo or Smart Branch Visibility back to showing everything.
+    visible: Vec<String>,
+    /// The refs whose lanes are held open on the left — "pin to left".
+    pinned: Vec<String>,
     _watcher: Option<RepoWatcher>,
 }
 
@@ -115,7 +124,7 @@ pub fn open_repo(app: AppHandle, state: State<'_, AppState>, path: PathBuf) -> R
     let git_dir = local.git_dir().to_path_buf();
 
     let token = state.next_token.fetch_add(1, Ordering::Relaxed);
-    let graph = graph_worker::spawn(app.clone(), info.path.clone(), token);
+    let graph = graph_worker::spawn(app.clone(), info.path.clone(), token, Vec::new(), Vec::new());
     let watcher = watch::watch(app.clone(), &git_dir);
 
     // Opening is the only way a repository joins the list. GitLord never goes
@@ -128,6 +137,8 @@ pub fn open_repo(app: AppHandle, state: State<'_, AppState>, path: PathBuf) -> R
         path: info.path.clone(),
         repo: sync,
         graph,
+        visible: Vec::new(),
+        pinned: Vec::new(),
         _watcher: watcher,
     });
 
@@ -160,7 +171,32 @@ pub fn graph_restart(app: AppHandle, state: State<'_, AppState>) -> Result<u64> 
     let session = guard.as_mut().ok_or(Error::NoRepository)?;
 
     let token = state.next_token.fetch_add(1, Ordering::Relaxed);
-    session.graph = graph_worker::spawn(app, session.path.clone(), token);
+    let (visible, pinned) = (session.visible.clone(), session.pinned.clone());
+    session.graph = graph_worker::spawn(app, session.path.clone(), token, visible, pinned);
+    Ok(token)
+}
+
+/// Choose which refs the graph is rooted at, and restart the walk.
+///
+/// An empty list is every branch. Hide, Solo and Smart Branch Visibility are
+/// all the same command with a different list, computed on screen from the
+/// branches it is already showing — the backend does not need to know which of
+/// the three the user pressed, only what they want to see.
+#[tauri::command]
+pub fn graph_visibility(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    refs: Vec<String>,
+    pinned: Vec<String>,
+) -> Result<u64> {
+    let mut guard = state.session.lock().expect("session lock");
+    let session = guard.as_mut().ok_or(Error::NoRepository)?;
+
+    session.visible = refs;
+    session.pinned = pinned;
+    let token = state.next_token.fetch_add(1, Ordering::Relaxed);
+    let (visible, pinned) = (session.visible.clone(), session.pinned.clone());
+    session.graph = graph_worker::spawn(app, session.path.clone(), token, visible, pinned);
     Ok(token)
 }
 
@@ -345,6 +381,151 @@ pub fn rebase_preview(state: State<'_, AppState>, edits: Vec<Edit>) -> Result<Pr
         .ok_or_else(|| Error::NotStageable("no rebase is being planned".into()))?;
 
     Ok(rebase::plan(todo, &edits))
+}
+
+// --- History operations -----------------------------------------------------
+//
+// Every command below writes. They share one shape on purpose: forward to
+// `gitlord_core::ops`, and let the error come back as git's own sentence. No
+// confirmation happens here — the screen asks, because a backend that prompted
+// could not be scripted or tested — and no operation is inferred from another.
+// "Reset" is three commands in the menu because it is three different things.
+
+/// Execute the plan the Rebase screen built.
+///
+/// The todo is generated from the same order the preview was generated from, so
+/// what was on screen is what git runs. It is generated here rather than sent
+/// from the webview for the same reason the preview is: a plan the repository
+/// never produced must not be executable by asking nicely.
+#[tauri::command]
+pub fn rebase_run(state: State<'_, AppState>, edits: Vec<Edit>) -> Result<()> {
+    let (upstream, todo) = {
+        let guard = state.rebase_todo.lock().expect("rebase lock");
+        let todo = guard
+            .as_ref()
+            .ok_or_else(|| Error::NotStageable("no rebase is being planned".into()))?;
+        (todo.upstream.clone(), rebase::todo_text(todo, &edits)?)
+    };
+
+    state.with_session(|session| {
+        ops::rebase_interactive(&session.repo.to_thread_local(), &upstream, &todo)
+    })
+}
+
+/// Move the current branch to `commit`.
+///
+/// `Hard` discards uncommitted work. The mode arrives as an enum rather than a
+/// string so that the webview cannot send a harder reset than the one whose
+/// consequences the user read in the menu.
+#[tauri::command]
+pub fn reset(state: State<'_, AppState>, commit: String, mode: ResetMode) -> Result<()> {
+    state.with_session(|session| ops::reset(&session.repo.to_thread_local(), &commit, mode))
+}
+
+/// Commit the inverse of `commit`. Reverting a merge takes the first parent as
+/// the mainline, which is the parent the graph draws as the trunk.
+#[tauri::command]
+pub fn revert(state: State<'_, AppState>, commit: String) -> Result<()> {
+    state.with_session(|session| ops::revert(&session.repo.to_thread_local(), &commit))
+}
+
+/// Replay `commits` onto the current branch, in the order given.
+#[tauri::command]
+pub fn cherry_pick(state: State<'_, AppState>, commits: Vec<String>) -> Result<()> {
+    state.with_session(|session| ops::cherry_pick(&session.repo.to_thread_local(), &commits))
+}
+
+/// Merge, fast-forward or rebase `source` into the branch that is checked out.
+///
+/// This is what dropping one branch label onto another resolves to, once the
+/// user has picked from the menu that appears.
+#[tauri::command]
+pub fn integrate(state: State<'_, AppState>, source: String, how: Integration) -> Result<()> {
+    state.with_session(|session| ops::integrate(&session.repo.to_thread_local(), &source, how))
+}
+
+/// Replay commits onto `onto`.
+///
+/// `upstream` empty moves the whole branch — "rebase this onto that". A commit
+/// in `upstream` moves only what comes after it, which is the graph's "rebase
+/// these N commits onto". `branch` empty means HEAD.
+#[tauri::command]
+pub fn rebase_onto(
+    state: State<'_, AppState>,
+    onto: String,
+    upstream: String,
+    branch: String,
+) -> Result<()> {
+    state.with_session(|session| {
+        ops::rebase_onto(&session.repo.to_thread_local(), &onto, &upstream, &branch)
+    })
+}
+
+/// Check out a commit with no branch attached.
+#[tauri::command]
+pub fn checkout_detached(state: State<'_, AppState>, revision: String) -> Result<()> {
+    state
+        .with_session(|session| ops::checkout_detached(&session.repo.to_thread_local(), &revision))
+}
+
+/// Rename a local branch.
+#[tauri::command]
+pub fn rename_branch(state: State<'_, AppState>, from: String, to: String) -> Result<()> {
+    state.with_session(|session| ops::rename_branch(&session.repo.to_thread_local(), &from, &to))
+}
+
+/// Delete a local branch. `force` is `-D`, and loses unmerged commits.
+#[tauri::command]
+pub fn delete_branch(state: State<'_, AppState>, name: String, force: bool) -> Result<()> {
+    state.with_session(|session| ops::delete_branch(&session.repo.to_thread_local(), &name, force))
+}
+
+/// Create a tag at `target`. A message makes it annotated.
+#[tauri::command]
+pub fn create_tag(
+    state: State<'_, AppState>,
+    name: String,
+    target: String,
+    message: String,
+) -> Result<()> {
+    state.with_session(|session| {
+        ops::create_tag(&session.repo.to_thread_local(), &name, &target, &message)
+    })
+}
+
+/// Delete a local tag.
+#[tauri::command]
+pub fn delete_tag(state: State<'_, AppState>, name: String) -> Result<()> {
+    state.with_session(|session| ops::delete_tag(&session.repo.to_thread_local(), &name))
+}
+
+/// Apply, pop or drop a stash entry.
+#[tauri::command]
+pub fn stash_action(
+    state: State<'_, AppState>,
+    index: usize,
+    action: StashAction,
+) -> Result<()> {
+    state.with_session(|session| ops::stash(&session.repo.to_thread_local(), index, action))
+}
+
+/// Fetch, pruning refs the remote no longer has. An empty remote fetches all.
+#[tauri::command]
+pub fn fetch(state: State<'_, AppState>, remote: String) -> Result<String> {
+    state.with_session(|session| ops::fetch(&session.repo.to_thread_local(), &remote))
+}
+
+/// Push. `force` is `--force-with-lease`, never a plain force.
+#[tauri::command]
+pub fn push(
+    state: State<'_, AppState>,
+    remote: String,
+    refspec: String,
+    force: bool,
+) -> Result<String> {
+    state.with_session(|session| {
+        ops::push(&session.repo.to_thread_local(), &remote, &refspec, force)
+    })
 }
 
 /// Start a query. Returns the token its rows will carry.

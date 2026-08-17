@@ -3,6 +3,7 @@
 	import { graph } from '$lib/graph/store.svelte';
 	import { drawLanes } from '$lib/graph/lanes';
 	import { LANE_COLOR_COUNT, laneColorVar } from '$lib/metrics';
+	import { scale } from '$lib/scale.svelte';
 	import { theme } from '$lib/theme.svelte';
 
 	interface Props {
@@ -14,9 +15,25 @@
 		height: number;
 		/** Lane columns the column is currently sized for. */
 		columns: number;
+		/** Rows to keep at full strength; null when no highlight is running. */
+		highlight?: Set<number> | null;
+		/** The ghost branch's rows, from a hovered commit to its nearest ref. */
+		ghost?: number[];
+		/** Rows carrying stashes, and how many each has. */
+		stashes?: Map<number, number>;
 	}
 
-	let { scrollTop, first, last, width, height, columns }: Props = $props();
+	let {
+		scrollTop,
+		first,
+		last,
+		width,
+		height,
+		columns,
+		highlight = null,
+		ghost = [],
+		stashes
+	}: Props = $props();
 
 	let canvas = $state<HTMLCanvasElement | null>(null);
 
@@ -50,6 +67,13 @@
 		void last;
 		void columns;
 		void theme.id;
+		void highlight;
+		void ghost;
+		void stashes;
+		// Row pitch and lane spacing both move with these, so a zoom is a
+		// repaint even when nothing scrolled.
+		const pitch = scale.pitch;
+		const zoom = scale.zoom;
 
 		const dpr = window.devicePixelRatio || 1;
 		const pixelWidth = Math.round(width * dpr);
@@ -73,7 +97,12 @@
 			row: (index) => graph.row(index),
 			colors: lanes,
 			nodeText,
-			columns
+			columns,
+			pitch,
+			zoom,
+			highlight,
+			ghost,
+			stashes
 		});
 	});
 </script>

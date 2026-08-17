@@ -24,9 +24,12 @@ import type {
 	IdentityScope,
 	Licenses,
 	OpenResult,
+	Integration,
 	RebaseEdit,
 	RebasePreview,
 	RebaseTodo,
+	ResetMode,
+	StashAction,
 	RepoSummary,
 	SearchQuery,
 	Settings,
@@ -51,6 +54,17 @@ export function graphRequest(token: number, count: number): Promise<void> {
 /** Restart the walk after refs moved. Resolves to the new token. */
 export function graphRestart(): Promise<number> {
 	return invoke('graph_restart');
+}
+
+/**
+ * Choose which refs the graph is rooted at, and restart the walk.
+ *
+ * An empty list is every branch. Hide, Solo and Smart Branch Visibility are the
+ * same call with different lists — the backend is told what to show, not which
+ * control was pressed. Resolves to the new token.
+ */
+export function graphVisibility(refs: string[], pinned: string[] = []): Promise<number> {
+	return invoke('graph_visibility', { refs, pinned });
 }
 
 export function snapshot(): Promise<Snapshot> {
@@ -272,4 +286,90 @@ export function metrics(): Promise<{ rowPitch: number }> {
 /** True when running inside the Tauri webview rather than a plain browser. */
 export function inTauri(): boolean {
 	return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+}
+
+// --- History operations -----------------------------------------------------
+//
+// Every call below writes to the repository. None of them asks first: the
+// confirmation belongs to the screen, next to the sentence describing what is
+// about to happen, and a wrapper that prompted would put that sentence in the
+// wrong file.
+
+/**
+ * Move the current branch to `commit`.
+ *
+ * `'hard'` discards uncommitted work. The mode is a union rather than a string
+ * so a typo cannot become a harder reset than the one that was offered.
+ */
+export function reset(commit: string, mode: ResetMode): Promise<void> {
+	return invoke('reset', { commit, mode });
+}
+
+/** Commit the inverse of `commit`. A merge is reverted against its first parent. */
+export function revert(commit: string): Promise<void> {
+	return invoke('revert', { commit });
+}
+
+/** Replay `commits` onto the current branch, in the order given (oldest first). */
+export function cherryPick(commits: string[]): Promise<void> {
+	return invoke('cherry_pick', { commits });
+}
+
+/** Merge, fast-forward or rebase `source` into the branch that is checked out. */
+export function integrate(source: string, how: Integration): Promise<void> {
+	return invoke('integrate', { source, how });
+}
+
+/**
+ * Replay commits onto `onto`.
+ *
+ * `upstream` empty moves the whole branch. A commit in `upstream` moves only
+ * what comes after it — the graph's "rebase these N commits onto". `branch`
+ * empty means HEAD.
+ */
+export function rebaseOnto(onto: string, upstream = '', branch = ''): Promise<void> {
+	return invoke('rebase_onto', { onto, upstream, branch });
+}
+
+/** Run the plan the Rebase screen built against the todo it is holding. */
+export function rebaseRun(edits: RebaseEdit[]): Promise<void> {
+	return invoke('rebase_run', { edits });
+}
+
+/** Check out a commit with no branch attached — a detached HEAD. */
+export function checkoutDetached(revision: string): Promise<void> {
+	return invoke('checkout_detached', { revision });
+}
+
+export function renameBranch(from: string, to: string): Promise<void> {
+	return invoke('rename_branch', { from, to });
+}
+
+/** Delete a local branch. `force` loses commits that are not merged anywhere. */
+export function deleteBranch(name: string, force = false): Promise<void> {
+	return invoke('delete_branch', { name, force });
+}
+
+/** Create a tag at `target`. A non-empty message makes it annotated. */
+export function createTag(name: string, target: string, message = ''): Promise<void> {
+	return invoke('create_tag', { name, target, message });
+}
+
+export function deleteTag(name: string): Promise<void> {
+	return invoke('delete_tag', { name });
+}
+
+/** Apply, pop or drop `stash@{index}`. */
+export function stashAction(index: number, action: StashAction): Promise<void> {
+	return invoke('stash_action', { index, action });
+}
+
+/** Fetch, pruning refs the remote no longer has. An empty remote fetches all. */
+export function fetch(remote = ''): Promise<string> {
+	return invoke('fetch', { remote });
+}
+
+/** Push. `force` is `--force-with-lease`, never a plain force. */
+export function push(remote = '', refspec = '', force = false): Promise<string> {
+	return invoke('push', { remote, refspec, force });
 }

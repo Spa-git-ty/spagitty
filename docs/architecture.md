@@ -30,7 +30,9 @@ compiles and is tested without a GUI, and its examples
 | `branches.rs` | Branch rows: drift, upstream, merged; checkout and create |
 | `diff.rs` | Commit detail, per-commit file lists, per-file hunks |
 | `conflicts.rs` | Index stages 1/2/3 of a conflicted path, and what operation is in progress |
-| `rebase.rs` | The interactive-rebase todo list and its preview. Plans only; runs nothing |
+| `rebase.rs` | The interactive-rebase todo list, its preview, and its execution through `GIT_SEQUENCE_EDITOR` |
+| `ops.rs` | Every git operation that writes: reset, revert, cherry-pick, merge, rebase, tags, branch rename and delete, detached checkout, stash apply/pop/drop, fetch, push |
+| `shell.rs` | The one place a `git` subprocess is spawned. Everything in `ops.rs` goes through it |
 | `search.rs` | The filtered history walk behind Log search |
 | `blame.rs` | Who last touched each line — the one read that goes through `git` |
 | `stash.rs` | Stash entries, read from the reflog of `refs/stash` |
@@ -64,15 +66,26 @@ forwards to the core.
 | `watch.rs` | Filesystem watcher over the git directory |
 | `lib.rs` | Command registration |
 
-Commands registered today: `open_repo`, `close_repo`, `graph_request`,
-`graph_restart`, `snapshot`, `commit_detail`, `commit_diff`, `file_diff`,
-`working_copy`, `working_diff`, `stage`, `unstage`, `stage_hunk`,
-`unstage_hunk`, `commit`, `head_message`, `branches`, `checkout`,
-`create_branch`, `rebase_todo`, `rebase_preview`, `search_start`, `search_stop`,
-`blame`, `conflicts`, `conflict_sides`, `stashes`, `stash_push`, `recent_repos`,
-`forget_repo`, `clone_plan`, `clone_start`, `clone_release`, `metrics`, `about`,
-`licenses`, `identity`, `set_identity`, `settings`, `set_settings`,
-`launch_path`.
+Commands registered today, grouped by what they are for:
+
+- **The walk** — `open_repo`, `close_repo`, `graph_request`, `graph_restart`,
+  `graph_visibility`, `snapshot`, `metrics`.
+- **Reading** — `commit_detail`, `commit_diff`, `file_diff`, `working_copy`,
+  `working_diff`, `head_message`, `branches`, `stashes`, `blame`, `conflicts`,
+  `conflict_sides`, `search_start`, `search_stop`.
+- **Writing** — `stage`, `unstage`, `stage_hunk`, `unstage_hunk`, `commit`,
+  `checkout`, `checkout_detached`, `create_branch`, `rename_branch`,
+  `delete_branch`, `create_tag`, `delete_tag`, `reset`, `revert`,
+  `cherry_pick`, `integrate`, `rebase_onto`, `rebase_todo`, `rebase_preview`,
+  `rebase_run`, `stash_push`, `stash_action`, `fetch`, `push`.
+- **Application state** — `recent_repos`, `forget_repo`, `clone_plan`,
+  `clone_start`, `clone_release`, `about`, `licenses`, `identity`,
+  `set_identity`, `settings`, `set_settings`, `launch_path`.
+
+`graph_visibility` is the one worth naming here: hide, solo, smart visibility
+and pin-to-left all resolve to a **root set** for a fresh walk rather than to a
+filter over rows the frontend already has. Filtering client-side would leave the
+lanes drawing edges between commits that are no longer parent and child.
 
 ### `src`
 
@@ -86,6 +99,15 @@ server.
   screen as it is built — each with a `store.svelte.ts` and its components.
 - `src/lib/chrome/` is the persistent frame: title bar, toolbar, nav rail,
   resize edges.
+- `src/lib/ui/` holds what more than one screen needs: `Menu` (every right-click
+  menu in the application is this component with a different list), `Dialog`
+  (every confirmation) and `Notice` (every result). The last two are mounted
+  **once, by the shell** — an operation started on the graph can finish after
+  the user has navigated away, and a dialog owned by a screen would take the
+  question with it.
+- `src/lib/palette/` is a registry, not a list. `commands.ts` contributes the
+  shell's commands; a feature contributes its own next to itself, so no single
+  file has to import every feature in order to name it.
 - Stores export a single object with getters, never the `$state` variables
   themselves, so a screen cannot write another screen's state by accident.
 

@@ -13,9 +13,15 @@
 	import TitleBar from '$lib/chrome/TitleBar.svelte';
 	import Toolbar from '$lib/chrome/Toolbar.svelte';
 	import { graph } from '$lib/graph/store.svelte';
-	import { applyMetrics, ROW_PITCH } from '$lib/metrics';
+	import { ROW_PITCH } from '$lib/metrics';
+	import Palette from '$lib/palette/Palette.svelte';
+	import { palette } from '$lib/palette/store.svelte';
+	import { registerCommands } from '$lib/palette/commands';
 	import { panels } from '$lib/panels.svelte';
 	import { repo } from '$lib/repo.svelte';
+	import { scale } from '$lib/scale.svelte';
+	import Dialog from '$lib/ui/Dialog.svelte';
+	import Notice from '$lib/ui/Notice.svelte';
 	import Splitter from '$lib/ui/Splitter.svelte';
 	import { theme } from '$lib/theme.svelte';
 	import { REPO_CHANGED_EVENT, type RepoChangedEvent } from '$lib/types';
@@ -27,9 +33,13 @@
 
 	onMount(() => {
 		theme.init();
-		applyMetrics();
-		// After applyMetrics, so stored panel widths win over the defaults.
+		// Publishes the structural metrics as well as the type scale, at the
+		// stored zoom — so there is no frame at 100% before the user's zoom
+		// arrives.
+		scale.init();
+		// After the metrics, so stored panel widths win over the defaults.
 		panels.init();
+		registerCommands();
 
 		if (!api.inTauri()) return;
 
@@ -95,9 +105,34 @@
 	 * identically.
 	 */
 	function shortcut(event: KeyboardEvent) {
-		if (event.key !== 'f' || !(event.metaKey || event.ctrlKey) || event.altKey) return;
-		event.preventDefault();
-		goto('/search?focus=1');
+		if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+
+		switch (event.key) {
+			case 'f':
+				event.preventDefault();
+				goto('/search?focus=1');
+				return;
+			case 'p':
+				event.preventDefault();
+				palette.toggle();
+				return;
+			// `=` is the unshifted key most keyboards put `+` on, and browsers
+			// report both. Accepting only one means the shortcut works on some
+			// layouts and not others.
+			case '+':
+			case '=':
+				event.preventDefault();
+				scale.zoomIn();
+				return;
+			case '-':
+				event.preventDefault();
+				scale.zoomOut();
+				return;
+			case '0':
+				event.preventDefault();
+				scale.reset();
+				return;
+		}
 	}
 
 	// A newly opened repository means a fresh walk.
@@ -127,6 +162,17 @@
 	navigates, and a modal owned by a screen would go with it.
 -->
 <CloneModal />
+
+<!-- Reaches every command from every screen, so it belongs to the shell. -->
+<Palette />
+
+<!--
+	Every confirmation and every result. Both are mounted once, here, because an
+	action started on the graph can finish after the user has navigated away —
+	a dialog owned by a screen would take the question with it.
+-->
+<Dialog />
+<Notice />
 
 <!-- The window is undecorated, so it provides its own resize edges. -->
 <ResizeEdges />

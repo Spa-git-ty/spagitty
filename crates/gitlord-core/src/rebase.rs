@@ -8,9 +8,13 @@
 //! the preview, and this module is that half — the half that carries the value
 //! and none of the risk.
 //!
-//! **Nothing here runs anything.** `shell::rebase_interactive` is still
-//! unimplemented and there is no path from this module to it. Executing a plan
-//! is FEAT-015.
+//! **Nothing here runs anything, and that is still true.** Planning and
+//! executing are kept apart: [`plan`] answers "what would this do" and
+//! [`todo_text`] turns the same order into a `git-rebase-todo` file, but
+//! neither touches the repository. Execution is one call up, in
+//! [`crate::ops::rebase_interactive`], which hands that file to `git` — so the
+//! preview the user approved and the instructions git receives are generated
+//! from one ordering, and cannot describe two different rebases.
 
 use serde::{Deserialize, Serialize};
 
@@ -73,6 +77,13 @@ pub struct Edit {
     /// The commit this edit is about, by full id.
     pub id: String,
     pub action: Action,
+    /// The new message, for a [`Action::Reword`].
+    ///
+    /// Collected on screen rather than at execution time, because "at execution
+    /// time" means an editor on a terminal that does not exist. A reword with
+    /// no message is a pick — see [`todo_text`].
+    #[serde(default)]
+    pub message: Option<String>,
 }
 
 /// One row of the result: what a commit would become.
@@ -266,6 +277,71 @@ pub fn plan(todo: &Todo, edits: &[Edit]) -> Preview {
     }
 }
 
+/// The plan as a `git-rebase-todo` file.
+///
+/// This is what [`crate::ops::rebase_interactive`] hands to git through
+/// `GIT_SEQUENCE_EDITOR`, and it is generated from exactly the same `order` the
+/// preview is generated from — so what the screen showed and what git executes
+/// cannot disagree. It refuses the same plan [`plan`] refuses, for the same
+/// reason, rather than letting git discover it half-way.
+///
+/// A reword becomes `pick` followed by `exec git commit --amend`. `reword`
+/// itself would open an editor on the combined message, and there is no
+/// terminal for it — putting the message on the command line is how the choice
+/// made on screen survives to the repository. A reword with no message is
+/// nothing to do, so it is written as a plain pick.
+pub fn todo_text(todo: &Todo, edits: &[Edit]) -> Result<String> {
+    let ordered = order(todo, edits);
+
+    if let Some((_, Action::Squash)) = ordered.first().map(|(row, action)| (row, *action)) {
+        return Err(Error::NotStageable(
+            "the first commit cannot be a squash: there is nothing above it to fold into".into(),
+        ));
+    }
+
+    let by_id: std::collections::HashMap<&str, &Edit> =
+        edits.iter().map(|edit| (edit.id.as_str(), edit)).collect();
+
+    let mut out = String::new();
+    for (row, action) in ordered {
+        match action {
+            Action::Pick => out.push_str(&format!("pick {}\n", row.id)),
+            Action::Squash => out.push_str(&format!("squash {}\n", row.id)),
+            Action::Drop => out.push_str(&format!("drop {}\n", row.id)),
+            Action::Reword => {
+                out.push_str(&format!("pick {}\n", row.id));
+                let message = by_id
+                    .get(row.id.as_str())
+                    .and_then(|edit| edit.message.as_deref())
+                    .map(str::trim)
+                    .filter(|message| !message.is_empty());
+                if let Some(message) = message {
+                    out.push_str(&format!(
+                        "exec git commit --amend --only -m {}\n",
+                        shell_quote(message)
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(out)
+}
+
+/// A string as one POSIX shell word.
+///
+/// `exec` lines are run through `sh -c`, so a commit message containing a
+/// quote, a backtick or a `$(` is otherwise a command injection into the user's
+/// own shell. Single quotes take everything literally; the only character that
+/// needs handling is the single quote itself, which is closed, escaped and
+/// reopened.
+///
+/// Windows is not a special case here: git runs `exec` lines through its bundled
+/// `sh` on every platform.
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
 /// The todo's rows in the plan's order, each with the action it carries.
 ///
 /// An edit naming a commit that is not in the todo is ignored, and a commit the
@@ -393,6 +469,7 @@ mod tests {
             .map(|row| Edit {
                 id: row.id.clone(),
                 action: Action::Pick,
+                message: None,
             })
             .collect();
 
@@ -409,6 +486,7 @@ mod tests {
             .map(|at| Edit {
                 id: todo.rows[*at].id.clone(),
                 action: Action::Pick,
+                message: None,
             })
             .collect()
     }
@@ -651,6 +729,7 @@ mod tests {
             Edit {
                 id: "0".repeat(40),
                 action: Action::Drop,
+                message: None,
             },
         );
 
@@ -670,6 +749,7 @@ mod tests {
         repeated.push(Edit {
             id: todo.rows[0].id.clone(),
             action: Action::Drop,
+            message: None,
         });
 
         let preview = plan(&todo, &repeated);

@@ -197,19 +197,32 @@ export const graph = {
 	 */
 	async reload(): Promise<void> {
 		try {
-			const token = await api.graphRestart();
-			// Hold the current rows until the new walk delivers; only then do
-			// they get replaced. Clearing first is what makes a refresh flash.
-			pendingReset = true;
-			selectionUnverified = selectedId !== null;
-			requested = FIRST_WINDOW;
-			error = null;
-			repo.setToken(token);
-			await api.graphRequest(token, FIRST_WINDOW);
+			await this.adopt(await api.graphRestart());
 		} catch (e) {
 			pendingReset = false;
 			error = String(e);
 		}
+	},
+
+	/**
+	 * Take over a walk that was started elsewhere, by its token.
+	 *
+	 * `reload` starts one and adopts it; changing which branches are shown
+	 * starts one as a side effect of setting the visibility, and adopts the
+	 * token that came back. Both need the same handover, and it is the handover
+	 * that is easy to get wrong — the old token's events must stop being
+	 * accepted at the same moment the rows they would have appended stop being
+	 * wanted.
+	 */
+	async adopt(token: number): Promise<void> {
+		// Hold the current rows until the new walk delivers; only then do they
+		// get replaced. Clearing first is what makes a refresh flash.
+		pendingReset = true;
+		selectionUnverified = selectedId !== null;
+		requested = FIRST_WINDOW;
+		error = null;
+		repo.setToken(token);
+		await api.graphRequest(token, FIRST_WINDOW);
 	},
 
 	/**

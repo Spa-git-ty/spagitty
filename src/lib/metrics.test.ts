@@ -34,9 +34,17 @@ describe('laneColumns', () => {
 });
 
 describe('laneColumnWidth', () => {
-	it('matches the design at five lanes', () => {
-		// Lanes at 18…114, r=8, 28px of slack: the handoff's 150px column.
-		expect(laneColumnWidth(LANE_COLUMNS_MIN)).toBe(150);
+	it('fits five lanes and their slack', () => {
+		// Lanes at 12…72, r=5.5, 18px of slack, rounded: 96px.
+		expect(laneColumnWidth(LANE_COLUMNS_MIN)).toBe(96);
+	});
+
+	it('rounds to whole pixels, so the canvas and the cells share a boundary', () => {
+		for (const lanes of [5, 6, 9, 12]) {
+			for (const zoom of [1, 1.1, 1.35, 2]) {
+				expect(Number.isInteger(laneColumnWidth(lanes, zoom))).toBe(true);
+			}
+		}
 	});
 
 	it('widens by one lane pitch per extra column', () => {

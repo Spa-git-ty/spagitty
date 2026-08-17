@@ -2,25 +2,44 @@
 <script lang="ts">
 	import { graph } from '$lib/graph/store.svelte';
 	import LaneCanvas from '$lib/graph/LaneCanvas.svelte';
+	import GraphHeader from '$lib/graph/GraphHeader.svelte';
 	import { lanesNeeded, visibleRange } from '$lib/graph/lanes';
-	import { isNotable, relativeTime } from '$lib/format';
-	import { laneColumns, laneColumnWidth, LANE_COLUMNS_MIN, ROW_PITCH } from '$lib/metrics';
+	import { ancestry, byAuthor, ghostPath, rowOfRef } from '$lib/graph/highlight';
+	import { avatarColor, initials } from '$lib/graph/avatar';
+	import { columns } from '$lib/graph/columns.svelte';
+	import { overlay } from '$lib/graph/overlay.svelte';
+	import { visibility } from '$lib/graph/visibility.svelte';
+	import { selection } from '$lib/graph/selection.svelte';
+	import * as act from '$lib/graph/actions';
+	import { clockTime, fullDate, isNotable, relativeTime } from '$lib/format';
+	import { laneColumns, laneColumnWidth, LANE_COLUMNS_MIN } from '$lib/metrics';
+	import { scale } from '$lib/scale.svelte';
 	import RefChip from '$lib/ui/RefChip.svelte';
+	import Menu from '$lib/ui/Menu.svelte';
+	import type { MenuItem } from '$lib/ui/menu';
+	import type { GraphRow, RefChip as Chip } from '$lib/types';
 
 	/**
-	 * The virtualized commit list.
+	 * The virtualized commit list, and everything you can do to it.
 	 *
 	 * One DOM node per *visible* row, positioned by transform inside a sizer
-	 * that is `count * ROW_PITCH` tall. The lane canvas is a sibling pinned over
-	 * the lane column and redrawn from the same scroll offset, so rows and lanes
-	 * cannot drift apart: both are `index * ROW_PITCH`, from one constant.
+	 * that is `count × pitch` tall. The lane canvas is a sibling pinned over the
+	 * lane column and redrawn from the same scroll offset, so rows and lanes
+	 * cannot drift apart: both are `index × pitch`, from one value.
+	 *
+	 * The interactions the handoff asks for all live here because they are all
+	 * about the same rows — clicking, multi-selecting, right-clicking a commit
+	 * or a label, dragging one label onto another, hovering for a highlight.
+	 * What they *do* lives in `actions.ts`; this file decides what is offered.
 	 */
 
 	interface Props {
 		onopen?: (id: string) => void;
+		/** Opening the working copy — what clicking the WIP node does. */
+		onwip?: () => void;
 	}
 
-	let { onopen }: Props = $props();
+	let { onopen, onwip }: Props = $props();
 
 	let scroller = $state<HTMLDivElement | null>(null);
 	let scrollTop = $state(0);
@@ -29,12 +48,13 @@
 	/** The refs gutter shows at most this many chips before collapsing. */
 	const MAX_CHIPS = 2;
 
-	const range = $derived(visibleRange(scrollTop, viewportHeight, graph.count));
+	const pitch = $derived(scale.pitch);
+	const range = $derived(visibleRange(scrollTop, viewportHeight, graph.count, 4, pitch));
 
 	const rows = $derived.by(() => {
 		// Read the version so new batches re-render.
 		void graph.version;
-		const out = [];
+		const out: GraphRow[] = [];
 		for (let i = range.first; i <= range.last; i++) {
 			const row = graph.row(i);
 			if (row) out.push(row);
@@ -60,7 +80,7 @@
 	 */
 	const SHRINK_DELAY = 400;
 
-	let columns = $state(LANE_COLUMNS_MIN);
+	let laneCount = $state(LANE_COLUMNS_MIN);
 	/** Untracked mirror, so the effect below doesn't depend on what it writes. */
 	let currentColumns = LANE_COLUMNS_MIN;
 	let shrinkTimer: ReturnType<typeof setTimeout> | null = null;
@@ -73,12 +93,12 @@
 			if (shrinkTimer) clearTimeout(shrinkTimer);
 			shrinkTimer = null;
 			currentColumns = needed;
-			columns = needed;
+			laneCount = needed;
 		} else if (needed < currentColumns && shrinkTimer === null) {
 			shrinkTimer = setTimeout(() => {
 				shrinkTimer = null;
 				currentColumns = needed;
-				columns = needed;
+				laneCount = needed;
 			}, SHRINK_DELAY);
 		}
 	});
@@ -87,20 +107,293 @@
 		if (shrinkTimer) clearTimeout(shrinkTimer);
 	});
 
-	const laneWidth = $derived(laneColumnWidth(columns));
+	const laneWidth = $derived(laneColumnWidth(laneCount, scale.zoom));
+	const shown = $derived(columns.shown);
 
-	function onscroll(event: Event) {
-		scrollTop = (event.currentTarget as HTMLDivElement).scrollTop;
+	// --- Hover ------------------------------------------------------------
+
+	/** The branch label under the pointer, if any. Drives the highlight. */
+	let hoveredRef = $state<string | null>(null);
+	/** The row under the pointer, for the ghost branch. */
+	let hoveredRow = $state<number | null>(null);
+
+	/**
+	 * Which rows stay bright.
+	 *
+	 * A hovered branch wins over the author filter: the filter is a standing
+	 * question and the hover is one being asked right now. Null means nothing is
+	 * dimmed, which is not the same as an empty set — an empty set dims
+	 * everything.
+	 */
+	const highlight = $derived.by(() => {
+		void graph.version;
+
+		if (hoveredRef !== null) {
+			const tip = rowOfRef(hoveredRef, (i) => graph.row(i), graph.count);
+			if (tip !== null) return ancestry(tip, (i) => graph.row(i), graph.count);
+		}
+
+		return byAuthor(columns.author, (i) => graph.row(i), range.first, range.last + 1);
+	});
+
+	/** The dashed line from a bare commit to its nearest reference. */
+	const ghost = $derived.by(() => {
+		void graph.version;
+		if (hoveredRow === null || hoveredRef !== null) return [];
+		return ghostPath(hoveredRow, (i) => graph.row(i), graph.count);
+	});
+
+	/** Row index -> how many stashes hang off it. */
+	const stashRows = $derived.by(() => {
+		void graph.version;
+		const map = new Map<number, number>();
+		if (overlay.stashes.length === 0) return map;
+
+		const wanted = new Map<string, number>();
+		for (const entry of overlay.stashes) {
+			wanted.set(entry.parent, (wanted.get(entry.parent) ?? 0) + 1);
+		}
+		for (let i = range.first; i <= range.last; i++) {
+			const row = graph.row(i);
+			if (!row) continue;
+			const count = wanted.get(row.id);
+			if (count) map.set(i, count);
+		}
+		return map;
+	});
+
+	// --- Menus ------------------------------------------------------------
+
+	let menu = $state<{ x: number; y: number; items: MenuItem[]; label: string } | null>(null);
+
+	function openMenu(event: MouseEvent, label: string, items: MenuItem[]) {
+		event.preventDefault();
+		event.stopPropagation();
+		menu = { x: event.clientX, y: event.clientY, items, label };
 	}
 
-	function select(index: number) {
-		graph.select(index);
+	/**
+	 * What can be done to a commit.
+	 *
+	 * When several rows are selected the destructive-to-many operations act on
+	 * the whole selection and say so; the single-commit ones still act on the
+	 * row that was right-clicked, because that is the one under the pointer.
+	 */
+	function commitMenu(row: GraphRow): MenuItem[] {
+		const picked = selection.ordered();
+		const many = picked.length > 1 && picked.includes(row.index);
+		const ids = many ? picked.map((i) => graph.row(i)?.id ?? '').filter(Boolean) : [row.id];
+		const labels = many
+			? picked.map((i) => graph.row(i)?.short ?? '')
+			: [row.short];
+		// Oldest first: that is the order they will be replayed in.
+		const oldestFirst = [...ids].reverse();
+		const oldest = many ? graph.row(picked[picked.length - 1]) : row;
+
+		const items: MenuItem[] = [
+			{ heading: many ? `${picked.length} commits selected` : row.short },
+			{
+				id: 'branch',
+				label: 'Create branch here',
+				run: () => act.createBranchAt(row.id, row.short)
+			},
+			{ id: 'tag', label: 'Create tag here', run: () => act.createTagAt(row.id, row.short) },
+			{ separator: true },
+			{
+				id: 'cherry',
+				label: many ? `Cherry pick ${picked.length} commits` : 'Cherry pick',
+				run: () => act.cherryPick(oldestFirst, labels)
+			},
+			{ id: 'revert', label: 'Revert', run: () => act.revertCommit(row.id, row.short) },
+			{ separator: true },
+			{
+				id: 'reset-soft',
+				label: 'Reset here — keep and stage the changes',
+				note: 'soft',
+				run: () => act.resetTo(row.id, row.short, 'soft')
+			},
+			{
+				id: 'reset-mixed',
+				label: 'Reset here — keep the changes unstaged',
+				note: 'mixed',
+				run: () => act.resetTo(row.id, row.short, 'mixed')
+			},
+			{
+				id: 'reset-hard',
+				label: 'Reset here — discard the changes',
+				note: 'hard',
+				danger: true,
+				run: () => act.resetTo(row.id, row.short, 'hard')
+			},
+			{ separator: true },
+			{
+				id: 'rebase-onto',
+				label: 'Rebase onto this commit',
+				danger: true,
+				run: () => act.rebaseOntoCommit(row.id, row.short)
+			}
+		];
+
+		// Moving a *run* of commits needs somewhere to move it to, and the only
+		// unambiguous target on screen is the checked-out branch's position.
+		if (many && oldest) {
+			const target = visibility.branches.find((branch) => branch.current);
+			items.push({
+				id: 'rebase-range',
+				label: target
+					? `Rebase these ${picked.length} onto ${target.name}`
+					: `Rebase these ${picked.length}`,
+				disabled: !target,
+				reason: target ? undefined : 'no branch checked out',
+				danger: true,
+				run: () =>
+					target && act.rebaseRangeOnto(oldest, picked.length, target.name)
+			});
+		}
+
+		items.push(
+			{ separator: true },
+			{
+				id: 'checkout',
+				label: 'Check out this commit',
+				note: 'detached',
+				run: () => act.checkoutCommit(row.id, row.short)
+			},
+			{ id: 'copy', label: 'Copy SHA', note: row.short, run: () => act.copyId(row.id, row.short) },
+			{ id: 'diff', label: 'Open the diff', run: () => onopen?.(row.id) }
+		);
+
+		return items;
+	}
+
+	/** What can be done to a branch or tag label. */
+	function refMenu(chip: Chip, row: GraphRow): MenuItem[] {
+		const branch = visibility.branches.find(
+			(candidate) => candidate.name === chip.name && candidate.kind === chip.kind
+		);
+		const fullName = branch?.fullName ?? chip.name;
+		const current = visibility.branches.find((candidate) => candidate.current);
+		const isCurrent = chip.current;
+
+		if (chip.kind === 'tag') {
+			return [
+				{ heading: chip.name },
+				{ id: 'copy', label: 'Copy SHA', note: row.short, run: () => act.copyId(row.id, row.short) },
+				{ separator: true },
+				{ id: 'delete', label: 'Delete tag', danger: true, run: () => act.deleteTag(chip.name) }
+			];
+		}
+
+		const items: MenuItem[] = [
+			{ heading: chip.name },
+			{
+				id: 'checkout',
+				label: 'Check out',
+				disabled: isCurrent,
+				reason: isCurrent ? 'already on it' : undefined,
+				run: () => act.checkoutBranch(chip.name)
+			},
+			{ separator: true }
+		];
+
+		// Integrating a branch into itself is not a thing, and neither is
+		// integrating anything when nothing is checked out.
+		for (const entry of act.INTEGRATIONS) {
+			items.push({
+				id: entry.how,
+				label: `${entry.label} into ${current?.name ?? '…'}`,
+				disabled: isCurrent || !current,
+				reason: isCurrent ? 'that is the current branch' : !current ? 'nothing checked out' : undefined,
+				danger: entry.how === 'rebase',
+				run: () => current && act.integrate(chip.name, current.name, entry.how)
+			});
+		}
+
+		items.push(
+			{ separator: true },
+			{
+				id: 'pin',
+				label: visibility.isPinned(fullName) ? 'Unpin from the left' : 'Pin to the left',
+				run: () => visibility.togglePin(fullName)
+			},
+			{ id: 'solo', label: 'Show only this branch', run: () => visibility.solo(fullName) },
+			{ id: 'hide', label: 'Hide this branch', run: () => visibility.hide(fullName) }
+		);
+
+		if (chip.kind === 'branch') {
+			items.push(
+				{ separator: true },
+				{ id: 'rename', label: 'Rename', run: () => act.renameBranch(chip.name) },
+				{
+					id: 'delete',
+					label: 'Delete',
+					disabled: isCurrent,
+					reason: isCurrent ? 'checked out' : undefined,
+					danger: !(branch?.merged ?? false),
+					run: () => act.deleteBranch(chip.name, branch?.merged ?? false)
+				}
+			);
+		}
+
+		return items;
+	}
+
+	// --- Dragging one label onto another ----------------------------------
+
+	/**
+	 * The signature interaction: drag a branch label onto another and choose
+	 * what that means. It is the same four operations the right-click menu
+	 * offers, asked the other way round — by pointing at the pair rather than by
+	 * naming the target.
+	 */
+	let dragged = $state<Chip | null>(null);
+	let dropTarget = $state<string | null>(null);
+
+	function dropOnRef(event: DragEvent, target: Chip) {
+		event.preventDefault();
+		const source = dragged;
+		dragged = null;
+		dropTarget = null;
+		if (!source || source.name === target.name) return;
+
+		menu = {
+			x: event.clientX,
+			y: event.clientY,
+			label: `${source.name} onto ${target.name}`,
+			items: [
+				{ heading: `${source.name} → ${target.name}` },
+				...act.INTEGRATIONS.map((entry) => ({
+					id: entry.how,
+					label: entry.label,
+					danger: entry.how === 'rebase',
+					// Every one of these acts on the checked-out branch, so the
+					// target has to be checked out first. Saying so beats a
+					// refusal from git a second later.
+					disabled: !target.current,
+					reason: target.current ? undefined : `check out ${target.name} first`,
+					run: () => act.integrate(source.name, target.name, entry.how)
+				}))
+			]
+		};
+	}
+
+	// --- Selection --------------------------------------------------------
+
+	function click(event: MouseEvent, index: number) {
+		if (event.shiftKey) {
+			selection.extendTo(index);
+		} else if (event.ctrlKey || event.metaKey) {
+			selection.toggle(index);
+		} else {
+			selection.only(index);
+			graph.select(index);
+		}
 	}
 
 	function scrollIntoView(index: number) {
 		if (!scroller) return;
-		const top = index * ROW_PITCH;
-		const bottom = top + ROW_PITCH;
+		const top = index * pitch;
+		const bottom = top + pitch;
 		if (top < scroller.scrollTop) {
 			scroller.scrollTop = top;
 		} else if (bottom > scroller.scrollTop + viewportHeight) {
@@ -131,13 +424,19 @@
 					if (row) onopen?.(row.id);
 				}
 				return;
+			case 'Escape':
+				selection.clear();
+				return;
 			default:
 				return;
 		}
 
 		if (next !== null && next >= 0) {
 			event.preventDefault();
-			select(next);
+			// Shift extends the selection, matching what shift-click does.
+			if (event.shiftKey) selection.extendTo(next);
+			else selection.only(next);
+			graph.select(next);
 			scrollIntoView(next);
 		}
 	}
@@ -150,76 +449,176 @@
 </script>
 
 <div class="body">
-	<div
-		class="scroller"
-		bind:this={scroller}
-		bind:clientHeight={viewportHeight}
-		{onscroll}
-		{onkeydown}
-		role="listbox"
-		aria-label="Commits"
-		aria-activedescendant={graph.selectedIndex === null
-			? undefined
-			: `commit-${graph.selectedIndex}`}
-		tabindex="0"
-	>
-		<div class="sizer" style="height: {graph.count * ROW_PITCH}px">
-			{#each rows as row (row.index)}
-				{@const time = notableTime(row.index, row.time)}
-				{@const extra = row.refs.length - MAX_CHIPS}
-				<!--
-					Keyboard handling lives on the listbox, not on each option —
-					that is the ARIA pattern, and it is also the only workable
-					one here: options are virtualized, so most of them do not
-					exist as DOM nodes to receive a key event.
-				-->
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<div
-					id="commit-{row.index}"
-					class="row"
-					class:stripe={row.index % 2 === 1}
-					class:selected={graph.selectedIndex === row.index}
-					style="transform: translateY({row.index * ROW_PITCH}px)"
-					role="option"
-					aria-selected={graph.selectedIndex === row.index}
-					tabindex="-1"
-					onclick={() => select(row.index)}
-					ondblclick={() => onopen?.(row.id)}
-				>
-					<div class="refs">
-						{#each row.refs.slice(0, MAX_CHIPS) as chip (chip.kind + chip.name)}
-							<RefChip {chip} />
+	<GraphHeader {laneWidth} />
+
+	{#if overlay.wip}
+		<!--
+			The working copy, above the newest commit — which is where it belongs
+			in time, not a compromise for being unable to give it a row index.
+		-->
+		<button class="wip" onclick={() => onwip?.()}>
+			<span class="wip-node" aria-hidden="true"></span>
+			<span class="wip-text">
+				Uncommitted changes
+				<span class="note">
+					{overlay.wip.staged} staged · {overlay.wip.unstaged} unstaged
+				</span>
+			</span>
+		</button>
+	{/if}
+
+	<div class="rows">
+		<div
+			class="scroller"
+			bind:this={scroller}
+			bind:clientHeight={viewportHeight}
+			onscroll={(event) => (scrollTop = event.currentTarget.scrollTop)}
+			{onkeydown}
+			role="listbox"
+			aria-label="Commits"
+			aria-multiselectable="true"
+			aria-activedescendant={graph.selectedIndex === null
+				? undefined
+				: `commit-${graph.selectedIndex}`}
+			tabindex="0"
+		>
+			<div class="sizer" style="height: {graph.count * pitch}px">
+				{#each rows as row (row.index)}
+					{@const time = notableTime(row.index, row.time)}
+					{@const extra = row.refs.length - MAX_CHIPS}
+					{@const dim = highlight !== null && !highlight.has(row.index)}
+					<!--
+						Keyboard handling lives on the listbox, not on each option —
+						that is the ARIA pattern, and it is also the only workable
+						one here: options are virtualized, so most of them do not
+						exist as DOM nodes to receive a key event.
+					-->
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<div
+						id="commit-{row.index}"
+						class="row"
+						class:stripe={row.index % 2 === 1}
+						class:selected={selection.has(row.index)}
+						class:focused={graph.selectedIndex === row.index}
+						class:dim
+						style="transform: translateY({row.index * pitch}px)"
+						role="option"
+						aria-selected={selection.has(row.index)}
+						tabindex="-1"
+						onclick={(event) => click(event, row.index)}
+						ondblclick={() => onopen?.(row.id)}
+						oncontextmenu={(event) => openMenu(event, 'Commit', commitMenu(row))}
+						onmouseenter={() => (hoveredRow = row.index)}
+						onmouseleave={() => (hoveredRow = null)}
+					>
+						{#each shown as column (column.id)}
+							{#if column.id === 'refs'}
+								<div class="cell refs" style="width: {column.width}px">
+									{#each row.refs.slice(0, MAX_CHIPS) as chip (chip.kind + chip.name)}
+										<!-- svelte-ignore a11y_no_static_element_interactions -->
+										<span
+											class="chip-slot"
+											class:target={dropTarget === chip.name}
+											draggable={chip.kind !== 'tag'}
+											role="button"
+											tabindex="-1"
+											ondragstart={() => (dragged = chip)}
+											ondragend={() => {
+												dragged = null;
+												dropTarget = null;
+											}}
+											ondragover={(event) => {
+												if (!dragged || dragged.name === chip.name) return;
+												event.preventDefault();
+												dropTarget = chip.name;
+											}}
+											ondragleave={() => {
+												if (dropTarget === chip.name) dropTarget = null;
+											}}
+											ondrop={(event) => dropOnRef(event, chip)}
+											ondblclick={(event) => {
+												event.stopPropagation();
+												if (chip.kind !== 'tag') act.checkoutBranch(chip.name);
+											}}
+											oncontextmenu={(event) => openMenu(event, 'Reference', refMenu(chip, row))}
+											onmouseenter={() => (hoveredRef = chip.name)}
+											onmouseleave={() => (hoveredRef = null)}
+										>
+											<RefChip {chip} />
+										</span>
+									{/each}
+									{#if extra > 0}
+										<span class="more" title={row.refs.map((r) => r.name).join(', ')}>
+											+{extra}
+										</span>
+									{/if}
+								</div>
+							{:else if column.id === 'graph'}
+								<!-- Reserves the lane column; the canvas overlays exactly this. -->
+								<div class="cell lane-space" style="width: {laneWidth}px"></div>
+							{:else if column.id === 'message'}
+								<div class="cell message">
+									<span class="summary" title={row.summary}>{row.summary}</span>
+									{#if time}<span class="mono muted when">{time}</span>{/if}
+								</div>
+							{:else if column.id === 'author'}
+								<div class="cell text author" style="width: {column.width}px">
+									<span
+										class="avatar"
+										style="background: {avatarColor(row.authorName)}"
+										aria-hidden="true">{initials(row.authorName)}</span
+									>
+									<span class="ellipsis" title={row.authorName}>{row.authorName}</span>
+								</div>
+							{:else if column.id === 'time'}
+								<div class="cell text" style="width: {column.width}px">
+									<span class="mono muted ellipsis">{fullDate(row.time)} {clockTime(row.time)}</span>
+								</div>
+							{:else if column.id === 'sha'}
+								<div class="cell text" style="width: {column.width}px">
+									<span class="mono muted">{row.short}</span>
+								</div>
+							{/if}
 						{/each}
-						{#if extra > 0}
-							<span class="more" title={row.refs.map((r) => r.name).join(', ')}>
-								+{extra}
-							</span>
-						{/if}
 					</div>
-
-					<div class="lane-space" style="width: {laneWidth}px"></div>
-
-					<div class="message">
-						<span class="summary" title={row.summary}>{row.summary}</span>
-						{#if time}<span class="mono muted when">{time}</span>{/if}
-					</div>
-				</div>
-			{/each}
+				{/each}
+			</div>
 		</div>
-	</div>
 
-	<LaneCanvas
-		scrollTop={scrollTop}
-		first={range.first}
-		last={range.last}
-		width={laneWidth}
-		height={viewportHeight}
-		{columns}
-	/>
+		<LaneCanvas
+			{scrollTop}
+			first={range.first}
+			last={range.last}
+			width={laneWidth}
+			height={viewportHeight}
+			columns={laneCount}
+			{highlight}
+			{ghost}
+			stashes={stashRows}
+		/>
+	</div>
 </div>
+
+{#if menu}
+	<Menu
+		x={menu.x}
+		y={menu.y}
+		items={menu.items}
+		label={menu.label}
+		onclose={() => (menu = null)}
+	/>
+{/if}
 
 <style>
 	.body {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.rows {
 		position: relative;
 		flex: 1;
 		min-height: 0;
@@ -248,6 +647,7 @@
 		align-items: center;
 		cursor: pointer;
 		contain: layout paint;
+		border-radius: var(--r-row);
 	}
 
 	.row.stripe {
@@ -262,15 +662,39 @@
 		background: var(--selection);
 	}
 
-	.refs {
-		width: var(--refs-gutter-w);
+	/* The row the detail panel is showing, which is not the same as the set of
+	   rows a cherry-pick would act on. */
+	.row.focused {
+		box-shadow: inset 2px 0 0 var(--accent);
+	}
+
+	.row.dim {
+		opacity: 0.35;
+	}
+
+	.cell {
 		flex: none;
+		min-width: 0;
+		height: 100%;
 		display: flex;
 		align-items: center;
+	}
+
+	.refs {
 		justify-content: flex-end;
 		gap: 4px;
 		padding: 0 8px;
 		overflow: hidden;
+	}
+
+	.chip-slot {
+		display: inline-flex;
+		border-radius: var(--r-pill);
+	}
+
+	.chip-slot.target {
+		outline: 2px solid var(--accent);
+		outline-offset: 1px;
 	}
 
 	.more {
@@ -284,24 +708,21 @@
 		flex: none;
 	}
 
-	/* Reserves the lane column; the canvas overlays exactly this. Width is set
-	   inline because it adapts to how wide the visible history actually is. */
-	.lane-space {
-		flex: none;
-	}
-
 	.message {
 		flex: 1;
-		min-width: 0;
-		display: flex;
-		align-items: center;
 		gap: 8px;
 		padding: 0 10px;
 		border-left: 1.5px solid var(--soft);
-		height: 100%;
 	}
 
-	.summary {
+	.text {
+		gap: 6px;
+		padding: 0 8px;
+		border-left: 1.5px solid var(--soft);
+	}
+
+	.summary,
+	.ellipsis {
 		flex: 1;
 		min-width: 0;
 		overflow: hidden;
@@ -311,5 +732,56 @@
 
 	.when {
 		flex: none;
+	}
+
+	.author {
+		gap: 6px;
+	}
+
+	/*
+		Sized in `em` so the disc tracks the text-size dial rather than staying a
+		fixed dot beside text that grew around it.
+	*/
+	.avatar {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 1.5em;
+		height: 1.5em;
+		border-radius: 50%;
+		font-size: 0.75em;
+		letter-spacing: 0;
+		color: var(--on-accent);
+	}
+
+	.wip {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+		padding: 6px 10px;
+		border-bottom: 1.5px solid var(--soft);
+		text-align: left;
+		flex: none;
+	}
+
+	.wip:hover {
+		background: var(--stripe);
+	}
+
+	/* Hollow, so it does not read as a commit that has happened. */
+	.wip-node {
+		width: 12px;
+		height: 12px;
+		flex: none;
+		border: 2px dashed var(--accent);
+		border-radius: var(--r-pill);
+	}
+
+	.wip-text {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		min-width: 0;
 	}
 </style>

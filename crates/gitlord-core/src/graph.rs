@@ -117,6 +117,24 @@ impl LaneState {
         self.active.iter().filter(|s| s.is_some()).count()
     }
 
+    /// Hold a lane open for `id` before the walk starts.
+    ///
+    /// This is what "pin to left" is. Lanes are otherwise handed out in the
+    /// order commits are reached, so a long-lived branch like `main` drifts
+    /// across the graph as other branches come and go. Reserving its tip's lane
+    /// up front means the lane is occupied from row zero and every other branch
+    /// allocates to the right of it — the branch stays where the eye left it.
+    ///
+    /// Reserve in the order the lanes should appear. Reserving a commit that
+    /// the walk never reaches simply leaves that lane empty, which is a column
+    /// of whitespace rather than a broken graph.
+    pub fn reserve(&mut self, id: ObjectId) {
+        self.active.push(Some(id));
+        self.colors.push(self.next_color % LANE_COLOR_COUNT);
+        self.origin.push(None);
+        self.next_color = self.next_color.wrapping_add(1);
+    }
+
     /// Take the lowest free lane, or add one. The new lane gets the next color
     /// in the cycle.
     fn alloc(&mut self) -> usize {
@@ -258,6 +276,25 @@ pub fn walk<F>(
     repo: &gix::Repository,
     tips: Vec<ObjectId>,
     refs: &RefIndex,
+    sink: F,
+) -> Result<usize>
+where
+    F: FnMut(GraphRow) -> Flow,
+{
+    walk_pinned(repo, tips, refs, &[], sink)
+}
+
+/// [`walk`], with lanes held open on the left for `pinned`.
+///
+/// `pinned` is the graph's "pin to left": each id gets a lane reserved before
+/// the first row, in the order given, so those branches occupy the leftmost
+/// columns for the whole walk instead of drifting as history interleaves. An id
+/// the walk never reaches costs one empty column and nothing else.
+pub fn walk_pinned<F>(
+    repo: &gix::Repository,
+    tips: Vec<ObjectId>,
+    refs: &RefIndex,
+    pinned: &[ObjectId],
     mut sink: F,
 ) -> Result<usize>
 where
@@ -278,6 +315,9 @@ where
         .map_err(|e| Error::Walk(e.to_string()))?;
 
     let mut lanes = LaneState::new();
+    for id in pinned {
+        lanes.reserve(*id);
+    }
     let mut index = 0usize;
     // Author-name -> initials. Repositories repeat a handful of authors
     // thousands of times; this keeps it to one computation each.
@@ -379,6 +419,61 @@ pub fn all_tips(repo: &gix::Repository) -> Result<Vec<ObjectId>> {
     }
 
     Ok(tips)
+}
+
+/// The tips to walk from, given the refs the graph is currently showing.
+///
+/// An empty list means "all branches", which is [`all_tips`] and the default.
+/// A non-empty list is the graph's Hide, Solo and Smart Branch Visibility
+/// controls: all three reduce to the same question — *which refs are the walk
+/// rooted at* — so there is one function rather than three modes.
+///
+/// A name that no longer resolves is skipped rather than failing the walk: a
+/// branch can be deleted between the screen listing it and the walk starting,
+/// and losing one lane is better than losing the graph. If **nothing** in the
+/// list resolves, the caller gets every tip instead of an empty screen, because
+/// an empty graph is indistinguishable from a broken one.
+pub fn tips_for(repo: &gix::Repository, names: &[String]) -> Result<Vec<ObjectId>> {
+    if names.is_empty() {
+        return all_tips(repo);
+    }
+
+    let mut tips = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    for name in names {
+        let Ok(id) = repo.rev_parse_single(name.as_str()) else {
+            continue;
+        };
+        let id = id.detach();
+        if seen.insert(id) {
+            tips.push(id);
+        }
+    }
+
+    if tips.is_empty() {
+        return all_tips(repo);
+    }
+    Ok(tips)
+}
+
+/// Resolve ref names to the commits they point at, skipping what no longer exists.
+///
+/// Used for the pinned branches: unlike [`tips_for`] an empty result is
+/// perfectly fine here — nothing pinned means nothing reserved.
+pub fn ids_for(repo: &gix::Repository, names: &[String]) -> Vec<ObjectId> {
+    let mut ids = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for name in names {
+        let Ok(id) = repo.rev_parse_single(name.as_str()) else {
+            continue;
+        };
+        let id = id.detach();
+        if seen.insert(id) {
+            ids.push(id);
+        }
+    }
+    ids
 }
 
 /// Seven hex characters, matching what git shows by default.

@@ -56,13 +56,46 @@ Persistent across every screen, built with FEAT-001.
 
 **Built.** `src/routes/+page.svelte`, `src/lib/graph/`.
 
-The centre of gravity. A streamed, virtualised commit list with a lane canvas, a
-refs gutter, and a detail panel. Rows arrive in batches from a worker thread and
-never move once drawn. Clicking selects; double-clicking opens the diff.
+The centre of gravity, and the application's primary navigation surface rather
+than a read-only report: almost every operation GitLord can perform is reachable
+from a right-click here.
+
+A streamed, virtualised commit list with a lane canvas, a configurable column
+table, and a detail panel. Rows arrive in batches from a worker thread and never
+move once drawn. Clicking selects; double-clicking opens the diff.
+
+**Operations** (FEAT-022, `src/lib/graph/actions.ts`). Right-click a commit for
+create-branch/tag-here, reset (soft/mixed/hard, named by effect rather than by
+flag), revert, cherry-pick, rebase-onto, detached checkout and copy-SHA.
+Right-click a branch label for merge, rebase, fast-forward, rename, delete, pin,
+hide and solo. Dragging one label onto another offers the three integration
+verbs, with the gesture carrying the direction. Shift and Ctrl/Cmd build a
+second selection — separate from the detail panel's — that cherry-picks a group
+or rebases a range.
+
+Every destructive operation confirms through `Dialog` and reports through
+`Notice`, both mounted by the shell.
+
+**Noise control** (`visibility.svelte.ts`). Hide, solo, smart branch visibility
+and pin-to-left, all per repository, all resolved to a root set for a fresh walk
+rather than to a filter over drawn rows. The header chip always names the
+current scope and the gear lists what is hidden, soloed or pinned with a way
+back — a filter you cannot see is a filter you forget is on. The author filter
+is the exception: it **dims** rather than removes, because on the graph the
+shape is the thing being looked at.
+
+**The table** (`columns.svelte.ts`, `GraphHeader.svelte`). Branch/Tag, Graph,
+Commit Message, Author, Date/Time, SHA. Right-click the header to toggle, drag
+to reorder, drag a divider to resize; choice, order and widths are saved per
+repository. Author avatars are initials on a lane colour computed locally —
+never fetched, for the reasons in `src/lib/graph/avatar.ts`.
 
 The lane column stops widening at twelve columns — the reasoning and the
 measurements are in the doc comment on `LANE_COLUMNS_MAX` in
-`src/lib/metrics.ts`.
+`src/lib/metrics.ts`. The lane pitch, node radius and elbow control points were
+retuned in FEAT-022 against `docs/reference/gitkraken-commit-graph.md`, which
+also records what this graph deliberately will **not** do: no dragging commits,
+no inline message editing, no manual lane layout, no independent graph zoom.
 
 ## 1B — Diff
 

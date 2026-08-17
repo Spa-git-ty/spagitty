@@ -16,14 +16,32 @@
 /** Height of one commit row, in CSS pixels. The graph's fundamental unit. */
 export const ROW_PITCH = 26;
 
-/** Horizontal distance between two lanes. */
-export const LANE_PITCH = 24;
+/**
+ * Horizontal distance between two lanes.
+ *
+ * Retuned from 24 after comparing GitLord and GitKraken side by side on the
+ * same repository: the identical history was spreading across roughly twice
+ * the width, which pushes the message column — the part people actually read —
+ * off the right of the window on any history more than a few branches deep.
+ *
+ * Fifteen is the tightest pitch that still leaves a clear gap between two
+ * adjacent lane strokes and their nodes: `2 × NODE_R + LANE_STROKE` is 13, so
+ * neighbouring nodes keep two pixels of background between them at 100%.
+ * Going tighter makes two parallel long-lived branches read as one thick line.
+ */
+export const LANE_PITCH = 15;
 
-/** x of lane 0. Lanes therefore sit at 18, 42, 66, 90, 114. */
-export const LANE_X0 = 18;
+/** x of lane 0. Lanes therefore sit at 12, 27, 42, 57, 72. */
+export const LANE_X0 = 12;
 
-/** Radius of a commit node. */
-export const NODE_R = 8;
+/**
+ * Radius of a commit node.
+ *
+ * Bound to `LANE_PITCH`: a node wider than half the pitch collides with its
+ * neighbour, and one much smaller stops being a click target. Reduced from 8
+ * alongside the pitch, since the two only look right together.
+ */
+export const NODE_R = 5.5;
 
 /** Stroke width of a lane line. */
 export const LANE_STROKE = 2;
@@ -62,19 +80,33 @@ export const LANE_COLUMNS_MIN = 5;
 export const LANE_COLUMNS_MAX = 12;
 
 /**
- * Slack between the rightmost node and the message column. Taken from the
- * design: a 150px column with lanes at 18…114 and r=8 leaves 28px.
+ * Slack between the rightmost node and the message column.
+ *
+ * The design's 28px was slack at a 24px pitch; kept at the retuned 15px pitch
+ * it would be nearly two whole lanes of empty column, which is the widest
+ * single contributor to a graph that looks wider than its history. Eighteen
+ * still keeps a node clear of the divider and of the first character of a
+ * commit message.
  */
-const LANE_TAIL = 28;
+const LANE_TAIL = 18;
 
 /** Clamp a lane count into the range the column can render. */
 export function laneColumns(needed: number): number {
 	return Math.min(Math.max(needed, LANE_COLUMNS_MIN), LANE_COLUMNS_MAX);
 }
 
-/** Width of the lane column for a given number of lanes. */
-export function laneColumnWidth(needed: number): number {
-	return LANE_X0 + (laneColumns(needed) - 1) * LANE_PITCH + NODE_R + LANE_TAIL;
+/**
+ * Width of the lane column for a given number of lanes, at a given zoom.
+ *
+ * Rounded to whole pixels: the node radius is fractional, and a column whose
+ * CSS width lands on a half pixel puts the canvas and the row cells on
+ * different device-pixel boundaries, which shows up as a lane line that is one
+ * pixel off the node it is drawn through.
+ */
+export function laneColumnWidth(needed: number, zoom = 1): number {
+	return Math.round(
+		(LANE_X0 + (laneColumns(needed) - 1) * LANE_PITCH + NODE_R + LANE_TAIL) * zoom
+	);
 }
 
 /** Number of lane colors in the cycle; a lane keeps its color for its lifetime. */
@@ -125,20 +157,39 @@ export const REQUESTS_DETAIL_W = 300;
  * A branch/merge transition is a cubic elbow spanning exactly one row. Control
  * points are expressed as fractions of ROW_PITCH so the curve keeps its shape
  * if the pitch is ever retuned.
+ *
+ * Shortened from 0.65/0.58 with the lane pitch. A control point that long made
+ * every crossing occupy a full row, so a branch two lanes over drifted sideways
+ * through three rows before it settled — the "wandering lanes" that made the
+ * graph read as wider than it is. At 0.40/0.34 the curve leaves and arrives
+ * vertically but reaches its new lane in the upper half of the row, which is
+ * the short elbow GitKraken draws.
  */
-export const ELBOW_C1 = ROW_PITCH * 0.65;
-export const ELBOW_C2 = ROW_PITCH * 0.58;
+export const ELBOW_C1 = ROW_PITCH * 0.4;
+export const ELBOW_C2 = ROW_PITCH * 0.34;
 
 // --- Derived --------------------------------------------------------------
 
-/** Center y of row `i` within the scrolled content. */
-export function rowCenterY(index: number): number {
-	return index * ROW_PITCH + ROW_PITCH / 2;
+/**
+ * Center y of row `i` within the scrolled content.
+ *
+ * `pitch` is the row height actually in effect — `scale.pitch`, not the design
+ * constant — so that zooming moves rows and lanes by the same arithmetic. It
+ * defaults to the constant, which is what every test and every unzoomed frame
+ * wants.
+ */
+export function rowCenterY(index: number, pitch: number = ROW_PITCH): number {
+	return index * pitch + pitch / 2;
 }
 
-/** Center x of a lane, clamped to the column count currently being drawn. */
-export function laneX(lane: number, columns: number = LANE_COLUMNS_MIN): number {
-	return LANE_X0 + Math.min(lane, laneColumns(columns) - 1) * LANE_PITCH;
+/**
+ * Center x of a lane, clamped to the column count currently being drawn.
+ *
+ * `zoom` scales the horizontal geometry the same way `applyMetrics` scales the
+ * CSS widths, so the canvas and the reserved column keep agreeing.
+ */
+export function laneX(lane: number, columns: number = LANE_COLUMNS_MIN, zoom = 1): number {
+	return (LANE_X0 + Math.min(lane, laneColumns(columns) - 1) * LANE_PITCH) * zoom;
 }
 
 /** CSS variable name of a lane's color. Lane colors cycle. */
@@ -147,12 +198,35 @@ export function laneColorVar(colorIndex: number): string {
 }
 
 /**
+ * Radii, in CSS pixels, keyed by their token name without the `--`.
+ *
+ * `r-pill` is deliberately absent: a pill is `999px` at every zoom, because a
+ * radius larger than half the box is already clamped by the browser and scaling
+ * it would be arithmetic with no effect on any pixel.
+ */
+const RADII: Record<string, number> = {
+	'r-field': 6,
+	'r-button': 14,
+	'r-row': 6,
+	'r-panel': 8
+};
+
+/**
  * Publish the metrics to CSS so stylesheets can size things without
  * hard-coding a number that would drift from the value above.
+ *
+ * `zoom` scales structure — widths, radii, lane geometry. `pitchScale` scales
+ * the commit-row pitch alone, and is `zoom × textScale`, because the row is the
+ * box the commit message sits in and has to grow when the message does. Both
+ * default to 1, so a caller that does not care about scaling gets the design's
+ * own numbers.
  */
-export function applyMetrics(root: HTMLElement = document.documentElement): void {
+export function applyMetrics(
+	root: HTMLElement = document.documentElement,
+	zoom = 1,
+	pitchScale = zoom
+): void {
 	const px: Record<string, number> = {
-		'row-pitch': ROW_PITCH,
 		'lane-pitch': LANE_PITCH,
 		'titlebar-h': TITLEBAR_H,
 		'toolbar-h': TOOLBAR_H,
@@ -165,9 +239,18 @@ export function applyMetrics(root: HTMLElement = document.documentElement): void
 		'changes-files-w': CHANGES_FILES_W,
 		'repo-card-w': REPO_CARD_W,
 		'search-side-w': SEARCH_SIDE_W,
-		'requests-detail-w': REQUESTS_DETAIL_W
+		'requests-detail-w': REQUESTS_DETAIL_W,
+		...RADII
 	};
 	for (const [name, value] of Object.entries(px)) {
-		root.style.setProperty(`--${name}`, `${value}px`);
+		root.style.setProperty(`--${name}`, `${Math.round(value * zoom)}px`);
 	}
+
+	// The pitch is its own line because it takes the other factor, and it is
+	// clamped to at least one pixel: a zero-height row would divide by zero in
+	// the virtualization arithmetic.
+	root.style.setProperty(
+		'--row-pitch',
+		`${Math.max(1, Math.round(ROW_PITCH * pitchScale))}px`
+	);
 }
