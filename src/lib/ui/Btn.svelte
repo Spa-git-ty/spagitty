@@ -34,7 +34,6 @@
 
 <style>
 	.btn {
-		border: 1.5px solid var(--line);
 		border-radius: var(--r-button);
 		padding: 3px 10px;
 		font-size: var(--fs-secondary);
@@ -42,10 +41,31 @@
 		align-items: center;
 		gap: 5px;
 		white-space: nowrap;
+	}
+
+	/*
+	 * The background is set on everything *except* the glow, and that exclusion
+	 * is the whole point rather than tidiness.
+	 *
+	 * `.glow` lives in `app.css` and paints the accent fill through
+	 * `padding-box` with the travelling ring in `border-box`. Svelte scopes this
+	 * rule to `.btn.s-hash`, which is specificity (0,2,0) against the global
+	 * `.glow`'s (0,1,0) — so a plain `.btn { background: transparent }` wins and
+	 * the primary button loses its fill entirely, leaving `--on-accent` text on
+	 * the page background. That is BUG-002, and it is invisible in a screenshot
+	 * of a light theme until someone looks for the label.
+	 */
+	.btn:not(.glow) {
+		border: 1.5px solid var(--line);
 		background: transparent;
 	}
 
-	.btn:hover:not(:disabled) {
+	/*
+	 * `:not(.glow)` here for the same reason as the fill above: the glow's
+	 * border *is* its travelling ring, painted through `border-box`, so an
+	 * opaque border colour on hover paints over the effect.
+	 */
+	.btn:not(.glow):hover:not(:disabled) {
 		border-color: var(--accent);
 		color: var(--accent);
 	}
