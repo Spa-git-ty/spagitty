@@ -11,12 +11,17 @@ mod clone_worker;
 mod command_log;
 mod commands;
 mod graph_worker;
+mod platform;
 mod recents;
 mod search_worker;
 mod settings;
 mod watch;
 
 pub fn run() {
+    // Before the builder, because the webview reads its environment as it
+    // starts and this process is still single-threaded here.
+    platform::prepare_webview();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(commands::AppState::default())

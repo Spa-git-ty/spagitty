@@ -148,8 +148,13 @@ npm run tauri dev -- -- -- /tmp/gitlord-fixture
 The trailing path is passed to the binary and read by the `launch_path`
 command, so the app opens straight onto the fixture with no dialog.
 
-`WEBKIT_DISABLE_DMABUF_RENDERER=1` helps on several Linux driver and compositor
-combinations, where the webview otherwise renders blank.
+`WEBKIT_DISABLE_DMABUF_RENDERER` no longer has to be set by hand: since
+BUG-004 the binary sets it to `1` on Linux itself, before the webview starts, so
+a bare `npm run tauri dev` and a packaged launch both paint. It is still worth
+knowing about in two cases — setting it to `0` restores WebKit's DMABuf renderer
+on hardware that serves it, and a blank webview with `Failed to create GBM
+buffer` on stderr means something has stopped the app from applying its own
+default. See `src-tauri/src/platform.rs`.
 
 ### Driving it without a desk
 
@@ -172,7 +177,6 @@ the polite option — nothing steals focus from whatever is on screen:
 Xvfb :99 -screen 0 1600x1000x24 -nolisten tcp &
 
 env -u WAYLAND_DISPLAY DISPLAY=:99 GDK_BACKEND=x11 \
-    WEBKIT_DISABLE_DMABUF_RENDERER=1 \
     npm run tauri dev -- -- -- /tmp/gitlord-fixture
 ```
 

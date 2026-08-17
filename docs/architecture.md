@@ -64,6 +64,7 @@ forwards to the core.
 | `search_worker.rs` | A thread per query; starting one cancels the one before |
 | `clone_worker.rs` | A thread per clone; it owns the `git` process, so cancelling is a signal rather than a request |
 | `watch.rs` | Filesystem watcher over the git directory |
+| `platform.rs` | Host facts that must be true before the webview starts |
 | `lib.rs` | Command registration |
 
 Commands registered today, grouped by what they are for:
@@ -81,6 +82,18 @@ Commands registered today, grouped by what they are for:
 - **Application state** — `recent_repos`, `forget_repo`, `clone_plan`,
   `clone_start`, `clone_release`, `about`, `licenses`, `identity`,
   `set_identity`, `settings`, `set_settings`, `launch_path`.
+
+`platform.rs` is the other file that is not about git at all. WebKitGTK's
+DMABuf renderer cannot allocate a GBM buffer on some Linux driver and compositor
+combinations, and a webview with no frame to present is a white window for the
+whole session (BUG-004). The process therefore sets
+`WEBKIT_DISABLE_DMABUF_RENDERER=1` on itself as the first statement of `run` —
+before the builder, and while the process is still single-threaded, which is the
+only state in which `set_var` is sound. A value already present in the
+environment is never overwritten, in either direction, so the accelerated path
+stays reachable on hosts that can serve it. The trade is deliberate and its cost
+is recorded in `agile/plans/BUG-004-plan.md`: every Linux host repaints through
+shared memory, including the ones that did not need the fix.
 
 `graph_visibility` is the one worth naming here: hide, solo, smart visibility
 and pin-to-left all resolve to a **root set** for a fresh walk rather than to a
