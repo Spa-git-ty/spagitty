@@ -129,10 +129,15 @@
 ></canvas>
 
 <style>
+	/*
+	 * Placed by its slot, not by a constant. The wrapper in `CommitRows` is laid
+	 * out as part of the same flex row the cells are, so this only has to fill
+	 * it — see BUG-003 for what positioning it by hand cost.
+	 */
 	.lanes {
 		position: absolute;
 		top: 0;
-		left: var(--refs-gutter-w);
+		left: 0;
 		pointer-events: none;
 		display: block;
 	}

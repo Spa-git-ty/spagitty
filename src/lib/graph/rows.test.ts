@@ -11,7 +11,11 @@ import type { GraphRow, RefChip } from '$lib/types';
  */
 vi.mock('$lib/graph/store.svelte', async () => await import('../../testing/graph-store.svelte'));
 
+import { readFileSync } from 'node:fs';
 import { calls, control } from '../../testing/graph-store.svelte';
+import { columns } from './columns.svelte';
+
+const componentSource = readFileSync('src/lib/graph/CommitRows.svelte', 'utf8');
 import CommitRows from './CommitRows.svelte';
 import LaneCanvas from './LaneCanvas.svelte';
 
@@ -264,6 +268,75 @@ describe('CommitRows', () => {
 
 		view.destroy();
 		vi.useRealTimers();
+	});
+});
+
+describe('the lane canvas layer', () => {
+	// BUG-003: the canvas was positioned at the design's 186px gutter, so any
+	// column width the user actually chose left it painting over the messages.
+	// These assert it is laid out *with* the columns instead.
+
+	it('puts the canvas after exactly the columns that precede the graph', () => {
+		control.setRows([row(0), row(1), row(2)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		const layer = view.get('.lane-layer');
+		const slots = [...layer.children];
+		const graphSlot = view.get('.lane-slot');
+
+		// Default order is refs, graph, message: one spacer, then the canvas,
+		// then the filling gap for the message column.
+		expect(slots.indexOf(graphSlot)).toBe(1);
+		expect((slots[0] as HTMLElement).style.width).toBe(`${columns.shown[0].width}px`);
+		expect((slots[2] as HTMLElement).classList.contains('fill')).toBe(true);
+
+		view.destroy();
+	});
+
+	it('follows the Branch/Tag column when it is resized', () => {
+		control.setRows([row(0), row(1), row(2)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		columns.resize('refs', 120);
+		flushSync();
+
+		const spacer = view.get('.lane-layer').children[0] as HTMLElement;
+		expect(spacer.style.width).toBe('120px');
+		expect(spacer.style.width).not.toBe('186px');
+
+		view.destroy();
+	});
+
+	it('has nothing in front of it when the graph is the first column', () => {
+		control.setRows([row(0), row(1), row(2)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		columns.reorder(1, 0);
+		flushSync();
+
+		const slots = [...view.get('.lane-layer').children];
+		expect(slots.indexOf(view.get('.lane-slot'))).toBe(0);
+
+		view.destroy();
+	});
+
+	it('clips the canvas to its own column, so a wrong size cannot reach a neighbour', () => {
+		control.setRows([row(0), row(1), row(2)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		const slot = view.get('.lane-slot');
+		expect(slot.style.width).toBe(`${laneColumnWidth(LANE_COLUMNS_MIN)}px`);
+		// The rule lives in the component's stylesheet, which the test
+		// environment does not apply — assert it is declared rather than
+		// computed, the same way the Btn regression does.
+		expect(componentSource).toContain('.lane-slot');
+		expect(componentSource).toMatch(/\.lane-slot \{[^}]*overflow: hidden/);
+
+		view.destroy();
 	});
 });
 

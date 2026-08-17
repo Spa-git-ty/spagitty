@@ -110,6 +110,7 @@
 	const laneWidth = $derived(laneColumnWidth(laneCount, scale.zoom));
 	const shown = $derived(columns.shown);
 
+
 	// --- Dimming ----------------------------------------------------------
 
 	/**
@@ -575,16 +576,42 @@
 			</div>
 		</div>
 
-		<LaneCanvas
-			{scrollTop}
-			first={range.first}
-			last={range.last}
-			width={laneWidth}
-			height={viewportHeight}
-			columns={laneCount}
-			{highlight}
-			stashes={stashRows}
-		/>
+		<!--
+			The canvas is laid out by the same rules as a row, rather than being
+			placed at a computed x.
+
+			It used to sit at `--refs-gutter-w` — the design's 186px — which is
+			the right answer only while Branch/Tag is at its default width and
+			first in the order. Dragging that column, reordering, or hiding it
+			left the canvas behind and the lanes landed on the messages (BUG-003).
+
+			So this layer mirrors the row: one spacer per column ahead of the
+			graph, with the same widths the cells use, and the canvas in the
+			graph's slot. The browser does the arithmetic, which means the two
+			cannot disagree — whatever moves a cell moves the canvas with it.
+		-->
+		<div class="lane-layer" aria-hidden="true">
+			{#each shown as column (column.id)}
+				{#if column.id === 'graph'}
+					<div class="lane-slot" style="width: {laneWidth}px">
+						<LaneCanvas
+							{scrollTop}
+							first={range.first}
+							last={range.last}
+							width={laneWidth}
+							height={viewportHeight}
+							columns={laneCount}
+							{highlight}
+							stashes={stashRows}
+						/>
+					</div>
+				{:else if column.fills}
+					<div class="lane-gap fill"></div>
+				{:else}
+					<div class="lane-gap" style="width: {column.width}px"></div>
+				{/if}
+			{/each}
+		</div>
 	</div>
 </div>
 
@@ -651,6 +678,38 @@
 	 * behind the scroller would have to be positioned against `scrollTop` by
 	 * hand and would lag it by a frame. The canvas draws on top of these slices.
 	 */
+	/*
+	 * The canvas layer: the same flex row as a commit row, over the top of them
+	 * all, transparent to the pointer. `overflow: hidden` on the slot is the
+	 * belt to the layout's braces — a canvas that is somehow the wrong size gets
+	 * cut off at its column's edge instead of painting over a neighbour.
+	 */
+	.lane-layer {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		display: flex;
+		pointer-events: none;
+	}
+
+	.lane-gap {
+		flex: none;
+	}
+
+	.lane-gap.fill {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.lane-slot {
+		flex: none;
+		position: relative;
+		height: 100%;
+		overflow: hidden;
+	}
+
 	.lane-space {
 		background: var(--graph-bg);
 		box-shadow:
