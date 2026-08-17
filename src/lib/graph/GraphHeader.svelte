@@ -20,11 +20,22 @@
 	 */
 
 	interface Props {
+		/**
+		 * How far the rows are scrolled sideways.
+		 *
+		 * The header is not inside the rows' scroller — it must stay visible
+		 * while they scroll vertically — so it is moved by the same amount
+		 * instead. One number, passed down, rather than two scrollers kept in
+		 * step by listening to each other.
+		 */
+		scrollLeft?: number;
+		/** Total width of the columns, or null while one of them fills. */
+		tableWidth?: number | null;
 		/** Width of the lane column right now, which the store cannot know. */
 		laneWidth: number;
 	}
 
-	let { laneWidth }: Props = $props();
+	let { laneWidth, scrollLeft = 0, tableWidth = null }: Props = $props();
 
 	const shown = $derived(columns.shown);
 
@@ -61,7 +72,14 @@
 	function startResize(event: PointerEvent, id: ColumnId) {
 		event.preventDefault();
 		event.stopPropagation();
-		resizing = { id, startX: event.clientX, startWidth: columns.width(id) };
+
+		// Measured, not read from the store: the filling column's stored width
+		// is 0 until it is dragged, and starting a drag from 0 would snap it to
+		// its minimum before the pointer had moved a pixel.
+		const cell = (event.currentTarget as HTMLElement).parentElement;
+		const startWidth = cell ? cell.getBoundingClientRect().width : columns.width(id);
+
+		resizing = { id, startX: event.clientX, startWidth };
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 	}
 
@@ -84,7 +102,17 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="header" oncontextmenu={openMenu} role="row" tabindex="-1" aria-label="Graph columns">
+<div class="header-clip">
+<div
+	class="header"
+	style="transform: translateX({-scrollLeft}px); {tableWidth === null
+		? ''
+		: `width: ${tableWidth}px`}"
+	oncontextmenu={openMenu}
+	role="row"
+	tabindex="-1"
+	aria-label="Graph columns"
+>
 	{#each shown as column, index (column.id)}
 		<div
 			class="cell"
@@ -141,22 +169,29 @@
 				{/if}
 			{/if}
 
-			{#if !column.fills}
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div
-					class="divider"
-					class:fixed={column.computed}
-					title={column.computed
-						? 'The graph column is sized to the lanes on screen'
-						: `Resize ${column.label}`}
-					onpointerdown={(event) => !column.computed && startResize(event, column.id)}
-					onpointermove={moveResize}
-					onpointerup={endResize}
-					onpointercancel={endResize}
-				></div>
-			{/if}
+			<!--
+				Every column gets a divider, including the one that fills.
+				Dragging the filling column is how it stops filling — before this
+				it was the one column with no handle at all, which read as "this
+				one is not resizable" rather than "this one takes what is left".
+				Double-click hands the fill back.
+			-->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				class="divider"
+				class:fixed={column.computed}
+				title={column.computed
+					? 'The graph column is sized to the lanes on screen'
+					: `Resize ${column.label} — double-click to reset`}
+				onpointerdown={(event) => !column.computed && startResize(event, column.id)}
+				onpointermove={moveResize}
+				onpointerup={endResize}
+				onpointercancel={endResize}
+				ondblclick={() => !column.computed && columns.unsize(column.id)}
+			></div>
 		</div>
 	{/each}
+</div>
 </div>
 
 {#if menu}
@@ -170,6 +205,13 @@
 {/if}
 
 <style>
+	/* The header is clipped rather than scrolled: it is moved by the rows'
+	   scroll offset, so anything past the right edge must not paint outside. */
+	.header-clip {
+		overflow: hidden;
+		flex: none;
+	}
+
 	.header {
 		display: flex;
 		align-items: stretch;

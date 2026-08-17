@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DETAIL_MAX, DETAIL_MIN, panels, RAIL_MAX, RAIL_MIN } from './panels.svelte';
+import {
+	DETAIL_MAX,
+	DETAIL_MIN,
+	panels,
+	RAIL_COLLAPSED_W,
+	RAIL_MAX,
+	RAIL_MIN
+} from './panels.svelte';
 import { DETAIL_W, RAIL_W } from './metrics';
 
 const KEY = 'gitlord.panels';
@@ -147,6 +154,58 @@ describe('reset', () => {
 
 		expect(panels.rail).toBe(RAIL_W);
 		expect(cssVar('--rail-w')).toBe(`${RAIL_W}px`);
-		expect(JSON.parse(store.get(KEY) as string)).toEqual({ rail: RAIL_W, detail: DETAIL_W });
+		expect(JSON.parse(store.get(KEY) as string)).toEqual({
+			rail: RAIL_W,
+			detail: DETAIL_W,
+			railCollapsed: false
+		});
+	});
+});
+
+describe('collapsing the rail', () => {
+	it('narrows the variable every other panel lays itself out against', () => {
+		stubStorage();
+		panels.setRail(300);
+
+		panels.toggleRail();
+
+		expect(panels.railCollapsed).toBe(true);
+		expect(cssVar('--rail-w')).toBe(`${RAIL_COLLAPSED_W}px`);
+	});
+
+	it('gives back the width that was dragged, not the default', () => {
+		stubStorage();
+		panels.setRail(300);
+		panels.toggleRail();
+
+		panels.toggleRail();
+
+		expect(panels.railCollapsed).toBe(false);
+		expect(panels.rail).toBe(300);
+		expect(cssVar('--rail-w')).toBe('300px');
+	});
+
+	it('survives a restart', () => {
+		const store = stubStorage();
+		panels.toggleRail();
+
+		// What a restart actually reads: the stored layout carries the flag…
+		expect(JSON.parse(store.get(KEY) as string).railCollapsed).toBe(true);
+
+		// …and `init` puts it back, which is the half a fresh process runs.
+		panels.init();
+
+		expect(panels.railCollapsed).toBe(true);
+		expect(cssVar('--rail-w')).toBe(`${RAIL_COLLAPSED_W}px`);
+	});
+
+	it('is undone by a reset, since a collapsed rail is not a design width', () => {
+		stubStorage();
+		panels.toggleRail();
+
+		panels.reset();
+
+		expect(panels.railCollapsed).toBe(false);
+		expect(cssVar('--rail-w')).toBe(`${RAIL_W}px`);
 	});
 });

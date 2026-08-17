@@ -137,7 +137,38 @@ function restore(key: string): void {
 export const columns = {
 	/** The shown columns, in draw order, with their current widths. */
 	get shown(): Column[] {
-		return order.map((id) => ({ ...definition(id), width: widths[id] ?? definition(id).width }));
+		return order.map((id) => {
+			const column = definition(id);
+			const stored = widths[id];
+
+			// The message column fills until it is dragged. A stored width is
+			// exactly what "the user has an opinion about this one" means, so it
+			// is also what stops it filling — no second flag to keep in step,
+			// and clearing the width is what hands the fill back.
+			if (column.fills) {
+				return stored === undefined
+					? column
+					: { ...column, fills: false, width: Math.max(column.min, stored) };
+			}
+
+			return { ...column, width: stored ?? column.width };
+		});
+	},
+
+	/**
+	 * Total width of the shown columns, or null while one of them is filling.
+	 *
+	 * Null means the table is exactly as wide as its viewport and nothing
+	 * scrolls sideways. A number means the columns have been sized past it and
+	 * the rows, the header and the lane layer all have to agree on how far.
+	 */
+	get totalWidth(): number | null {
+		let total = 0;
+		for (const column of this.shown) {
+			if (column.fills) return null;
+			total += column.width;
+		}
+		return total;
 	},
 
 	/** Everything that could be shown, for the header's menu. */
@@ -200,8 +231,24 @@ export const columns = {
 	/** Set a width, clamped to what the column can still say something in. */
 	resize(id: ColumnId, next: number): void {
 		const column = definition(id);
-		if (column.computed || column.fills) return;
+		// The graph's width is computed from the lanes on screen; a narrower one
+		// draws commits on top of each other, so it is not draggable. A filling
+		// column *is* — dragging it is how it stops filling.
+		if (column.computed) return;
 		widths = { ...widths, [id]: Math.max(column.min, Math.round(next)) };
+		persist();
+	},
+
+	/**
+	 * Give a column its default back.
+	 *
+	 * For the filling column that means filling again, which is the only way
+	 * back once it has been dragged — double-clicking its divider is the
+	 * gesture, because a menu item for it would be a menu item nobody finds.
+	 */
+	unsize(id: ColumnId): void {
+		const { [id]: _dropped, ...rest } = widths;
+		widths = rest;
 		persist();
 	},
 

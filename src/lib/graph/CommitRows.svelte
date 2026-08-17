@@ -110,6 +110,25 @@
 	const laneWidth = $derived(laneColumnWidth(laneCount, scale.zoom));
 	const shown = $derived(columns.shown);
 
+	/**
+	 * Total width of the columns once none of them fills, or null while one
+	 * still does.
+	 *
+	 * Null is the ordinary case: the message column takes what is left and
+	 * nothing scrolls sideways. Once it has been given a width of its own the
+	 * columns can add up to more than the window, and the rows, the header and
+	 * the lane layer all have to be that wide together — otherwise they scroll
+	 * different amounts and the graph leaves its column again, which is BUG-003
+	 * wearing a different hat.
+	 */
+	const tableWidth = $derived.by(() => {
+		const total = columns.totalWidth;
+		return total === null ? null : total - columns.width('graph') + laneWidth;
+	});
+
+	/** How far the rows are scrolled sideways; the header follows it. */
+	let scrollLeft = $state(0);
+
 
 	// --- Dimming ----------------------------------------------------------
 
@@ -436,7 +455,7 @@
 </script>
 
 <div class="body">
-	<GraphHeader {laneWidth} />
+	<GraphHeader {laneWidth} {scrollLeft} tableWidth={tableWidth} />
 
 	{#if overlay.wip}
 		<!--
@@ -459,7 +478,10 @@
 			class="scroller"
 			bind:this={scroller}
 			bind:clientHeight={viewportHeight}
-			onscroll={(event) => (scrollTop = event.currentTarget.scrollTop)}
+			onscroll={(event) => {
+				scrollTop = event.currentTarget.scrollTop;
+				scrollLeft = event.currentTarget.scrollLeft;
+			}}
 			{onkeydown}
 			role="listbox"
 			aria-label="Commits"
@@ -469,7 +491,12 @@
 				: `commit-${graph.selectedIndex}`}
 			tabindex="0"
 		>
-			<div class="sizer" style="height: {graph.count * pitch}px">
+			<div
+				class="sizer"
+				style="height: {graph.count * pitch}px; {tableWidth === null
+					? ''
+					: `width: ${tableWidth}px`}"
+			>
 				{#each rows as row (row.index)}
 					{@const time = notableTime(row.index, row.time)}
 					{@const extra = row.refs.length - MAX_CHIPS}
@@ -590,7 +617,13 @@
 			graph's slot. The browser does the arithmetic, which means the two
 			cannot disagree — whatever moves a cell moves the canvas with it.
 		-->
-		<div class="lane-layer" aria-hidden="true">
+		<div
+			class="lane-layer"
+			style="transform: translateX({-scrollLeft}px); {tableWidth === null
+				? ''
+				: `width: ${tableWidth}px`}"
+			aria-hidden="true"
+		>
 			{#each shown as column (column.id)}
 				{#if column.id === 'graph'}
 					<div class="lane-slot" style="width: {laneWidth}px">
@@ -644,7 +677,13 @@
 	.scroller {
 		height: 100%;
 		overflow-y: auto;
-		overflow-x: hidden;
+		/*
+		 * Sideways scrolling exists only once the columns are wider than the
+		 * window, which is possible now that the message column can be given a
+		 * width of its own. Until then `.sizer` has no width of its own and
+		 * there is nothing to scroll.
+		 */
+		overflow-x: auto;
 		outline: none;
 	}
 

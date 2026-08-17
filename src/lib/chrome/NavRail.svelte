@@ -4,8 +4,16 @@
 	import { page } from '$app/state';
 	import { graph } from '$lib/graph/store.svelte';
 	import { isActive, NAV_ITEMS } from '$lib/nav';
+	import { panels } from '$lib/panels.svelte';
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
+
+	/**
+	 * Collapsed, the rail is a strip of glyphs. Everything stays where it was —
+	 * same items, same order, same routes — so the muscle memory of which
+	 * position is which screen survives the collapse.
+	 */
+	const collapsed = $derived(panels.railCollapsed);
 
 	const counts = $derived(repo.counts);
 
@@ -25,18 +33,38 @@
 	);
 </script>
 
-<nav class="rail" aria-label="Screens">
+<nav class="rail" class:collapsed aria-label="Screens">
 	<div class="head">
-		<span class="mono muted">
-			◂ {graph.count}{graph.complete ? '' : ' …'}
-		</span>
-		<span class="note">{graph.complete ? 'all' : 'loading'}</span>
+		<button
+			class="collapse"
+			title={collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'}
+			aria-label={collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'}
+			aria-expanded={!collapsed}
+			onclick={() => panels.toggleRail()}
+		>
+			{collapsed ? '»' : '«'}
+		</button>
+		{#if !collapsed}
+			<span class="mono muted">
+				◂ {graph.count}{graph.complete ? '' : ' …'}
+			</span>
+			<span class="note">{graph.complete ? 'all' : 'loading'}</span>
+		{/if}
 	</div>
 
 	<div class="filter">
-		<button class="field" onclick={() => goto('/search')}>
-			<span class="mono muted">filter commits</span>
-			<span class="mono muted">⌘F</span>
+		<button
+			class="field"
+			title="Search the log"
+			aria-label="Search the log"
+			onclick={() => goto('/search')}
+		>
+			{#if collapsed}
+				<span class="mono muted" aria-hidden="true">⌕</span>
+			{:else}
+				<span class="mono muted">filter commits</span>
+				<span class="mono muted">⌘F</span>
+			{/if}
 		</button>
 	</div>
 
@@ -47,20 +75,37 @@
 		<button
 			class="item"
 			data-active={isActive(item.href, page.url.pathname)}
+			title={item.label}
+			aria-label={item.label}
 			onclick={() => goto(item.href)}
 		>
-			<span>{item.label}</span>
-			<span class="mono muted">
-				{item.count ? countLabel(item.count) : (item.hint ?? '')}
-			</span>
+			{#if collapsed}
+				<span class="glyph" aria-hidden="true">{item.glyph}</span>
+			{:else}
+				<span>{item.label}</span>
+				<span class="mono muted">
+					{item.count ? countLabel(item.count) : (item.hint ?? '')}
+				</span>
+			{/if}
 		</button>
 	{/each}
 
 	<div class="spacer"></div>
 
 	<div class="foot">
-		<span class="note">Tags {tagsLabel} · Submodules {submodulesLabel}</span>
-		<Btn onclick={() => repo.choose()}>Open repository…</Btn>
+		{#if collapsed}
+			<button
+				class="item"
+				title="Open repository…"
+				aria-label="Open repository…"
+				onclick={() => repo.choose()}
+			>
+				<span class="glyph" aria-hidden="true">⊞</span>
+			</button>
+		{:else}
+			<span class="note">Tags {tagsLabel} · Submodules {submodulesLabel}</span>
+			<Btn onclick={() => repo.choose()}>Open repository…</Btn>
+		{/if}
 	</div>
 </nav>
 
@@ -82,6 +127,48 @@
 		gap: 6px;
 		padding: 8px;
 		border-bottom: 1.5px solid var(--soft);
+	}
+
+	.rail.collapsed .head {
+		justify-content: center;
+		padding: 8px 4px;
+	}
+
+	.collapse {
+		flex: none;
+		color: var(--muted);
+		font-size: var(--fs-secondary);
+		line-height: 1;
+		padding: 2px 4px;
+		border-radius: var(--r-field);
+	}
+
+	.collapse:hover {
+		color: var(--accent);
+		background: var(--soft);
+	}
+
+	/* Collapsed, an item is a glyph in a square: same order, same routes, no
+	   labels. The title attribute carries the name for a pointer, and
+	   `aria-label` carries it for everything else. */
+	.rail.collapsed .item,
+	.rail.collapsed .field {
+		justify-content: center;
+		padding-left: 0;
+		padding-right: 0;
+	}
+
+	.rail.collapsed .filter {
+		padding: 8px 4px;
+	}
+
+	.rail.collapsed .foot {
+		padding: 8px 4px;
+	}
+
+	.glyph {
+		font-size: 15px;
+		line-height: 1;
 	}
 
 	.filter {

@@ -20,6 +20,13 @@
 
 	let dragging = $state(false);
 
+	/**
+	 * A collapsed rail is not resizable: dragging a strip of icons wider would
+	 * produce a rail that is neither collapsed nor expanded, and the width it
+	 * would be dragging is the one being held for when it expands again.
+	 */
+	const locked = $derived(panel === 'rail' && panels.railCollapsed);
+
 	const width = $derived(panel === 'rail' ? panels.rail : panels.detail);
 
 	function apply(clientX: number, element: HTMLElement) {
@@ -37,7 +44,7 @@
 	}
 
 	function onpointerdown(event: PointerEvent) {
-		if (event.button !== 0) return;
+		if (event.button !== 0 || locked) return;
 		event.preventDefault();
 		dragging = true;
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
@@ -57,6 +64,7 @@
 
 	/** Keyboard resizing, so this is not a mouse-only control. */
 	function onkeydown(event: KeyboardEvent) {
+		if (locked) return;
 		const step = event.shiftKey ? 32 : 8;
 		let delta = 0;
 		if (event.key === 'ArrowLeft') delta = -step;
@@ -84,6 +92,7 @@
 <div
 	class="splitter {panel}"
 	class:dragging
+	class:locked
 	role="separator"
 	aria-orientation="vertical"
 	aria-label={label}
@@ -96,10 +105,16 @@
 	ondblclick={() => {
 		panels.reset();
 	}}
-	title="Drag to resize · double-click to reset"
+	title={locked
+		? 'The sidebar is collapsed — expand it to resize'
+		: 'Drag to resize · double-click to reset'}
 ></div>
 
 <style>
+	.splitter.locked {
+		cursor: default;
+	}
+
 	.splitter {
 		flex: none;
 		width: 7px;
