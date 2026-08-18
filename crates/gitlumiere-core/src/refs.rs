@@ -58,13 +58,19 @@ impl Host {
         // The host must come from the *authority*, never from anywhere in the
         // string: `https://git.example.com/mirrors/github.com/o/r.git` is not
         // GitHub, and a substring search says it is.
-        let after_scheme = lower.split_once("://").map_or(lower.as_str(), |(_, rest)| rest);
+        let after_scheme = lower
+            .split_once("://")
+            .map_or(lower.as_str(), |(_, rest)| rest);
         // Authority ends at the first `/` — which also handles a bare path,
         // where there is no authority at all.
         let authority = after_scheme.split('/').next().unwrap_or("");
         // Drop any `user@`, then the `:port` or the scp-like `:path`.
-        let authority = authority.rsplit_once('@').map_or(authority, |(_, host)| host);
-        let authority = authority.split_once(':').map_or(authority, |(host, _)| host);
+        let authority = authority
+            .rsplit_once('@')
+            .map_or(authority, |(_, host)| host);
+        let authority = authority
+            .split_once(':')
+            .map_or(authority, |(host, _)| host);
 
         if authority.contains("github.") {
             Host::GitHub
@@ -164,7 +170,11 @@ impl RefIndex {
                     // A ref directly under refs/remotes with no remote name.
                     continue;
                 };
-                (RefKind::Remote, branch.to_string(), Some(remote.to_string()))
+                (
+                    RefKind::Remote,
+                    branch.to_string(),
+                    Some(remote.to_string()),
+                )
             } else if let Some(rest) = full.strip_prefix("refs/tags/") {
                 (RefKind::Tag, rest.to_string(), None)
             } else {
@@ -432,7 +442,11 @@ mod tests {
         assert!(main.local, "the local ref is at this commit");
         assert_eq!(main.remotes.len(), 1);
         assert_eq!(main.remotes[0].name, "origin");
-        assert_eq!(main.kind, RefKind::Branch, "it has a local ref, so it is a branch");
+        assert_eq!(
+            main.kind,
+            RefKind::Branch,
+            "it has a local ref, so it is a branch"
+        );
 
         assert!(
             !names(&chips).iter().any(|n| n.contains('/')),
@@ -466,14 +480,24 @@ mod tests {
         let at_head = index.chips_for(&gix::ObjectId::from_hex(head.as_bytes()).expect("id"));
         let at_parent = index.chips_for(&gix::ObjectId::from_hex(parent.as_bytes()).expect("id"));
 
-        let local = at_head.iter().find(|c| c.name == "main").expect("local main");
+        let local = at_head
+            .iter()
+            .find(|c| c.name == "main")
+            .expect("local main");
         assert!(local.local);
         assert!(local.remotes.is_empty(), "the remote is not at this commit");
 
-        let remote = at_parent.iter().find(|c| c.name == "main").expect("remote main");
+        let remote = at_parent
+            .iter()
+            .find(|c| c.name == "main")
+            .expect("remote main");
         assert!(!remote.local, "no local ref is at the parent");
         assert_eq!(remote.remotes.len(), 1);
-        assert_eq!(remote.kind, RefKind::Remote, "remote-only, so it styles as one");
+        assert_eq!(
+            remote.kind,
+            RefKind::Remote,
+            "remote-only, so it styles as one"
+        );
     }
 
     #[test]
@@ -489,7 +513,10 @@ mod tests {
 
         let main = chips.iter().find(|c| c.name == "main").expect("main");
         assert_eq!(
-            main.remotes.iter().map(|m| m.name.as_str()).collect::<Vec<_>>(),
+            main.remotes
+                .iter()
+                .map(|m| m.name.as_str())
+                .collect::<Vec<_>>(),
             vec!["fork", "origin"],
             "remotes are in name order, so the chip is stable between refreshes"
         );
@@ -501,7 +528,11 @@ mod tests {
     fn a_slashed_branch_name_splits_at_the_remote() {
         let fixture = Fixture::woven();
         let head = fixture.head();
-        fixture.git(&["update-ref", "refs/remotes/origin/feature/split-view", &head]);
+        fixture.git(&[
+            "update-ref",
+            "refs/remotes/origin/feature/split-view",
+            &head,
+        ]);
 
         let index = RefIndex::build(&fixture.open()).expect("index");
         let id = gix::ObjectId::from_hex(head.as_bytes()).expect("id");
