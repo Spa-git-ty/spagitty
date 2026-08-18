@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, press, render } from '../../testing/mount';
-import { LANE_COLUMNS_MIN, ROW_PITCH, laneColumnWidth } from '../metrics';
+import { LANE_COLUMNS_MAX, LANE_COLUMNS_MIN, ROW_PITCH, laneColumnWidth } from '../metrics';
 import type { GraphRow, RefChip } from '$lib/types';
 
 /**
@@ -247,6 +247,31 @@ describe('CommitRows', () => {
 
 		expect(view.get('.lane-space').style.width).toBe(`${laneColumnWidth(9)}px`);
 		view.destroy();
+	});
+
+	/**
+	 * FEAT-035. Past the cap the column stops growing and the pitch gives
+	 * instead, so a busy history cannot push the message column off the screen.
+	 * Asserted at the component because this is the property the author asked
+	 * for — `metrics.test.ts` proves the geometry, this proves it is wired.
+	 */
+	it('stops widening the lane column at the cap, however deep the history', () => {
+		const atCap = `${laneColumnWidth(LANE_COLUMNS_MAX)}px`;
+
+		for (const deepest of [LANE_COLUMNS_MAX, 20, 60, 200]) {
+			control.setRows([
+				row(0),
+				row(1, { lane: deepest - 1, edges: [{ from: 0, to: deepest - 1, color: 1 }] })
+			]);
+			const view = render(CommitRows, {});
+
+			expect(
+				view.get('.lane-space').style.width,
+				`${deepest} lanes widened the column past the cap`
+			).toBe(atCap);
+
+			view.destroy();
+		}
 	});
 
 	it('does not narrow the lane column the instant the history does', () => {

@@ -2,7 +2,7 @@
 
 # FEAT-035 — Lanes past the cap compress instead of stacking
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** implemented on `feature/FEAT-035-lane-compression`.
 **Screen:** Graph (1A).
 **Requested by:** the author, 2026-08-18, with a GitKraken screenshot.
 **Decision on record:** compress the spacing. Chosen by the author over

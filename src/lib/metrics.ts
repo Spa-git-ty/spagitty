@@ -107,10 +107,83 @@ export const LANE_COLUMNS_MIN = 5;
  *
  * Some histories defeat any cap. `git/git` needs a mean lane depth of 187 and
  * peaks at 382, because hundreds of topic branches interleave in date order;
- * git's own graph reaches 190 columns there. Those clamp to the last column,
- * keeping their own colour so they stay tellable apart.
+ * git's own graph reaches 190 columns there.
+ *
+ * **This is a cap on width, not on lanes** (FEAT-035). Past it the column stops
+ * growing and the *pitch* gives instead, so a thirteenth lane is drawn slightly
+ * closer to its neighbour rather than on top of it. See [`lanePitch`].
  */
 export const LANE_COLUMNS_MAX = 12;
+
+/**
+ * How far the lanes are laid out across, from lane 0 to the rightmost one.
+ *
+ * The one number compression works within: whatever the lane count, the last
+ * lane lands here, so the column's width never depends on how busy the history
+ * is. Derived rather than written down, so it cannot disagree with the cap.
+ */
+export const LANE_SPAN = (LANE_COLUMNS_MAX - 1) * LANE_PITCH;
+
+/**
+ * Tightest the lanes may be squeezed before compression stops helping.
+ *
+ * A lane is a [`LANE_STROKE`]-wide line, so two of them at a 6px pitch keep
+ * 3.5px of daylight — thin, but two lines rather than a band. Below this they
+ * merge into one stripe and squeezing further trades a readable overflow for an
+ * unreadable one, so the last lanes clamp instead, exactly as every lane past
+ * twelve used to.
+ *
+ * At this pitch the span holds 48 lanes. That covers `cli/cli` outright, whose
+ * measured peak is what set the cap above. `git/git`'s 382 still overflows —
+ * some histories defeat any width — but 48 of them stay tellable apart where
+ * twelve did before.
+ */
+export const LANE_PITCH_MIN = 6;
+
+/** Highest lane index the span can still draw at a distinct x. */
+export const LANE_INDEX_MAX = Math.floor(LANE_SPAN / LANE_PITCH_MIN);
+
+/**
+ * Horizontal distance between two lanes, once `needed` of them must fit.
+ *
+ * At or under the cap this is the design pitch and nothing moves. Past it the
+ * lanes share out [`LANE_SPAN`] between them, down to [`LANE_PITCH_MIN`].
+ *
+ * The alternative — the behaviour this replaced — was to clamp the lane *index*,
+ * which drew lanes 13, 14 and 15 at exactly the twelfth lane's x. They did not
+ * overflow the column; they were folded onto each other, so a node on lane 15
+ * sat precisely where a node on lane 12 did and the graph stopped being a graph
+ * at the point a busy history most needs one.
+ */
+export function lanePitch(needed: number): number {
+	if (needed <= LANE_COLUMNS_MAX) return LANE_PITCH;
+	return Math.max(LANE_PITCH_MIN, LANE_SPAN / (needed - 1));
+}
+
+/**
+ * Radius of a commit's node once the lanes are compressed.
+ *
+ * The node is what set [`LANE_PITCH`] in the first place — "a lane closer than a
+ * node is wide draws lines through faces" — so a compressed pitch has to bring
+ * the node down with it or the thing compression was for is undone by the
+ * portraits sitting on top of it.
+ *
+ * It never shrinks below [`MERGE_R`], which is already this graph's smallest
+ * meaningful mark, and that floor is where the guarantee ends: **up to 32 lanes
+ * a node fits inside its own pitch, and past that it starts covering its
+ * neighbour's.** The alternative is a node that keeps shrinking until it cannot
+ * be seen, which loses more than the overlap costs — by then the column is
+ * dense enough that the node is the only thing locating a commit at all.
+ *
+ * Rounded **down**, for two reasons: rounding up could hand back a node wider
+ * than the pitch it was derived from, and the radius picks the portrait tile
+ * size, so a fractional one would mint a cache entry per scroll.
+ */
+export function laneNodeRadius(needed: number): number {
+	const pitch = lanePitch(needed);
+	if (pitch >= LANE_PITCH) return NODE_R;
+	return Math.max(MERGE_R, Math.min(NODE_R, Math.floor((pitch - LANE_STROKE) / 2)));
+}
 
 /**
  * Slack between the rightmost node and the message column.
@@ -218,13 +291,25 @@ export function rowCenterY(index: number, pitch: number = ROW_PITCH): number {
 }
 
 /**
- * Center x of a lane, clamped to the column count currently being drawn.
+ * Center x of a lane, at the pitch `columns` lanes have to share (FEAT-035).
+ *
+ * `columns` is the **true** number of lanes in view, not a clamped one: that is
+ * what decides the pitch, and clamping it before it arrives here is what used to
+ * fold the overflow onto the last column.
+ *
+ * Two clamps remain, and they are different things. Below
+ * [`LANE_COLUMNS_MIN`] the pitch stays at the design value rather than spreading
+ * three lanes across the whole column. Above [`LANE_INDEX_MAX`] the pitch has
+ * hit its floor and there is no room left, so the deepest lanes do stack — the
+ * old behaviour, now reached at 48 lanes instead of 12.
  *
  * `zoom` scales the horizontal geometry the same way `applyMetrics` scales the
  * CSS widths, so the canvas and the reserved column keep agreeing.
  */
 export function laneX(lane: number, columns: number = LANE_COLUMNS_MIN, zoom = 1): number {
-	return (LANE_X0 + Math.min(lane, laneColumns(columns) - 1) * LANE_PITCH) * zoom;
+	const pitch = lanePitch(Math.max(columns, LANE_COLUMNS_MIN));
+	const index = Math.min(lane, Math.min(columns, LANE_INDEX_MAX + 1) - 1);
+	return (LANE_X0 + Math.max(0, index) * pitch) * zoom;
 }
 
 /** CSS variable name of a lane's color. Lane colors cycle. */

@@ -12,7 +12,7 @@
 	import { selection } from '$lib/graph/selection.svelte';
 	import * as act from '$lib/graph/actions';
 	import { clockTime, fullDate, isNotable, relativeTime } from '$lib/format';
-	import { laneColumns, laneColumnWidth, LANE_COLUMNS_MIN } from '$lib/metrics';
+	import { laneColumnWidth, LANE_COLUMNS_MIN } from '$lib/metrics';
 	import { scale } from '$lib/scale.svelte';
 	import RefChip from '$lib/ui/RefChip.svelte';
 	import Menu from '$lib/ui/Menu.svelte';
@@ -77,6 +77,13 @@
 	 * It grows immediately but shrinks only after the narrower window has held
 	 * for a moment. Without that, scrolling through varying history would make
 	 * the message column jump left and right under the reader's eyes.
+	 *
+	 * `laneCount` is the *true* number of lanes on screen and is deliberately
+	 * not clamped here (FEAT-035). The width it produces still is —
+	 * `laneColumnWidth` caps at LANE_COLUMNS_MAX — but the geometry needs the
+	 * real figure, because past the cap it is the pitch that gives rather than
+	 * the column. Clamping it at this line is what used to draw the thirteenth
+	 * lane on top of the twelfth.
 	 */
 	const SHRINK_DELAY = 400;
 
@@ -87,7 +94,10 @@
 
 	$effect(() => {
 		void graph.version;
-		const needed = laneColumns(lanesNeeded(range.first, range.last, (i) => graph.row(i)));
+		const needed = Math.max(
+			LANE_COLUMNS_MIN,
+			lanesNeeded(range.first, range.last, (i) => graph.row(i))
+		);
 
 		if (needed > currentColumns) {
 			if (shrinkTimer) clearTimeout(shrinkTimer);

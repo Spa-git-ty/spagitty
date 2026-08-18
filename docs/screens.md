@@ -97,7 +97,25 @@ never fetched, for the reasons in `src/lib/graph/avatar.ts`.
 
 The lane column stops widening at twelve columns — the reasoning and the
 measurements are in the doc comment on `LANE_COLUMNS_MAX` in
-`src/lib/metrics.ts`. The lane pitch, node radius and elbow control points were
+`src/lib/metrics.ts`.
+
+**Past that cap the pitch gives, not the column** (FEAT-035). A thirteenth lane
+is drawn closer to its neighbour rather than on top of it: the lanes share out
+`LANE_SPAN` between them, down to a floor of `LANE_PITCH_MIN`, so the column's
+width never depends on how busy the history is and the graph can never reach the
+message column. The node radius follows the pitch down — the node is what set
+the pitch in the first place, and a full-size portrait on a compressed column
+would paint straight back over the room the compression made.
+
+Two limits remain, both deliberate. Up to 32 lanes a node still fits inside its
+own pitch; past that it is held at `MERGE_R` and begins to overlap its
+neighbour, because a node that kept shrinking would stop being visible at the
+depth where it is the only thing locating a commit. And at 48 lanes the pitch
+reaches its floor, after which the deepest lanes do share a column — the old
+behaviour, now reached four times deeper. `git/git` peaks at 382 lanes; some
+histories defeat any width.
+
+The lane pitch, node radius and elbow control points were
 retuned in FEAT-022 against `docs/reference/gitkraken-commit-graph.md`, which
 also records what this graph deliberately will **not** do: no dragging commits,
 no inline message editing, no manual lane layout, no independent graph zoom.

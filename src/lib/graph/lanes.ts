@@ -16,8 +16,8 @@ import {
 	ELBOW_C2,
 	LANE_STROKE,
 	MERGE_R,
-	NODE_R,
 	ROW_PITCH,
+	laneNodeRadius,
 	laneX,
 	rowCenterY
 } from '../metrics';
@@ -138,7 +138,11 @@ export function drawLanes(options: LaneDrawOptions): void {
 	}
 	ctx.globalAlpha = 1;
 
-	const radius = NODE_R * zoom;
+	// The node follows the pitch (FEAT-035). It is what set the pitch in the
+	// first place, so a compressed lane column with full-size portraits on it
+	// would draw the faces straight back over the lanes the compression made
+	// room for.
+	const radius = laneNodeRadius(columns) * zoom;
 	const ratio = devicePixelRatio();
 	const tileSize = Math.max(8, Math.round(radius * 2 * ratio));
 
