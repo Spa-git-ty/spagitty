@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import AccountsSection from '$lib/settings/AccountsSection.svelte';
-	import AdvancedSection from '$lib/settings/AdvancedSection.svelte';
+	import LicenseSection from '$lib/settings/LicenseSection.svelte';
 	import AppearanceSection from '$lib/settings/AppearanceSection.svelte';
 	import BehaviourSection from '$lib/settings/BehaviourSection.svelte';
 	import IdentitySection from '$lib/settings/IdentitySection.svelte';
@@ -66,24 +66,24 @@
 		{:else if settings.section === 'appearance'}
 			<AppearanceSection />
 		{:else}
-			<AdvancedSection />
+			<LicenseSection />
 		{/if}
 	</div>
 
-	<footer class="foot">
-		{#if settings.writeError}
-			<span class="note error">{settings.writeError}</span>
-		{:else if settings.error}
-			<span class="note error">{settings.error}</span>
-		{:else}
-			<span class="note">
-				The identity is git's own configuration and is written with <span class="mono"
-					>git config</span
-				>. Everything else on this screen is GitLumiere's own and is stored beside its list of
-				repositories.
-			</span>
-		{/if}
-	</footer>
+	<!--
+		Only a failure gets a footer here. Where the settings are stored is not
+		something the person changing them needs told, and rendered
+		unconditionally the strip would be empty on every ordinary visit.
+	-->
+	{#if settings.writeError || settings.error}
+		<footer class="foot">
+			{#if settings.writeError}
+				<span class="note error">{settings.writeError}</span>
+			{:else}
+				<span class="note error">{settings.error}</span>
+			{/if}
+		</footer>
+	{/if}
 </div>
 
 <style>

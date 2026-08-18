@@ -79,16 +79,18 @@
 		</div>
 	{/if}
 
-	<footer class="foot">
-		{#if stash.writeError}
+	<!--
+		The footer appears only when there is a failure to report. Its other
+		sentence explained what stashing is and claimed restoring it was unbuilt;
+		the first is not this screen's job and the second was untrue — the whole
+		pop / apply / drop path exists. Left rendering unconditionally it would
+		be a bordered empty strip.
+	-->
+	{#if stash.writeError}
+		<footer class="foot">
 			<span class="note error">{stash.writeError}</span>
-		{:else}
-			<span class="note">
-				Stashing takes your changes out of the working copy and keeps them here.
-				Bringing them back is not built yet.
-			</span>
-		{/if}
-	</footer>
+		</footer>
+	{/if}
 </div>
 
 <style>

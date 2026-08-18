@@ -48,7 +48,7 @@
 			<span
 				class="handle"
 				aria-hidden="true"
-				title="Drag to reorder, or ⌥↑ / ⌥↓ from the row">⠿</span
+				title="Drag to reorder, or Alt+↑ / Alt+↓ from the row">⠿</span
 			>
 
 			<div class="actions">

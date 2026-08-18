@@ -87,7 +87,6 @@
 					Choose what to replay onto, and this screen shows the commits git would
 					offer you and what your history would look like afterwards.
 				</p>
-				<p class="note">Nothing runs until FEAT-015 builds the Apply button.</p>
 			</div>
 		{:else if rebase.todo && rebase.todo.rows.length === 0}
 			<p class="note pad">

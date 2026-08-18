@@ -17,7 +17,7 @@
 import * as api from '../api';
 import type { About, Identity, IdentityKey, IdentityScope, Licenses, Settings } from '../types';
 
-export type Section = 'you' | 'accounts' | 'behaviour' | 'appearance' | 'advanced';
+export type Section = 'you' | 'accounts' | 'behaviour' | 'appearance' | 'license';
 
 /** The chip index, in the order it is shown. */
 export const SECTIONS: { id: Section; label: string }[] = [
@@ -25,7 +25,7 @@ export const SECTIONS: { id: Section; label: string }[] = [
 	{ id: 'accounts', label: 'Accounts' },
 	{ id: 'behaviour', label: 'Behaviour' },
 	{ id: 'appearance', label: 'Appearance' },
-	{ id: 'advanced', label: 'Advanced' }
+	{ id: 'license', label: 'License' }
 ];
 
 /**
@@ -130,6 +130,13 @@ export const settings = {
 	/** Select a section from a URL fragment, ignoring anything unrecognised. */
 	showFromHash(hash: string): void {
 		const name = hash.replace(/^#/, '');
+		// `advanced` was this section's name until it was renamed to `license`,
+		// which is what it had always actually held. A link written before the
+		// rename still lands somewhere sane rather than silently doing nothing.
+		if (name === 'advanced') {
+			section = 'license';
+			return;
+		}
 		if (isSection(name)) section = name;
 	},
 

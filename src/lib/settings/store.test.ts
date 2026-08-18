@@ -268,8 +268,23 @@ describe('sections', () => {
 	});
 
 	it('takes a fragment with no hash character', () => {
-		settings.showFromHash('advanced');
+		settings.showFromHash('appearance');
 
-		expect(settings.section).toBe('advanced');
+		expect(settings.section).toBe('appearance');
+	});
+
+	/**
+	 * The section was called `advanced` until it was renamed to `license`, which
+	 * is what it had always actually held. A link written before the rename has
+	 * to keep working — a fragment that silently selects nothing is worse than
+	 * one that is simply wrong.
+	 */
+	it('still accepts the old #advanced fragment', () => {
+		settings.showFromHash('#advanced');
+		expect(settings.section).toBe('license');
+
+		settings.show('you');
+		settings.showFromHash('advanced');
+		expect(settings.section).toBe('license');
 	});
 });

@@ -44,7 +44,12 @@ Persistent across every screen, built with FEAT-001.
   and `src/lib/chrome/ResizeEdges.svelte` provides the resize edges.
   It carries no theme control — Settings → Appearance is the one place the
   theme is set — and no shortcut hint: it used to show `⌘K` for Log search,
-  when the shortcut is `⌘F` and the notation was macOS's on every platform.
+  when the shortcut is `Ctrl+F` and the notation was macOS's on every platform.
+  Key names are written in their `Ctrl` / `Alt` form throughout the interface.
+  The one exception is the command palette, which picks its own notation from
+  the platform at runtime (`src/lib/palette/commands.ts`) — macOS is a build
+  target, and printing `Ctrl+` on a machine with no such key would be wrong in
+  the other direction.
 - **Toolbar** — repository and branch pickers, Undo/Redo, Clone, Fetch, Push,
   Branch, Stash, Rebase, and the primary Commit button. Actions that are not
   built yet say so on hover rather than failing silently when clicked.
@@ -209,7 +214,7 @@ plan cannot disagree. A squash folds upward, which is the direction git folds;
 a plan whose first row is a squash has nothing above it and is refused with
 that reason.
 
-Rows move by drag **and** from the keyboard (`⌥↑` / `⌥↓`). Drag alone is
+Rows move by drag **and** from the keyboard (`Alt+↑` / `Alt+↓`). Drag alone is
 untestable headlessly and unusable for some people, and the store owns the
 ordering so the component only reports intent.
 
@@ -298,7 +303,7 @@ the screen — the kind of thing that rots the moment somebody adds "Open on
 ## 1I — Log search
 
 **Built.** `src/routes/search/+page.svelte`, `src/lib/search/`.
-Reached from the rail and by `⌘F` from any screen, which lands here with the
+Reached from the rail and by `Ctrl+F` from any screen, which lands here with the
 first field focused — the focus travels in the URL (`?focus=1`) rather than
 through a store, so the shortcut and a bookmark behave identically.
 
@@ -316,7 +321,7 @@ Results stream as the walk finds them. Each query carries a token and starting
 one cancels the one before, so rows from an older query are dropped rather than
 rendered; that is what makes it safe to search on a keystroke.
 
-`↵` opens the commit in the side column — message, people, files — and `⌥↵`
+`↵` opens the commit in the side column — message, people, files — and `Alt+Enter`
 opens its hunks on the Diff screen, which is a different question.
 
 **Blame goes through the `git` binary**, and it is the one read in the
@@ -355,10 +360,16 @@ and never the directory.
 **Built.** `src/routes/settings/+page.svelte`, `src/lib/settings/`.
 
 Five sections behind a chip index — You, Accounts, Behaviour, Appearance,
-Advanced — because these are read rarely and changed rarely, and one route that
+License — because these are read rarely and changed rarely, and one route that
 says which part of itself is showing is easier to link to than five rail
 entries. The section is in the URL fragment, so `/settings#accounts` lands where
 the Pull requests screen points.
+
+The last section was called **Advanced** until TASK-007. It has only ever held
+the version, the build, the project's licence and its dependencies' licences, so
+the name described nothing it contained. `#advanced` is still accepted as a
+fragment and selects the renamed section, because a link written before the
+rename doing nothing at all is worse than one that is merely out of date.
 
 **Nothing here needs an open repository.** With none, the identity falls back to
 the global scope alone and every other section is unaffected.

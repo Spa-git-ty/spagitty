@@ -18,7 +18,7 @@
 	 * before the walk reaches the end of history.
 	 */
 
-	/** `⌘F` lands here with `?focus=1`, which is what focuses the first field. */
+	/** `Ctrl+F` lands here with `?focus=1`, which is what focuses the first field. */
 	const focused = $derived(page.url.searchParams.get('focus') === '1');
 
 	onMount(() => {
@@ -41,7 +41,7 @@
 		search.select(id);
 	}
 
-	/** `⌥↵` — its hunks, which are a different question and a different screen. */
+	/** `Alt+Enter` — its hunks, which are a different question and a different screen. */
 	function openDiff(id: string) {
 		search.select(id);
 		goto(`/diff?commit=${id}`);
@@ -94,13 +94,6 @@
 		</div>
 	</div>
 
-	<footer class="foot">
-		<span class="note">
-			<span class="mono">↵</span> opens the commit ·
-			<span class="mono">⌥↵</span> opens its diff. Text filters are plain substrings, matched
-			without regard to case; regular expressions are not built yet.
-		</span>
-	</footer>
 </div>
 
 <style>
@@ -165,11 +158,5 @@
 
 	.working {
 		padding: 6px 8px;
-	}
-
-	.foot {
-		flex: none;
-		padding: 8px 12px;
-		border-top: 1.5px solid var(--soft);
 	}
 </style>

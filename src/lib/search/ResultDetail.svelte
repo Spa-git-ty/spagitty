@@ -9,7 +9,7 @@
 	 *
 	 * "Opening a commit" here means reading it — message, people, and the files
 	 * it touched. Its hunks are a different question and a different screen,
-	 * which is what `⌥↵` is for.
+	 * which is what `Alt+Enter` is for.
 	 */
 	interface Props {
 		ondiff?: (id: string) => void;

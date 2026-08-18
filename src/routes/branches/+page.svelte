@@ -127,11 +127,6 @@
 	<footer class="foot">
 		{#if branches.writeError}
 			<span class="note error">{branches.writeError}</span>
-		{:else if anyUpstream}
-			<span class="note">
-				Ahead and behind are counted against the last fetch. Nothing on this screen
-				talks to a network.
-			</span>
 		{:else}
 			<span class="note">Nothing here deletes a branch.</span>
 		{/if}

@@ -95,8 +95,6 @@
 				<span class="note error">{changes.writeError}</span>
 			{:else if work.conflicted.length > 0}
 				<span class="note">Resolve the conflicts before committing.</span>
-			{:else}
-				<span class="note">Nothing is committed until you press the button.</span>
 			{/if}
 		</div>
 		<Btn primary disabled={!changes.canCommit} onclick={() => changes.commit()}>

@@ -28,7 +28,7 @@
 
 <section class="section">
 	<header>
-		<h2 class="heading">Advanced · About</h2>
+		<h2 class="heading">License · About</h2>
 		<span class="note">This build, and every dependency in it.</span>
 	</header>
 

@@ -18,7 +18,7 @@ import * as api from '$lib/api';
 import { theme } from '$lib/theme.svelte';
 import { FAMILIES, paletteOf } from '$lib/themes';
 import AccountsSection from './AccountsSection.svelte';
-import AdvancedSection from './AdvancedSection.svelte';
+import LicenseSection from './LicenseSection.svelte';
 import AppearanceSection from './AppearanceSection.svelte';
 import BehaviourSection from './BehaviourSection.svelte';
 import IdentitySection from './IdentitySection.svelte';
@@ -266,12 +266,12 @@ describe('AccountsSection', () => {
 	});
 });
 
-describe('AdvancedSection', () => {
+describe('LicenseSection', () => {
 	it('keeps everything the About footer carried', async () => {
 		// The GPL-3 obligations predate this screen and must not regress while
 		// it is rebuilt.
 		await settings.load();
-		const mounted = render(AdvancedSection, {});
+		const mounted = render(LicenseSection, {});
 		const text = mounted.text();
 
 		expect(text).toContain('GitLumiere v0.1.0');
@@ -284,7 +284,7 @@ describe('AdvancedSection', () => {
 
 	it('lists both trees and names a package that declares nothing', async () => {
 		await settings.load();
-		const mounted = render(AdvancedSection, {});
+		const mounted = render(LicenseSection, {});
 		const text = mounted.text();
 
 		expect(text).toContain('gix');
@@ -296,7 +296,7 @@ describe('AdvancedSection', () => {
 
 	it('filters both lists by package or license', async () => {
 		await settings.load();
-		const mounted = render(AdvancedSection, {});
+		const mounted = render(LicenseSection, {});
 
 		type(mounted.get('input'), 'gix');
 
@@ -316,7 +316,7 @@ describe('AdvancedSection', () => {
 			npm: []
 		});
 		await settings.load();
-		const mounted = render(AdvancedSection, {});
+		const mounted = render(LicenseSection, {});
 
 		expect(mounted.text()).toContain('did not generate a dependency license list');
 		expect(mounted.text()).toContain('cargo metadata failed');
@@ -328,7 +328,7 @@ describe('AdvancedSection', () => {
 	it('still shows the version and the commit when the list is missing', async () => {
 		licenses.mockResolvedValue({ generated: false, notes: [], rust: [], npm: [] });
 		await settings.load();
-		const mounted = render(AdvancedSection, {});
+		const mounted = render(LicenseSection, {});
 
 		expect(mounted.text()).toContain('abc1234');
 		expect(mounted.text()).toContain('GPL-3.0-or-later');

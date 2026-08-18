@@ -62,10 +62,10 @@ export const NAV_ITEMS: NavItem[] = [
 	{ code: '1A', label: 'Graph', href: '/', count: 'commits', glyph: '⑃' },
 	{ code: '1C', label: 'Working copy', href: '/changes', count: 'working', glyph: '✎' },
 	{ code: '1D', label: 'Conflicts', href: '/conflicts', count: 'conflicts', glyph: '⚔' },
-	{ code: '1F', label: 'Branches', href: '/branches', count: 'branches', glyph: '⌥' },
+	{ code: '1F', label: 'Branches', href: '/branches', count: 'branches', glyph: '⑂' },
 	{ code: '1G', label: 'Stash', href: '/stash', count: 'stashes', glyph: '▤' },
 	{ code: '1H', label: 'Pull requests', href: '/requests', glyph: '⇄' },
-	{ code: '1I', label: 'Log', href: '/search', hint: '⌘F', glyph: '⌕' },
+	{ code: '1I', label: 'Log', href: '/search', hint: 'Ctrl+F', glyph: '⌕' },
 	{ code: '1E', label: 'Rebase', href: '/rebase', glyph: '↻' },
 	{ code: '1J', label: 'All repositories', href: '/repos', dividerBefore: true, glyph: '⌂' },
 	{ code: '1K', label: 'Settings', href: '/settings', hint: '·', glyph: '⚙' }

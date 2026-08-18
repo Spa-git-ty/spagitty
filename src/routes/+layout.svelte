@@ -115,7 +115,7 @@
 	});
 
 	/**
-	 * `⌘F` — or `Ctrl+F` where there is no command key — reaches Log search from
+	 * `Ctrl+F` — or the command key equivalent on macOS — reaches Log search from
 	 * anywhere, with the first field focused. The focus is carried in the URL
 	 * rather than through a store, so the same shortcut and a bookmark behave
 	 * identically.
