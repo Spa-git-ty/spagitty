@@ -17,7 +17,33 @@ grab.
 2. Try to drag the right edge of the Commit Message column.
 3. Nothing happens — the pointer never finds a `col-resize` cursor.
 
-## Cause
+## Cause — corrected 2026-08-18
+
+**The first diagnosis was wrong and is left here rather than quietly replaced.**
+It said the last column's divider fell off the window edge. It does not: the
+graph screen has a `Splitter` between the table and the commit detail panel, so
+the message column's right boundary abuts that splitter rather than the window.
+Pulling the divider inside (`right: 0`) is still right — it moves the grab area
+off a control that belongs to something else — but it was not the whole story,
+and on its own it did not give the author a handle they could find.
+
+The author's screenshots showed them reaching for the **left** boundary, between
+Graph and Commit Message. That is the graph column's divider, and it is
+deliberately fixed.
+
+## The real cause
+
+The message column's two boundaries both belong to something else:
+
+| Boundary | Owner | Draggable? |
+| --- | --- | --- |
+| left, Graph \| Message | the graph column's divider | **No** — the graph's width is computed from the lanes on screen |
+| right, Message \| detail panel | abuts the detail `Splitter` | Only after `right: 0`, and it is not where anyone reaches |
+
+So the column that most wants sizing had no handle anyone would find, and the
+one boundary people do reach for carried a divider that did nothing at all.
+
+## Original cause note
 
 **Not the store.** `message` is declared `fills: true` but not `computed`, and
 `columns.resize` only refuses `computed` columns, so the store has always

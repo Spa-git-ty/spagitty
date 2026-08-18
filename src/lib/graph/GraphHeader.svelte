@@ -43,8 +43,14 @@
 	/** Index of the header being dragged, and the slot it would land in. */
 	let dragging = $state<number | null>(null);
 	let over = $state<number | null>(null);
-	/** The resize in progress: which column, and where it started. */
-	let resizing: { id: ColumnId; startX: number; startWidth: number } | null = null;
+	/** The resize in progress: which column, where it started, and which way. */
+	let resizing: {
+		id: ColumnId;
+		startX: number;
+		startWidth: number;
+		/** True when dragging right must make the column *narrower*. */
+		invert: boolean;
+	} | null = null;
 	let filtering = $state(false);
 
 	function widthOf(id: ColumnId): number {
@@ -69,23 +75,55 @@
 		{ id: 'reset', label: 'Reset columns', run: () => columns.reset() }
 	]);
 
-	function startResize(event: PointerEvent, id: ColumnId) {
+	/**
+	 * Which column a divider actually sizes, and which way the drag runs.
+	 *
+	 * A divider ordinarily sizes the column it sits on, dragging right to widen.
+	 * The graph column is the exception: its width is computed from the lanes on
+	 * screen, so its divider had nothing to size and did nothing at all — a dead
+	 * handle sitting on the one boundary people most want to drag, because the
+	 * column on its *other* side is the commit message.
+	 *
+	 * So a computed column's divider sizes the column after it instead, with the
+	 * drag inverted: the boundary moves with the pointer, which means dragging
+	 * right makes the column on the right narrower. That is what the gesture
+	 * looks like it should do, and it is the only reading under which this
+	 * divider does anything.
+	 */
+	function resizeTarget(index: number): { id: ColumnId; invert: boolean } | null {
+		const column = shown[index];
+		if (!column.computed) return { id: column.id, invert: false };
+
+		const next = shown[index + 1];
+		if (!next || next.computed) return null;
+		return { id: next.id, invert: true };
+	}
+
+	function startResize(event: PointerEvent, index: number) {
+		const target = resizeTarget(index);
+		if (!target) return;
+
 		event.preventDefault();
 		event.stopPropagation();
 
 		// Measured, not read from the store: the filling column's stored width
 		// is 0 until it is dragged, and starting a drag from 0 would snap it to
 		// its minimum before the pointer had moved a pixel.
-		const cell = (event.currentTarget as HTMLElement).parentElement;
-		const startWidth = cell ? cell.getBoundingClientRect().width : columns.width(id);
+		const handle = event.currentTarget as HTMLElement;
+		const cell = target.invert
+			? (handle.parentElement?.nextElementSibling as HTMLElement | null)
+			: handle.parentElement;
+		const startWidth = cell ? cell.getBoundingClientRect().width : columns.width(target.id);
 
-		resizing = { id, startX: event.clientX, startWidth };
-		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		resizing = { id: target.id, startX: event.clientX, startWidth, invert: target.invert };
+		handle.setPointerCapture(event.pointerId);
 	}
 
 	function moveResize(event: PointerEvent) {
 		if (!resizing) return;
-		columns.resize(resizing.id, resizing.startWidth + (event.clientX - resizing.startX));
+		const travelled = event.clientX - resizing.startX;
+		const delta = resizing.invert ? -travelled : travelled;
+		columns.resize(resizing.id, resizing.startWidth + delta);
 	}
 
 	function endResize(event: PointerEvent) {
@@ -114,6 +152,8 @@
 	aria-label="Graph columns"
 >
 	{#each shown as column, index (column.id)}
+		{@const target = resizeTarget(index)}
+		{@const sized = target ? shown.find((c) => c.id === target.id)?.label : null}
 		<div
 			class="cell"
 			class:fills={column.fills}
@@ -179,16 +219,16 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="divider"
-				class:fixed={column.computed}
+				class:fixed={target === null}
 				class:last={index === shown.length - 1}
-				title={column.computed
-					? 'The graph column is sized to the lanes on screen'
-					: `Resize ${column.label} — double-click to reset`}
-				onpointerdown={(event) => !column.computed && startResize(event, column.id)}
+				title={sized
+					? `Resize ${sized} — double-click to reset`
+					: 'The graph column is sized to the lanes on screen'}
+				onpointerdown={(event) => startResize(event, index)}
 				onpointermove={moveResize}
 				onpointerup={endResize}
 				onpointercancel={endResize}
-				ondblclick={() => !column.computed && columns.unsize(column.id)}
+				ondblclick={() => target && columns.unsize(target.id)}
 			></div>
 		</div>
 	{/each}

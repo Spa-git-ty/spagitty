@@ -152,3 +152,42 @@ describe('BUG-009 — the last column has a grabbable handle', () => {
 		expect(columns.width('graph')).toBe(graph);
 	});
 });
+
+/**
+ * BUG-009b — the boundary people actually reach for.
+ *
+ * The commit message column sits between the graph column, whose divider is
+ * fixed because its width is computed from the lanes, and the detail panel's own
+ * splitter. Both of its boundaries belonged to something else, so in practice it
+ * had no handle — which is what was reported, with the first diagnosis (the
+ * window edge) turning out to be wrong.
+ *
+ * A computed column's divider now sizes the column *after* it, inverted, so the
+ * dead handle on the graph|message boundary does the thing the gesture looks
+ * like it should do.
+ */
+describe('BUG-009b — a computed divider sizes the column after it', () => {
+	const header = readFileSync('src/lib/graph/GraphHeader.svelte', 'utf8');
+
+	it('sends a computed column\'s divider to the next column', () => {
+		expect(header).toMatch(/if \(!column\.computed\) return \{ id: column\.id, invert: false \}/);
+		expect(header).toMatch(/return \{ id: next\.id, invert: true \}/);
+	});
+
+	it('inverts that drag, so the boundary follows the pointer', () => {
+		expect(header).toMatch(/const delta = resizing\.invert \? -travelled : travelled/);
+	});
+
+	it('measures the next cell, not the one the handle sits on', () => {
+		expect(header).toMatch(/nextElementSibling/);
+	});
+
+	/** With nothing resizable on either side there is genuinely nothing to do. */
+	it('still marks a divider fixed when it has no target', () => {
+		expect(header).toMatch(/class:fixed=\{target === null\}/);
+	});
+
+	it('names the column it will actually size in its title', () => {
+		expect(header).toMatch(/Resize \$\{sized\}/);
+	});
+});
