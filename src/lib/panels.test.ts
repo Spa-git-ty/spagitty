@@ -2,6 +2,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	PANELS,
+	type PanelKey,
 	DETAIL_MAX,
 	DETAIL_MIN,
 	panels,
@@ -9,7 +11,7 @@ import {
 	RAIL_MAX,
 	RAIL_MIN
 } from './panels.svelte';
-import { DETAIL_W, RAIL_W } from './metrics';
+import { CHANGES_FILES_W, DETAIL_W, DIFF_FILES_W, RAIL_W, REQUESTS_DETAIL_W } from './metrics';
 
 const KEY = 'gitlumiere.panels';
 
@@ -157,7 +159,11 @@ describe('reset', () => {
 		expect(JSON.parse(store.get(KEY) as string)).toEqual({
 			rail: RAIL_W,
 			detail: DETAIL_W,
-			railCollapsed: false
+			railCollapsed: false,
+			// FEAT-037's panels round-trip through the same record.
+			requestsDetail: REQUESTS_DETAIL_W,
+			changesFiles: CHANGES_FILES_W,
+			diffFiles: DIFF_FILES_W
 		});
 	});
 });
@@ -207,5 +213,94 @@ describe('collapsing the rail', () => {
 
 		expect(panels.railCollapsed).toBe(false);
 		expect(cssVar('--rail-w')).toBe(`${RAIL_W}px`);
+	});
+});
+
+/**
+ * FEAT-037 — every panel resizes, not just the rail and the graph's detail.
+ *
+ * Stash, Working copy, Diff and Pull requests each published a width as a CSS
+ * variable and then gave nobody a way to change it, which reads as an oversight
+ * rather than a decision.
+ */
+describe('the panel registry', () => {
+	it('publishes every panel as its own CSS variable', () => {
+		stubStorage();
+		panels.reset();
+
+		for (const [key, spec] of Object.entries(PANELS)) {
+			if (key === 'rail' || key === 'detail') continue;
+			expect(cssVar(`--${spec.variable}`), key).toBe(`${spec.initial}px`);
+		}
+	});
+
+	it('sets and reads any panel by key', () => {
+		stubStorage();
+		panels.set('diffFiles', 300);
+
+		expect(panels.size('diffFiles')).toBe(300);
+		expect(cssVar('--diff-files-w')).toBe('300px');
+	});
+
+	it('clamps every panel to its own range', () => {
+		stubStorage();
+
+		for (const [key, spec] of Object.entries(PANELS)) {
+			panels.set(key as PanelKey, 10_000);
+			expect(panels.size(key as PanelKey), key).toBe(spec.max);
+
+			panels.set(key as PanelKey, -10_000);
+			expect(panels.size(key as PanelKey), key).toBe(spec.min);
+		}
+	});
+
+	it('keeps rail and detail reachable through both APIs', () => {
+		stubStorage();
+		panels.set('rail', 240);
+		panels.setDetail(320);
+
+		expect(panels.rail).toBe(240);
+		expect(panels.size('rail')).toBe(240);
+		expect(panels.detail).toBe(320);
+		expect(panels.size('detail')).toBe(320);
+	});
+
+	it('restores a stored width for a new panel', () => {
+		const store = stubStorage();
+		store.set(
+			KEY,
+			JSON.stringify({ rail: RAIL_W, detail: DETAIL_W, railCollapsed: false, diffFiles: 320 })
+		);
+		panels.init();
+
+		expect(panels.size('diffFiles')).toBe(320);
+	});
+
+	/** A layout stored before a panel existed simply lacks it; no migration. */
+	it('falls back to the default when a stored layout predates a panel', () => {
+		const store = stubStorage();
+		store.set(KEY, JSON.stringify({ rail: 200, detail: 300, railCollapsed: false }));
+		panels.init();
+
+		expect(panels.size('rail')).toBe(200);
+		expect(panels.size('changesFiles')).toBe(PANELS.changesFiles.initial);
+	});
+
+	it('clamps a stored width that is out of range', () => {
+		const store = stubStorage();
+		store.set(KEY, JSON.stringify({ requestsDetail: 9999 }));
+		panels.init();
+
+		expect(panels.size('requestsDetail')).toBe(PANELS.requestsDetail.max);
+	});
+
+	/** Which edge a panel is anchored to is what decides its drag direction. */
+	it('declares a side for every panel', () => {
+		for (const [key, spec] of Object.entries(PANELS)) {
+			expect(['left', 'right'], key).toContain(spec.side);
+			expect(spec.min, key).toBeLessThan(spec.max);
+			expect(spec.initial, key).toBeGreaterThanOrEqual(spec.min);
+			expect(spec.initial, key).toBeLessThanOrEqual(spec.max);
+		}
 	});
 });

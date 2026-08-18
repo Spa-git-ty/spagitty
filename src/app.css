@@ -67,6 +67,23 @@
 	--r-row: 6px;
 	/** Panels, cards, modals — anything that is a surface rather than a control. */
 	--r-panel: 8px;
+	/*
+	 * The window's own corner. Larger than a panel's, because it is read against
+	 * the whole screen rather than against the surface beside it — the same
+	 * radius that reads as soft on an 8px chip reads as square on a 1280px
+	 * window (FEAT-037).
+	 */
+	--r-window: 12px;
+
+	/*
+	 * The window's own depth (FEAT-037). Tuned for a light ground: the shadow
+	 * is the theme's ink at low alpha rather than pure black, so it sits in the
+	 * same colour family as everything it falls behind.
+	 */
+	--window-edge: rgba(76, 79, 105, 0.34);
+	--window-sheen: rgba(255, 255, 255, 0.5);
+	--window-contact: rgba(76, 79, 105, 0.18);
+	--window-cast: rgba(76, 79, 105, 0.3);
 
 	--font-ui:
 		system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -83,6 +100,17 @@
 	--muted: rgba(205, 214, 244, 0.6);
 	--line: rgba(205, 214, 244, 0.24);
 	--soft: rgba(205, 214, 244, 0.11);
+
+	/*
+	 * Dark reverses which half does the work. The edge has to be *lighter* than
+	 * the surface to read at all, and the cast shadow goes near-black and
+	 * deeper, because a dark card on a dark desktop separates by shadow density
+	 * rather than by contrast.
+	 */
+	--window-edge: rgba(205, 214, 244, 0.16);
+	--window-sheen: rgba(255, 255, 255, 0.06);
+	--window-contact: rgba(0, 0, 0, 0.44);
+	--window-cast: rgba(0, 0, 0, 0.55);
 	--placeholder: rgba(205, 214, 244, 0.26);
 	--accent: #89b4fa;
 	--selection: rgba(137, 180, 250, 0.18);
@@ -124,8 +152,20 @@ body {
 	overflow: hidden;
 }
 
+/*
+ * The window floats (FEAT-037).
+ *
+ * `body` is the transparent margin the shadow is cast into, and `.app` is the
+ * card. The window itself is `transparent: true` and undecorated, so everything
+ * a person reads as "the window" — its corner, its edge, the shadow under it —
+ * is drawn here rather than by the compositor.
+ *
+ * The margin has to exist or there is nowhere for the shadow to land: a
+ * `box-shadow` on an element flush against the window edge is clipped away
+ * entirely.
+ */
 body {
-	background: var(--bg);
+	background: transparent;
 	color: var(--ink);
 	font-family: var(--font-ui);
 	font-size: var(--fs-ui);
@@ -139,6 +179,24 @@ body {
 #app,
 body > div {
 	height: 100%;
+}
+
+/*
+ * The shadow margin. Kept off the maximized and fullscreen states, where a
+ * floating card with a gap around it is just a window that does not fit its
+ * own screen.
+ */
+:root {
+	--window-gap: 10px;
+}
+
+body > div {
+	padding: var(--window-gap);
+	box-sizing: border-box;
+}
+
+:root[data-window="maximized"] {
+	--window-gap: 0px;
 }
 
 button {

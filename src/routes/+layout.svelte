@@ -12,6 +12,7 @@
 	import { commandLog } from '$lib/commandlog/store.svelte';
 	import NavRail from '$lib/chrome/NavRail.svelte';
 	import ResizeEdges from '$lib/chrome/ResizeEdges.svelte';
+	import { appWindow } from '$lib/chrome/window';
 	import TitleBar from '$lib/chrome/TitleBar.svelte';
 	import Toolbar from '$lib/chrome/Toolbar.svelte';
 	import { graph } from '$lib/graph/store.svelte';
@@ -35,6 +36,8 @@
 	/** Re-walk when a ref moves, but not on every keystroke into a rebase. */
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
+	const cleanups: Array<() => void> = [];
+
 	onMount(() => {
 		theme.init();
 		// Publishes the structural metrics as well as the type scale, at the
@@ -46,10 +49,12 @@
 		// The tab strip, before anything can open a repository into it.
 		workspace.init();
 		registerCommands();
+		// The window's own corner and shadow come off when it is maximized, and
+		// CSS cannot ask Tauri whether it is (FEAT-037).
+		appWindow.watchMaximized().then((off) => cleanups.push(off));
 
 		if (!api.inTauri()) return;
 
-		const cleanups: Array<() => void> = [];
 		let cancelled = false;
 
 		(async () => {
@@ -200,11 +205,43 @@
 <ResizeEdges />
 
 <style>
+	/*
+	 * The card the whole application sits on (FEAT-037).
+	 *
+	 * The window is transparent and undecorated, so the corner, the edge and the
+	 * shadow are all drawn here. Three things together make it read as a
+	 * physical surface rather than a flat rectangle:
+	 *
+	 * - a **hairline outline** at sub-pixel width, which on a HiDPI display
+	 *   lands as a real edge and on a 1x display as a faint one. Heavier and it
+	 *   reads as a border, which is a different thing — a border belongs to a
+	 *   component, an edge belongs to a window;
+	 * - an **inset highlight** along the top, where light would catch a raised
+	 *   surface. It is what stops the outline reading as a drawn line;
+	 * - a **two-part shadow** — a tight, dark contact shadow holding the card
+	 *   down, and a wide, soft one giving it height. One shadow can do either
+	 *   but not both, and a single mid-sized blur is what makes a page look
+	 *   like it has a sticker on it.
+	 */
 	.app {
 		height: 100%;
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
+		background: var(--bg);
+		border-radius: var(--r-window);
+		outline: 0.2px solid var(--window-edge);
+		outline-offset: -0.2px;
+		box-shadow:
+			inset 0 1px 0 var(--window-sheen),
+			0 1px 2px var(--window-contact),
+			0 12px 32px -4px var(--window-cast);
+	}
+
+	/* Square against the screen edge, and nothing to cast a shadow onto. */
+	:global(:root[data-window='maximized']) .app {
+		border-radius: 0;
+		box-shadow: inset 0 1px 0 var(--window-sheen);
 	}
 
 	.main {

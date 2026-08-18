@@ -48,6 +48,36 @@ export const appWindow = {
 		return (await currentWindow())?.isMaximized() ?? false;
 	},
 
+	/**
+	 * Publish whether the window is maximized, as `data-window` on the root
+	 * element (FEAT-037).
+	 *
+	 * The window draws its own corner, edge and shadow, and none of those belong
+	 * on a maximized window: a floating card with a gap around it is a window
+	 * that does not fit its own screen. CSS cannot ask Tauri, so the answer is
+	 * put where CSS can read it.
+	 *
+	 * Returns an unsubscribe function, or a no-op outside Tauri.
+	 */
+	async watchMaximized(): Promise<() => void> {
+		if (typeof document === 'undefined') return () => {};
+
+		const apply = (maximized: boolean) => {
+			document.documentElement.dataset.window = maximized ? 'maximized' : 'floating';
+		};
+
+		const window_ = await currentWindow();
+		if (!window_) {
+			// In a plain browser there is no window to maximize, and a card with
+			// a shadow is the honest thing to draw.
+			apply(false);
+			return () => {};
+		}
+
+		apply(await window_.isMaximized());
+		return await window_.onResized(async () => apply(await window_.isMaximized()));
+	},
+
 	/** Begin a move. Used by the title bar's empty space. */
 	async startDragging(): Promise<void> {
 		(await currentWindow())?.startDragging();

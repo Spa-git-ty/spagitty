@@ -5,6 +5,7 @@
 	import RequestRow from '$lib/requests/RequestRow.svelte';
 	import { requests } from '$lib/requests/store.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
+	import Splitter from '$lib/ui/Splitter.svelte';
 
 	/**
 	 * What is waiting on you, above what is waiting on everyone else.
@@ -77,6 +78,7 @@
 		</div>
 
 		{#if requests.connected && requests.all.length > 0}
+			<Splitter panel="requestsDetail" label="Resize the request detail panel" />
 			<RequestDetail />
 		{/if}
 	</div>

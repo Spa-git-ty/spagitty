@@ -9,6 +9,7 @@
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
+	import Splitter from '$lib/ui/Splitter.svelte';
 
 	/**
 	 * One commit's changes, hunk by hunk.
@@ -130,6 +131,7 @@
 	{:else}
 		<div class="body">
 			<FileList />
+			<Splitter panel="diffFiles" label="Resize the file list" />
 			<DiffPane {focus} />
 		</div>
 	{/if}

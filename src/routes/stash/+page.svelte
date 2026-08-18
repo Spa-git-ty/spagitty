@@ -7,6 +7,7 @@
 	import { stash } from '$lib/stash/store.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
+	import Splitter from '$lib/ui/Splitter.svelte';
 
 	/**
 	 * Stash entries, each hanging off the commit it was made on.
@@ -55,6 +56,7 @@
 	{:else}
 		<div class="body">
 			<StashList />
+			<Splitter panel="detail" label="Resize the stash detail panel" />
 			<StashDetail />
 		</div>
 

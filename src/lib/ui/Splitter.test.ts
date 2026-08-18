@@ -4,19 +4,37 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, press, render } from '../../testing/mount';
 import Splitter from './Splitter.svelte';
 import { DETAIL_W, RAIL_W } from '../metrics';
-import { DETAIL_MIN, panels, RAIL_MAX, RAIL_MIN } from '../panels.svelte';
+import { DETAIL_MIN, PANELS, panels, RAIL_MAX, RAIL_MIN, type PanelKey } from '../panels.svelte';
 
-/** The splitter measures the `.app` element, which does not lay out in happy-dom. */
-function mountInApp(panel: 'rail' | 'detail', bounds = { left: 0, right: 1280 }) {
+/**
+ * The splitter measures the panel next to it, which does not lay out in
+ * happy-dom — so the neighbour is created and given a box.
+ *
+ * FEAT-037 moved the reference from the `.app` element to the panel itself: the
+ * window's edge is the right answer only for the rail, and wrong for every panel
+ * nested inside a screen, where the rail's own width sits in between.
+ */
+function mountInApp(panel: PanelKey, bounds = { left: 0, right: 1280 }) {
 	const view = render(Splitter, { panel, label: `Resize the ${panel}` });
 	const app = document.createElement('div');
 	app.className = 'app';
-	app.getBoundingClientRect = () =>
+
+	const neighbour = document.createElement('div');
+	neighbour.getBoundingClientRect = () =>
 		({ left: bounds.left, right: bounds.right }) as DOMRect;
 
 	const splitter = view.get('.splitter');
 	view.target.removeChild(splitter);
-	app.appendChild(splitter);
+
+	// Order matters: a left-anchored panel sits before its splitter, a
+	// right-anchored one after it.
+	if (PANELS[panel].side === 'left') {
+		app.appendChild(neighbour);
+		app.appendChild(splitter);
+	} else {
+		app.appendChild(splitter);
+		app.appendChild(neighbour);
+	}
 	view.target.appendChild(app);
 
 	return { view, splitter };

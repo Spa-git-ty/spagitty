@@ -7,6 +7,7 @@
 	import MessageBox from '$lib/changes/MessageBox.svelte';
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
+	import Splitter from '$lib/ui/Splitter.svelte';
 
 	/**
 	 * Stage what you mean to commit, write the message, commit.
@@ -82,6 +83,7 @@
 	{:else}
 		<div class="body">
 			<FileColumn />
+			<Splitter panel="changesFiles" label="Resize the file list" />
 			<div class="right-pane">
 				<MessageBox />
 				<HunkPane />

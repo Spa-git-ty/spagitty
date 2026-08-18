@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
-	import { panels } from '$lib/panels.svelte';
+	import { panels, PANELS, type PanelKey } from '$lib/panels.svelte';
 
 	/**
 	 * A draggable divider between two panels.
@@ -12,7 +12,7 @@
 
 	interface Props {
 		/** Which panel this divider resizes. */
-		panel: 'rail' | 'detail';
+		panel: PanelKey;
 		label: string;
 	}
 
@@ -27,20 +27,27 @@
 	 */
 	const locked = $derived(panel === 'rail' && panels.railCollapsed);
 
-	const width = $derived(panel === 'rail' ? panels.rail : panels.detail);
+	const width = $derived(panels.size(panel));
 
+	/**
+	 * Resize from the panel's own edge, not the window's.
+	 *
+	 * The panel being sized is always the splitter's immediate neighbour — the
+	 * element before it for a left-anchored panel, after it for a right-anchored
+	 * one — so its own box is the reference. Measuring from the window instead
+	 * would work for the rail and break for anything nested inside a screen,
+	 * where the rail's width sits between the window edge and the panel.
+	 */
 	function apply(clientX: number, element: HTMLElement) {
-		const app = element.closest('.app') as HTMLElement | null;
-		const bounds = app?.getBoundingClientRect();
-		if (!bounds) return;
+		const left = PANELS[panel].side === 'left';
+		const neighbour = (left ? element.previousElementSibling : element.nextElementSibling) as
+			| HTMLElement
+			| null;
 
-		if (panel === 'rail') {
-			// The rail is on the left: wider as the pointer moves right.
-			panels.setRail(clientX - bounds.left);
-		} else {
-			// The detail panel is on the right: wider as the pointer moves left.
-			panels.setDetail(bounds.right - clientX);
-		}
+		const box = neighbour?.getBoundingClientRect();
+		if (!box) return;
+
+		panels.set(panel, left ? clientX - box.left : box.right - clientX);
 	}
 
 	function onpointerdown(event: PointerEvent) {
