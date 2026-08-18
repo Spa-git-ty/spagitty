@@ -47,7 +47,7 @@
 
 			<div class="text">
 				<div class="top">
-					<RefChip chip={{ name: entry.name, kind: 'branch', current: false }} />
+					<RefChip chip={{ name: entry.name, kind: 'branch', current: false, local: true, remotes: [] }} />
 					<span class="message" title={entry.message}>{entry.message}</span>
 				</div>
 				<div class="note base" title={entry.parentSummary}>

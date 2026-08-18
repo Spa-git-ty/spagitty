@@ -20,7 +20,9 @@ function makeRow(
 	const refs: RefChip[] = (extra.refs ?? []).map((name) => ({
 		name,
 		kind: 'branch',
-		current: false
+		current: false,
+		local: true,
+		remotes: []
 	}));
 
 	return {

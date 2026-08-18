@@ -12,12 +12,33 @@
 
 export type RefKind = 'branch' | 'remote' | 'tag';
 
-export interface RefChip {
-	/** Display name, already shortened: `master`, `origin/master`, `v12.0.0`. */
+/** Which forge a remote points at, decided from its URL. Picks a glyph, nothing more. */
+export type Host = 'gitHub' | 'gitLab' | 'bitbucket' | 'azureDevOps' | 'generic';
+
+/** A remote carrying a branch at a commit. */
+export interface RemoteMark {
+	/** `origin`, `upstream`. Not drawn on the chip; carried for the tooltip. */
 	name: string;
+	host: Host;
+}
+
+export interface RefChip {
+	/**
+	 * The branch's own short name — `master`, never `origin/master` — or the
+	 * tag's name. Where a branch lives is `local` and `remotes` (FEAT-036).
+	 */
+	name: string;
+	/**
+	 * `branch` when a local ref exists, `remote` when it lives only on a remote,
+	 * `tag` for tags. What the gutter sorts and styles by.
+	 */
 	kind: RefKind;
 	/** True for the branch HEAD points at. Renders with accent border and a check. */
 	current: boolean;
+	/** A local `refs/heads/` ref of this name is at this commit. */
+	local: boolean;
+	/** The remotes carrying this branch **at this commit**, in name order. */
+	remotes: RemoteMark[];
 }
 
 // --- Graph ----------------------------------------------------------------

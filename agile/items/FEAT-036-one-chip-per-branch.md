@@ -2,7 +2,7 @@
 
 # FEAT-036 — One chip per branch, with local and remote shown as icons
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** implemented on `feature/FEAT-036-one-chip-per-branch`.
 **Screen:** Graph (1A), and everywhere else `RefChip` is used.
 **Requested by:** the author, 2026-08-18, with a GitKraken screenshot.
 **Decision on record:** icons only, no remote name in the chip. Chosen by the

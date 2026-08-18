@@ -40,7 +40,7 @@ function row(index: number, overrides: Partial<GraphRow> = {}): GraphRow {
 }
 
 function chip(name: string, kind: RefChip['kind'] = 'branch', current = false): RefChip {
-	return { name, kind, current };
+	return { name, kind, current, local: kind !== 'remote', remotes: [] };
 }
 
 beforeEach(() => {
