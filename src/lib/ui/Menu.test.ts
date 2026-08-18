@@ -184,6 +184,53 @@ describe('keyboard', () => {
 		view.destroy();
 	});
 
+	/**
+	 * BUG-008. With nothing selected, `entries[-1]` is `undefined` and
+	 * `findIndex` answers `-1` for it. Down happened to work out; up landed on
+	 * `usable.length - 2` — the middle entry of three, the first of two — which
+	 * is a different wrong answer for every menu length.
+	 */
+	it('opens at the last entry when the first key pressed is ArrowUp', () => {
+		for (const size of [1, 2, 3, 5]) {
+			const items = Array.from({ length: size }, (_, i) => entry(`Item ${i}`));
+			const { view } = open(items);
+
+			press(view.get('.menu'), 'ArrowUp');
+
+			const at = view.all('.entry').findIndex((e) => e.classList.contains('at'));
+			expect(at, `ArrowUp into a ${size}-entry menu landed on ${at}`).toBe(size - 1);
+
+			view.destroy();
+		}
+	});
+
+	it('opens at the first entry when the first key pressed is ArrowDown', () => {
+		for (const size of [1, 2, 3, 5]) {
+			const items = Array.from({ length: size }, (_, i) => entry(`Item ${i}`));
+			const { view } = open(items);
+
+			press(view.get('.menu'), 'ArrowDown');
+
+			const at = view.all('.entry').findIndex((e) => e.classList.contains('at'));
+			expect(at, `ArrowDown into a ${size}-entry menu landed on ${at}`).toBe(0);
+
+			view.destroy();
+		}
+	});
+
+	it('opens at the last entry that can run, not a disabled one', () => {
+		const { view } = open([
+			entry('One'),
+			entry('Two'),
+			entry('Blocked', { disabled: true })
+		]);
+
+		press(view.get('.menu'), 'ArrowUp');
+
+		expect(view.all('.entry')[1].classList.contains('at')).toBe(true);
+		view.destroy();
+	});
+
 	it('steps over separators and headings, which are not entries', () => {
 		const { view } = open([
 			entry('One'),

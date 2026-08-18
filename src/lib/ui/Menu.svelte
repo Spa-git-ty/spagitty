@@ -64,12 +64,30 @@
 		await entry.run();
 	}
 
+	/**
+	 * Move the cursor by `delta`, over the entries that can actually run.
+	 *
+	 * BUG-008: with nothing selected yet, `entries[cursor]` is `entries[-1]` —
+	 * `undefined` — and `findIndex` answers `-1` for it. Down happened to work
+	 * out (`-1 + 1` is the first entry); up did not, landing on
+	 * `usable.length - 2`, so the first ArrowUp into a three-item menu chose the
+	 * middle one and into a two-item menu chose the first.
+	 *
+	 * With no cursor there is no "current", so the direction alone decides:
+	 * down opens at the first entry, up at the last.
+	 */
 	function step(delta: number) {
 		const usable = entries.filter((entry) => !entry.disabled);
 		if (usable.length === 0) return;
 
 		const current = usable.findIndex((entry) => entry === entries[cursor]);
-		const next = (current + delta + usable.length) % usable.length;
+		const next =
+			current === -1
+				? delta > 0
+					? 0
+					: usable.length - 1
+				: (current + delta + usable.length) % usable.length;
+
 		cursor = entries.indexOf(usable[next]);
 	}
 
