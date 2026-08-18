@@ -546,6 +546,13 @@ export interface RepoInfo {
 	name: string;
 	bare: boolean;
 	head: HeadInfo;
+	/**
+	 * Unix seconds of the last fetch — the mtime of `.git/FETCH_HEAD`, which git
+	 * writes on every fetch including one that brought nothing down. `null` for
+	 * a repository that has never been fetched, which is a real answer and is
+	 * said in words rather than shown as an empty time (FEAT-040).
+	 */
+	lastFetched: number | null;
 }
 
 /**

@@ -5,6 +5,7 @@
 	import CommitRows from '$lib/graph/CommitRows.svelte';
 	import { graph } from '$lib/graph/store.svelte';
 	import { visibility, type Mode } from '$lib/graph/visibility.svelte';
+	import { relativeTime } from '$lib/format';
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
@@ -26,6 +27,42 @@
 	};
 
 	const scope = $derived(SCOPE[visibility.mode]);
+
+	/**
+	 * What the footer says (FEAT-040).
+	 *
+	 * It used to carry two lines telling the user how to operate the screen they
+	 * were already operating — the last of the copy TASK-007 and TASK-009 took
+	 * out everywhere else. In its place, the three things a person actually
+	 * wants to know while looking at a graph, and each of them is a fact this
+	 * screen already has or can get honestly.
+	 *
+	 * `now` is a signal so the ages re-read when anything else on the screen
+	 * changes; nothing here polls. A footer that ticks would draw the eye to the
+	 * least important row on the screen.
+	 */
+	let now = $state(Date.now());
+
+	const changed = $derived(repo.counts.working);
+
+	const refreshed = $derived(
+		graph.refreshedAt === null ? null : relativeTime(graph.refreshedAt, now)
+	);
+
+	const fetched = $derived.by(() => {
+		if (!repo.info) return null;
+		const at = repo.info.lastFetched;
+		return at === null ? 'never fetched' : `fetched ${relativeTime(at, now)}`;
+	});
+
+	// The ages are re-read whenever the walk finishes or the counts change,
+	// which is every moment the numbers behind them could have moved.
+	$effect(() => {
+		void graph.refreshedAt;
+		void repo.counts.working;
+		void repo.info?.lastFetched;
+		now = Date.now();
+	});
 
 	/**
 	 * The visibility gear.
@@ -137,8 +174,21 @@
 		{/if}
 
 		<footer class="foot">
-			<span class="note">drag a branch onto another to merge, rebase or fast-forward</span>
-			<span class="note">right-click a row for the full menu · double-click a row to open its diff</span>
+			<span class="note">
+				{#if changed === null}
+					working copy not read yet
+				{:else if changed === 0}
+					no changed files
+				{:else if changed === 1}
+					1 changed file
+				{:else}
+					{changed} changed files
+				{/if}
+			</span>
+			<span class="note">
+				{#if refreshed}refreshed {refreshed}{:else}walking…{/if}
+				{#if fetched}<span class="dot" aria-hidden="true">·</span>{fetched}{/if}
+			</span>
 		</footer>
 	</div>
 
@@ -225,6 +275,11 @@
 
 	.error {
 		color: var(--accent);
+	}
+
+	.dot {
+		margin: 0 6px;
+		color: var(--muted);
 	}
 
 	.foot {

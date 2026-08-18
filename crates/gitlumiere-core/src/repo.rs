@@ -3,6 +3,7 @@
 //! Opening a repository and describing it.
 
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
 
@@ -29,6 +30,9 @@ pub struct RepoInfo {
     pub name: String,
     pub bare: bool,
     pub head: HeadInfo,
+    /// When this repository was last fetched, in unix seconds, or `None` if it
+    /// never has been. See [`last_fetched`].
+    pub last_fetched: Option<u64>,
 }
 
 /// Open the repository at `path`, or the one that contains it.
@@ -172,7 +176,30 @@ pub fn info(repo: &gix::Repository) -> Result<RepoInfo> {
         name,
         bare: repo.workdir().is_none(),
         head: head(repo),
+        last_fetched: last_fetched(repo),
     })
+}
+
+/// When this repository was last fetched, in unix seconds.
+///
+/// git writes `FETCH_HEAD` on every fetch — including one that brought nothing
+/// down — and writes nothing else that dates the attempt, so its mtime is the
+/// honest answer to "how old is everything you are showing me". Reflogs date
+/// only the refs that *moved*, which would report a fetch that changed nothing
+/// as never having happened.
+///
+/// `None` means the file is not there, which is a repository that has never
+/// been fetched: a fresh `git init`, or a clone whose `FETCH_HEAD` was never
+/// written. That is a real answer and the interface says it in words rather
+/// than showing an empty time.
+///
+/// A clock that has moved backwards, or a file stamped before the epoch, also
+/// gives `None` — an impossible time is not worth propagating into the display
+/// as a negative age.
+pub fn last_fetched(repo: &gix::Repository) -> Option<u64> {
+    let stamp = repo.git_dir().join("FETCH_HEAD");
+    let modified = std::fs::metadata(stamp).ok()?.modified().ok()?;
+    modified.duration_since(UNIX_EPOCH).ok().map(|d| d.as_secs())
 }
 
 /// Describe HEAD. An unborn HEAD (fresh `git init`) is not an error — it is a
@@ -204,6 +231,38 @@ pub fn head(repo: &gix::Repository) -> HeadInfo {
 mod tests {
     use super::*;
     use crate::fixture::Fixture;
+
+    /// FEAT-040 — the graph footer says how old everything on it is.
+    #[test]
+    fn a_repository_that_has_never_been_fetched_has_no_fetch_time() {
+        let fixture = Fixture::empty();
+        let repo = fixture.open();
+
+        assert!(repo.git_dir().join("FETCH_HEAD").metadata().is_err());
+        assert_eq!(last_fetched(&repo), None);
+        assert_eq!(info(&repo).unwrap().last_fetched, None);
+    }
+
+    #[test]
+    fn a_fetch_head_dates_the_last_fetch() {
+        let fixture = Fixture::empty();
+        let repo = fixture.open();
+
+        // What `git fetch` leaves behind. Its *contents* do not matter here —
+        // the mtime is the answer, which is why a fetch that brought nothing
+        // down still counts as a fetch.
+        std::fs::write(repo.git_dir().join("FETCH_HEAD"), "").expect("write FETCH_HEAD");
+
+        let now = std::time::SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_secs();
+        let stamped = last_fetched(&repo).expect("a fetch time");
+
+        // Written a moment ago, so within a minute of now in either direction.
+        assert!(stamped.abs_diff(now) < 60, "stamped {stamped}, now {now}");
+        assert_eq!(info(&repo).unwrap().last_fetched, Some(stamped));
+    }
 
     #[test]
     fn opening_a_path_that_is_not_there_names_the_path() {
