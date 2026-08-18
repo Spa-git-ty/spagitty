@@ -69,6 +69,26 @@ Persistent across every screen, built with FEAT-001.
   then All repositories and Settings. Log follows Rebase because it is where you
   go to look something up rather than a step in that sequence.
 
+## The window itself
+
+The window is undecorated and **transparent**, so everything a person reads as
+"the window" is drawn by the application: a 12px corner, a 0.2px outline, an
+inset highlight along the top edge, and two shadows — a tight dark one holding
+the card down and a wide soft one giving it height (FEAT-037). `body` carries a
+margin for the shadow to fall into; without it a `box-shadow` on an element flush
+against the window edge is clipped away entirely.
+
+Maximizing drops all of it, because a floating card with a gap around it is a
+window that does not fit its own screen. CSS cannot ask Tauri its state, so
+`appWindow.watchMaximized()` publishes it as `data-window` on the root element.
+
+**Every panel resizes.** `PANELS` in `src/lib/panels.svelte.ts` is the registry —
+each panel names its CSS variable, the edge it is anchored to, and its range —
+and `Splitter` takes any key. The anchored edge is what decides the drag
+direction, and the splitter measures **the panel beside it** rather than the
+window: the window's edge is the right reference only for the rail, and wrong for
+anything nested inside a screen where the rail's own width sits in between.
+
 ## 1A — Graph
 
 **Built.** `src/routes/+page.svelte`, `src/lib/graph/`.

@@ -43,6 +43,16 @@ Cheapest and most certain first, so an obvious failure never burns a full build.
 - Gates are blocking, not advisory. A red gate is fixed, not bypassed;
   `continue-on-error` is not used to get a merge through, and neither is a
   re-run until it passes.
+- **An advisory that cannot be fixed is recorded, not silenced.** `deny.toml`'s
+  `[advisories] ignore` list carries accepted risk **by advisory id**, each with
+  its crate and its reason, so anything *not* listed still fails gate 4. That is
+  the line between recording a risk and switching the gate off, and only the
+  first is allowed. A blanket setting — `unmaintained = "warn"`, or dropping the
+  check — is the second wearing different clothes.
+
+  Sixteen entries were added in TASK-010, all `unmaintained`, none a
+  vulnerability, and eleven of them the GTK3 bindings Tauri links against on
+  Linux with no upgrade available. They are deleted when Tauri moves to GTK4.
 - The order is fixed. A new check joins an existing gate or becomes a new one in
   the right place — it does not get bolted onto whichever job is convenient.
 - The coverage floor is defined once per language: `COVERAGE_FLOOR` in the
@@ -75,6 +85,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 npm run check
 cargo llvm-cov --workspace --ignore-filename-regex 'fixture\.rs' --summary-only
 npm run coverage                           # gate 3
+cargo deny check advisories                # gate 4
+npm audit --audit-level=high
 ```
 
 `cargo-deny` and `cargo-llvm-cov` are installed with
