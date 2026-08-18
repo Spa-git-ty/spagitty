@@ -2,7 +2,7 @@
 
 # TASK-012 — The working record has drifted from the tree
 
-**Status:** open.
+**Status:** Done on `task/TASK-012-record-drift`.
 **Surface:** `agile/`, and the references to it in `docs/`.
 **Found by:** an audit of `agile/items/` against the code and the git history,
 asked for on 2026-08-18.

@@ -2,7 +2,7 @@
 
 # BUG-006 — A long branch name overlaps the branch count on a repository card
 
-**Status:** fixed on `bugfix/BUG-006-repo-card-overlap`.
+**Status:** Fixed on `bugfix/BUG-006-repo-card-overlap`.
 **Screen:** All repositories (1J).
 **Reported by:** the author, 2026-08-18, with a screenshot.
 

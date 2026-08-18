@@ -2,7 +2,7 @@
 
 # FEAT-039 — The graph column resizes, and the lanes compress into it
 
-**Status:** done on `feature/FEAT-039-resizable-graph-column`.
+**Status:** Done on `feature/FEAT-039-resizable-graph-column`.
 **Screen:** Graph (1A).
 **Reported by:** the author, with a screencast, after BUG-009b.
 

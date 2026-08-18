@@ -2,7 +2,7 @@
 
 # TASK-004 — Rename the project from GitLord to GitLumiere
 
-**Status:** done, record backfilled
+**Status:** Done, record backfilled
 **Branch:** none — landed directly on `main` as `994dbe9`
 
 ## Problem

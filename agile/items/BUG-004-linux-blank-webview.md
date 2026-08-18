@@ -1,6 +1,6 @@
 # BUG-004 — The packaged Linux app opens a blank white window
 
-**Status:** fixed, awaiting sweep
+**Status:** Fixed, awaiting sweep
 **Branch:** `bugfix/BUG-004-linux-blank-webview`
 
 ## Problem

@@ -2,7 +2,7 @@
 
 # FEAT-020 — Show the git command behind each action
 
-**Status:** Built. Plan in `agile/plans/FEAT-020-plan.md`, tests in
+**Status:** Done. Plan in `agile/plans/FEAT-020-plan.md`, tests in
 `agile/testing/FEAT-020-automated.md` and `agile/testing/FEAT-020-sweep.md`.
 Branch `feature/FEAT-020-show-git-commands`, cut from FEAT-022's tip because the
 operations it records were added there.

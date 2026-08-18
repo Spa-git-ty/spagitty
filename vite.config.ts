@@ -38,7 +38,10 @@ export default defineConfig({
 	 */
 	test: {
 		environment: 'happy-dom',
-		include: ['src/**/*.test.ts'],
+		// `tools/` is here for the record check (TASK-012), which reads `agile/`
+		// and `docs/` as data. It is not frontend code and is not counted for
+		// coverage — see `coverage.include` below.
+		include: ['src/**/*.test.ts', 'tools/**/*.test.ts'],
 		coverage: {
 			provider: 'v8',
 			// First-party frontend code only. Amendment 10 counts nothing else,

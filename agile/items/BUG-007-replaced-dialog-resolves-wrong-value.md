@@ -2,7 +2,7 @@
 
 # BUG-007 — A replaced dialog resolves the wrong caller's cancel value
 
-**Status:** open, not started.
+**Status:** Fixed — commit `1a0c6db` on `bugfix/BUG-007-replaced-dialog-cancel-value`.
 **Found by:** TASK-005, while writing `src/lib/ui/Dialog.test.ts`.
 **Screen:** any — the dialog store is application-wide.
 

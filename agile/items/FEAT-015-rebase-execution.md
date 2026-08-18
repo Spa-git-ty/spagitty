@@ -2,7 +2,10 @@
 
 # FEAT-015 — Rebase execution
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Partial. `ops::rebase_interactive` and the `rebase_run` command
+are built; the frontend is unwired — Apply is a hardcoded `disabled`, and
+there is no progress or abort path. Corrected by TASK-012. No plan yet; one
+is written when the remainder starts.
 **Screen:** Interactive rebase (1E).
 
 ## Problem

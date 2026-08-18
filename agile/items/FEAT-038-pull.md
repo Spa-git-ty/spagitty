@@ -2,7 +2,7 @@
 
 # FEAT-038 — Pull
 
-**Status:** done on `feature/FEAT-038-pull`.
+**Status:** Done on `feature/FEAT-038-pull`.
 **Screen:** the toolbar, so every screen.
 **Reported by:** the author, running the build.
 

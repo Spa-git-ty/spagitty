@@ -2,7 +2,7 @@
 
 # BUG-009 — The commit message column cannot be resized
 
-**Status:** fixed on `task/TASK-009-network-copy`.
+**Status:** Fixed on `task/TASK-009-network-copy`.
 **Screen:** Graph (1A).
 **Reported by:** the author, running the build.
 

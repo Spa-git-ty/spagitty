@@ -2,7 +2,7 @@
 
 # TASK-010 — Gate 4 fails on sixteen unmaintained advisories
 
-**Status:** done on `task/TASK-010-security-gate-advisories`.
+**Status:** Done on `task/TASK-010-security-gate-advisories`.
 **Found by:** the pipeline, the first time it ever reached gate 4.
 
 ## Problem

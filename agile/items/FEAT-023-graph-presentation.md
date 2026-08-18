@@ -2,7 +2,7 @@
 
 # FEAT-023 — Author heads on the graph, and a graph column of its own
 
-**Status:** Built. Plan in `agile/plans/FEAT-023-plan.md`, tests in
+**Status:** Done. Plan in `agile/plans/FEAT-023-plan.md`, tests in
 `agile/testing/FEAT-023-automated.md` and `agile/testing/FEAT-023-sweep.md`.
 **Screen:** Graph (1A).
 

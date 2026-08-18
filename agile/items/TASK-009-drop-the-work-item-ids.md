@@ -2,7 +2,7 @@
 
 # TASK-009 — The interface stops naming its own work items
 
-**Status:** done on `task/TASK-009-network-copy`.
+**Status:** Done on `task/TASK-009-network-copy`.
 **Screens:** Pull requests, Settings → Accounts, Settings → Behaviour, Conflicts, Rebase.
 **Found by:** the author, running the build. Not by any test.
 

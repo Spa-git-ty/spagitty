@@ -2,7 +2,10 @@
 
 # FEAT-018 — Fetch and push
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done — it landed inside FEAT-038 (`b71f8aa`) without this item
+being closed at the time. `ops::fetch` and `ops::push` are implemented, the
+commands exist, and the toolbar buttons are live. Corrected by TASK-012;
+the problem statement below still describes the tree as it was before.
 **Surface:** the toolbar's Fetch and Push buttons, and the Branches screen's
 ahead/behind counts.
 

@@ -2,8 +2,8 @@
 
 # TASK-005 — Branch coverage is below the Amendment 10 floor
 
-**Status:** open, not started
-**Branch:** none yet
+**Status:** Done — commit `ff60d37` on `task/TASK-005-branch-coverage-floor`.
+**Branch:** `task/TASK-005-branch-coverage-floor`
 
 ## Problem
 

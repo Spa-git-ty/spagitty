@@ -2,7 +2,7 @@
 
 # FEAT-037 — The window has depth, and every panel resizes
 
-**Status:** done on `feature/FEAT-037-window-depth`.
+**Status:** Done on `feature/FEAT-037-window-depth`.
 **Requested by:** the author, testing the build. Two requests, one item, because
 both are about the same thing: surfaces that were declared and then never
 finished.

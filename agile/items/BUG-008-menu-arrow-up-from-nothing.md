@@ -2,7 +2,7 @@
 
 # BUG-008 — ArrowUp into a fresh menu lands in the middle
 
-**Status:** fixed on `bugfix/BUG-008-menu-arrow-up-from-nothing`.
+**Status:** Fixed on `bugfix/BUG-008-menu-arrow-up-from-nothing`.
 **Found by:** TASK-005, while writing `src/lib/ui/Menu.test.ts`.
 **Screen:** every one — `Menu.svelte` is every right-click menu in GitLumiere.
 

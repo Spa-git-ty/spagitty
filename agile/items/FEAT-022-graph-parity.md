@@ -2,7 +2,7 @@
 
 # FEAT-022 — The graph as a launcher, not a report
 
-**Status:** Built. Plan in `agile/plans/FEAT-022-plan.md`, tests in
+**Status:** Done. Plan in `agile/plans/FEAT-022-plan.md`, tests in
 `agile/testing/FEAT-022-automated.md` and `-sweep.md`.
 **Surface:** the Graph screen (`/`), the shell's dialog and notice layers, and
 the command palette.

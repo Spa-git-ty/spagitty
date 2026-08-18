@@ -2,7 +2,7 @@
 
 # TASK-011 — Secret scanning has never run
 
-**Status:** done on `task/TASK-011-secret-scanning`.
+**Status:** Done on `task/TASK-011-secret-scanning`.
 **Found by:** PR #4, the first pull request whose pipeline reached gate 4.
 
 ## Problem

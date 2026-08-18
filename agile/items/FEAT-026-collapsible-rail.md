@@ -2,7 +2,7 @@
 
 # FEAT-026 — The nav rail collapses to icons
 
-**Status:** Built. Plan in `agile/plans/FEAT-026-plan.md`, tests in
+**Status:** Done. Plan in `agile/plans/FEAT-026-plan.md`, tests in
 `agile/testing/FEAT-026-automated.md` and `agile/testing/FEAT-026-sweep.md`.
 **Screen:** the chrome, on every screen.
 

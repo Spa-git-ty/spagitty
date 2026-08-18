@@ -2,7 +2,7 @@
 
 # FEAT-035 — Lanes past the cap compress instead of stacking
 
-**Status:** implemented on `feature/FEAT-035-lane-compression`.
+**Status:** Done, implemented on `feature/FEAT-035-lane-compression`.
 **Screen:** Graph (1A).
 **Requested by:** the author, 2026-08-18, with a GitKraken screenshot.
 **Decision on record:** compress the spacing. Chosen by the author over
@@ -86,3 +86,13 @@ before the geometry moves.
 
 Overlaps `FEAT-033` (which extracts the column store) and `FEAT-031` (which
 changes `CommitRows`). Whichever runs second rebases onto the first.
+
+**Corrected by TASK-012, and left visible rather than replaced.** Neither
+citation was real when it was written. The column store was extracted in
+FEAT-022 (`7299551`), well before this item, so nothing under `FEAT-033` was
+pending — that identifier now carries branch divergence on the chip, which is
+the meaning FEAT-036 gives it. `FEAT-031` was never written and its intent is
+not recoverable from the record beyond "changes `CommitRows`"; it is listed as a
+skipped identifier in `agile/README.md` and must never be reused. This item
+shipped without depending on either.
+

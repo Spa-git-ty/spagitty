@@ -2,7 +2,7 @@
 
 # BUG-005 — The geometry change left its test, its comments and a CSS rule behind
 
-**Status:** fixed, awaiting sweep
+**Status:** Fixed, awaiting sweep
 **Branch:** `bugfix/BUG-005-metrics-drift`
 
 ## Problem

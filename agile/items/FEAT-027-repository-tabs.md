@@ -2,7 +2,7 @@
 
 # FEAT-027 — Repository tabs in the title bar
 
-**Status:** Built. Plan in `agile/plans/FEAT-027-plan.md`, tests in
+**Status:** Done. Plan in `agile/plans/FEAT-027-plan.md`, tests in
 `agile/testing/FEAT-027-automated.md` and `agile/testing/FEAT-027-sweep.md`.
 **Screen:** the chrome, on every screen.
 

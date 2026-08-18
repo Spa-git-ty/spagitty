@@ -2,7 +2,7 @@
 
 # FEAT-029 — Bigger faces, a bigger type scale, and a rail that scales with them
 
-**Status:** done, record backfilled
+**Status:** Done, record backfilled
 **Branch:** none — landed directly on `main` as `994dbe9`
 
 ## Problem

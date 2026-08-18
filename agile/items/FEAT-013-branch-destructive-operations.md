@@ -2,7 +2,10 @@
 
 # FEAT-013 — Branch delete and rename
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Partial. `ops::delete_branch` and `ops::rename_branch` are built
+and reachable from the graph's context menu; the Branches screen's own
+delete and rename, and the bulk merged-branch cleanup, are not. Corrected by
+TASK-012. No plan yet; one is written when the remainder starts.
 **Screen:** Branches (1F).
 
 ## Problem

@@ -2,7 +2,7 @@
 
 # FEAT-030 — The rail: the open-repository slot, and Log's place in the order
 
-**Status:** done on `feature/FEAT-030-rail-open-repository`.
+**Status:** Done on `feature/FEAT-030-rail-open-repository`.
 **Screen:** the shell's nav rail.
 **Source:** the 2026-08-18 intake, covering requests 12 (second half) and 19.
 

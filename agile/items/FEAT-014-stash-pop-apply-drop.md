@@ -2,7 +2,7 @@
 
 # FEAT-014 — Stash pop, apply and drop
 
-**Status:** done, on `feature/FEAT-014-stash-pop-apply-drop`.
+**Status:** Done, on `feature/FEAT-014-stash-pop-apply-drop`.
 **Screen:** Stash (1G).
 
 ## Problem

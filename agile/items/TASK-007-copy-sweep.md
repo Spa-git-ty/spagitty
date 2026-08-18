@@ -2,7 +2,7 @@
 
 # TASK-007 — Copy sweep: drop the hand-holding, drop the Mac notation
 
-**Status:** implemented on `task/TASK-007-copy-sweep`.
+**Status:** Done, implemented on `task/TASK-007-copy-sweep`.
 **Screens:** Working copy, Branches, Stash, Log, Rebase, Settings, and the shell.
 **Source:** the 2026-08-18 intake, covering requests 5, 7, 10, 12 (first half),
 13, 16, 17 and 18.

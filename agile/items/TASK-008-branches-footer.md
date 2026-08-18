@@ -2,7 +2,7 @@
 
 # TASK-008 — The last self-narrating footer
 
-**Status:** done on `task/TASK-008-branches-footer`.
+**Status:** Done on `task/TASK-008-branches-footer`.
 **Screen:** Branches (1F).
 **Raised by:** TASK-007, which found it inside the sweep's spirit but outside
 its exhaustive removal list, and reported it rather than absorbing it
