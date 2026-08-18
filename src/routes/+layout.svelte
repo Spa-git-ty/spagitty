@@ -13,6 +13,7 @@
 	import NavRail from '$lib/chrome/NavRail.svelte';
 	import ResizeEdges from '$lib/chrome/ResizeEdges.svelte';
 	import { appWindow } from '$lib/chrome/window';
+	import RepoTabs from '$lib/chrome/RepoTabs.svelte';
 	import StatusStrip from '$lib/chrome/StatusStrip.svelte';
 	import TitleBar from '$lib/chrome/TitleBar.svelte';
 	import Toolbar from '$lib/chrome/Toolbar.svelte';
@@ -171,6 +172,8 @@
 
 <div class="app">
 	<TitleBar />
+	<!-- Its own row, and absent when nothing is open (FEAT-044). -->
+	<RepoTabs />
 	<Toolbar />
 	<div class="main">
 		<NavRail />

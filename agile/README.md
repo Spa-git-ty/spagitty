@@ -97,7 +97,7 @@ rather than an audit.
 | [FEAT-041](items/FEAT-041-rail-drops-the-shortcut-hint.md) | The rail stops advertising a shortcut | chrome | Done |
 | [FEAT-042](items/FEAT-042-tighter-corners-and-a-round-cast.md) | Tighter corners, and a cast shadow that follows them | all | Done |
 | [FEAT-043](items/FEAT-043-app-status-strip.md) | A status strip along the bottom of the window | chrome | Done |
-| [FEAT-044](items/FEAT-044-repo-tabs-own-row.md) | The repository tabs get a row of their own | chrome | Backlog |
+| [FEAT-044](items/FEAT-044-repo-tabs-own-row.md) | The repository tabs get a row of their own | chrome | Done |
 | [FEAT-045](items/FEAT-045-toolbar-repo-and-branch.md) | The toolbar names the repository, and picks a branch for real | chrome | Backlog |
 | [FEAT-046](items/FEAT-046-graph-squeeze-keeps-the-portraits.md) | Squeezing the graph column must not shrink the portraits | 1A | Backlog |
 

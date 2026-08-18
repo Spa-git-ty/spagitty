@@ -235,6 +235,8 @@ export const LANE_COLOR_COUNT = 5;
 
 export const TITLEBAR_H = 30;
 export const TOOLBAR_H = 50;
+/** The repository tab row, below the title bar (FEAT-044). */
+export const TABS_H = 30;
 /**
  * The status strip along the bottom of the window (FEAT-043).
  *
@@ -390,6 +392,7 @@ export function applyMetrics(
 	const px: Record<string, number> = {
 		'lane-pitch': LANE_PITCH,
 		'titlebar-h': TITLEBAR_H,
+		'tabs-h': TABS_H,
 		'toolbar-h': TOOLBAR_H,
 		'strip-h': STRIP_H,
 		'rail-w': RAIL_W,

@@ -1,10 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 
 	import { appWindow } from '$lib/chrome/window';
-	import RepoTabs from '$lib/chrome/RepoTabs.svelte';
 
 	/**
 	 * The title bar is the workspace bar: what this program is, the way back to
@@ -44,19 +41,12 @@
 	<span class="name">GitLumiere</span>
 
 	<!--
-		Where every repository is, open or not. First in the strip because it is
-		the way back when nothing is open, and because that is where the reference
-		puts its equivalent.
+		The tabs and the way back to every repository were both here. The tabs
+		have a row of their own now (FEAT-044) — they are a workspace control,
+		and this row is window controls — and `All repositories` went with them
+		rather than staying as a button that read like a tab which is always
+		open. It is screen 1J on the rail, which is where the way back belongs.
 	-->
-	<button
-		class="all"
-		class:active={page.url.pathname === '/repos'}
-		onclick={() => goto('/repos')}
-	>
-		All repositories
-	</button>
-
-	<RepoTabs />
 
 	<span class="spacer"></span>
 
@@ -135,25 +125,6 @@
 	}
 
 	.control:active {
-		background: var(--soft);
-	}
-
-	.all {
-		flex: none;
-		padding: 3px 10px;
-		border-radius: var(--r-pill);
-		color: var(--muted);
-		font-size: var(--fs-secondary);
-		white-space: nowrap;
-	}
-
-	.all:hover {
-		color: var(--ink);
-		background: var(--soft);
-	}
-
-	.all.active {
-		color: var(--ink);
 		background: var(--soft);
 	}
 

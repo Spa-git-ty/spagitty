@@ -2,7 +2,7 @@
 
 # FEAT-044 — The repository tabs get a row of their own
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done on `feature/FEAT-044-tabs-row`.
 **Screen:** the chrome, so every screen.
 **Requested by:** the author, 2026-08-18.
 

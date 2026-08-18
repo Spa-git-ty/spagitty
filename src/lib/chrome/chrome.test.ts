@@ -31,6 +31,7 @@ import { control as repoControl, calls as repoCalls } from '../../testing/repo-s
 import { control as graphControl } from '../../testing/graph-store.svelte';
 import NavRail from './NavRail.svelte';
 import ResizeEdges from './ResizeEdges.svelte';
+import RepoTabs from './RepoTabs.svelte';
 import StatusStrip from './StatusStrip.svelte';
 import TitleBar from './TitleBar.svelte';
 import Toolbar from './Toolbar.svelte';
@@ -85,25 +86,17 @@ describe('TitleBar', () => {
 		view.destroy();
 	});
 
-	it('offers the way back to every repository', () => {
-		const view = render(TitleBar, {});
-
-		click(view.get('.all'));
-
-		expect(goto).toHaveBeenCalledWith('/repos');
-		view.destroy();
-	});
-
-	it('shows the open repositories as tabs, with the active one marked', () => {
+	it('no longer carries the tabs or the way back (FEAT-044)', () => {
+		// Both were passengers in the row that has to survive a narrow window,
+		// and neither is a window control. The tabs have a row of their own; the
+		// way back is screen 1J on the rail.
 		workspace.clear();
 		workspace.opened('/repos/fixture');
-		workspace.opened('/repos/other');
 
 		const view = render(TitleBar, {});
 
-		const labels = view.all('.tab .label').map((element) => element.textContent);
-		expect(labels).toEqual(['fixture', 'other']);
-		expect(view.get('.tab.active .label').textContent).toBe('other');
+		expect(view.all('.tab').length).toBe(0);
+		expect(view.text()).not.toContain('All repositories');
 
 		workspace.clear();
 		view.destroy();
@@ -189,6 +182,61 @@ describe('TitleBar', () => {
 		expect(labels).not.toContain('dark');
 		expect(labels).not.toContain('light');
 
+		view.destroy();
+	});
+});
+
+describe('RepoTabs', () => {
+	it('shows the open repositories as tabs, with the active one marked', () => {
+		workspace.clear();
+		workspace.opened('/repos/fixture');
+		workspace.opened('/repos/other');
+
+		const view = render(RepoTabs, {});
+
+		const labels = view.all('.tab .label').map((element) => element.textContent);
+		expect(labels).toEqual(['fixture', 'other']);
+		expect(view.get('.tab.active .label').textContent).toBe('other');
+
+		workspace.clear();
+		view.destroy();
+	});
+
+	it('is a row of its own, which is where it now lives (FEAT-044)', () => {
+		workspace.clear();
+		workspace.opened('/repos/fixture');
+
+		const view = render(RepoTabs, {});
+
+		expect(view.all('.tabrow').length).toBe(1);
+		expect(view.get('.tabrow .tabs')).toBeTruthy();
+
+		workspace.clear();
+		view.destroy();
+	});
+
+	it('draws no row at all when nothing is open (FEAT-044)', () => {
+		// A band of chrome across the window with nothing in it makes an empty
+		// application look broken.
+		workspace.clear();
+
+		const view = render(RepoTabs, {});
+
+		expect(view.all('.tabrow').length).toBe(0);
+		expect(view.all('.tab').length).toBe(0);
+
+		view.destroy();
+	});
+
+	it('keeps the way to open a repository in the row', () => {
+		workspace.clear();
+		workspace.opened('/repos/fixture');
+
+		const view = render(RepoTabs, {});
+
+		expect(view.get('.add').getAttribute('aria-label')).toBe('Add a repository');
+
+		workspace.clear();
 		view.destroy();
 	});
 });

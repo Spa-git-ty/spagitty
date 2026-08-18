@@ -101,55 +101,89 @@
 	});
 </script>
 
-<div class="tabs" role="tablist" aria-label="Open repositories">
-	{#each tabs as tab (tab.path)}
-		<div
-			class="tab"
-			class:active={workspace.isActive(tab.path)}
-			role="tab"
-			tabindex={workspace.isActive(tab.path) ? 0 : -1}
-			aria-selected={workspace.isActive(tab.path)}
-			title={tab.path}
-			onclick={() => void switchTo(tab.path)}
-			onkeydown={(event) => {
-				if (event.key === 'Enter' || event.key === ' ') {
-					event.preventDefault();
-					void switchTo(tab.path);
-				}
-			}}
-		>
-			<span class="label">{tab.name}</span>
-			{#if workspace.isActive(tab.path) && repo.busy}
-				<span class="note" aria-label="Opening">…</span>
-			{/if}
-			<button
-				class="close"
-				title="Close this tab — the repository stays in your list"
-				aria-label="Close {tab.name}"
-				onclick={(event) => closeTab(event, tab.path)}
-			>
-				✕
-			</button>
-		</div>
-	{/each}
+<!--
+	The tabs are a row of their own, below the title bar (FEAT-044). They were a
+	passenger in that bar, squeezed by the program name and the window controls
+	in the one row that has to survive a narrow window — and they are a workspace
+	control, not a window control.
 
-	<button class="add" title="Open, clone or reopen a repository" aria-label="Add a repository" onclick={openMenu}>
-		+
-	</button>
+	The row is absent entirely when nothing is open: a band of chrome across the
+	window with nothing in it makes an empty application look broken.
+-->
+{#if tabs.length > 0}
+<div class="tabrow">
+	<div class="tabs" role="tablist" aria-label="Open repositories">
+		{#each tabs as tab (tab.path)}
+			<div
+				class="tab"
+				class:active={workspace.isActive(tab.path)}
+				role="tab"
+				tabindex={workspace.isActive(tab.path) ? 0 : -1}
+				aria-selected={workspace.isActive(tab.path)}
+				title={tab.path}
+				onclick={() => void switchTo(tab.path)}
+				onkeydown={(event) => {
+					if (event.key === 'Enter' || event.key === ' ') {
+						event.preventDefault();
+						void switchTo(tab.path);
+					}
+				}}
+			>
+				<span class="label">{tab.name}</span>
+				{#if workspace.isActive(tab.path) && repo.busy}
+					<span class="note" aria-label="Opening">…</span>
+				{/if}
+				<button
+					class="close"
+					title="Close this tab — the repository stays in your list"
+					aria-label="Close {tab.name}"
+					onclick={(event) => closeTab(event, tab.path)}
+				>
+					✕
+				</button>
+			</div>
+		{/each}
+
+		<button
+			class="add"
+			title="Open, clone or reopen a repository"
+			aria-label="Add a repository"
+			onclick={openMenu}
+		>
+			+
+		</button>
+	</div>
 </div>
+{/if}
 
 {#if menu}
 	<Menu x={menu.x} y={menu.y} items={menuItems} label="Repositories" onclose={() => (menu = null)} />
 {/if}
 
 <style>
+	/*
+		The row itself. Its tabs sit on its bottom edge, because a tab's shape —
+		rounded at the top, square at the bottom, an accent underline on the
+		active one — is drawn to sit *on* a boundary. That boundary used to be
+		the title bar's bottom border; now it is this row's.
+	*/
+	.tabrow {
+		flex: none;
+		height: var(--tabs-h);
+		display: flex;
+		align-items: stretch;
+		padding: 4px 10px 0;
+		background: var(--panel);
+		border-bottom: 1.5px solid var(--line);
+	}
+
 	.tabs {
 		display: flex;
 		align-items: stretch;
 		gap: 2px;
 		min-width: 0;
-		/* The title bar drags the window; a tab has to be clickable instead. */
-		-webkit-app-region: no-drag;
+		overflow-x: auto;
+		scrollbar-width: none;
 	}
 
 	.tab {
