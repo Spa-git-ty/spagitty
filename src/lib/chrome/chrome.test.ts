@@ -43,6 +43,7 @@ function info(branch: string | null = 'main', detached = false): RepoInfo {
 		path: '/repos/fixture',
 		name: 'fixture',
 		bare: false,
+		lastFetched: null,
 		head: { branch, detached, id: 'a'.repeat(40), short: 'aaaaaaa' }
 	};
 }

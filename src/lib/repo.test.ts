@@ -25,6 +25,7 @@ function info(path = '/repos/fixture', branch: string | null = 'main'): RepoInfo
 		path,
 		name: path.slice(path.lastIndexOf('/') + 1),
 		bare: false,
+		lastFetched: null,
 		head: { branch, detached: branch === null, id: 'a'.repeat(40), short: 'aaaaaaa' }
 	};
 }

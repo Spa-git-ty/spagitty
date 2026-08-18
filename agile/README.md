@@ -93,7 +93,7 @@ rather than an audit.
 | [FEAT-037](items/FEAT-037-window-depth-and-resizable-panels.md) | The window has depth, and every panel resizes | chrome | Done |
 | [FEAT-038](items/FEAT-038-pull.md) | Pull | chrome | Done |
 | [FEAT-039](items/FEAT-039-resizable-graph-column.md) | The graph column resizes, and the lanes compress into it | 1A | Done |
-| [FEAT-040](items/FEAT-040-graph-footer.md) | The graph's footer says what is true, not what to do | 1A | Backlog |
+| [FEAT-040](items/FEAT-040-graph-footer.md) | The graph's footer says what is true, not what to do | 1A | Done |
 | [FEAT-041](items/FEAT-041-rail-drops-the-shortcut-hint.md) | The rail stops advertising a shortcut | chrome | Done |
 | [FEAT-042](items/FEAT-042-tighter-corners-and-a-round-cast.md) | Tighter corners, and a cast shadow that follows them | all | Done |
 | [FEAT-043](items/FEAT-043-app-status-strip.md) | A status strip along the bottom of the window | chrome | Done |

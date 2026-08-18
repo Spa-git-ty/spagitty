@@ -39,6 +39,13 @@ let version = $state(0);
 let count = $state(0);
 let requested = $state(0);
 let complete = $state(false);
+/**
+ * When the walk last finished, in unix seconds — not when the process started,
+ * and not when the last row arrived (FEAT-040). The graph's footer says how old
+ * what is on screen is, and a walk still running has refreshed nothing yet, so
+ * this moves only on completion.
+ */
+let refreshedAt = $state<number | null>(null);
 let error = $state<string | null>(null);
 let selectedIndex = $state<number | null>(null);
 let detail = $state<CommitDetail | null>(null);
@@ -66,6 +73,7 @@ function reset() {
 	count = 0;
 	requested = 0;
 	complete = false;
+	refreshedAt = null;
 	error = null;
 	selectedIndex = null;
 	selectedId = null;
@@ -87,6 +95,10 @@ export const graph = {
 	/** True once the walk reached the end of history. */
 	get complete(): boolean {
 		return complete;
+	},
+	/** Unix seconds when the walk last completed, or null before it has. */
+	get refreshedAt(): number | null {
+		return refreshedAt;
 	},
 	get error(): string | null {
 		return error;
@@ -157,6 +169,7 @@ export const graph = {
 				}
 
 				complete = payload.complete;
+				if (payload.complete) refreshedAt = Math.floor(Date.now() / 1000);
 				if (payload.error) error = payload.error;
 
 				// The selected commit never reappeared: history was rewritten

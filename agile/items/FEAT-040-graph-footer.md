@@ -2,7 +2,7 @@
 
 # FEAT-040 — The graph's footer says what is true, not what to do
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done. Implemented on `feature/FEAT-040-graph-footer-facts`.
 **Screen:** Graph (1A).
 **Requested by:** the author, 2026-08-18. Recorded as an item on the same day,
 per Amendment 11 — a decision written down later is a reconstruction.

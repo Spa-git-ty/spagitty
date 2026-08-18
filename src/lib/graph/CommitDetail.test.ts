@@ -16,6 +16,7 @@ vi.mock('$lib/repo.svelte', () => ({
 				path: '/repos/fixture',
 				name: 'fixture',
 				bare: false,
+				lastFetched: null,
 				head: { branch: 'main', detached: false, id: 'a'.repeat(40), short: 'aaaaaaa' }
 			};
 		}
