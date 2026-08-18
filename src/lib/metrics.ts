@@ -155,9 +155,22 @@ export const LANE_INDEX_MAX = Math.floor(LANE_SPAN / LANE_PITCH_MIN);
  * sat precisely where a node on lane 12 did and the graph stopped being a graph
  * at the point a busy history most needs one.
  */
-export function lanePitch(needed: number): number {
-	if (needed <= LANE_COLUMNS_MAX) return LANE_PITCH;
-	return Math.max(LANE_PITCH_MIN, LANE_SPAN / (needed - 1));
+export function lanePitch(needed: number, span: number = LANE_SPAN): number {
+	if (needed <= 1) return LANE_PITCH;
+	return Math.max(LANE_PITCH_MIN, Math.min(LANE_PITCH, span / (needed - 1)));
+}
+
+/**
+ * The horizontal room the lanes actually have, inside a column of `width`.
+ *
+ * The inverse of [`laneColumnWidth`], and the reason the graph column can be
+ * dragged at all (FEAT-039). Given a width someone chose, this is what is left
+ * for lanes once the first lane's offset, the node's own radius and the tail
+ * before the message column are taken out.
+ */
+export function laneSpanFor(width: number, zoom = 1): number {
+	const usable = width / Math.max(zoom, 0.01) - LANE_X0 - NODE_R - LANE_TAIL;
+	return Math.max(0, usable);
 }
 
 /**
@@ -179,8 +192,8 @@ export function lanePitch(needed: number): number {
  * than the pitch it was derived from, and the radius picks the portrait tile
  * size, so a fractional one would mint a cache entry per scroll.
  */
-export function laneNodeRadius(needed: number): number {
-	const pitch = lanePitch(needed);
+export function laneNodeRadius(needed: number, span: number = LANE_SPAN): number {
+	const pitch = lanePitch(needed, span);
 	if (pitch >= LANE_PITCH) return NODE_R;
 	return Math.max(MERGE_R, Math.min(NODE_R, Math.floor((pitch - LANE_STROKE) / 2)));
 }
@@ -306,9 +319,23 @@ export function rowCenterY(index: number, pitch: number = ROW_PITCH): number {
  * `zoom` scales the horizontal geometry the same way `applyMetrics` scales the
  * CSS widths, so the canvas and the reserved column keep agreeing.
  */
-export function laneX(lane: number, columns: number = LANE_COLUMNS_MIN, zoom = 1): number {
-	const pitch = lanePitch(Math.max(columns, LANE_COLUMNS_MIN));
-	const index = Math.min(lane, Math.min(columns, LANE_INDEX_MAX + 1) - 1);
+export function laneX(
+	lane: number,
+	columns: number = LANE_COLUMNS_MIN,
+	zoom = 1,
+	span: number = LANE_SPAN
+): number {
+	const pitch = lanePitch(Math.max(columns, LANE_COLUMNS_MIN), span);
+
+	// How many lanes land on a distinct x. Above the floor the pitch was chosen
+	// so that all of them do, by construction; at the floor it is the span that
+	// decides. Stated as the two cases rather than re-derived from the pitch,
+	// because `floor(286 / 9.2258)` is 30 rather than 31 and the last lane would
+	// silently fall a whole column short.
+	const drawable =
+		pitch > LANE_PITCH_MIN ? columns : Math.floor(span / LANE_PITCH_MIN) + 1;
+
+	const index = Math.min(lane, Math.min(columns, drawable) - 1);
 	return (LANE_X0 + Math.max(0, index) * pitch) * zoom;
 }
 

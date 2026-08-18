@@ -70,35 +70,31 @@
 	]);
 
 	/**
-	 * Which column a divider actually sizes.
+	 * A divider sizes the column on its **left**.
 	 *
-	 * A divider sizes the column on its **left**, which is the only model under
-	 * which the boundary goes where the pointer goes: everything left of it
-	 * grows, everything right of it shifts along, and the filling column takes
-	 * up whatever is left.
+	 * That is the only model under which the boundary goes where the pointer
+	 * goes: everything left of it grows, everything right of it shifts along,
+	 * and the filling column takes up whatever is left.
 	 *
-	 * The graph column is computed from the lanes on screen and cannot be sized,
-	 * so its divider looks backwards past it to the nearest column that can —
-	 * `Branch / Tag` in the default layout. Dragging that boundary right widens
-	 * Branch/Tag, pushing the graph and the message column along with it.
+	 * Two earlier attempts got this wrong in ways only a person dragging it
+	 * could see. Sizing the column *after* the divider changed that column's
+	 * width while its left edge stayed pinned, so the commit message column
+	 * shrank from its **right** edge and left a growing gap before the detail
+	 * panel — the boundary never moved. Skipping backwards past the graph column
+	 * moved the boundary correctly but left the graph itself unresizable, so
+	 * narrowing the table could not reclaim the empty half of a wide graph
+	 * column.
 	 *
-	 * **This is not what BUG-009b first did**, and the difference is the whole
-	 * defect. It sized the column *after* the divider instead, which changes that
-	 * column's width while its left edge stays pinned by everything before it —
-	 * so the commit message column shrank from its right edge and left a growing
-	 * gap before the detail panel. The boundary did not move; only the far side
-	 * of the column did.
+	 * Every column is now sizable, including the graph, whose lanes compress
+	 * into whatever width they are given (FEAT-039). So the answer is the
+	 * simplest one: the column the divider sits on.
 	 */
-	function resizeTarget(index: number): ColumnId | null {
-		for (let i = index; i >= 0; i--) {
-			if (!shown[i].computed) return shown[i].id;
-		}
-		return null;
+	function resizeTarget(index: number): ColumnId {
+		return shown[index].id;
 	}
 
 	function startResize(event: PointerEvent, index: number) {
 		const id = resizeTarget(index);
-		if (!id) return;
 
 		event.preventDefault();
 		event.stopPropagation();
@@ -146,7 +142,7 @@
 >
 	{#each shown as column, index (column.id)}
 		{@const target = resizeTarget(index)}
-		{@const sized = target ? shown.find((c) => c.id === target)?.label : null}
+		{@const sized = shown.find((c) => c.id === target)?.label}
 		<div
 			class="cell"
 			data-column={column.id}
@@ -213,16 +209,13 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="divider"
-				class:fixed={target === null}
 				class:last={index === shown.length - 1}
-				title={sized
-					? `Resize ${sized} — double-click to reset`
-					: 'The graph column is sized to the lanes on screen'}
+				title={`Resize ${sized} — double-click to reset`}
 				onpointerdown={(event) => startResize(event, index)}
 				onpointermove={moveResize}
 				onpointerup={endResize}
 				onpointercancel={endResize}
-				ondblclick={() => target && columns.unsize(target)}
+				ondblclick={() => columns.unsize(target)}
 			></div>
 		</div>
 	{/each}
@@ -331,13 +324,7 @@
 		background: var(--accent);
 	}
 
-	.divider.fixed {
-		cursor: default;
-	}
 
-	.divider.fixed:hover::after {
-		background: var(--soft);
-	}
 
 	.filter {
 		font: inherit;

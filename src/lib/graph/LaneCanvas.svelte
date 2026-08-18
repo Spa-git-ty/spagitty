@@ -3,7 +3,7 @@
 	import { graph } from '$lib/graph/store.svelte';
 	import { drawLanes } from '$lib/graph/lanes';
 	import { forgetPortraits } from '$lib/graph/portrait';
-	import { LANE_COLOR_COUNT, laneColorVar } from '$lib/metrics';
+	import { LANE_COLOR_COUNT, LANE_SPAN, laneColorVar } from '$lib/metrics';
 	import { scale } from '$lib/scale.svelte';
 	import { theme } from '$lib/theme.svelte';
 
@@ -16,6 +16,8 @@
 		height: number;
 		/** Lane columns the column is currently sized for. */
 		columns: number;
+		/** Horizontal room the lanes share, once the column has been sized. */
+		span?: number;
 		/** Rows to keep at full strength; null when nothing is dimmed. */
 		highlight?: Set<number> | null;
 		/** Rows carrying stashes, and how many each has. */
@@ -29,6 +31,7 @@
 		width,
 		height,
 		columns,
+		span = LANE_SPAN,
 		highlight = null,
 		stashes
 	}: Props = $props();
@@ -78,6 +81,7 @@
 		void first;
 		void last;
 		void columns;
+		void span;
 		void theme.id;
 		void highlight;
 		void stashes;
@@ -109,6 +113,7 @@
 			colors: lanes,
 			nodeRing,
 			columns,
+			span,
 			pitch,
 			zoom,
 			highlight,

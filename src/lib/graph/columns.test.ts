@@ -75,11 +75,48 @@ describe('the total width', () => {
 	});
 });
 
+/**
+ * FEAT-039 — the graph column sizes itself until someone sizes it.
+ *
+ * It used to refuse a drag outright, on the grounds that its width is the lanes
+ * on screen. That was true and still left the author unable to reclaim the empty
+ * half of a wide graph column: no matter how much the rest of the table was
+ * narrowed, the graph stayed exactly as wide as its lane count said.
+ *
+ * The lanes compress into whatever width they are given — the machinery FEAT-035
+ * built for a history deeper than the cap, now reachable by hand — so the column
+ * can be dragged like any other, and `unsize` hands it back to the lanes.
+ */
 describe('the graph column', () => {
-	it('still refuses to be dragged, because its width is the lanes on screen', () => {
-		const before = columns.width('graph');
-		columns.resize('graph', 40);
-		expect(columns.width('graph')).toBe(before);
+	it('sizes itself until it is dragged', () => {
+		columns.reset();
+		// Zero is the "size yourself" convention, shared with the filling column.
+		expect(columns.width('graph')).toBe(0);
+	});
+
+	it('takes a width when it is dragged', () => {
+		columns.reset();
+		columns.resize('graph', 220);
+		expect(columns.width('graph')).toBe(220);
+	});
+
+	it('clamps to a width lanes can still be drawn in', () => {
+		columns.reset();
+		columns.resize('graph', 5);
+		expect(columns.width('graph')).toBe(48);
+	});
+
+	it('goes back to sizing itself on unsize', () => {
+		columns.reset();
+		columns.resize('graph', 220);
+		columns.unsize('graph');
+		expect(columns.width('graph')).toBe(0);
+	});
+
+	it('is still required, so it cannot be hidden away', () => {
+		columns.reset();
+		columns.toggle('graph');
+		expect(columns.shown.some((column) => column.id === 'graph')).toBe(true);
 	});
 });
 
@@ -144,12 +181,11 @@ describe('BUG-009 — the last column has a grabbable handle', () => {
 		expect(columns.width('message')).not.toBe(before);
 	});
 
-	it('refuses only the computed column', () => {
+	it('resizes the graph column too, now that it has a width to take', () => {
 		columns.reset();
-		const graph = columns.width('graph');
-		columns.resize('graph', 999);
+		columns.resize('graph', 200);
 
-		expect(columns.width('graph')).toBe(graph);
+		expect(columns.width('graph')).toBe(200);
 	});
 });
 
@@ -175,9 +211,8 @@ describe('BUG-009 — the last column has a grabbable handle', () => {
 describe('BUG-009b — a divider sizes the column on its left', () => {
 	const header = readFileSync('src/lib/graph/GraphHeader.svelte', 'utf8');
 
-	it('looks backwards past a computed column for one it can size', () => {
-		expect(header).toMatch(/for \(let i = index; i >= 0; i--\)/);
-		expect(header).toMatch(/if \(!shown\[i\]\.computed\) return shown\[i\]\.id/);
+	it('sizes the column the divider sits on', () => {
+		expect(header).toMatch(/return shown\[index\]\.id/);
 	});
 
 	/** The gap in the report came from inverting; nothing may invert again. */
@@ -191,9 +226,9 @@ describe('BUG-009b — a divider sizes the column on its left', () => {
 		expect(header).toMatch(/data-column=\{column\.id\}/);
 	});
 
-	/** With nothing resizable anywhere to the left there is genuinely nothing to do. */
-	it('still marks a divider fixed when it has no target', () => {
-		expect(header).toMatch(/class:fixed=\{target === null\}/);
+	/** Every column is sizable now, so no divider is ever inert. */
+	it('leaves no divider without a job', () => {
+		expect(header).not.toMatch(/class:fixed/);
 	});
 
 	it('names the column it will actually size in its title', () => {

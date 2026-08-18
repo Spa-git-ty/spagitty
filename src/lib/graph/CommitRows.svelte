@@ -12,7 +12,7 @@
 	import { selection } from '$lib/graph/selection.svelte';
 	import * as act from '$lib/graph/actions';
 	import { clockTime, fullDate, isNotable, relativeTime } from '$lib/format';
-	import { laneColumnWidth, LANE_COLUMNS_MIN } from '$lib/metrics';
+	import { laneColumnWidth, laneSpanFor, LANE_COLUMNS_MIN } from '$lib/metrics';
 	import { scale } from '$lib/scale.svelte';
 	import RefChip from '$lib/ui/RefChip.svelte';
 	import Menu from '$lib/ui/Menu.svelte';
@@ -117,7 +117,18 @@
 		if (shrinkTimer) clearTimeout(shrinkTimer);
 	});
 
-	const laneWidth = $derived(laneColumnWidth(laneCount, scale.zoom));
+	/**
+	 * The graph column's width, and the room the lanes get inside it.
+	 *
+	 * Until someone drags it the column sizes itself to the lanes on screen, and
+	 * `laneColumnWidth` is that size. Once dragged, the chosen width wins and the
+	 * lanes compress into it (FEAT-039) — which is the same machinery FEAT-035
+	 * built for a history deeper than the cap, now reachable by hand.
+	 */
+	const laneWidth = $derived(
+		columns.width('graph') || laneColumnWidth(laneCount, scale.zoom)
+	);
+	const laneSpan = $derived(laneSpanFor(laneWidth, scale.zoom));
 	const shown = $derived(columns.shown);
 
 	/**
@@ -638,6 +649,7 @@
 				{#if column.id === 'graph'}
 					<div class="lane-slot" style="width: {laneWidth}px">
 						<LaneCanvas
+							span={laneSpan}
 							{scrollTop}
 							first={range.first}
 							last={range.last}

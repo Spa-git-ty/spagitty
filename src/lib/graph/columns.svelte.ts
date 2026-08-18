@@ -51,7 +51,10 @@ export interface Column {
 /** The design's three, then the three the header's menu can add. */
 const CATALOGUE: Column[] = [
 	{ id: 'refs', label: 'Branch / Tag', width: 186, min: 90 },
-	{ id: 'graph', label: 'Graph', width: 150, min: 60, computed: true, required: true },
+	// `width: 0` means "sizes itself" — the same convention the filling message
+	// column uses. The graph follows the lanes on screen until someone drags it,
+	// and a stored width is what says they did (FEAT-039).
+	{ id: 'graph', label: 'Graph', width: 0, min: 48, computed: true, required: true },
 	{ id: 'message', label: 'Commit Message', width: 0, min: 160, fills: true, required: true },
 	{ id: 'author', label: 'Author', width: 150, min: 80 },
 	{ id: 'time', label: 'Date / Time', width: 150, min: 90 },
@@ -231,10 +234,16 @@ export const columns = {
 	/** Set a width, clamped to what the column can still say something in. */
 	resize(id: ColumnId, next: number): void {
 		const column = definition(id);
-		// The graph's width is computed from the lanes on screen; a narrower one
-		// draws commits on top of each other, so it is not draggable. A filling
-		// column *is* — dragging it is how it stops filling.
-		if (column.computed) return;
+		// Every column can be dragged, including the two that size themselves
+		// (FEAT-039). `computed` and `fills` describe what a column does when it
+		// has *not* been given a width, not whether it may be given one:
+		//
+		// - the graph sizes itself to the lanes on screen until dragged, and
+		//   after that the lanes compress into whatever width they were given;
+		// - the message column fills until dragged.
+		//
+		// Both go back to sizing themselves on a double-click, which is what
+		// `unsize` is for.
 		widths = { ...widths, [id]: Math.max(column.min, Math.round(next)) };
 		persist();
 	},

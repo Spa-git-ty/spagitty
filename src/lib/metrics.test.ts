@@ -20,6 +20,7 @@ import {
 	laneColumns,
 	laneNodeRadius,
 	lanePitch,
+	laneSpanFor,
 	laneX,
 	rowCenterY
 } from './metrics';
@@ -324,5 +325,75 @@ describe('applyMetrics', () => {
 		for (const value of set.values()) {
 			expect(value).toMatch(/^\d+px$/);
 		}
+	});
+});
+
+/**
+ * FEAT-039 — the lanes compress into whatever width the column is given.
+ *
+ * `lanePitch` and `laneX` take the span they have to work within, so the same
+ * machinery that handled a history deeper than the cap now handles a column
+ * someone dragged narrower than its lanes.
+ */
+describe('laneSpanFor', () => {
+	it('is the inverse of laneColumnWidth', () => {
+		for (const lanes of [1, 5, 8, 12]) {
+			const width = laneColumnWidth(lanes);
+			const span = laneSpanFor(width);
+
+			// Round-trips to within the rounding laneColumnWidth applies.
+			expect(span).toBeCloseTo((Math.max(lanes, LANE_COLUMNS_MIN) - 1) * LANE_PITCH, 0);
+		}
+	});
+
+	it('never goes negative, however narrow the column', () => {
+		for (const width of [0, 1, 20, 44]) {
+			expect(laneSpanFor(width)).toBeGreaterThanOrEqual(0);
+		}
+	});
+
+	it('scales with zoom, so a zoomed column has the same lanes in it', () => {
+		expect(laneSpanFor(laneColumnWidth(8, 2), 2)).toBeCloseTo(laneSpanFor(laneColumnWidth(8)), 0);
+	});
+});
+
+describe('lanes compressing into a chosen width', () => {
+	it('keeps the design pitch when the column is wide enough', () => {
+		const span = laneSpanFor(laneColumnWidth(12));
+		expect(lanePitch(5, span)).toBe(LANE_PITCH);
+	});
+
+	/** The point of the whole item: a narrower column, the same lanes. */
+	it('tightens the pitch as the column narrows', () => {
+		const wide = laneSpanFor(laneColumnWidth(12));
+		const narrow = laneSpanFor(120);
+
+		expect(lanePitch(8, narrow)).toBeLessThan(lanePitch(8, wide));
+	});
+
+	it('never widens past the design pitch, however wide the column', () => {
+		expect(lanePitch(3, 5000)).toBe(LANE_PITCH);
+		expect(lanePitch(12, 5000)).toBe(LANE_PITCH);
+	});
+
+	it('never squeezes below the floor, however narrow', () => {
+		expect(lanePitch(12, 10)).toBe(LANE_PITCH_MIN);
+		expect(lanePitch(40, 0)).toBe(LANE_PITCH_MIN);
+	});
+
+	it('keeps every lane inside the column it was given', () => {
+		for (const width of [60, 90, 150, 220, 331]) {
+			const span = laneSpanFor(width);
+			for (const lanes of [2, 5, 8, 12, 20]) {
+				const deepest = laneX(lanes - 1, lanes, 1, span) + laneNodeRadius(lanes, span);
+
+				expect(deepest, `${lanes} lanes in a ${width}px column`).toBeLessThanOrEqual(width);
+			}
+		}
+	});
+
+	it('brings the node down with the pitch in a narrowed column', () => {
+		const narrow = laneSpanFor(110);
+		expect(laneNodeRadius(8, narrow)).toBeLessThan(NODE_R);
 	});
 });

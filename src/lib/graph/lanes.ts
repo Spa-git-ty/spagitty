@@ -14,6 +14,7 @@
 import {
 	ELBOW_C1,
 	ELBOW_C2,
+	LANE_SPAN,
 	LANE_STROKE,
 	MERGE_R,
 	ROW_PITCH,
@@ -47,6 +48,13 @@ export interface LaneDrawOptions {
 	nodeRing: string;
 	/** Lane columns the canvas is currently sized for. */
 	columns: number;
+	/**
+	 * Horizontal room the lanes share.
+	 *
+	 * `LANE_SPAN` until the graph column is dragged; after that it is whatever
+	 * the chosen width leaves, and the lanes compress into it (FEAT-039).
+	 */
+	span?: number;
 	/** Row height in effect. `scale.pitch`, not the design constant. */
 	pitch?: number;
 	/** Interface zoom, which scales the horizontal geometry and the node. */
@@ -85,6 +93,7 @@ export function drawLanes(options: LaneDrawOptions): void {
 		colors,
 		nodeRing,
 		columns,
+		span = LANE_SPAN,
 		pitch = ROW_PITCH,
 		zoom = 1,
 		highlight = null,
@@ -119,8 +128,8 @@ export function drawLanes(options: LaneDrawOptions): void {
 		ctx.globalAlpha = Math.max(alphaFor(i), alphaFor(i - 1));
 
 		for (const edge of commit.edges) {
-			const x0 = laneX(edge.from, columns, zoom);
-			const x1 = laneX(edge.to, columns, zoom);
+			const x0 = laneX(edge.from, columns, zoom, span);
+			const x1 = laneX(edge.to, columns, zoom, span);
 
 			ctx.strokeStyle = colors[edge.color % colors.length];
 			ctx.beginPath();
@@ -142,7 +151,7 @@ export function drawLanes(options: LaneDrawOptions): void {
 	// first place, so a compressed lane column with full-size portraits on it
 	// would draw the faces straight back over the lanes the compression made
 	// room for.
-	const radius = laneNodeRadius(columns) * zoom;
+	const radius = laneNodeRadius(columns, span) * zoom;
 	const ratio = devicePixelRatio();
 	const tileSize = Math.max(8, Math.round(radius * 2 * ratio));
 
@@ -150,7 +159,7 @@ export function drawLanes(options: LaneDrawOptions): void {
 		const commit = row(i);
 		if (!commit) continue;
 
-		const x = laneX(commit.lane, columns, zoom);
+		const x = laneX(commit.lane, columns, zoom, span);
 		const y = rowCenterY(i, pitch) - scrollTop;
 		if (y < -radius || y > height + radius) continue;
 
@@ -262,7 +271,8 @@ function drawGhost(
 	pitch: number,
 	zoom: number,
 	scrollTop: number,
-	colors: string[]
+	colors: string[],
+	span: number
 ): void {
 	if (path.length < 2) return;
 
@@ -277,7 +287,7 @@ function drawGhost(
 	for (const index of path) {
 		const commit = row(index);
 		if (!commit) continue;
-		const x = laneX(commit.lane, columns, zoom);
+		const x = laneX(commit.lane, columns, zoom, span);
 		const y = rowCenterY(index, pitch) - scrollTop;
 		if (started) ctx.lineTo(x, y);
 		else {
