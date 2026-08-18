@@ -124,28 +124,58 @@ describe('dialog store — one question at a time', () => {
 	/**
 	 * The contract the store's own doc comment states: a replaced question
 	 * settles, because "silently dropping the second would leave its caller
-	 * awaiting forever". These assert settlement and falsiness — which is what
-	 * `if (!(await dialog.confirm(…))) return;` actually depends on.
+	 * awaiting forever".
 	 *
-	 * They deliberately do **not** pin the exact value. `ask()` settles the
-	 * outgoing question with the *incoming* one's cancel value, so a replaced
-	 * prompt resolves `false` rather than `null` — recorded as BUG-007, and
-	 * these assertions tighten to `toBeNull()` when it is fixed.
+	 * BUG-007 tightened these. They previously asserted only settlement and
+	 * falsiness, because `ask()` settled the outgoing question with the
+	 * *incoming* one's cancel value and a replaced prompt therefore resolved
+	 * `false`. The exact value is now pinned in both directions.
 	 */
-	it('settles a replaced confirmation rather than leaving it hanging', async () => {
+	it('answers a replaced confirmation with false', async () => {
 		const first = dialog.confirm(confirmation);
 		dialog.prompt(naming);
 
-		expect(await first).toBeFalsy();
+		expect(await first).toBe(false);
 		expect(dialog.question?.kind).toBe('prompt');
 	});
 
-	it('settles a replaced prompt rather than leaving it hanging', async () => {
+	it('answers a replaced prompt with null', async () => {
 		const first = dialog.prompt(naming);
 		dialog.confirm(confirmation);
 
-		expect(await first).toBeFalsy();
+		expect(await first).toBeNull();
 		expect(dialog.question?.kind).toBe('confirm');
+	});
+
+	it('answers a replaced question the same way whichever kind replaces it', async () => {
+		const promptThenPrompt = dialog.prompt(naming);
+		dialog.prompt({ ...naming, title: 'Create a tag' });
+		expect(await promptThenPrompt).toBeNull();
+
+		dialog.dismiss();
+
+		const confirmThenConfirm = dialog.confirm(confirmation);
+		dialog.confirm({ ...confirmation, title: 'Delete tag' });
+		expect(await confirmThenConfirm).toBe(false);
+	});
+
+	/**
+	 * BUG-007's regression test, at the layer the defect actually bit.
+	 *
+	 * `graph/actions.ts` guards every prompt with `if (name === null) return`.
+	 * A replaced prompt resolving `false` passed that guard, so the action ran
+	 * on with a boolean where a branch name belongs — creating a branch called
+	 * `false`, or failing in whatever way the backend does with a non-string.
+	 */
+	it('resolves a replaced prompt to something its callers’ null guard catches', async () => {
+		const name = dialog.prompt(naming);
+		dialog.confirm(confirmation);
+		const answer = await name;
+
+		// The exact shape of the guard in graph/actions.ts:84, :99 and :302.
+		expect(answer === null).toBe(true);
+		expect(typeof answer).not.toBe('boolean');
+		expect(typeof answer).not.toBe('string');
 	});
 
 	it('ignores accept and dismiss when nothing is being asked', () => {
