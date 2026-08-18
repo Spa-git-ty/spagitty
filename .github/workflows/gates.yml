@@ -147,10 +147,23 @@ jobs:
       - name: npm advisories
         run: npm audit --audit-level=high
 
+      # gitleaks itself, not gitleaks-action.
+      #
+      # The action refuses to run for an organization account without a paid
+      # licence — "[GitLumiere] is an organization. License key is required." —
+      # so this gate failed on the tool never starting rather than on anything it
+      # found, and no diff has ever actually been scanned. The binary is the same
+      # scanner with the same rules and needs no licence.
+      #
+      # `--no-git` would scan the working tree; `detect` walks history, which is
+      # what catches a secret committed and then removed in a later commit.
       - name: Secrets in the diff
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=8.28.0
+          curl -sSfL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks detect --source . --redact --verbose --exit-code 1
 
   # --- Gate 5 -------------------------------------------------------------
   # main only. `dev` stops after gate 4; its build is triggered by hand.
