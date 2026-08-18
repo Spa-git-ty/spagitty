@@ -303,6 +303,33 @@ describe('NavRail', () => {
 		view.destroy();
 	});
 
+	it('names no shortcut on the Log item (FEAT-041)', () => {
+		// It said `Ctrl+F` on every platform, in a column of counts. The
+		// shortcut is real and unchanged; the palette is where it is listed,
+		// with the notation the platform actually uses.
+		const view = render(NavRail, {});
+
+		const log = view.all('.item').find((i) => i.textContent?.includes('Log'));
+		expect(log?.textContent).not.toMatch(/ctrl|cmd|⌘/i);
+
+		view.destroy();
+	});
+
+	it('shows nothing beside a screen that has no count (FEAT-041)', () => {
+		// A `·` means "not computed yet". Settings has no count and is not
+		// waiting for one, so its dot claimed a number that was never coming —
+		// while Pull requests and Rebase, in the same position, showed nothing.
+		repoControl.setCounts(counts({ branches: 4 }));
+		const view = render(NavRail, {});
+
+		for (const label of ['Settings', 'Pull requests', 'Rebase']) {
+			const item = view.all('.item').find((i) => i.textContent?.includes(label));
+			expect(item?.textContent?.trim()).toBe(label);
+		}
+
+		view.destroy();
+	});
+
 	it('shows real counts where they exist', () => {
 		repoControl.setCounts(counts({ branches: 4, stashes: 2 }));
 		const view = render(NavRail, {});

@@ -93,6 +93,7 @@ rather than an audit.
 | [FEAT-037](items/FEAT-037-window-depth-and-resizable-panels.md) | The window has depth, and every panel resizes | chrome | Done |
 | [FEAT-038](items/FEAT-038-pull.md) | Pull | chrome | Done |
 | [FEAT-039](items/FEAT-039-resizable-graph-column.md) | The graph column resizes, and the lanes compress into it | 1A | Done |
+| [FEAT-041](items/FEAT-041-rail-drops-the-shortcut-hint.md) | The rail stops advertising a shortcut | chrome | Done |
 
 ## Bugs
 

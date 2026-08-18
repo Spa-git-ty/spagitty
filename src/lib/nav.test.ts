@@ -42,12 +42,14 @@ describe('NAV_ITEMS', () => {
 		expect(new Set(hrefs).size).toBe(hrefs.length);
 	});
 
-	it('never both counts and hints on the same item', () => {
-		// The rail draws one right-aligned value; an item asking for both would
-		// silently lose one of them.
-		for (const item of NAV_ITEMS) {
-			expect(item.count !== undefined && item.hint !== undefined).toBe(false);
-		}
+	it('names no keyboard shortcut, in any notation (FEAT-041)', () => {
+		// The rail's right-hand column is counts. A shortcut printed there was
+		// the only non-number in it, and it was written in one platform's
+		// notation on every platform — the defect FEAT-021 took out of the title
+		// bar. The palette lists shortcuts, per platform, in one place.
+		// Serialised whole, so a shortcut smuggled back in under any property
+		// name fails this rather than only the one that was removed.
+		expect(JSON.stringify(NAV_ITEMS)).not.toMatch(/ctrl|cmd|⌘|⌃/i);
 	});
 
 	it('keeps the Diff screen off the rail', () => {

@@ -89,7 +89,7 @@
 			{:else}
 				<span>{item.label}</span>
 				<span class="mono muted">
-					{item.count ? countLabel(item.count) : (item.hint ?? '')}
+					{item.count ? countLabel(item.count) : ''}
 				</span>
 			{/if}
 		</button>

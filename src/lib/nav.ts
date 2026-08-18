@@ -44,8 +44,6 @@ export interface NavItem {
 	href: string;
 	/** Which count to show right-aligned, if any. */
 	count?: CountKey;
-	/** Shown instead of a count — e.g. the Log item's shortcut hint. */
-	hint?: string;
 	/** Render a divider above this item. */
 	dividerBefore?: boolean;
 	/**
@@ -66,9 +64,9 @@ export const NAV_ITEMS: NavItem[] = [
 	{ code: '1G', label: 'Stash', href: '/stash', count: 'stashes', glyph: '▤' },
 	{ code: '1H', label: 'Pull requests', href: '/requests', glyph: '⇄' },
 	{ code: '1E', label: 'Rebase', href: '/rebase', glyph: '↻' },
-	{ code: '1I', label: 'Log', href: '/search', hint: 'Ctrl+F', glyph: '⌕' },
+	{ code: '1I', label: 'Log', href: '/search', glyph: '⌕' },
 	{ code: '1J', label: 'All repositories', href: '/repos', dividerBefore: true, glyph: '⌂' },
-	{ code: '1K', label: 'Settings', href: '/settings', hint: '·', glyph: '⚙' }
+	{ code: '1K', label: 'Settings', href: '/settings', glyph: '⚙' }
 ];
 
 /** Screens that exist but are not reachable from the rail. */
