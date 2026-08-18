@@ -22,10 +22,32 @@ ERROR: Coverage for branches (62.66%) does not meet global threshold (70%)
 ```
 
 `vite.config.ts:51` sets all four thresholds to 70, and `.github/workflows/gates.yml`
-runs `npm run coverage` as part of gate 3, so this is a red gate — it simply has
-not been visible, because the repository has no Actions runs (`gh run list`
-returns 404) and every commit so far has gone straight to `main` without a pull
-request to display a gate result on.
+runs `npm run coverage` as part of gate 3, so this is a red gate.
+
+**Corrected 2026-08-18.** This paragraph previously said the failure "has not
+been visible, because the repository has no Actions runs (`gh run list` returns
+404)". That was wrong, and it was wrong because the machine had no GitHub CLI
+installed and no authenticated session — `gh` was reporting the absence of
+credentials, not the absence of runs. Amendment 11 makes a stale document a
+defect, so the record is corrected rather than left to be believed.
+
+The pipeline has in fact been running on every push, and **has failed every
+time**. Run `32124652586`, on `main` at `3d14f22`:
+
+```
+✓ 1 · licenses          54s
+✓ 2 · code quality      1m26s
+X 3 · tests and coverage 5m39s   ← Frontend tests and coverage
+- 4 · security          skipped
+- 5 · build             skipped
+- 6 · release           skipped
+
+ERROR: Coverage for branches (62.66%) does not meet global threshold (70%)
+```
+
+Gates 1 and 2 pass. Gate 3 fails on exactly the figure and exactly the module
+recorded below, and Amendment 16 then stops the pipeline, so gates 4, 5 and 6
+have never run at all. This is the whole pipeline, blocked on this one item.
 
 ## Where the shortfall is
 
