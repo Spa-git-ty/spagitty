@@ -5,7 +5,6 @@
 
 	import { appWindow } from '$lib/chrome/window';
 	import RepoTabs from '$lib/chrome/RepoTabs.svelte';
-	import { version } from '$lib/version';
 
 	/**
 	 * The title bar is the workspace bar: what this program is, the way back to
@@ -62,14 +61,18 @@
 	<span class="spacer"></span>
 
 	<!--
-		What the title bar says is what it knows: which repository, which branch,
-		what this build is. The theme belongs to Settings → Appearance, which is
-		the one place it is set; a second control here would be a second thing to
-		keep in step. There was also a `⌘K` chip that opened Log search — the
-		shortcut is `⌘F`, and writing a macOS key name on every platform for a
-		combination that does nothing is worse than no hint at all.
+		What the title bar says is what it knows: which repository, and the ones
+		open right now. The theme belongs to Settings → Appearance, which is the
+		one place it is set; a second control here would be a second thing to keep
+		in step. There was also a `⌘K` chip that opened Log search — the shortcut
+		is `⌘F`, and writing a macOS key name on every platform for a combination
+		that does nothing is worse than no hint at all.
+
+		The build identity — licence and version — used to sit here too. It is the
+		least changing fact in the application and it was in the most contested
+		row, which also has to give way to tabs as repositories are opened; it is
+		on the status strip along the bottom now (FEAT-043).
 	-->
-	<span class="note" title={version.license}>{version.licenseShort} · v{version.number}</span>
 
 	<div class="controls">
 		{#each CONTROLS as control (control.kind)}
@@ -171,9 +174,4 @@
 		color: var(--muted);
 	}
 
-	.note {
-		font-size: var(--fs-secondary);
-		color: var(--muted);
-		white-space: nowrap;
-	}
 </style>

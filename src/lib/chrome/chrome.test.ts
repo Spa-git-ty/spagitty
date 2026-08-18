@@ -31,6 +31,7 @@ import { control as repoControl, calls as repoCalls } from '../../testing/repo-s
 import { control as graphControl } from '../../testing/graph-store.svelte';
 import NavRail from './NavRail.svelte';
 import ResizeEdges from './ResizeEdges.svelte';
+import StatusStrip from './StatusStrip.svelte';
 import TitleBar from './TitleBar.svelte';
 import Toolbar from './Toolbar.svelte';
 import { version } from '$lib/version';
@@ -108,10 +109,15 @@ describe('TitleBar', () => {
 		view.destroy();
 	});
 
-	it('states the license and version, which the GPL asks for', () => {
+	it('no longer states the license and version, which moved (FEAT-043)', () => {
+		// They are the least changing facts in the application and they were in
+		// the row that names what is open — the one that gives way to tabs as
+		// repositories are opened. The strip below has them.
 		const view = render(TitleBar, {});
-		expect(view.text()).toContain(version.licenseShort);
-		expect(view.text()).toContain(`v${version.number}`);
+
+		expect(view.text()).not.toContain(version.licenseShort);
+		expect(view.text()).not.toContain(`v${version.number}`);
+
 		view.destroy();
 	});
 
@@ -182,6 +188,39 @@ describe('TitleBar', () => {
 
 		expect(labels).not.toContain('dark');
 		expect(labels).not.toContain('light');
+
+		view.destroy();
+	});
+});
+
+describe('StatusStrip', () => {
+	it('states the license and version, which the GPL asks for (FEAT-043)', () => {
+		const view = render(StatusStrip, {});
+
+		expect(view.text()).toContain(version.licenseShort);
+		expect(view.text()).toContain(`v${version.number}`);
+
+		view.destroy();
+	});
+
+	it('carries the full SPDX identifier where a short one is shown', () => {
+		// `GPL-3.0` is the abbreviation that fits; the authoritative identifier
+		// is `GPL-3.0-or-later`, and it must be reachable without opening
+		// Settings.
+		const view = render(StatusStrip, {});
+
+		expect(view.get('.note').getAttribute('title')).toBe(version.license);
+
+		view.destroy();
+	});
+
+	it('says nothing else, on purpose', () => {
+		// The left end is empty until something genuinely window-wide earns it.
+		// A strip filled with second copies of what the rail and toolbar already
+		// say is how a status bar becomes noise.
+		const view = render(StatusStrip, {});
+
+		expect(view.text().trim()).toBe(`${version.licenseShort} · v${version.number}`);
 
 		view.destroy();
 	});

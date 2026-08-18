@@ -235,6 +235,15 @@ export const LANE_COLOR_COUNT = 5;
 
 export const TITLEBAR_H = 30;
 export const TOOLBAR_H = 50;
+/**
+ * The status strip along the bottom of the window (FEAT-043).
+ *
+ * Shorter than the title bar, because it carries one line of secondary
+ * type and nothing clickable. It is chrome the eye should be able to
+ * ignore, and a strip as tall as a bar reads as a place where something
+ * ought to be happening.
+ */
+export const STRIP_H = 22;
 export const RAIL_W = 186;
 export const DETAIL_W = 270;
 
@@ -382,6 +391,7 @@ export function applyMetrics(
 		'lane-pitch': LANE_PITCH,
 		'titlebar-h': TITLEBAR_H,
 		'toolbar-h': TOOLBAR_H,
+		'strip-h': STRIP_H,
 		'rail-w': RAIL_W,
 		'detail-w': DETAIL_W,
 		'refs-gutter-w': REFS_GUTTER_W,

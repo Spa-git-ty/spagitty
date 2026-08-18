@@ -13,6 +13,7 @@
 	import NavRail from '$lib/chrome/NavRail.svelte';
 	import ResizeEdges from '$lib/chrome/ResizeEdges.svelte';
 	import { appWindow } from '$lib/chrome/window';
+	import StatusStrip from '$lib/chrome/StatusStrip.svelte';
 	import TitleBar from '$lib/chrome/TitleBar.svelte';
 	import Toolbar from '$lib/chrome/Toolbar.svelte';
 	import { graph } from '$lib/graph/store.svelte';
@@ -176,6 +177,11 @@
 		<Splitter panel="rail" label="Resize the nav rail" />
 		{@render children()}
 	</div>
+	<!--
+		The window's own bottom edge (FEAT-043). Outside `.main`, so it spans the
+		rail as well as the screen, and after it, so nothing scrolls over it.
+	-->
+	<StatusStrip />
 </div>
 
 <!--
