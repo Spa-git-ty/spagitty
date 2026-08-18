@@ -273,10 +273,23 @@ lives in config.
 ## 1G — Stash
 
 **Built.** `src/routes/stash/+page.svelte`, `src/lib/stash/`.
-Pop, apply and drop are deferred to FEAT-014.
 
 Stash entries drawn hanging off the commit each was made on, with a detail
 panel showing what is in the selected one.
+
+Pop, apply and drop are wired (FEAT-014). Each goes through
+`stash.restore(action)`, which hands the confirmation and the write to
+`graph/actions.ts` and then re-reads the list — the confirmation is written once
+there, so this screen and the graph's own stash menu cannot describe the same
+operation two different ways. `actions.stash` answers whether anything changed,
+so a cancelled dialog does not cost a re-read. Pop and drop release the
+selection before re-reading; apply keeps the entry open.
+
+A **conflicted apply** is not yet handled as its own state: `git stash pop` onto
+a conflict leaves the entry in place and the working copy conflicted, and today
+that surfaces as git's own message in a notice. Honest, but not the designed
+recovery FEAT-014's notes asked for — it needs a conflict write path and belongs
+with FEAT-016. Browsing an entry file by file is FEAT-034.
 
 There is no stash-diff code, and there does not need to be: a stash *is* a
 commit whose first parent is the commit the work was made on, so the detail

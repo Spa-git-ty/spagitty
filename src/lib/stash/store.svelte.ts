@@ -9,8 +9,9 @@
  */
 
 import * as api from '../api';
+import * as act from '../graph/actions';
 import { repo } from '../repo.svelte';
-import type { CommitDiff, StashEntry } from '../types';
+import type { CommitDiff, StashAction, StashEntry } from '../types';
 
 let entries = $state<StashEntry[]>([]);
 let loaded = $state(false);
@@ -152,6 +153,37 @@ export const stash = {
 			busy = false;
 			await this.load();
 			await repo.refresh();
+		}
+	},
+
+	/**
+	 * Pop, apply or drop the selected entry, then re-read the list (FEAT-014).
+	 *
+	 * The confirmation and the write itself live in `graph/actions.ts`, not
+	 * here: that module's argument is that the sentence shown before a
+	 * destructive operation is as much a part of it as the command, and a second
+	 * screen offering the same operation must not write a second sentence. What
+	 * this adds is the part `actions` cannot know about — the list on *this*
+	 * screen is now stale, and `perform`'s own refresh reaches the graph and the
+	 * rail but not here.
+	 *
+	 * Pop and drop remove the entry, so the selection is released before the
+	 * re-read rather than pointing at something that no longer exists.
+	 */
+	async restore(action: StashAction): Promise<void> {
+		const entry = this.selected;
+		if (!entry || busy) return;
+
+		busy = true;
+		try {
+			const changed = await act.stash(entry.index, entry.name, action);
+			if (!changed) return;
+
+			if (action !== 'apply') this.deselect();
+			await this.load();
+			await repo.refresh();
+		} finally {
+			busy = false;
 		}
 	},
 

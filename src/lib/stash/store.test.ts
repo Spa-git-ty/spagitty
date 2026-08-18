@@ -11,6 +11,11 @@ vi.mock('$lib/api', () => ({
 
 vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
 
+const actStash = vi.fn<(index: number, name: string, action: string) => Promise<boolean>>();
+vi.mock('$lib/graph/actions', () => ({
+	stash: (index: number, name: string, action: string) => actStash(index, name, action)
+}));
+
 import * as api from '$lib/api';
 import { calls as repoCalls, control as repoControl } from '../../testing/repo-store.svelte';
 import { stash } from './store.svelte';
@@ -256,5 +261,109 @@ describe('clear', () => {
 		expect(stash.contents).toBeNull();
 		expect(stash.message).toBe('');
 		expect(stash.includeUntracked).toBe(false);
+	});
+});
+
+/**
+ * FEAT-014 — restoring an entry.
+ *
+ * The confirmation and the write are `graph/actions.ts`'s, and are tested
+ * there. What is this store's own is the part `actions` cannot know about: the
+ * list on this screen is now stale, and `perform`'s refresh reaches the graph
+ * and the rail but not here.
+ */
+describe('restore', () => {
+	async function withOneEntry() {
+		stashes.mockResolvedValue([entry(0), entry(1)]);
+		commitDiff.mockResolvedValue({ files: [] } as unknown as CommitDiff);
+		await stash.load();
+		stashes.mockClear();
+		repoCalls.refreshed = 0;
+	}
+
+	it('hands the selected entry’s index and name to the action', async () => {
+		await withOneEntry();
+		actStash.mockResolvedValue(true);
+
+		await stash.restore('pop');
+
+		expect(actStash).toHaveBeenCalledWith(0, 'stash@{0}', 'pop');
+	});
+
+	it('re-reads the list and the rail once the entry is gone', async () => {
+		await withOneEntry();
+		actStash.mockResolvedValue(true);
+		stashes.mockResolvedValue([entry(1)]);
+
+		await stash.restore('pop');
+
+		expect(stashes).toHaveBeenCalledTimes(1);
+		expect(repoCalls.refreshed).toBe(1);
+	});
+
+	/** A cancelled confirmation changed nothing, so there is nothing to re-read. */
+	it('does not re-read when the action reports it did nothing', async () => {
+		await withOneEntry();
+		actStash.mockResolvedValue(false);
+
+		await stash.restore('drop');
+
+		expect(stashes).not.toHaveBeenCalled();
+		expect(repoCalls.refreshed).toBe(0);
+	});
+
+	/**
+	 * Pop and drop remove the entry, so the selection is released before the
+	 * re-read rather than left pointing at something that no longer exists.
+	 * Apply keeps it, so the open entry stays open.
+	 */
+	it('releases the selection for pop and drop, keeps it for apply', async () => {
+		for (const action of ['pop', 'drop'] as const) {
+			await withOneEntry();
+			actStash.mockResolvedValue(true);
+			stashes.mockResolvedValue([]);
+
+			await stash.restore(action);
+			expect(stash.selected, action).toBeNull();
+		}
+
+		await withOneEntry();
+		actStash.mockResolvedValue(true);
+		stashes.mockResolvedValue([entry(0), entry(1)]);
+
+		await stash.restore('apply');
+		expect(stash.selected?.name).toBe('stash@{0}');
+	});
+
+	it('does nothing with no entry selected', async () => {
+		stash.clear();
+
+		await stash.restore('pop');
+
+		expect(actStash).not.toHaveBeenCalled();
+	});
+
+	/** Two clicks on Drop must not drop two entries. */
+	it('refuses to run a second restore while one is in flight', async () => {
+		await withOneEntry();
+		let release: (value: boolean) => void = () => {};
+		actStash.mockReturnValueOnce(new Promise<boolean>((resolve) => (release = resolve)));
+
+		const first = stash.restore('drop');
+		const second = stash.restore('drop');
+
+		expect(actStash).toHaveBeenCalledTimes(1);
+
+		release(false);
+		await first;
+		await second;
+	});
+
+	it('clears busy even when the action throws', async () => {
+		await withOneEntry();
+		actStash.mockRejectedValueOnce(new Error('boom'));
+
+		await expect(stash.restore('pop')).rejects.toThrow('boom');
+		expect(stash.busy).toBe(false);
 	});
 });

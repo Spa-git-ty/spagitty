@@ -9,17 +9,12 @@
 	/**
 	 * What is in the selected entry, and what could be done with it.
 	 *
-	 * Pop, Apply and Drop are FEAT-014. They render disabled with their reasons
-	 * rather than being hidden: restoring the work is what a stash is *for*, and a
-	 * screen that lists stashes while pretending they cannot be restored would be
-	 * lying about what it is showing.
+	 * Pop, Apply and Drop each hand off to `stash.restore`, which puts the
+	 * confirmation up through `graph/actions.ts` and re-reads the list. What
+	 * each one does is said in that confirmation rather than here, so the Stash
+	 * screen and the graph's own stash menu cannot describe the same operation
+	 * two different ways.
 	 */
-
-	const PENDING: Record<string, string> = {
-		pop: 'Not built yet — it would restore this entry and then remove it',
-		apply: 'Not built yet — it would restore this entry and keep it',
-		drop: 'Not built yet — it would delete this entry'
-	};
 
 	const entry = $derived(stash.selected);
 	const contents = $derived(stash.contents);
@@ -84,14 +79,18 @@
 			<div class="actions">
 				<span class="note">Restoring this entry</span>
 				<div class="chips">
-					<Chip title={PENDING.pop}>Pop</Chip>
-					<Chip title={PENDING.apply}>Apply — keep in stash</Chip>
-					<Chip title={PENDING.drop}>Drop</Chip>
+					<Chip
+						title="Restore this entry and remove it from the stash"
+						onclick={() => stash.restore('pop')}>Pop</Chip
+					>
+					<Chip
+						title="Restore this entry and keep it in the stash"
+						onclick={() => stash.restore('apply')}>Apply — keep in stash</Chip
+					>
+					<Chip title="Delete this entry without restoring it" onclick={() => stash.restore('drop')}
+						>Drop</Chip
+					>
 				</div>
-				<p class="note">
-					Not built yet. Until it is, `git stash pop {entry.name}` in a terminal does
-					what these will.
-				</p>
 			</div>
 		</div>
 	{/if}
@@ -183,10 +182,6 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px;
-	}
-
-	.actions p {
-		margin: 0;
 	}
 
 	.error {

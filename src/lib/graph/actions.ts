@@ -43,14 +43,25 @@ async function refresh(): Promise<void> {
  *
  * `success` is written in the past tense and names what changed, because it is
  * read after the fact: "Reset to a1b2c3d", not "Resetting…".
+ *
+ * Answers whether the repository changed. Most callers are menu entries with
+ * nothing to do with the answer and ignore it; a screen holding its own list of
+ * what was just written needs it, so it can re-read exactly when there is
+ * something new to read.
  */
-async function perform(success: string, failure: string, work: () => Promise<unknown>) {
+async function perform(
+	success: string,
+	failure: string,
+	work: () => Promise<unknown>
+): Promise<boolean> {
 	try {
 		await work();
 		notice.ok(success);
 		await refresh();
+		return true;
 	} catch (error) {
 		notice.failed(failure, error);
+		return false;
 	}
 }
 
@@ -360,7 +371,15 @@ const STASH_WORDING: Record<StashAction, { title: string; body: string; done: st
 	}
 };
 
-export async function stash(index: number, name: string, action: StashAction): Promise<void> {
+/**
+ * Answers whether the stash list changed, because the Stash screen holds its
+ * own copy of it and has to re-read when — and only when — it did.
+ */
+export async function stash(
+	index: number,
+	name: string,
+	action: StashAction
+): Promise<boolean> {
 	const wording = STASH_WORDING[action];
 	const agreed = await dialog.confirm({
 		title: `${wording.title} ${name}`,
@@ -368,9 +387,9 @@ export async function stash(index: number, name: string, action: StashAction): P
 		confirmLabel: wording.title,
 		danger: action === 'drop'
 	});
-	if (!agreed) return;
+	if (!agreed) return false;
 
-	await perform(`${wording.done} ${name}`, `Could not ${action} ${name}`, () =>
+	return await perform(`${wording.done} ${name}`, `Could not ${action} ${name}`, () =>
 		api.stashAction(index, action)
 	);
 }

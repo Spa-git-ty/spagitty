@@ -161,9 +161,16 @@ describe('StashDetail', () => {
 		view.destroy();
 	});
 
-	it('says what pop, apply and drop would do rather than hiding them', async () => {
-		// Restoring the work is what a stash is for; a screen that listed
-		// stashes and pretended they could not be restored would be lying.
+	/**
+	 * FEAT-014. These three used to render as inert `<span>`s carrying "Not
+	 * built yet", beside a line telling the reader to go and run
+	 * `git stash pop` in a terminal instead.
+	 *
+	 * That was never true of the backend — `shell::stash_pop`, `stash_apply`,
+	 * `stash_drop`, `commands::stash_action` and `actions.stash` were all
+	 * complete, confirmation included. Only the wiring was missing.
+	 */
+	it('offers pop, apply and drop as real controls', async () => {
 		await show([entry(0)]);
 		const view = render(StashDetail, {});
 
@@ -174,12 +181,30 @@ describe('StashDetail', () => {
 		expect(labels).toContain('Drop');
 
 		for (const chip of chips) {
-			expect(chip.getAttribute('title')).toContain('Not built yet');
-			// Labels, not buttons: looking clickable would lie.
-			expect(chip.tagName).toBe('SPAN');
+			// Buttons, not labels: they do something now, and looking inert would
+			// lie in the other direction.
+			expect(chip.tagName).toBe('BUTTON');
+			expect(chip.getAttribute('title')).not.toContain('Not built yet');
 		}
-		expect(view.text()).toContain('git stash pop stash@{0}');
 
+		// The screen no longer sends the reader to a terminal.
+		expect(view.text()).not.toContain('git stash pop');
+		expect(view.text()).not.toContain('Not built yet');
+
+		view.destroy();
+	});
+
+	it('asks the store to restore, with the action the chip stands for', async () => {
+		await show([entry(0)]);
+		const view = render(StashDetail, {});
+		const restore = vi.spyOn(stash, 'restore').mockResolvedValue();
+
+		const chips = view.all('.chip');
+		for (const chip of chips) click(chip);
+
+		expect(restore.mock.calls.map(([action]) => action)).toEqual(['pop', 'apply', 'drop']);
+
+		restore.mockRestore();
 		view.destroy();
 	});
 
