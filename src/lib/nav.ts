@@ -48,19 +48,27 @@ export interface NavItem {
 	hint?: string;
 	/** Render a divider above this item. */
 	dividerBefore?: boolean;
+	/**
+	 * One character, shown instead of the label while the rail is collapsed.
+	 *
+	 * Chosen from the same glyph vocabulary the toolbar uses rather than an icon
+	 * font: the app ships no icon set, and a collapsed rail whose items are
+	 * indistinguishable boxes would be worse than no collapse at all.
+	 */
+	glyph: string;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-	{ code: '1A', label: 'Graph', href: '/', count: 'commits' },
-	{ code: '1C', label: 'Working copy', href: '/changes', count: 'working' },
-	{ code: '1D', label: 'Conflicts', href: '/conflicts', count: 'conflicts' },
-	{ code: '1F', label: 'Branches', href: '/branches', count: 'branches' },
-	{ code: '1G', label: 'Stash', href: '/stash', count: 'stashes' },
-	{ code: '1H', label: 'Pull requests', href: '/requests' },
-	{ code: '1I', label: 'Log', href: '/search', hint: '⌘F' },
-	{ code: '1E', label: 'Rebase', href: '/rebase' },
-	{ code: '1J', label: 'All repositories', href: '/repos', dividerBefore: true },
-	{ code: '1K', label: 'Settings', href: '/settings', hint: '·' }
+	{ code: '1A', label: 'Graph', href: '/', count: 'commits', glyph: '⑃' },
+	{ code: '1C', label: 'Working copy', href: '/changes', count: 'working', glyph: '✎' },
+	{ code: '1D', label: 'Conflicts', href: '/conflicts', count: 'conflicts', glyph: '⚔' },
+	{ code: '1F', label: 'Branches', href: '/branches', count: 'branches', glyph: '⑂' },
+	{ code: '1G', label: 'Stash', href: '/stash', count: 'stashes', glyph: '▤' },
+	{ code: '1H', label: 'Pull requests', href: '/requests', glyph: '⇄' },
+	{ code: '1E', label: 'Rebase', href: '/rebase', glyph: '↻' },
+	{ code: '1I', label: 'Log', href: '/search', hint: 'Ctrl+F', glyph: '⌕' },
+	{ code: '1J', label: 'All repositories', href: '/repos', dividerBefore: true, glyph: '⌂' },
+	{ code: '1K', label: 'Settings', href: '/settings', hint: '·', glyph: '⚙' }
 ];
 
 /** Screens that exist but are not reachable from the rail. */

@@ -2,7 +2,7 @@
 
 //! Filesystem watching for the open repository.
 //!
-//! GitLord does not poll. `notify` watches the `.git` directory and the UI is
+//! GitLumiere does not poll. `notify` watches the `.git` directory and the UI is
 //! told when something it displays has actually changed — a branch moved, a
 //! commit landed, the index was touched. Polling a repository means either
 //! being slow to notice or burning CPU on a directory that is idle almost all
@@ -76,18 +76,18 @@ pub fn watch(app: AppHandle, git_dir: &Path) -> Option<RepoWatcher> {
     watcher.watch(git_dir, RecursiveMode::Recursive).ok()?;
 
     let handle = std::thread::Builder::new()
-        .name("gitlord-watch".into())
+        .name("gitlumiere-watch".into())
         .spawn(move || debounce(app, event_rx, stop_rx))
         .ok()?;
 
-    Some(RepoWatcher { _watcher: watcher, stop: stop_tx, handle: Some(handle) })
+    Some(RepoWatcher {
+        _watcher: watcher,
+        stop: stop_tx,
+        handle: Some(handle),
+    })
 }
 
-fn debounce(
-    app: AppHandle,
-    events: Receiver<notify::Result<notify::Event>>,
-    stop: Receiver<()>,
-) {
+fn debounce(app: AppHandle, events: Receiver<notify::Result<notify::Event>>, stop: Receiver<()>) {
     loop {
         if stop.try_recv().is_ok() {
             return;
@@ -168,4 +168,136 @@ fn classify(event: &notify::Event) -> ChangedEvent {
     }
 
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use notify::event::{CreateKind, DataChange, MetadataKind, RemoveKind};
+    use std::path::PathBuf;
+
+    fn event(kind: EventKind, paths: &[&str]) -> notify::Event {
+        notify::Event {
+            kind,
+            paths: paths.iter().map(PathBuf::from).collect(),
+            attrs: Default::default(),
+        }
+    }
+
+    const WROTE: EventKind = EventKind::Modify(ModifyKind::Data(DataChange::Any));
+
+    #[test]
+    fn a_read_is_not_a_change() {
+        // This is the whole reason the filter exists. inotify reports reads as
+        // Access events, and reading refs is what the graph walk does; treating
+        // one as a change would reload the graph forever.
+        let read = event(
+            EventKind::Access(notify::event::AccessKind::Read),
+            &[".git/refs/heads/main"],
+        );
+
+        assert!(!is_change(&read.kind));
+        assert!(classify(&read).is_empty());
+    }
+
+    #[test]
+    fn an_atime_bump_is_not_a_ref_moving() {
+        let touched = event(
+            EventKind::Modify(ModifyKind::Metadata(MetadataKind::AccessTime)),
+            &[".git/refs/heads/main"],
+        );
+
+        assert!(!is_change(&touched.kind));
+        assert!(classify(&touched).is_empty());
+    }
+
+    #[test]
+    fn a_written_ref_is_a_ref_change() {
+        let written = event(WROTE, &[".git/refs/heads/main"]);
+
+        let out = classify(&written);
+        assert!(out.refs);
+        assert!(!out.worktree);
+    }
+
+    #[test]
+    fn a_ref_replaced_through_a_rename_is_a_ref_change() {
+        // git writes `ref.lock` and renames it over `ref`, so the change arrives
+        // as a create or a rename rather than a data write.
+        let created = event(
+            EventKind::Create(CreateKind::File),
+            &[".git/refs/heads/main"],
+        );
+        let renamed = event(
+            EventKind::Modify(ModifyKind::Name(notify::event::RenameMode::To)),
+            &[".git/refs/heads/main"],
+        );
+
+        assert!(classify(&created).refs);
+        assert!(classify(&renamed).refs);
+    }
+
+    #[test]
+    fn a_deleted_branch_is_a_ref_change() {
+        let removed = event(
+            EventKind::Remove(RemoveKind::File),
+            &[".git/refs/heads/gone"],
+        );
+        assert!(classify(&removed).refs);
+    }
+
+    #[test]
+    fn head_and_packed_refs_count_as_refs() {
+        assert!(classify(&event(WROTE, &[".git/HEAD"])).refs);
+        assert!(classify(&event(WROTE, &[".git/packed-refs"])).refs);
+    }
+
+    #[test]
+    fn the_index_is_a_worktree_change_and_not_a_ref_change() {
+        let out = classify(&event(WROTE, &[".git/index"]));
+
+        assert!(out.worktree);
+        assert!(!out.refs);
+    }
+
+    #[test]
+    fn a_lock_file_is_ignored_so_we_never_read_mid_write() {
+        let lock = event(
+            EventKind::Create(CreateKind::File),
+            &[".git/refs/heads/main.lock"],
+        );
+        let index_lock = event(WROTE, &[".git/index.lock"]);
+
+        assert!(classify(&lock).is_empty());
+        assert!(classify(&index_lock).is_empty());
+    }
+
+    #[test]
+    fn an_unrelated_file_inside_the_git_directory_changes_nothing() {
+        assert!(classify(&event(WROTE, &[".git/COMMIT_EDITMSG"])).is_empty());
+        assert!(classify(&event(WROTE, &[".git/objects/ab/cdef"])).is_empty());
+    }
+
+    #[test]
+    fn one_event_touching_both_reports_both() {
+        // A commit rewrites the index and moves a ref; the debounce coalesces
+        // them, so a single event carrying both paths has to as well.
+        let both = event(WROTE, &[".git/index", ".git/refs/heads/main"]);
+
+        let out = classify(&both);
+        assert!(out.refs);
+        assert!(out.worktree);
+        assert!(!out.is_empty());
+    }
+
+    #[test]
+    fn an_event_with_no_paths_changes_nothing() {
+        assert!(classify(&event(WROTE, &[])).is_empty());
+    }
+
+    // `watch` itself, the debounce loop and the graph worker all take an
+    // `AppHandle`, which is bound to the Wry runtime here. Testing them means
+    // making this crate generic over `tauri::Runtime` so `mock_app` can supply
+    // its own — a signature change across the whole Tauri layer, recorded as
+    // TASK-003 rather than smuggled into a testing item.
 }

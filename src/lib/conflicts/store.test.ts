@@ -1,0 +1,263 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ConflictFile, ConflictSide, ConflictSides, ConflictState } from '$lib/types';
+
+vi.mock('$lib/api', () => ({
+	conflicts: vi.fn(),
+	conflictSides: vi.fn()
+}));
+
+import * as api from '$lib/api';
+import { conflicts, missingSideReason } from './store.svelte';
+
+const listCall = vi.mocked(api.conflicts);
+const sidesCall = vi.mocked(api.conflictSides);
+
+function file(path: string, kind: ConflictFile['kind'] = 'bothModified'): ConflictFile {
+	return { path, kind };
+}
+
+function side(text: string, overrides: Partial<ConflictSide> = {}): ConflictSide {
+	return {
+		text,
+		lines: text === '' ? 0 : text.replace(/\n$/, '').split('\n').length,
+		bytes: text.length,
+		binary: false,
+		tooLarge: false,
+		...overrides
+	};
+}
+
+function sides(path: string, overrides: Partial<ConflictSides> = {}): ConflictSides {
+	return {
+		path,
+		kind: 'bothModified',
+		base: side('one\ntwo\nthree\n'),
+		ours: side('one\nOURS\nthree\n'),
+		theirs: side('one\nTHEIRS\nthree\n'),
+		merged: side('one\n<<<<<<< HEAD\nOURS\n=======\nTHEIRS\n>>>>>>> theirs\nthree\n'),
+		...overrides
+	};
+}
+
+function state(overrides: Partial<ConflictState> = {}): ConflictState {
+	return { operation: 'merge', files: [file('shared.txt')], ...overrides };
+}
+
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	const promise = new Promise<T>((res) => (resolve = res));
+	return { promise, resolve };
+}
+
+beforeEach(() => {
+	vi.clearAllMocks();
+	conflicts.clear();
+	listCall.mockResolvedValue(state());
+	sidesCall.mockImplementation((path: string) => Promise.resolve(sides(path)));
+});
+
+describe('load', () => {
+	it('takes the operation and the files the repository reported', async () => {
+		await conflicts.load();
+
+		expect(conflicts.operation).toBe('merge');
+		expect(conflicts.files.map((f) => f.path)).toEqual(['shared.txt']);
+		expect(conflicts.loaded).toBe(true);
+	});
+
+	it('opens the first conflicted file without being asked', async () => {
+		// Landing on a screen that lists three conflicts and shows none of them
+		// makes the user click before the screen has said anything.
+		await conflicts.load();
+
+		expect(conflicts.openPath).toBe('shared.txt');
+		expect(conflicts.sides?.ours?.text).toContain('OURS');
+	});
+
+	it('records a failure and shows nothing', async () => {
+		listCall.mockRejectedValue(new Error('no repository is open'));
+
+		await conflicts.load();
+
+		expect(conflicts.error).toContain('no repository is open');
+		expect(conflicts.files).toEqual([]);
+		expect(conflicts.operation).toBe('none');
+	});
+
+	it('drops a slow read that a newer one superseded', async () => {
+		const slow = deferred<ConflictState>();
+		listCall.mockReturnValueOnce(slow.promise);
+
+		const first = conflicts.load();
+		listCall.mockResolvedValue(state({ files: [file('newer.txt')] }));
+		await conflicts.load();
+		slow.resolve(state({ files: [file('stale.txt')] }));
+		await first;
+
+		expect(conflicts.files.map((f) => f.path)).toEqual(['newer.txt']);
+	});
+
+	it('reports the operation by the name the user would type', async () => {
+		listCall.mockResolvedValue(state({ operation: 'cherryPick' }));
+
+		await conflicts.load();
+
+		expect(conflicts.operationLabel).toBe('cherry-pick');
+	});
+
+	it('a repository with conflicts and nothing running says so honestly', async () => {
+		// An unresolved index outlives the command that made it. Picking the
+		// likeliest operation would send someone to the wrong way out.
+		listCall.mockResolvedValue(state({ operation: 'none' }));
+
+		await conflicts.load();
+
+		expect(conflicts.operation).toBe('none');
+		expect(conflicts.files).toHaveLength(1);
+	});
+});
+
+describe('selection', () => {
+	beforeEach(() => {
+		listCall.mockResolvedValue(
+			state({ files: [file('a.txt'), file('b.txt'), file('c.txt')] })
+		);
+	});
+
+	it('reads the sides of the file it opens', async () => {
+		await conflicts.load();
+		await conflicts.select('b.txt');
+
+		expect(conflicts.openPath).toBe('b.txt');
+		expect(conflicts.sides?.path).toBe('b.txt');
+	});
+
+	it('does not re-read the file that is already open', async () => {
+		await conflicts.load();
+		sidesCall.mockClear();
+
+		await conflicts.select('a.txt');
+
+		expect(sidesCall).not.toHaveBeenCalled();
+	});
+
+	it('drops a superseded read of one file over another', async () => {
+		await conflicts.load();
+		const slow = deferred<ConflictSides>();
+		sidesCall.mockReturnValueOnce(slow.promise);
+
+		const first = conflicts.select('b.txt');
+		await conflicts.select('c.txt');
+		slow.resolve(sides('b.txt'));
+		await first;
+
+		expect(conflicts.sides?.path).toBe('c.txt');
+	});
+
+	it('a failed read of one file leaves the list intact', async () => {
+		await conflicts.load();
+		sidesCall.mockRejectedValueOnce(new Error('no file b.txt in that commit'));
+
+		await conflicts.select('b.txt');
+
+		expect(conflicts.sidesError).toContain('no file b.txt');
+		expect(conflicts.sides).toBeNull();
+		expect(conflicts.files).toHaveLength(3);
+	});
+
+	it('steps forward and back without wrapping at the ends', async () => {
+		await conflicts.load();
+
+		await conflicts.step(-1);
+		expect(conflicts.openPath).toBe('a.txt');
+
+		await conflicts.step(1);
+		expect(conflicts.openPath).toBe('b.txt');
+
+		await conflicts.step(1);
+		await conflicts.step(1);
+		expect(conflicts.openPath).toBe('c.txt');
+	});
+
+	it('reports where in the pager the open file sits', async () => {
+		await conflicts.load();
+		await conflicts.select('c.txt');
+
+		expect(conflicts.position).toBe(3);
+	});
+
+	it('keeps the open file across a reload when it is still conflicted', async () => {
+		await conflicts.load();
+		await conflicts.select('c.txt');
+
+		await conflicts.load();
+
+		expect(conflicts.openPath).toBe('c.txt');
+	});
+
+	it('falls back to the first file when the open one was resolved elsewhere', async () => {
+		// Staying on it would show three sides of a file that is no longer
+		// conflicted at all.
+		await conflicts.load();
+		await conflicts.select('c.txt');
+
+		listCall.mockResolvedValue(state({ files: [file('a.txt'), file('b.txt')] }));
+		await conflicts.load();
+
+		expect(conflicts.openPath).toBe('a.txt');
+	});
+
+	it('a repository with nothing conflicted holds no selection', async () => {
+		listCall.mockResolvedValue(state({ operation: 'none', files: [] }));
+
+		await conflicts.load();
+
+		expect(conflicts.openPath).toBeNull();
+		expect(conflicts.sides).toBeNull();
+		expect(conflicts.position).toBe(0);
+	});
+});
+
+describe('missing sides', () => {
+	it('names why a side is missing rather than leaving a blank pane', () => {
+		expect(missingSideReason('bothAdded', 'base')).toContain('both sides added');
+		expect(missingSideReason('deletedByUs', 'ours')).toBe('Deleted on this side.');
+		expect(missingSideReason('deletedByThem', 'theirs')).toBe(
+			'Deleted on the incoming side.'
+		);
+	});
+
+	it('falls back to a plain statement for a side that is simply absent', () => {
+		expect(missingSideReason('bothModified', 'base')).toBe('Not present on this side.');
+	});
+
+	it('carries a missing side through as null rather than an empty one', async () => {
+		// "Deleted on that side" and "emptied on that side" are different, and
+		// the second one loses work if acted on.
+		sidesCall.mockResolvedValue(
+			sides('gone.txt', { kind: 'deletedByThem', theirs: null })
+		);
+		listCall.mockResolvedValue(state({ files: [file('gone.txt', 'deletedByThem')] }));
+
+		await conflicts.load();
+
+		expect(conflicts.sides?.theirs).toBeNull();
+		expect(conflicts.sides?.ours).not.toBeNull();
+	});
+});
+
+describe('clear', () => {
+	it('forgets everything it had read', async () => {
+		await conflicts.load();
+
+		conflicts.clear();
+
+		expect(conflicts.files).toEqual([]);
+		expect(conflicts.openPath).toBeNull();
+		expect(conflicts.sides).toBeNull();
+		expect(conflicts.loaded).toBe(false);
+		expect(conflicts.operation).toBe('none');
+	});
+});

@@ -35,6 +35,10 @@
 		return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 	});
 
+	/** See the note in FileList.svelte: keeps `.gitignore` from rendering as
+	    `gitignore.` in the head-elided path column. */
+	const LRM = '\u200e';
+
 	function basename(path: string): string {
 		const slash = path.lastIndexOf('/');
 		return slash === -1 ? path : path.slice(slash + 1);
@@ -127,7 +131,7 @@
 								<span class="mono glyph" class:added={file.status === 'added'}>
 									{statusGlyph(file.status)}
 								</span>
-								<span class="path">{file.path}</span>
+								<span class="path">{LRM + file.path}</span>
 							</button>
 						{/each}
 					{:else}
@@ -142,7 +146,7 @@
 									<span class="mono glyph" class:added={file.status === 'added'}>
 										{statusGlyph(file.status)}
 									</span>
-									<span class="path">{basename(file.path)}</span>
+									<span class="path">{LRM + basename(file.path)}</span>
 								</button>
 							{/each}
 						{/each}
@@ -315,6 +319,8 @@
 		color: var(--accent);
 	}
 
+	/* rtl puts the ellipsis on the head of the path, where it belongs; the LRM
+	   in the markup keeps the text left-to-right. */
 	.path {
 		font-size: var(--fs-secondary);
 		overflow: hidden;

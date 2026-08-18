@@ -3,7 +3,7 @@
 /**
  * Wire types shared with the Rust core.
  *
- * These mirror the `serde` shapes in `crates/gitlord-core` and
+ * These mirror the `serde` shapes in `crates/gitlumiere-core` and
  * `src-tauri/src/commands.rs`, which all carry
  * `#[serde(rename_all = "camelCase")]`. Keep the two in step.
  */
@@ -12,12 +12,33 @@
 
 export type RefKind = 'branch' | 'remote' | 'tag';
 
-export interface RefChip {
-	/** Display name, already shortened: `master`, `origin/master`, `v12.0.0`. */
+/** Which forge a remote points at, decided from its URL. Picks a glyph, nothing more. */
+export type Host = 'gitHub' | 'gitLab' | 'bitbucket' | 'azureDevOps' | 'generic';
+
+/** A remote carrying a branch at a commit. */
+export interface RemoteMark {
+	/** `origin`, `upstream`. Not drawn on the chip; carried for the tooltip. */
 	name: string;
+	host: Host;
+}
+
+export interface RefChip {
+	/**
+	 * The branch's own short name — `master`, never `origin/master` — or the
+	 * tag's name. Where a branch lives is `local` and `remotes` (FEAT-036).
+	 */
+	name: string;
+	/**
+	 * `branch` when a local ref exists, `remote` when it lives only on a remote,
+	 * `tag` for tags. What the gutter sorts and styles by.
+	 */
 	kind: RefKind;
 	/** True for the branch HEAD points at. Renders with accent border and a check. */
 	current: boolean;
+	/** A local `refs/heads/` ref of this name is at this commit. */
+	local: boolean;
+	/** The remotes carrying this branch **at this commit**, in name order. */
+	remotes: RemoteMark[];
 }
 
 // --- Graph ----------------------------------------------------------------
@@ -43,7 +64,15 @@ export interface GraphRow {
 	/** First line of the commit message. */
 	summary: string;
 	authorName: string;
-	/** Up to two uppercase letters, drawn inside the node. */
+	/**
+	 * The author's email, lower-cased, or empty where the signature has none.
+	 *
+	 * What the node's portrait is generated from: one person commits under
+	 * several spellings of their name over a career, and the address is what
+	 * makes those one face.
+	 */
+	authorEmail: string;
+	/** Up to two uppercase letters. The fallback where no portrait can be drawn. */
 	initials: string;
 	/** Author time, unix seconds. */
 	time: number;
@@ -57,7 +86,7 @@ export interface GraphRow {
 
 // --- Commit detail --------------------------------------------------------
 
-export type FileStatus = 'added' | 'modified' | 'deleted' | 'renamed';
+export type FileStatus = 'added' | 'modified' | 'deleted' | 'renamed' | 'untracked';
 
 export interface ChangedFile {
 	path: string;
@@ -78,6 +107,428 @@ export interface CommitDetail {
 	commitTime: number;
 	parents: string[];
 	files: ChangedFile[];
+}
+
+// --- Diff -----------------------------------------------------------------
+
+export type LineOrigin = 'context' | 'added' | 'removed';
+
+export interface DiffLine {
+	origin: LineOrigin;
+	/** 1-based line number in the old version. Null on an added line. */
+	old: number | null;
+	/** 1-based line number in the new version. Null on a removed line. */
+	new: number | null;
+	/** The line's text, without its terminator. */
+	text: string;
+}
+
+/** One run of changes plus its context — a `@@` block. */
+export interface Hunk {
+	oldStart: number;
+	oldLines: number;
+	newStart: number;
+	newLines: number;
+	header: string;
+	lines: DiffLine[];
+}
+
+/** A row in the Diff screen's file list. */
+export interface FileChange {
+	path: string;
+	status: FileStatus;
+	/**
+	 * No line diff exists: the file is binary, or one side was too large. In
+	 * both cases `added` and `removed` are 0 rather than a guess.
+	 */
+	binary: boolean;
+	tooLarge: boolean;
+	added: number;
+	removed: number;
+}
+
+export interface CommitDiff {
+	id: string;
+	short: string;
+	summary: string;
+	files: FileChange[];
+	/** Totals across every file, for the header. */
+	added: number;
+	removed: number;
+}
+
+export interface FileDiff {
+	path: string;
+	status: FileStatus;
+	binary: boolean;
+	tooLarge: boolean;
+	added: number;
+	removed: number;
+	hunks: Hunk[];
+}
+
+// --- Working copy ---------------------------------------------------------
+
+/** Which two sides of the working copy a diff compares. */
+export type DiffSide = 'staged' | 'unstaged';
+
+/** One path in the working copy, on the side it was found. */
+export interface StatusEntry {
+	path: string;
+	status: FileStatus;
+}
+
+/**
+ * The working copy, split the way the Commit screen shows it.
+ *
+ * A path can be in `staged` and `unstaged` at once — staged in part, or
+ * changed again afterwards — so these are three lists rather than one list of
+ * rows carrying flags.
+ */
+export interface WorkingCopy {
+	/** HEAD against the index: what a commit right now would contain. */
+	staged: StatusEntry[];
+	/** The index against the working tree, plus untracked files. */
+	unstaged: StatusEntry[];
+	/** Paths the index holds at stages 1 to 3. Nothing can be committed yet. */
+	conflicted: StatusEntry[];
+}
+
+// --- Branches -------------------------------------------------------------
+
+/** One row of the Branches screen. */
+export interface BranchRow {
+	/** Short name for display: `main`, `origin/main`. */
+	name: string;
+	/** The full ref, for anything that has to be unambiguous. */
+	fullName: string;
+	kind: RefKind;
+	current: boolean;
+	id: string;
+	short: string;
+	/** First line of the tip's message. */
+	summary: string;
+	authorName: string;
+	/** Author time of the tip, unix seconds. */
+	time: number;
+	/** Short name of the configured upstream, when there is one. */
+	upstream: string | null;
+	/**
+	 * Commits this branch has that its upstream does not, and the other way
+	 * round. Null when there is no upstream to compare against. As old as the
+	 * last fetch: nothing here talks to a network.
+	 */
+	ahead: number | null;
+	behind: number | null;
+	/** Fully contained in HEAD — the branch that is safe to forget. */
+	merged: boolean;
+}
+
+// --- Stash ----------------------------------------------------------------
+
+/**
+ * One `stash@{n}`.
+ *
+ * A stash is a commit whose first parent is the commit the work was made on, so
+ * `commitDiff(entry.id)` shows what is in it — there is no separate stash-diff
+ * call, and there does not need to be.
+ */
+export interface StashEntry {
+	/** `n` in `stash@{n}`. 0 is the most recent. */
+	index: number;
+	/** `stash@{n}` — the name git itself uses. */
+	name: string;
+	id: string;
+	short: string;
+	/** What the entry says about itself: `On main: wip on notes`. */
+	message: string;
+	time: number;
+	authorName: string;
+	/** The commit the work was made on — the row it hangs off. */
+	parent: string;
+	parentShort: string;
+	parentSummary: string;
+}
+
+// --- Pull requests --------------------------------------------------------
+
+/**
+ * The shape a pull request takes on the screen.
+ *
+ * **This is FEAT-017's contract.** Nothing populates it today — GitLumiere talks
+ * to no hosting service — and it is defined now so that connecting a host is a
+ * matter of filling this in rather than redesigning the screen around whatever
+ * one host's API happens to return.
+ *
+ * The vocabulary is host-agnostic on purpose: "pull request", never a brand.
+ * The hosting service is a detail, not the language.
+ */
+export interface PullRequest {
+	/** The host's own identifier, whatever form it takes. */
+	id: string;
+	/** The number people say out loud: "#412". */
+	number: number;
+	title: string;
+	/** Display name of whoever opened it. */
+	authorName: string;
+	/** Seconds since the unix epoch. */
+	updated: number;
+	sourceBranch: string;
+	targetBranch: string;
+	draft: boolean;
+	/** Where it sits with reviewers. */
+	review: ReviewState;
+	/** Whether the host's checks passed. Null when the host runs none. */
+	checks: CheckState | null;
+	/** True when this one is waiting on the person using GitLumiere. */
+	needsYou: boolean;
+	/** Why it needs you, in one line, when it does. */
+	needsYouBecause: string | null;
+	changedFiles: number;
+	added: number;
+	removed: number;
+	/** Whether the host says it can merge. Null when the host has not said. */
+	mergeable: boolean | null;
+}
+
+export type ReviewState = 'awaitingReview' | 'changesRequested' | 'approved' | 'noReviewers';
+
+export type CheckState = 'passing' | 'failing' | 'running';
+
+// --- Interactive rebase ---------------------------------------------------
+
+/** What to do with one commit, in git's own vocabulary. */
+export type RebaseAction = 'pick' | 'squash' | 'reword' | 'drop';
+
+/** One row of the todo list, as `git rebase -i` would open it. */
+export interface TodoRow {
+	id: string;
+	short: string;
+	summary: string;
+	authorName: string;
+	time: number;
+	/** Paths this commit changed. What the conflict heuristic compares. */
+	paths: string[];
+}
+
+export interface RebaseTodo {
+	/** The commit the rebase would replay onto. */
+	upstream: string;
+	upstreamShort: string;
+	/** Oldest first — a rebase replays forwards. */
+	rows: TodoRow[];
+	/** True when the range was longer than the cap and was cut. */
+	truncated: boolean;
+}
+
+/** One entry of the plan. The plan is the complete list, and its order is the order. */
+export interface RebaseEdit {
+	id: string;
+	action: RebaseAction;
+	/**
+	 * The new message, for a `reword`.
+	 *
+	 * Collected on screen rather than at execution time: "at execution time"
+	 * means git opening an editor on a terminal GitLumiere does not have. A reword
+	 * carrying no message is executed as a plain pick.
+	 */
+	message?: string | null;
+}
+
+// --- History operations ---------------------------------------------------
+
+/**
+ * How far back a reset takes the index and the working tree.
+ *
+ * `hard` is the one that loses uncommitted work, and it is the reason this is a
+ * union of three names rather than a boolean called `force`: every screen that
+ * offers it has to spell out which one it is offering.
+ */
+export type ResetMode = 'soft' | 'mixed' | 'hard';
+
+/** What dropping one branch onto another can turn into. */
+export type Integration = 'merge' | 'mergeNoFastForward' | 'fastForward' | 'rebase';
+
+/**
+ * How a pull brings the remote's commits in.
+ *
+ * `fastForwardOnly` is the safe one: it refuses unless the local branch can
+ * simply move forward, so it can never write a merge commit or leave a conflict.
+ */
+export type PullMode = 'fastForwardOnly' | 'merge' | 'rebase';
+
+/** What to do with a stash entry. */
+export type StashAction = 'apply' | 'pop' | 'drop';
+
+/** One row of the result: what a commit would become. */
+export interface PreviewRow {
+	id: string;
+	short: string;
+	summary: string;
+	/** Commits folded into this one, oldest first. Empty for a plain pick. */
+	absorbed: string[];
+	reworded: boolean;
+	/**
+	 * An earlier row in the plan touched a path this one also touches, so
+	 * replaying it may not apply cleanly. A heuristic — knowing for certain
+	 * means performing the merges, which is execution.
+	 */
+	mayConflict: boolean;
+}
+
+export interface RebasePreview {
+	rows: PreviewRow[];
+	dropped: string[];
+	/**
+	 * Set when the plan cannot be executed as written. Dropping everything is
+	 * not one of these — an empty result is a legitimate thing to look at.
+	 */
+	refusal: string | null;
+	/** True when the plan would leave no commits at all. */
+	emptiesTheBranch: boolean;
+}
+
+// --- Log search -----------------------------------------------------------
+
+/**
+ * What to look for. Every field is optional and they compose as AND.
+ *
+ * Text matching is a case-insensitive substring, not a regular expression —
+ * regexes are explicit non-scope for this pass.
+ */
+export interface SearchQuery {
+	/** Matched against `Name <email>`, the way `git log --author` looks at it. */
+	author?: string | null;
+	/** Matched against the whole message, subject and body, like `--grep`. */
+	message?: string | null;
+	/** A path the commit changed, like `git log -- <path>`. */
+	path?: string | null;
+	/** Seconds since the unix epoch, like `--since`. */
+	since?: number | null;
+	/** Seconds since the unix epoch, like `--until`. */
+	until?: number | null;
+}
+
+/**
+ * One result: the graph's row without its lane.
+ *
+ * A filtered list has no lanes, and drawing them would draw edges between
+ * commits that are not parent and child.
+ */
+export interface SearchRow {
+	/** Position in the result list, not in history. */
+	index: number;
+	id: string;
+	short: string;
+	summary: string;
+	authorName: string;
+	authorEmail: string;
+	initials: string;
+	time: number;
+	refs: RefChip[];
+}
+
+export interface SearchRowsEvent {
+	token: number;
+	rows: SearchRow[];
+}
+
+export interface SearchDoneEvent {
+	token: number;
+	total: number;
+	/** True when the walk reached the end of history rather than being cancelled. */
+	complete: boolean;
+	error: string | null;
+}
+
+/** Why there is nothing to blame. Not an error — ordinary states of files. */
+export type NotBlamable = 'binary' | 'tooLarge' | 'notAFile' | 'empty';
+
+export interface BlameLine {
+	/** 1-based line number in the blamed file. */
+	line: number;
+	text: string;
+	commit: string;
+	short: string;
+	summary: string;
+	authorName: string;
+	time: number;
+	/** Where the line lived before, when it arrived under another name. */
+	sourcePath: string | null;
+}
+
+export interface Blame {
+	path: string;
+	/** The revision blamed, resolved to a full id. */
+	revision: string;
+	lines: BlameLine[];
+	/** Set when `lines` is empty for a reason worth stating. */
+	refused: NotBlamable | null;
+}
+
+// --- Conflicts ------------------------------------------------------------
+
+/**
+ * What the repository is in the middle of.
+ *
+ * Read from the repository's own state, never inferred from the presence of
+ * conflicts: merge, rebase, cherry-pick and revert all leave conflicts behind,
+ * and naming the wrong one sends someone to the wrong command to get out.
+ */
+export type ConflictOperation =
+	| 'merge'
+	| 'rebase'
+	| 'rebaseInteractive'
+	| 'cherryPick'
+	| 'revert'
+	| 'applyMailbox'
+	| 'bisect'
+	| 'none';
+
+/**
+ * Which sides a conflicted path has, which is the same thing as what kind of
+ * conflict it is.
+ */
+export type ConflictKind = 'bothModified' | 'bothAdded' | 'deletedByUs' | 'deletedByThem';
+
+export interface ConflictFile {
+	path: string;
+	kind: ConflictKind;
+}
+
+/** One version of a conflicted file. */
+export interface ConflictSide {
+	/** Empty when `binary` or `tooLarge`, because there is nothing honest to show. */
+	text: string;
+	lines: number;
+	bytes: number;
+	binary: boolean;
+	tooLarge: boolean;
+}
+
+/**
+ * The three index stages of one conflicted path, plus what is on disk.
+ *
+ * A missing side is `null` rather than an empty side: "deleted on that side"
+ * and "emptied on that side" are different things, and the second loses work if
+ * acted on.
+ */
+export interface ConflictSides {
+	path: string;
+	kind: ConflictKind;
+	/** Stage 1, the common ancestor. Null when both sides added the path. */
+	base: ConflictSide | null;
+	/** Stage 2 — ours, which is HEAD. */
+	ours: ConflictSide | null;
+	/** Stage 3 — theirs, the incoming side. */
+	theirs: ConflictSide | null;
+	/** The working-tree file, markers and all. Null when there is none on disk. */
+	merged: ConflictSide | null;
+}
+
+export interface ConflictState {
+	operation: ConflictOperation;
+	files: ConflictFile[];
 }
 
 // --- Repository -----------------------------------------------------------
@@ -108,11 +559,38 @@ export interface RepoInfo {
 export interface RepoCounts {
 	commits: number | null;
 	working: number | null;
+	/** Paths staged for the next commit — what the Commit button counts. */
+	staged: number | null;
 	conflicts: number | null;
 	branches: number | null;
 	stashes: number | null;
 	tags: number | null;
 	submodules: number | null;
+}
+
+/**
+ * One card on the All repositories screen.
+ *
+ * Read where the repository sits, without opening it as the current one.
+ * `present` false means the path is gone or is no longer a repository, and
+ * every other field is a default that means nothing.
+ */
+export interface RepoSummary {
+	path: string;
+	name: string;
+	present: boolean;
+	bare: boolean;
+	branch: string | null;
+	detached: boolean;
+	short: string | null;
+	/** First line of the tip's message, so a card says what it was last doing. */
+	summary: string | null;
+	time: number | null;
+	/** Distinct changed paths, or null for a bare repository. */
+	dirty: number | null;
+	conflicts: number | null;
+	stashes: number | null;
+	branches: number | null;
 }
 
 export interface OpenResult {
@@ -131,6 +609,122 @@ export interface About {
 	version: string;
 	commit: string;
 	license: string;
+}
+
+// --- Clone ----------------------------------------------------------------
+
+/**
+ * Why a clone cannot start.
+ *
+ * Every one of these is knowable without touching the network, which is the
+ * point: the user is told while they are typing rather than after a round trip.
+ */
+export type CloneProblemKind =
+	| 'noUrl'
+	| 'unusableUrl'
+	| 'noParent'
+	| 'missingParent'
+	| 'destinationNotEmpty';
+
+export interface CloneProblem {
+	kind: CloneProblemKind;
+	/** The path the problem is about, where there is one. */
+	detail?: string;
+}
+
+/** Where a clone would land, and what is wrong with that. */
+export interface ClonePlan {
+	name: string | null;
+	/** The exact path that will be created — what the screen shows. */
+	destination: string | null;
+	/** True when the destination does not exist yet, so cancelling may remove it. */
+	createsDestination: boolean;
+	problem: CloneProblem | null;
+	/** The sentence to show. Written by the core, so there is only one of them. */
+	message: string | null;
+}
+
+/** One step of git's own progress reporting. */
+export interface CloneProgress {
+	phase: string;
+	percent: number | null;
+	/** git's own words, shown when there is no percentage. */
+	line: string;
+}
+
+/** Payload of `clone-progress`. */
+export interface CloneProgressEvent extends CloneProgress {
+	token: number;
+}
+
+/** Payload of `clone-done`: the clone for `token` stopped, one way or another. */
+export interface CloneDoneEvent {
+	token: number;
+	ok: boolean;
+	/** False for a clone that failed on its own; true for one the user stopped. */
+	cancelled: boolean;
+	error: string | null;
+	path: string;
+}
+
+// --- Settings -------------------------------------------------------------
+
+/** A configuration file GitLumiere will write to. Never inferred — always chosen. */
+export type IdentityScope = 'global' | 'local';
+
+/** The two keys the Settings screen edits, and no others. */
+export type IdentityKey = 'name' | 'email';
+
+/**
+ * Where the value git would actually use comes from.
+ *
+ * Wider than `IdentityScope`, because a value can come from somewhere GitLumiere
+ * will not write: saying "system" out loud is what explains why editing the
+ * global field did not change the effective value.
+ */
+export type IdentityOrigin = 'unset' | 'system' | 'global' | 'local' | 'environment';
+
+export interface IdentityValue {
+	/** What git would use. */
+	effective: string | null;
+	origin: IdentityOrigin;
+	/** What each writable scope holds, so an override can be shown beside what it hides. */
+	global: string | null;
+	local: string | null;
+}
+
+export interface Identity {
+	name: IdentityValue;
+	email: IdentityValue;
+	/** False when no repository is open: the local scope is neither read nor written. */
+	repository: boolean;
+}
+
+/** GitLumiere's own behaviour toggles, stored in its config directory. */
+export interface Settings {
+	signCommits: boolean;
+	confirmHistoryRewrite: boolean;
+	showGitCommands: boolean;
+}
+
+export interface Dependency {
+	name: string;
+	version: string;
+	/** Null where the package declares none — listed as "not declared", never hidden. */
+	license: string | null;
+}
+
+/**
+ * Every dependency this build is made of, generated from the lockfiles.
+ *
+ * `generated` false means the build could not produce the list; `notes` says
+ * why. An empty list with no explanation would read as "no dependencies".
+ */
+export interface Licenses {
+	generated: boolean;
+	notes: string[];
+	rust: Dependency[];
+	npm: Dependency[];
 }
 
 // --- Events ---------------------------------------------------------------
@@ -156,6 +750,39 @@ export interface RepoChangedEvent {
 	worktree: boolean;
 }
 
+/**
+ * How one executed `git` command ended.
+ *
+ * `started` is a clone: nothing waits for it, so its outcome arrives long after
+ * the line is worth showing.
+ */
+export type CommandOutcome =
+	| { kind: 'ok' }
+	| { kind: 'failed'; code: number | null; stderr: string }
+	| { kind: 'started' };
+
+/**
+ * One `git` command GitLumiere actually ran, recorded at the spawn site.
+ *
+ * Reads are absent by design: log walking, refs, diff and status happen
+ * in-process and have no command line. Nothing is invented for them.
+ */
+export interface ExecutedCommand {
+	/** Monotonic within the app's run. Used to ask for everything newer. */
+	seq: number;
+	atMs: number;
+	/** The whole command, `git` first, with any URL credentials already removed. */
+	argv: string[];
+	outcome: CommandOutcome;
+	/** Wall time in milliseconds. Zero for a command that was only started. */
+	durationMs: number;
+}
+
+export const CLONE_PROGRESS_EVENT = 'clone-progress';
+export const CLONE_DONE_EVENT = 'clone-done';
+export const SEARCH_ROWS_EVENT = 'search-rows';
+export const SEARCH_DONE_EVENT = 'search-done';
 export const GRAPH_ROWS_EVENT = 'graph-rows';
 export const GRAPH_DONE_EVENT = 'graph-done';
 export const REPO_CHANGED_EVENT = 'repo-changed';
+export const GIT_COMMAND_EVENT = 'git-command';

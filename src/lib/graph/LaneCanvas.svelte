@@ -2,7 +2,9 @@
 <script lang="ts">
 	import { graph } from '$lib/graph/store.svelte';
 	import { drawLanes } from '$lib/graph/lanes';
-	import { LANE_COLOR_COUNT, laneColorVar } from '$lib/metrics';
+	import { forgetPortraits } from '$lib/graph/portrait';
+	import { LANE_COLOR_COUNT, LANE_SPAN, laneColorVar } from '$lib/metrics';
+	import { scale } from '$lib/scale.svelte';
 	import { theme } from '$lib/theme.svelte';
 
 	interface Props {
@@ -14,19 +16,36 @@
 		height: number;
 		/** Lane columns the column is currently sized for. */
 		columns: number;
+		/** Horizontal room the lanes share, once the column has been sized. */
+		span?: number;
+		/** Rows to keep at full strength; null when nothing is dimmed. */
+		highlight?: Set<number> | null;
+		/** Rows carrying stashes, and how many each has. */
+		stashes?: Map<number, number>;
 	}
 
-	let { scrollTop, first, last, width, height, columns }: Props = $props();
+	let {
+		scrollTop,
+		first,
+		last,
+		width,
+		height,
+		columns,
+		span = LANE_SPAN,
+		highlight = null,
+		stashes
+	}: Props = $props();
 
 	let canvas = $state<HTMLCanvasElement | null>(null);
 
 	/**
 	 * Lane colors come from the stylesheet, so switching theme repaints without
 	 * any color literal living in TypeScript. Re-resolved whenever the theme
-	 * changes; `theme.value` is read here purely to create that dependency.
+	 * changes; `theme.id` is read here purely to create that dependency, and it
+	 * names the family as well as the mode — switching family repaints too.
 	 */
-	function resolveColors(el: HTMLElement): { lanes: string[]; nodeText: string } {
-		void theme.value;
+	function resolveColors(el: HTMLElement): { lanes: string[]; nodeRing: string } {
+		void theme.id;
 		const styles = getComputedStyle(el);
 		const lanes: string[] = [];
 		for (let i = 0; i < LANE_COLOR_COUNT; i++) {
@@ -34,9 +53,23 @@
 		}
 		return {
 			lanes,
-			nodeText: styles.getPropertyValue('--on-accent').trim() || '#fff'
+			// The graph column's own fill: a portrait is ringed in the colour
+			// behind it, so the lane line stops at the head rather than running
+			// visibly into it.
+			nodeRing: styles.getPropertyValue('--graph-bg').trim() || '#888'
 		};
 	}
+
+	/**
+	 * Portraits are rendered with resolved colours, so a theme change makes
+	 * every cached face wrong. Dropping them here — beside the one other thing
+	 * that reads the palette — keeps the invalidation next to what it
+	 * invalidates.
+	 */
+	$effect(() => {
+		void theme.id;
+		forgetPortraits();
+	});
 
 	$effect(() => {
 		const el = canvas;
@@ -48,7 +81,14 @@
 		void first;
 		void last;
 		void columns;
-		void theme.value;
+		void span;
+		void theme.id;
+		void highlight;
+		void stashes;
+		// Row pitch and lane spacing both move with these, so a zoom is a
+		// repaint even when nothing scrolled.
+		const pitch = scale.pitch;
+		const zoom = scale.zoom;
 
 		const dpr = window.devicePixelRatio || 1;
 		const pixelWidth = Math.round(width * dpr);
@@ -61,7 +101,7 @@
 
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-		const { lanes, nodeText } = resolveColors(el);
+		const { lanes, nodeRing } = resolveColors(el);
 		drawLanes({
 			ctx,
 			width,
@@ -71,8 +111,13 @@
 			last,
 			row: (index) => graph.row(index),
 			colors: lanes,
-			nodeText,
-			columns
+			nodeRing,
+			columns,
+			span,
+			pitch,
+			zoom,
+			highlight,
+			stashes
 		});
 	});
 </script>
@@ -89,10 +134,15 @@
 ></canvas>
 
 <style>
+	/*
+	 * Placed by its slot, not by a constant. The wrapper in `CommitRows` is laid
+	 * out as part of the same flex row the cells are, so this only has to fill
+	 * it — see BUG-003 for what positioning it by hand cost.
+	 */
 	.lanes {
 		position: absolute;
 		top: 0;
-		left: var(--refs-gutter-w);
+		left: 0;
 		pointer-events: none;
 		display: block;
 	}

@@ -27,9 +27,9 @@ use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread::JoinHandle;
 
-use gitlord_core::graph::{self, Flow, GraphRow, BATCH};
-use gitlord_core::refs::RefIndex;
-use gitlord_core::repo;
+use gitlumiere_core::graph::{self, Flow, GraphRow, BATCH};
+use gitlumiere_core::refs::RefIndex;
+use gitlumiere_core::repo;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
@@ -94,17 +94,41 @@ impl Drop for GraphWorker {
     }
 }
 
-pub fn spawn(app: AppHandle, path: PathBuf, token: u64) -> GraphWorker {
+/// Start a walk.
+///
+/// `visible` is the refs the graph is rooted at — empty for every branch, which
+/// is the default. `pinned` is the refs whose lanes are held open on the left.
+/// Both are fixed for the lifetime of the worker: changing either restarts the
+/// walk, because lanes are assigned as the walk goes and a lane layout cannot
+/// be edited after the fact.
+pub fn spawn(
+    app: AppHandle,
+    path: PathBuf,
+    token: u64,
+    visible: Vec<String>,
+    pinned: Vec<String>,
+) -> GraphWorker {
     let (tx, rx) = std::sync::mpsc::channel();
     let handle = std::thread::Builder::new()
-        .name(format!("gitlord-graph-{token}"))
-        .spawn(move || run(app, path, token, rx))
+        .name(format!("gitlumiere-graph-{token}"))
+        .spawn(move || run(app, path, token, visible, pinned, rx))
         .expect("spawning the graph worker");
 
-    GraphWorker { token, tx, handle: Some(handle) }
+    GraphWorker {
+        token,
+        tx,
+        handle: Some(handle),
+    }
 }
 
-fn run(app: AppHandle, path: PathBuf, token: u64, rx: Receiver<GraphCmd>) {
+fn run(
+    app: AppHandle,
+    path: PathBuf,
+    token: u64,
+    visible: Vec<String>,
+    pinned: Vec<String>,
+    rx: Receiver<GraphCmd>,
+) {
     // Wait for the first request before touching the repository at all, so
     // opening a repo the user immediately navigates away from costs nothing.
     // A zero-row request is not a reason to start walking, and starting with a
@@ -121,12 +145,13 @@ fn run(app: AppHandle, path: PathBuf, token: u64, rx: Receiver<GraphCmd>) {
     let mut batch: Vec<GraphRow> = Vec::with_capacity(BATCH);
     let mut stopped = false;
 
-    let result = (|| -> gitlord_core::Result<usize> {
+    let result = (|| -> gitlumiere_core::Result<usize> {
         let repo = repo::open(&path)?;
         let refs = RefIndex::build(&repo)?;
-        let tips = graph::all_tips(&repo)?;
+        let tips = graph::tips_for(&repo, &visible)?;
+        let held = graph::ids_for(&repo, &pinned);
 
-        graph::walk(&repo, tips, &refs, |row| {
+        graph::walk_pinned(&repo, tips, &refs, &held, |row| {
             batch.push(row);
             total += 1;
 
@@ -169,7 +194,12 @@ fn run(app: AppHandle, path: PathBuf, token: u64, rx: Receiver<GraphCmd>) {
 
     let _ = app.emit(
         DONE_EVENT,
-        DoneEvent { token, total, complete: !stopped && error.is_none(), error },
+        DoneEvent {
+            token,
+            total,
+            complete: !stopped && error.is_none(),
+            error,
+        },
     );
 }
 

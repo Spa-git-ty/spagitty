@@ -1209,10 +1209,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "gitlord"
+name = "gitlumiere"
 version = "0.1.0"
 dependencies = [
- "gitlord-core",
+ "gitlumiere-core",
  "notify",
  "serde",
  "serde_json",
@@ -1222,11 +1222,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "gitlord-core"
+name = "gitlumiere-core"
 version = "0.1.0"
 dependencies = [
  "gix",
  "serde",
+ "tempfile",
  "thiserror 2.0.20",
 ]
 

@@ -1,0 +1,91 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Gate 1 of the pipeline: every Rust dependency's license is identified and
+# permitted, and nothing in the tree conflicts with GitLumiere shipping under
+# GPL-3.0-or-later. See docs/ci.md.
+
+[graph]
+all-features = false
+
+[licenses]
+# Permissive licenses only. Each of these can be combined into a GPL-3 work;
+# a copyleft dependency under a different copyleft would need a decision, not
+# a default, so none is listed here.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+    # GitLumiere's own crates.
+    "GPL-3.0-or-later",
+]
+confidence-threshold = 0.9
+
+[bans]
+# Two versions of the same crate is a smell, not a failure — the Tauri tree
+# carries a few. Worth seeing in the log without stopping the pipeline.
+multiple-versions = "warn"
+# Path dependencies within the workspace have no version; that is a wildcard
+# cargo-deny cannot resolve. Allow it — they are our own crates.
+wildcards = "allow"
+
+[advisories]
+# Gate 4 runs the same file with `cargo deny check advisories`.
+yanked = "warn"
+
+# Advisories accepted, with reasons (TASK-010).
+#
+# Gate 4 had never run before 2026-08-18: gate 3 failed on every build in this
+# repository's history, and Amendment 16 halts the pipeline at the first red
+# gate. Fixing gate 3 in TASK-005 let the pipeline reach gate 4 for the first
+# time, and it failed on sixteen advisories.
+#
+# **Every one is `unmaintained`. Not one is a vulnerability, unsound, or a
+# yanked release.** Eleven are the gtk-rs GTK3 bindings, which Tauri 2 links
+# against on Linux and which the advisory itself says have "no safe upgrade
+# available"; the rest are transitive build-time crates pulled in by the same
+# tree. None is a dependency GitLumiere chose, and none can be removed without
+# removing Tauri.
+#
+# They are listed one by one rather than by a blanket setting, so a *new*
+# advisory — including any actual vulnerability — still fails this gate. That is
+# the difference between recording an accepted risk and switching the gate off,
+# and Amendment 16 forbids only the second.
+#
+# Each entry is reviewed when Tauri is upgraded: the GTK3 set goes when Tauri
+# moves to GTK4, which is the upstream fix this project is waiting on.
+ignore = [
+    # --- gtk-rs GTK3 bindings, via tauri -> muda/tao/wry. No upgrade exists. ---
+    "RUSTSEC-2024-0411", # gdkwayland-sys 0.18.2
+    "RUSTSEC-2024-0412", # gdk 0.18.2
+    "RUSTSEC-2024-0413", # atk 0.18.2
+    "RUSTSEC-2024-0414", # gdkx11-sys 0.18.2
+    "RUSTSEC-2024-0415", # gtk 0.18.2
+    "RUSTSEC-2024-0416", # atk-sys 0.18.2
+    "RUSTSEC-2024-0417", # gdkx11 0.18.2
+    "RUSTSEC-2024-0418", # gdk-sys 0.18.2
+    "RUSTSEC-2024-0419", # gtk3-macros 0.18.2
+    "RUSTSEC-2024-0420", # gtk-sys 0.18.2
+
+    # --- build-time only, reached through the same tree ---
+    "RUSTSEC-2024-0370", # proc-macro-error 1.0.4 — proc macro expansion, not shipped
+    "RUSTSEC-2025-0075", # unic-char-range 0.9.0
+    "RUSTSEC-2025-0080", # unic-common 0.9.0
+    "RUSTSEC-2025-0081", # unic-char-property 0.9.0
+    "RUSTSEC-2025-0098", # unic-ucd-version 0.9.0
+    "RUSTSEC-2025-0100", # unic-ucd-ident 0.9.0
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

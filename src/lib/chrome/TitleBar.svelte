@@ -1,21 +1,27 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+
 	import { appWindow } from '$lib/chrome/window';
-	import { repo } from '$lib/repo.svelte';
-	import { theme } from '$lib/theme.svelte';
-	import Chip from '$lib/ui/Chip.svelte';
-	import RefChip from '$lib/ui/RefChip.svelte';
+	import RepoTabs from '$lib/chrome/RepoTabs.svelte';
 	import { version } from '$lib/version';
 
-	const head = $derived(repo.info?.head ?? null);
+	/**
+	 * The title bar is the workspace bar: what this program is, the way back to
+	 * every repository, and the ones open right now.
+	 *
+	 * The branch used to be here as a chip. It is on the toolbar's branch picker
+	 * one row below and on the active tab, and three copies of one fact is two
+	 * too many — so the bar says the name of the program and gets out of the way.
+	 */
 
 	/**
 	 * The window has no platform decorations, so these are the only close,
 	 * minimize and maximize controls there are.
 	 *
 	 * Deliberately neither macOS traffic lights nor Windows' full-height filled
-	 * blocks: small, evenly weighted glyph buttons that read as GitLord's own,
+	 * blocks: small, evenly weighted glyph buttons that read as GitLumiere's own,
 	 * and entirely colourless — they use the theme's neutral tokens and nothing
 	 * else, including the close button.
 	 */
@@ -36,23 +42,33 @@
 	tabindex="-1"
 	aria-label="Window"
 >
-	<span class="name">{repo.info?.name ?? 'GitLord'}</span>
+	<span class="name">GitLumiere</span>
 
-	{#if head}
-		<span class="muted" aria-hidden="true">·</span>
-		{#if head.branch}
-			<RefChip chip={{ name: head.branch, kind: 'branch', current: true }} />
-		{:else if head.short}
-			<RefChip chip={{ name: `detached at ${head.short}`, kind: 'branch', current: false }} />
-		{/if}
-	{/if}
+	<!--
+		Where every repository is, open or not. First in the strip because it is
+		the way back when nothing is open, and because that is where the reference
+		puts its equivalent.
+	-->
+	<button
+		class="all"
+		class:active={page.url.pathname === '/repos'}
+		onclick={() => goto('/repos')}
+	>
+		All repositories
+	</button>
+
+	<RepoTabs />
 
 	<span class="spacer"></span>
 
-	<Chip onclick={() => theme.toggle()} title="Switch between light and dark">
-		{theme.isDark ? 'light' : 'dark'}
-	</Chip>
-	<Chip onclick={() => goto('/search')} title="Log search">⌘K</Chip>
+	<!--
+		What the title bar says is what it knows: which repository, which branch,
+		what this build is. The theme belongs to Settings → Appearance, which is
+		the one place it is set; a second control here would be a second thing to
+		keep in step. There was also a `⌘K` chip that opened Log search — the
+		shortcut is `⌘F`, and writing a macOS key name on every platform for a
+		combination that does nothing is worse than no hint at all.
+	-->
 	<span class="note" title={version.license}>{version.licenseShort} · v{version.number}</span>
 
 	<div class="controls">
@@ -119,7 +135,29 @@
 		background: var(--soft);
 	}
 
+	.all {
+		flex: none;
+		padding: 3px 10px;
+		border-radius: var(--r-pill);
+		color: var(--muted);
+		font-size: var(--fs-secondary);
+		white-space: nowrap;
+	}
+
+	.all:hover {
+		color: var(--ink);
+		background: var(--soft);
+	}
+
+	.all.active {
+		color: var(--ink);
+		background: var(--soft);
+	}
+
+	/* Bold, because it is the one thing on this bar that is not a control: it
+	   says which program you are looking at, and everything else says state. */
 	.name {
+		font-weight: 700;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
