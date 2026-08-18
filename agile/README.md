@@ -74,7 +74,7 @@ rather than an audit.
 | [FEAT-015](items/FEAT-015-rebase-execution.md) | Rebase execution | 1E | Partial |
 | [FEAT-016](items/FEAT-016-conflict-resolution-writes.md) | Conflict resolution writes | 1D | Backlog |
 | [FEAT-017](items/FEAT-017-forge-integration.md) | Forge integration | 1H, 1K | Backlog |
-| [FEAT-018](items/FEAT-018-fetch-and-push.md) | Fetch and push | chrome | Done |
+| [FEAT-018](items/FEAT-018-fetch-and-push.md) | Fetch and push | chrome | Partial |
 | [FEAT-019](items/FEAT-019-commit-signing.md) | Commit signing | 1C, 1K | Backlog |
 | [FEAT-020](items/FEAT-020-show-git-commands.md) | Show the git command behind each action | all, 1K | Done |
 | [FEAT-021](items/FEAT-021-themes.md) | Themes, and a title bar that stops lying | chrome, 1K | Done |
@@ -129,7 +129,7 @@ of its own.
 | [TASK-010](items/TASK-010-security-gate-advisories.md) | Gate 4 fails on unmaintained advisories | — | Done |
 | [TASK-011](items/TASK-011-secret-scanning-never-ran.md) | Secret scanning has never run | — | Done |
 | [TASK-012](items/TASK-012-record-drift.md) | The working record has drifted from the tree | — | Done |
-| [TASK-013](items/TASK-013-backfill-document-sets.md) | Backfill the missing plan and testing documents | — | Backlog |
+| [TASK-013](items/TASK-013-backfill-document-sets.md) | Backfill the missing plan and testing documents | — | Done |
 
 ## Skipped identifiers
 
@@ -155,8 +155,3 @@ missing documents are not listed here, and fails again if a row here is stale.
 | BUG-001 | plan, automated, sweep | Fixed inside FEAT-003's change before it had a branch of its own; its item document says so. No separate work to plan. |
 | FEAT-013 | plan, automated, sweep | `Partial`. The plan is written when the remaining Branches-screen work starts. |
 | FEAT-015 | plan, automated, sweep | `Partial`. Same — written when the frontend work starts. |
-| FEAT-018 | plan, automated, sweep | Shipped inside FEAT-038 without its own item being closed. TASK-013. |
-| FEAT-036 | plan, automated, sweep | TASK-013. |
-| FEAT-038 | plan, automated, sweep | TASK-013. |
-| FEAT-039 | plan, automated, sweep | TASK-013. |
-| TASK-011 | plan, automated, sweep | TASK-013. |

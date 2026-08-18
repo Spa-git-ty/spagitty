@@ -2,7 +2,7 @@
 
 # TASK-013 — Backfill the missing plan and testing documents
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done on `task/TASK-013-backfill-documents`.
 **Surface:** `agile/plans/`, `agile/testing/`.
 **Recorded by:** TASK-012, which found these gaps and declared them out of its
 own scope.
@@ -24,6 +24,15 @@ Fifteen documents. The work is written from the branches, the commit messages
 and the tests that already exist, so this is recovery of a record, not
 invention: anything that cannot be recovered honestly is written as unknown
 rather than reconstructed.
+
+**What doing it found.** FEAT-018 was not `Done`. TASK-012 read it as finished
+from the live toolbar buttons; reading the code for the plan showed that three
+of the five things the item scoped — pruning as an explicit choice, an upstream
+on first push, per-remote fetch — were never built, and that pruning happens
+silently on every fetch although the item's own notes call it destructive. The
+item is now `Partial` and its plan says what is still owed. Writing a plan for
+work someone else called done turns out to be a second audit, which is an
+argument for writing them at the time.
 
 ## Scope
 
