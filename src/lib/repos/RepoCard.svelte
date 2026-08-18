@@ -51,7 +51,7 @@
 				<span class="note">no commits yet</span>
 			{/if}
 			{#if card.branches !== null && card.branches > 1}
-				<span class="note">{card.branches} branches</span>
+				<span class="note count">{card.branches} branches</span>
 			{/if}
 		</div>
 
@@ -143,6 +143,15 @@
 		align-items: center;
 		gap: 6px;
 		min-width: 0;
+	}
+
+	/*
+	 * BUG-006. The branch name is the part that gives way, never the count.
+	 * "7 branches" is four characters of information that a card is useless
+	 * without; the branch name has an ellipsis and a `title` to fall back on.
+	 */
+	.branch .count {
+		flex: none;
 	}
 
 	/* The tail of a path identifies the directory, so the head gets the

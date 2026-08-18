@@ -39,6 +39,18 @@
 		max-width: 100%;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		/*
+		 * BUG-006. The three rules above promise a chip that ellipsises rather
+		 * than pushing its neighbours out of the box, and without this one they
+		 * do not keep that promise anywhere the chip is a flex item.
+		 *
+		 * A flex item's `min-width` defaults to `auto`, whose used value is the
+		 * content's own width — so the chip refuses to shrink below a long
+		 * branch name, `max-width: 100%` never gets to apply, and the overflow
+		 * lands on top of whatever sits beside it. On the All repositories card
+		 * that is the "N branches" count, which is what the overlap was.
+		 */
+		min-width: 0;
 	}
 
 	.ref.current {

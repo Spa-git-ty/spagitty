@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { click, render } from '../../testing/mount';
 import type { RepoSummary } from '$lib/types';
@@ -151,5 +152,73 @@ describe('RepoCard', () => {
 		const many = render(RepoCard, { card: card({ branches: 6 }) });
 		expect(many.text()).toContain('6 branches');
 		many.destroy();
+	});
+
+	it('keeps a long branch name and the count as separate elements', () => {
+		const view = render(
+			RepoCard,
+			{ card: card({ branch: 'correzioni-e-rilavorazioni-su-i-bilanci', branches: 7 }) }
+		);
+
+		// Both are present and neither has swallowed the other's text.
+		expect(view.get('.ref').textContent).toContain('correzioni-e-rilavorazioni');
+		expect(view.get('.count').textContent).toBe('7 branches');
+
+		view.destroy();
+	});
+});
+
+/**
+ * BUG-006 — a long branch name overlapping the branch count.
+ *
+ * These assertions read the stylesheets rather than a rendered card, for the
+ * reason `src/lib/ui/btn.test.ts` sets out: the test environment mounts
+ * components without applying any CSS, so `getComputedStyle` here would report
+ * the same thing whether the rules exist or not. What can be checked honestly
+ * is the rule that caused it.
+ *
+ * The cause was not the ellipsis rules — those were already right. It was the
+ * flexbox automatic minimum size: a flex item's `min-width` defaults to `auto`,
+ * whose used value is the content's own width, so the chip refused to shrink
+ * below a long branch name and `max-width: 100%` never applied. The overflow
+ * then painted over the "N branches" span beside it.
+ */
+describe('BUG-006 — the chip gives way before its neighbours', () => {
+	const chip = readFileSync('src/lib/ui/RefChip.svelte', 'utf8');
+	const repoCard = readFileSync('src/lib/repos/RepoCard.svelte', 'utf8');
+
+	/** The body of one CSS rule, by selector, out of a component's `<style>`. */
+	function rule(source: string, selector: string): string {
+		const found = new RegExp(`${selector.replace(/[.\s]/g, (c) => `\\${c}`)}\\s*\\{([^}]*)\\}`).exec(
+			source
+		);
+		if (!found) throw new Error(`no rule for ${selector}`);
+		return found[1];
+	}
+
+	it('lets the chip shrink below its content width', () => {
+		expect(rule(chip, '.ref')).toMatch(/min-width:\s*0/);
+	});
+
+	/** Without these the `min-width` has nothing to do; all four work together. */
+	it('still asks the chip to ellipsise rather than wrap', () => {
+		const ref = rule(chip, '.ref');
+		expect(ref).toMatch(/max-width:\s*100%/);
+		expect(ref).toMatch(/overflow:\s*hidden/);
+		expect(ref).toMatch(/text-overflow:\s*ellipsis/);
+		expect(ref).toMatch(/white-space:\s*nowrap/);
+	});
+
+	/**
+	 * The branch name is the part that gives way, never the count: "7 branches"
+	 * is four characters a card is useless without, and the name has an ellipsis
+	 * and a `title` to fall back on.
+	 */
+	it('holds the branch count at its full width', () => {
+		expect(rule(repoCard, '.branch .count')).toMatch(/flex:\s*none/);
+	});
+
+	it('keeps the row that holds them able to shrink', () => {
+		expect(rule(repoCard, '.branch')).toMatch(/min-width:\s*0/);
 	});
 });
