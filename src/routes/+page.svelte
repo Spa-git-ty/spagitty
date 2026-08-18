@@ -133,7 +133,7 @@
 		{:else if graph.count === 0}
 			<div class="empty"><span class="note">Walking history…</span></div>
 		{:else}
-			<CommitRows onopen={openDiff} />
+			<CommitRows onopen={openDiff} onwip={() => goto('/changes')} />
 		{/if}
 
 		<footer class="foot">

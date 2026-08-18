@@ -18,13 +18,13 @@
 			key: 'signCommits',
 			label: 'Sign my commits',
 			what: 'Pass --gpg-sign when committing, using whichever program git is configured with.',
-			pending: 'FEAT-019 — committing does not read this yet.'
+			pending: 'Committing does not read this yet.'
 		},
 		{
 			key: 'confirmHistoryRewrite',
 			label: 'Ask before rewriting history',
 			what: 'Confirm before anything that changes commits that already exist.',
-			pending: 'FEAT-015 — nothing in this build rewrites history yet.'
+			pending: 'Nothing in this build rewrites history yet.'
 		},
 		{
 			key: 'showGitCommands',

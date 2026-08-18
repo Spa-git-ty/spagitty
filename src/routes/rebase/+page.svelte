@@ -69,7 +69,7 @@
 			<Btn disabled={!rebase.edited} onclick={() => rebase.reset()}>Reset</Btn>
 			<Btn
 				disabled
-				title="Running a rebase is FEAT-015. This screen plans it; git will execute it."
+				title="This screen plans the rebase; running it is not built yet."
 			>
 				Apply
 			</Btn>

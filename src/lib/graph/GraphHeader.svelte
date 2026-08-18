@@ -180,6 +180,7 @@
 			<div
 				class="divider"
 				class:fixed={column.computed}
+				class:last={index === shown.length - 1}
 				title={column.computed
 					? 'The graph column is sized to the lanes on screen'
 					: `Resize ${column.label} — double-click to reset`}
@@ -263,6 +264,19 @@
 		z-index: 1;
 	}
 
+	/*
+	 * The last column's divider sits wholly inside it.
+	 *
+	 * Every other divider straddles the boundary between two columns, which is
+	 * what makes it feel like it belongs to both. The last one has nothing on
+	 * its right but the window edge, so the same -3px put a third of the grab
+	 * area off-screen and the rest against the frame — the message column, which
+	 * is last by default, could not be resized at all.
+	 */
+	.divider.last {
+		right: 0;
+	}
+
 	.divider::after {
 		content: '';
 		position: absolute;
@@ -271,6 +285,12 @@
 		width: 1.5px;
 		height: 100%;
 		background: var(--soft);
+	}
+
+	/* Its line stays on the column's own edge rather than moving in with it. */
+	.divider.last::after {
+		left: auto;
+		right: 0;
 	}
 
 	.divider:hover::after {

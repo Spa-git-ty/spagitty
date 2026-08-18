@@ -48,8 +48,8 @@
 		</div>
 
 		<footer class="actions">
-			<Btn disabled title="Reviewing needs a connected account — FEAT-017.">Review</Btn>
-			<Btn disabled title="Merging needs a connected account — FEAT-017.">Merge</Btn>
+			<Btn disabled title="Reviewing needs a connected account">Review</Btn>
+			<Btn disabled title="Merging needs a connected account">Merge</Btn>
 		</footer>
 	{/if}
 </section>

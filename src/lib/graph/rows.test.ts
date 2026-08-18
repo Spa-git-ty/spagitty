@@ -10,9 +10,13 @@ import type { GraphRow, RefChip } from '$lib/types';
  * tested separately; here the rows are the input and the DOM is the output.
  */
 vi.mock('$lib/graph/store.svelte', async () => await import('../../testing/graph-store.svelte'));
+// `overlay.wip` reads `repo.counts`, which is what puts the uncommitted-changes
+// row on screen at all.
+vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
 
 import { readFileSync } from 'node:fs';
 import { calls, control } from '../../testing/graph-store.svelte';
+import { control as repoControl } from '../../testing/repo-store.svelte';
 import { columns } from './columns.svelte';
 
 const componentSource = readFileSync('src/lib/graph/CommitRows.svelte', 'utf8');
@@ -233,6 +237,42 @@ describe('CommitRows', () => {
 		expect(times[2]).not.toBeNull();
 
 		view.destroy();
+	});
+
+	/**
+	 * FEAT-031 request 4. `CommitRows` has always taken an `onwip` prop and
+	 * `src/routes/+page.svelte` never passed one, so the row was dead: clicking
+	 * "Uncommitted changes" did nothing at all.
+	 */
+	it('opens the working copy when the uncommitted-changes row is clicked', () => {
+		const onwip = vi.fn();
+		repoControl.setCounts({
+			commits: 3,
+			branches: 1,
+			working: 3,
+			staged: 2,
+			conflicts: 0,
+			stashes: 0,
+			tags: 0,
+			submodules: 0
+		});
+		const view = render(CommitRows, { onwip });
+
+		const row = view.get('.wip');
+		expect(row.tagName).toBe('BUTTON');
+		expect(row.getAttribute('title')).toBe('Open the working copy');
+
+		row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		flushSync();
+
+		expect(onwip).toHaveBeenCalledTimes(1);
+		view.destroy();
+	});
+
+	/** The graph screen must actually pass the handler, which is what was missing. */
+	it('is given a handler by the graph screen', () => {
+		const page = readFileSync('src/routes/+page.svelte', 'utf8');
+		expect(page).toMatch(/<CommitRows[^>]*onwip=/);
 	});
 
 	it('starts at the design lane width', () => {

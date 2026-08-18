@@ -48,10 +48,6 @@
 					<Btn primary onclick={() => goto('/settings#accounts')}>
 						Settings → Accounts
 					</Btn>
-					<p class="note">
-						Nothing in this application talks to a network today. Connecting an
-						account is FEAT-017.
-					</p>
 				</div>
 			{:else if requests.all.length === 0}
 				<p class="note">Nothing open. Every pull request on this repository is closed.</p>
@@ -85,13 +81,6 @@
 		{/if}
 	</div>
 
-	<footer class="foot">
-		<span class="note">
-			GitLumiere does not talk to any hosting service. There is no network client in this
-			build, and this screen makes no request — it shows what a connected account would
-			put here.
-		</span>
-	</footer>
 </div>
 
 <style>
@@ -163,9 +152,4 @@
 		max-width: 520px;
 	}
 
-	.foot {
-		flex: none;
-		padding: 8px 12px;
-		border-top: 1.5px solid var(--soft);
-	}
 </style>

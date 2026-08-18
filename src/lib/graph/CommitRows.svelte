@@ -472,7 +472,7 @@
 			The working copy, above the newest commit — which is where it belongs
 			in time, not a compromise for being unable to give it a row index.
 		-->
-		<button class="wip" onclick={() => onwip?.()}>
+		<button class="wip" title="Open the working copy" onclick={() => onwip?.()}>
 			<span class="wip-node" aria-hidden="true"></span>
 			<span class="wip-text">
 				Uncommitted changes
@@ -876,6 +876,8 @@
 		border-bottom: 1.5px solid var(--soft);
 		text-align: left;
 		flex: none;
+		/* It opens the working copy, so it has to look like it does something. */
+		cursor: pointer;
 	}
 
 	.wip:hover {

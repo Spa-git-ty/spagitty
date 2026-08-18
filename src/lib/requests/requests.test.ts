@@ -215,7 +215,7 @@ describe('RequestDetail', () => {
 		view.destroy();
 	});
 
-	it('disables every action and names what would build it', () => {
+	it('disables every action and says what it needs, without naming a work item', () => {
 		// Reviewing, approving and merging all need a host, and GitLumiere talks
 		// to none. A control that looks live and does nothing is worse than one
 		// that explains itself.
@@ -226,7 +226,10 @@ describe('RequestDetail', () => {
 		expect(buttons.length).toBeGreaterThan(0);
 		for (const button of buttons) {
 			expect(button.disabled).toBe(true);
-			expect(button.title).toContain('FEAT-017');
+			// It says what is missing — a connected account — rather than quoting
+			// an identifier only this project's own record can resolve.
+			expect(button.title).toContain('connected account');
+			expect(button.title).not.toMatch(/FEAT-\d/);
 		}
 		view.destroy();
 	});

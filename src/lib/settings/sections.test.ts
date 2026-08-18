@@ -145,14 +145,15 @@ describe('IdentitySection', () => {
 });
 
 describe('BehaviourSection', () => {
-	it('says which item will make each toggle take effect', async () => {
+	it('says a toggle is not honoured yet, without naming a work item', async () => {
 		// A switch that silently does nothing is worse than one that says it is
 		// waiting on something.
 		await settings.load();
 		const mounted = render(BehaviourSection, {});
 
 		expect(mounted.text()).toContain('Persisted, not yet honoured');
-		expect(mounted.text()).toContain('FEAT-015');
+		expect(mounted.text()).toContain('rewrites history');
+		expect(mounted.text()).not.toMatch(/FEAT-\d/);
 
 		mounted.destroy();
 	});
@@ -256,11 +257,12 @@ describe('AppearanceSection', () => {
 });
 
 describe('AccountsSection', () => {
-	it('says no account is connected and which item connects one', () => {
+	it('says no account is connected, and what connecting one takes', () => {
 		const mounted = render(AccountsSection, {});
 
 		expect(mounted.text()).toContain('No account is connected');
-		expect(mounted.text()).toContain('FEAT-017');
+		expect(mounted.text()).toContain('ssh key');
+		expect(mounted.text()).not.toMatch(/FEAT-\d/);
 
 		mounted.destroy();
 	});

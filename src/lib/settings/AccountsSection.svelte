@@ -17,14 +17,18 @@
 	</header>
 
 	<p class="note">
-		GitLumiere reads pull requests from whichever service hosts a repository, and no service is
-		connected. Connecting one — the host, an ssh key and a token in the OS keychain — is
-		FEAT-017.
+		GitLumiere reads pull requests from whichever service hosts a repository. Connecting one
+		takes the host, an ssh key and a token, kept in the OS keychain.
 	</p>
 
+	<!--
+		The privacy promise stays. It is not the application narrating its own
+		limitations — it is a commitment about what GitLumiere does with the
+		user's repositories, which is exactly the sort of thing a person cannot
+		see for themselves and would want to know before connecting an account.
+	-->
 	<p class="note">
-		Nothing in this build talks to a network. No HTTP client is linked into either the Rust
-		or the JavaScript side, which is a stronger promise than a setting that is switched off.
+		Nothing here leaves this machine except through a service you connect yourself.
 	</p>
 </section>
 

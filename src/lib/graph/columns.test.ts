@@ -10,6 +10,7 @@
  * that could disagree with the width.
  */
 
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { columns } from './columns.svelte';
 
@@ -93,5 +94,61 @@ describe('resetting', () => {
 		expect(columns.shown.map((c) => c.id)).toEqual(['refs', 'graph', 'message']);
 		expect(shownById('refs').width).toBe(186);
 		expect(shownById('message').fills).toBe(true);
+	});
+});
+
+/**
+ * BUG-009 — the message column could not be resized.
+ *
+ * The store always allowed it: `message` fills but is not `computed`, so
+ * `resize` accepts it. What stopped it was the handle. Every divider sits at
+ * `right: -3px`, straddling the boundary between two columns — but the last
+ * column has nothing on its right except the window edge, so a third of its
+ * grab area was off-screen and the rest sat against the frame. The message
+ * column is last by default, so in practice it had no handle at all.
+ *
+ * These read the stylesheet rather than a rendered header, for the reason
+ * `src/lib/ui/btn.test.ts` sets out: the test environment applies no CSS, so a
+ * geometry assertion here would pass whatever the rules said.
+ */
+describe('BUG-009 — the last column has a grabbable handle', () => {
+	const header = readFileSync('src/lib/graph/GraphHeader.svelte', 'utf8');
+
+	function rule(selector: string): string {
+		const found = new RegExp(
+			`${selector.replace(/[.]/g, '\\.')}\\s*\\{([^}]*)\\}`
+		).exec(header);
+		if (!found) throw new Error(`no rule for ${selector}`);
+		return found[1];
+	}
+
+	it('pulls the last divider fully inside the column', () => {
+		expect(rule('.divider.last')).toMatch(/right:\s*0/);
+	});
+
+	it('leaves every other divider straddling its boundary', () => {
+		expect(rule('.divider')).toMatch(/right:\s*-3px/);
+	});
+
+	it('marks the last column in the markup, or the rule can never apply', () => {
+		expect(header).toMatch(/class:last=\{index === shown\.length - 1\}/);
+	});
+
+	/** The store's half was never the problem, and must stay that way. */
+	it('still lets the store resize the filling column', () => {
+		columns.reset();
+		const before = columns.width('message');
+		columns.resize('message', 420);
+
+		expect(columns.width('message')).toBe(420);
+		expect(columns.width('message')).not.toBe(before);
+	});
+
+	it('refuses only the computed column', () => {
+		columns.reset();
+		const graph = columns.width('graph');
+		columns.resize('graph', 999);
+
+		expect(columns.width('graph')).toBe(graph);
 	});
 });

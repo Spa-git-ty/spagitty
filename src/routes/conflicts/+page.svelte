@@ -45,10 +45,10 @@
 		<div class="right">
 			{#if conflicts.loading}<span class="note">Reading…</span>{/if}
 			<Btn onclick={() => conflicts.load()}>Refresh</Btn>
-			<Btn disabled title="Marking a file resolved is FEAT-016, and is not built yet.">
+			<Btn disabled title="Marking a file resolved is not built yet">
 				Mark resolved
 			</Btn>
-			<Btn disabled title="Aborting discards work, so it waits for FEAT-016.">
+			<Btn disabled title="Aborting discards work, and is not built yet">
 				Abort {conflicts.operation === 'none' ? '' : conflicts.operationLabel}
 			</Btn>
 		</div>
@@ -120,8 +120,7 @@
 
 	<footer class="foot">
 		<span class="note">
-			This screen only reads. Nothing here writes to the index or the working copy —
-			resolving is FEAT-016.{#if escapeHatch}
+			This screen only reads; resolving is not built yet.{#if escapeHatch}
 				Today, <span class="mono">{escapeHatch}</span> is what undoes the operation.
 			{/if}
 		</span>
