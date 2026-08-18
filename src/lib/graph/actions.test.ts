@@ -46,7 +46,16 @@ const reload = vi.fn(() => Promise.resolve());
 vi.mock('$lib/graph/store.svelte', () => ({ graph: { reload: () => reload() } }));
 
 const repoRefresh = vi.fn(() => Promise.resolve());
-vi.mock('$lib/repo.svelte', () => ({ repo: { refresh: () => repoRefresh() } }));
+
+let working = 0;
+vi.mock('$lib/repo.svelte', () => ({
+	repo: {
+		refresh: () => repoRefresh(),
+		get counts() {
+			return { working };
+		}
+	}
+}));
 
 let confirmHistoryRewrite = true;
 vi.mock('$lib/settings/store.svelte', () => ({
@@ -62,6 +71,8 @@ vi.mock('$lib/settings/store.svelte', () => ({
  * this file and `() => api` would dereference the binding before it exists.
  */
 const api = vi.hoisted(() => ({
+	pull: vi.fn(() => Promise.resolve('')),
+	stashPush: vi.fn(() => Promise.resolve()),
 	reset: vi.fn(() => Promise.resolve()),
 	revert: vi.fn(() => Promise.resolve()),
 	cherryPick: vi.fn(() => Promise.resolve()),
@@ -91,6 +102,7 @@ function lastConfirmation(): Asked {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	working = 0;
 	confirmHistoryRewrite = true;
 	confirm.mockResolvedValue(true);
 	prompt.mockResolvedValue('given-name');
@@ -521,5 +533,140 @@ describe('remotes', () => {
 		await actions.pushCurrent();
 
 		expect(failed).toHaveBeenCalledWith('Could not push', boom);
+	});
+});
+
+/**
+ * FEAT-038 — pull, and the uncommitted work in the way of it.
+ *
+ * Pulling onto a dirty working copy is where git's own refusal is correct and
+ * useless: "Your local changes would be overwritten by merge" names the problem
+ * and leaves the user to work out that the answer is a stash. The answer is
+ * offered instead — and the ordering around a *failed* pull is the part that
+ * could lose work, so it is the part most heavily asserted.
+ */
+describe('pull', () => {
+	it('fast-forwards without asking, on a clean working copy', async () => {
+		await actions.pull();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(api.pull).toHaveBeenCalledWith('fastForwardOnly', '');
+		expect(ok).toHaveBeenCalledWith('Pulled', undefined);
+	});
+
+	/** Merging and rebasing both write history and can stop in a conflict. */
+	it.each(['merge', 'rebase'] as const)('asks before it %ss, even when clean', async (mode) => {
+		await actions.pull(mode);
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(api.pull).toHaveBeenCalledWith(mode, '');
+	});
+
+	it('marks a rebase pull as the destructive one', async () => {
+		await actions.pull('rebase');
+		expect(lastConfirmation().danger).toBe(true);
+
+		await actions.pull('merge');
+		expect(lastConfirmation().danger).toBe(false);
+	});
+
+	it('pulls nothing when the confirmation is declined', async () => {
+		confirm.mockResolvedValueOnce(false);
+		await actions.pull('merge');
+		expect(api.pull).not.toHaveBeenCalled();
+	});
+
+	describe('with uncommitted changes', () => {
+		it('asks first, naming how many there are', async () => {
+			working = 3;
+			await actions.pull();
+
+			expect(confirm).toHaveBeenCalledTimes(1);
+			expect(lastConfirmation().title).toContain('3 uncommitted changes');
+		});
+
+		it('says "change" for one of them', async () => {
+			working = 1;
+			await actions.pull();
+			expect(lastConfirmation().title).toContain('1 uncommitted change');
+		});
+
+		it('stashes, pulls, then puts the changes back', async () => {
+			working = 2;
+			await actions.pull();
+
+			expect(api.stashPush).toHaveBeenCalledWith('Before pull', true);
+			expect(api.pull).toHaveBeenCalledWith('fastForwardOnly', '');
+			expect(api.stashAction).toHaveBeenCalledWith(0, 'pop');
+		});
+
+		it('does none of it when declined', async () => {
+			working = 2;
+			confirm.mockResolvedValueOnce(false);
+			await actions.pull();
+
+			expect(api.stashPush).not.toHaveBeenCalled();
+			expect(api.pull).not.toHaveBeenCalled();
+		});
+
+		/** Nothing has been touched yet, so nothing needs putting back. */
+		it('does not pull when the stash itself fails', async () => {
+			working = 2;
+			api.stashPush.mockRejectedValueOnce(new Error('cannot stash'));
+
+			await actions.pull();
+
+			expect(api.pull).not.toHaveBeenCalled();
+			expect(api.stashAction).not.toHaveBeenCalled();
+			expect(failed).toHaveBeenCalledWith(
+				'Could not stash your changes, so nothing was pulled',
+				expect.anything()
+			);
+		});
+
+		/**
+		 * The one that could lose work. Restoring on top of a half-finished pull
+		 * would hand back a working copy in a state neither the user nor git put
+		 * it in — so the changes stay in the stash, and the message says so.
+		 */
+		it('leaves the changes in the stash when the pull fails', async () => {
+			working = 2;
+			api.pull.mockRejectedValueOnce(new Error('would be overwritten'));
+
+			await actions.pull();
+
+			expect(api.stashAction).not.toHaveBeenCalled();
+			expect(failed).toHaveBeenCalledWith(
+				'Could not pull — your changes are in the stash',
+				expect.anything()
+			);
+		});
+
+		/** Pulled but not restored is a different situation, and says which. */
+		it('distinguishes a failed restore from a failed pull', async () => {
+			working = 2;
+			api.stashAction.mockRejectedValueOnce(new Error('conflict'));
+
+			await actions.pull();
+
+			expect(api.pull).toHaveBeenCalled();
+			expect(failed).toHaveBeenCalledWith(
+				'Pulled, but could not put your changes back — they are in the stash',
+				expect.anything()
+			);
+		});
+
+		it('re-reads afterwards, whichever way it went', async () => {
+			working = 2;
+			await actions.pull();
+			expect(repoRefresh).toHaveBeenCalled();
+
+			vi.clearAllMocks();
+			working = 2;
+			confirm.mockResolvedValue(true);
+			api.pull.mockRejectedValueOnce(new Error('nope'));
+			await actions.pull();
+			expect(repoRefresh).toHaveBeenCalled();
+		});
 	});
 });

@@ -3,7 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { clone } from '$lib/clone/store.svelte';
 	import { commandLog } from '$lib/commandlog/store.svelte';
-	import { fetchAll, pushCurrent } from '$lib/graph/actions';
+	import { fetchAll, pull, pushCurrent } from '$lib/graph/actions';
+	import Menu from '$lib/ui/Menu.svelte';
+	import type { MenuItem } from '$lib/ui/menu';
 	import { repo } from '$lib/repo.svelte';
 	import { settings } from '$lib/settings/store.svelte';
 
@@ -26,6 +28,8 @@
 		/** What it does, for the actions that are not. */
 		act?: () => void;
 		title?: string;
+		/** Offers a choice of how, on right-click. */
+		menu?: boolean;
 	}
 
 	/**
@@ -33,12 +37,53 @@
 	 * moves work about. Grouping is how a row of eight glyphs becomes something
 	 * you can aim at without reading every label.
 	 */
+	let pullMenu = $state<{ x: number; y: number } | null>(null);
+
+	function openPullMenu(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		pullMenu = { x: event.clientX, y: event.clientY };
+	}
+
+	/**
+	 * The three ways to pull, offered rather than assumed.
+	 *
+	 * Clicking Pull takes the fast-forward-only path, because it is the one that
+	 * cannot go wrong: it either moves the branch forward or refuses and says so.
+	 * Merging and rebasing both write history and both can stop in a conflict, so
+	 * they are a deliberate choice rather than what a single click does.
+	 */
+	const PULL_ITEMS: MenuItem[] = [
+		{ heading: 'Pull' },
+		{
+			id: 'ff',
+			label: 'Fast-forward only',
+			note: 'never writes a commit',
+			run: () => pull('fastForwardOnly')
+		},
+		{ id: 'merge', label: 'Merge if it cannot fast-forward', run: () => pull('merge') },
+		{
+			id: 'rebase',
+			label: 'Rebase my commits on top',
+			note: 'rewrites them',
+			danger: true,
+			run: () => pull('rebase')
+		}
+	];
+
 	const GROUPS: ToolItem[][] = [
 		[
 			{ glyph: '↺', label: 'Undo', title: PENDING },
 			{ glyph: '↻', label: 'Redo', title: PENDING }
 		],
 		[
+			{
+				glyph: '⇓',
+				label: 'Pull',
+				title: 'Fetch and bring the upstream in — right-click for how',
+				act: () => pull(),
+				menu: true
+			},
 			{ glyph: '⇩', label: 'Fetch', title: 'Fetch every remote, pruning', act: () => fetchAll() },
 			{
 				glyph: '⇧',
@@ -55,6 +100,16 @@
 		]
 	];
 </script>
+
+{#if pullMenu}
+	<Menu
+		x={pullMenu.x}
+		y={pullMenu.y}
+		label="How to pull"
+		items={PULL_ITEMS}
+		onclose={() => (pullMenu = null)}
+	/>
+{/if}
 
 <div class="toolbar">
 	<div class="pickers">
@@ -89,6 +144,7 @@
 				<button
 					class="tool"
 					title={action.title}
+					oncontextmenu={(event) => action.menu && openPullMenu(event)}
 					onclick={() => (action.act ? action.act() : action.href && goto(action.href))}
 				>
 					<span aria-hidden="true">{action.glyph}</span>
@@ -124,14 +180,30 @@
 </div>
 
 <style>
+	/*
+	 * Three tracks, and the outer two are equal.
+	 *
+	 * The actions used to be centred with `margin: 0 auto` inside a flex row
+	 * whose first child grows, which centres them in *what is left over* rather
+	 * than in the bar — so they sat right of centre by half the pickers' width.
+	 * Equal outer tracks put them in the middle of the window, which is where
+	 * they look aimed.
+	 */
 	.toolbar {
 		height: var(--toolbar-h);
 		flex: none;
-		display: flex;
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
 		gap: 16px;
 		padding: 0 12px;
 		border-bottom: 1.5px solid var(--line);
+	}
+
+	/* The command log toggle rides in the third track, at its right edge. */
+	.toolbar > :global(.vr:last-of-type),
+	.toolbar > .tool {
+		justify-self: end;
 	}
 
 	.pickers {
@@ -190,6 +262,5 @@
 		display: flex;
 		align-items: center;
 		gap: 16px;
-		margin: 0 auto;
 	}
 </style>

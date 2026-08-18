@@ -349,6 +349,14 @@ export type ResetMode = 'soft' | 'mixed' | 'hard';
 /** What dropping one branch onto another can turn into. */
 export type Integration = 'merge' | 'mergeNoFastForward' | 'fastForward' | 'rebase';
 
+/**
+ * How a pull brings the remote's commits in.
+ *
+ * `fastForwardOnly` is the safe one: it refuses unless the local branch can
+ * simply move forward, so it can never write a merge commit or leave a conflict.
+ */
+export type PullMode = 'fastForwardOnly' | 'merge' | 'rebase';
+
 /** What to do with a stash entry. */
 export type StashAction = 'apply' | 'pop' | 'drop';
 

@@ -26,6 +26,7 @@ import type {
 	Licenses,
 	OpenResult,
 	Integration,
+	PullMode,
 	RebaseEdit,
 	RebasePreview,
 	RebaseTodo,
@@ -368,6 +369,18 @@ export function stashAction(index: number, action: StashAction): Promise<void> {
 /** Fetch, pruning refs the remote no longer has. An empty remote fetches all. */
 export function fetch(remote = ''): Promise<string> {
 	return invoke('fetch', { remote });
+}
+
+/**
+ * Pull: fetch and integrate, in one `git pull`.
+ *
+ * One call rather than fetch-then-merge, because git resolves which upstream the
+ * current branch tracks — from `branch.<name>.remote` and `branch.<name>.merge`,
+ * either of which may be configured per branch — and that resolution is exactly
+ * the part not worth reimplementing.
+ */
+export function pull(mode: PullMode, remote = ''): Promise<string> {
+	return invoke('pull', { remote, mode });
 }
 
 /** Push. `force` is `--force-with-lease`, never a plain force. */

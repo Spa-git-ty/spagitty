@@ -60,6 +60,7 @@ pub fn run() {
             commands::create_tag,
             commands::delete_tag,
             commands::stash_action,
+            commands::pull,
             commands::fetch,
             commands::push,
             commands::search_start,

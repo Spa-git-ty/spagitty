@@ -165,6 +165,11 @@ pub fn fetch(repo: &gix::Repository, remote: &str) -> Result<String> {
     shell::fetch(workdir(repo)?, remote)
 }
 
+/// Pull: fetch and bring the upstream's commits into the current branch.
+pub fn pull(repo: &gix::Repository, remote: &str, mode: shell::PullMode) -> Result<String> {
+    shell::pull(workdir(repo)?, remote, mode)
+}
+
 /// Push, with `--force-with-lease` when `force` is set.
 pub fn push(repo: &gix::Repository, remote: &str, refspec: &str, force: bool) -> Result<String> {
     shell::push(workdir(repo)?, remote, refspec, force)

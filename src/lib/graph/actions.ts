@@ -30,7 +30,7 @@ import { repo } from '../repo.svelte';
 import { settings } from '../settings/store.svelte';
 import { dialog } from '../ui/dialog.svelte';
 import { notice } from '../ui/notice.svelte';
-import type { Integration, ResetMode, StashAction } from '../types';
+import type { Integration, PullMode, ResetMode, StashAction } from '../types';
 
 /** Re-read HEAD, the counts and the walk. */
 async function refresh(): Promise<void> {
@@ -395,6 +395,94 @@ export async function stash(
 }
 
 // --- Remotes ---------------------------------------------------------------
+
+/** What each way of pulling does, in the words the confirmation uses. */
+const PULL_WORDING: Record<PullMode, { title: string; body: string; done: string }> = {
+	fastForwardOnly: {
+		title: 'Pull',
+		body: 'Your branch moves forward to match the remote. If it has commits of its own, nothing happens and git says so — this can never write a merge commit or leave a conflict.',
+		done: 'Pulled'
+	},
+	merge: {
+		title: 'Pull and merge',
+		body: 'Your branch moves forward where it can, and a merge commit is written where it cannot. A conflict here stops in the working copy for you to resolve.',
+		done: 'Pulled'
+	},
+	rebase: {
+		title: 'Pull and rebase',
+		body: 'Your own commits are replayed on top of the remote’s. They are rewritten, so anything already pushed will need a force push.',
+		done: 'Pulled and rebased'
+	}
+};
+
+/**
+ * Pull, and deal with uncommitted work first.
+ *
+ * Pulling onto a dirty working copy is the case where git's own refusal —
+ * "Your local changes would be overwritten by merge" — is technically correct
+ * and useless: it names the problem and leaves the user to work out that the
+ * answer is a stash. So the answer is offered.
+ *
+ * The stash is popped afterwards **only if the pull succeeded**. A failed pull
+ * that then restored the changes on top would hand back a working copy in a
+ * state neither the user nor git put it in.
+ */
+export async function pull(mode: PullMode = 'fastForwardOnly'): Promise<void> {
+	const wording = PULL_WORDING[mode];
+	const dirty = repo.counts.working ?? 0;
+
+	if (dirty > 0) {
+		const agreed = await dialog.confirm({
+			title: `${wording.title} with ${dirty} uncommitted ${dirty === 1 ? 'change' : 'changes'}`,
+			body:
+				`${wording.body}\n\n` +
+				'Your uncommitted changes are stashed first and put back afterwards. If the pull ' +
+				'fails they stay in the stash, where nothing has been lost.',
+			confirmLabel: 'Stash and pull',
+			danger: mode === 'rebase'
+		});
+		if (!agreed) return;
+
+		try {
+			await api.stashPush('Before pull', true);
+		} catch (error) {
+			notice.failed('Could not stash your changes, so nothing was pulled', error);
+			return;
+		}
+
+		try {
+			await api.pull(mode, '');
+		} catch (error) {
+			notice.failed('Could not pull — your changes are in the stash', error);
+			await refresh();
+			return;
+		}
+
+		try {
+			await api.stashAction(0, 'pop');
+			notice.ok(`${wording.done}, and your changes are back`);
+		} catch (error) {
+			// The pull worked; only the restore did not. Say which, because the
+			// two have very different next steps.
+			notice.failed('Pulled, but could not put your changes back — they are in the stash', error);
+		}
+
+		await refresh();
+		return;
+	}
+
+	if (mode !== 'fastForwardOnly') {
+		const agreed = await dialog.confirm({
+			title: wording.title,
+			body: wording.body,
+			confirmLabel: wording.title,
+			danger: mode === 'rebase'
+		});
+		if (!agreed) return;
+	}
+
+	await perform(wording.done, 'Could not pull', () => api.pull(mode, ''));
+}
 
 export async function fetchAll(): Promise<void> {
 	await perform('Fetched', 'Could not fetch', () => api.fetch());

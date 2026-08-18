@@ -729,6 +729,44 @@ pub fn fetch(repo: &Path, remote: &str) -> Result<String> {
     run(repo, &args)
 }
 
+/// How a pull should bring the remote's commits in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PullMode {
+    /// Refuse unless the local branch can simply move forward. The safe one:
+    /// it can never write a merge commit or leave a conflict behind.
+    FastForwardOnly,
+    /// Fast-forward where possible, merge where not.
+    Merge,
+    /// Replay local commits on top of the remote's. Rewrites them, so anything
+    /// already pushed needs a force push afterwards.
+    Rebase,
+}
+
+/// Pull: fetch, then bring the upstream's commits into the current branch.
+///
+/// One `git pull` rather than [`fetch`] followed by [`merge`], because git
+/// resolves which upstream the current branch tracks and that resolution is
+/// exactly the part not worth reimplementing — it reads `branch.<name>.remote`,
+/// `branch.<name>.merge`, and the push/pull defaults, any of which a user may
+/// have configured per branch.
+///
+/// `--no-edit` because a merge commit's default message is the right one here
+/// and there is no editor to open; `GIT_TERMINAL_PROMPT=0` from [`command`]
+/// already stops it blocking on credentials.
+pub fn pull(repo: &Path, remote: &str, mode: PullMode) -> Result<String> {
+    let mut args = vec!["pull", "--progress", "--no-edit"];
+    match mode {
+        PullMode::FastForwardOnly => args.push("--ff-only"),
+        PullMode::Merge => args.push("--no-rebase"),
+        PullMode::Rebase => args.push("--rebase"),
+    }
+    if !remote.is_empty() {
+        args.push(remote);
+    }
+    run(repo, &args)
+}
+
 /// Push. Same reason as [`fetch`], plus `pre-push` hooks.
 ///
 /// `--force-with-lease` rather than `--force` when a force is asked for: it

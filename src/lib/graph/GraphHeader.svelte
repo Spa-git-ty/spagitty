@@ -43,14 +43,8 @@
 	/** Index of the header being dragged, and the slot it would land in. */
 	let dragging = $state<number | null>(null);
 	let over = $state<number | null>(null);
-	/** The resize in progress: which column, where it started, and which way. */
-	let resizing: {
-		id: ColumnId;
-		startX: number;
-		startWidth: number;
-		/** True when dragging right must make the column *narrower*. */
-		invert: boolean;
-	} | null = null;
+	/** The resize in progress: which column, and where it started. */
+	let resizing: { id: ColumnId; startX: number; startWidth: number } | null = null;
 	let filtering = $state(false);
 
 	function widthOf(id: ColumnId): number {
@@ -76,32 +70,35 @@
 	]);
 
 	/**
-	 * Which column a divider actually sizes, and which way the drag runs.
+	 * Which column a divider actually sizes.
 	 *
-	 * A divider ordinarily sizes the column it sits on, dragging right to widen.
-	 * The graph column is the exception: its width is computed from the lanes on
-	 * screen, so its divider had nothing to size and did nothing at all — a dead
-	 * handle sitting on the one boundary people most want to drag, because the
-	 * column on its *other* side is the commit message.
+	 * A divider sizes the column on its **left**, which is the only model under
+	 * which the boundary goes where the pointer goes: everything left of it
+	 * grows, everything right of it shifts along, and the filling column takes
+	 * up whatever is left.
 	 *
-	 * So a computed column's divider sizes the column after it instead, with the
-	 * drag inverted: the boundary moves with the pointer, which means dragging
-	 * right makes the column on the right narrower. That is what the gesture
-	 * looks like it should do, and it is the only reading under which this
-	 * divider does anything.
+	 * The graph column is computed from the lanes on screen and cannot be sized,
+	 * so its divider looks backwards past it to the nearest column that can —
+	 * `Branch / Tag` in the default layout. Dragging that boundary right widens
+	 * Branch/Tag, pushing the graph and the message column along with it.
+	 *
+	 * **This is not what BUG-009b first did**, and the difference is the whole
+	 * defect. It sized the column *after* the divider instead, which changes that
+	 * column's width while its left edge stays pinned by everything before it —
+	 * so the commit message column shrank from its right edge and left a growing
+	 * gap before the detail panel. The boundary did not move; only the far side
+	 * of the column did.
 	 */
-	function resizeTarget(index: number): { id: ColumnId; invert: boolean } | null {
-		const column = shown[index];
-		if (!column.computed) return { id: column.id, invert: false };
-
-		const next = shown[index + 1];
-		if (!next || next.computed) return null;
-		return { id: next.id, invert: true };
+	function resizeTarget(index: number): ColumnId | null {
+		for (let i = index; i >= 0; i--) {
+			if (!shown[i].computed) return shown[i].id;
+		}
+		return null;
 	}
 
 	function startResize(event: PointerEvent, index: number) {
-		const target = resizeTarget(index);
-		if (!target) return;
+		const id = resizeTarget(index);
+		if (!id) return;
 
 		event.preventDefault();
 		event.stopPropagation();
@@ -110,20 +107,16 @@
 		// is 0 until it is dragged, and starting a drag from 0 would snap it to
 		// its minimum before the pointer had moved a pixel.
 		const handle = event.currentTarget as HTMLElement;
-		const cell = target.invert
-			? (handle.parentElement?.nextElementSibling as HTMLElement | null)
-			: handle.parentElement;
-		const startWidth = cell ? cell.getBoundingClientRect().width : columns.width(target.id);
+		const cell = handle.closest('.header')?.querySelector<HTMLElement>(`[data-column="${id}"]`);
+		const startWidth = cell ? cell.getBoundingClientRect().width : columns.width(id);
 
-		resizing = { id: target.id, startX: event.clientX, startWidth, invert: target.invert };
+		resizing = { id, startX: event.clientX, startWidth };
 		handle.setPointerCapture(event.pointerId);
 	}
 
 	function moveResize(event: PointerEvent) {
 		if (!resizing) return;
-		const travelled = event.clientX - resizing.startX;
-		const delta = resizing.invert ? -travelled : travelled;
-		columns.resize(resizing.id, resizing.startWidth + delta);
+		columns.resize(resizing.id, resizing.startWidth + (event.clientX - resizing.startX));
 	}
 
 	function endResize(event: PointerEvent) {
@@ -153,9 +146,10 @@
 >
 	{#each shown as column, index (column.id)}
 		{@const target = resizeTarget(index)}
-		{@const sized = target ? shown.find((c) => c.id === target.id)?.label : null}
+		{@const sized = target ? shown.find((c) => c.id === target)?.label : null}
 		<div
 			class="cell"
+			data-column={column.id}
 			class:fills={column.fills}
 			class:dragging={dragging === index}
 			class:over={over === index && dragging !== index}
@@ -228,7 +222,7 @@
 				onpointermove={moveResize}
 				onpointerup={endResize}
 				onpointercancel={endResize}
-				ondblclick={() => target && columns.unsize(target.id)}
+				ondblclick={() => target && columns.unsize(target)}
 			></div>
 		</div>
 	{/each}

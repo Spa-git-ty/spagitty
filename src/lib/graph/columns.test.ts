@@ -154,40 +154,62 @@ describe('BUG-009 — the last column has a grabbable handle', () => {
 });
 
 /**
- * BUG-009b — the boundary people actually reach for.
+ * BUG-009b — a divider sizes the column on its left.
  *
  * The commit message column sits between the graph column, whose divider is
  * fixed because its width is computed from the lanes, and the detail panel's own
- * splitter. Both of its boundaries belonged to something else, so in practice it
- * had no handle — which is what was reported, with the first diagnosis (the
- * window edge) turning out to be wrong.
+ * splitter. Both of its boundaries belonged to something else, so it had no
+ * handle anyone would find.
  *
- * A computed column's divider now sizes the column *after* it, inverted, so the
- * dead handle on the graph|message boundary does the thing the gesture looks
- * like it should do.
+ * The first attempt sent the graph's divider to the column *after* it. That was
+ * wrong in a way only a person dragging it could see: it changed the message
+ * column's width while its left edge stayed pinned by everything before it, so
+ * the column shrank from its **right** edge and left a growing gap before the
+ * detail panel. The boundary did not move; only the far side of the column did.
+ *
+ * A divider now sizes the nearest resizable column to its **left**, skipping
+ * back over the computed graph column. Everything left of the boundary grows,
+ * everything right of it shifts along, and the filling column takes what is
+ * left — so the boundary goes where the pointer goes and no gap can open.
  */
-describe('BUG-009b — a computed divider sizes the column after it', () => {
+describe('BUG-009b — a divider sizes the column on its left', () => {
 	const header = readFileSync('src/lib/graph/GraphHeader.svelte', 'utf8');
 
-	it('sends a computed column\'s divider to the next column', () => {
-		expect(header).toMatch(/if \(!column\.computed\) return \{ id: column\.id, invert: false \}/);
-		expect(header).toMatch(/return \{ id: next\.id, invert: true \}/);
+	it('looks backwards past a computed column for one it can size', () => {
+		expect(header).toMatch(/for \(let i = index; i >= 0; i--\)/);
+		expect(header).toMatch(/if \(!shown\[i\]\.computed\) return shown\[i\]\.id/);
 	});
 
-	it('inverts that drag, so the boundary follows the pointer', () => {
-		expect(header).toMatch(/const delta = resizing\.invert \? -travelled : travelled/);
+	/** The gap in the report came from inverting; nothing may invert again. */
+	it('never inverts the drag', () => {
+		expect(header).toMatch(/resizing\.startWidth \+ \(event\.clientX - resizing\.startX\)/);
+		expect(header).not.toMatch(/invert/);
 	});
 
-	it('measures the next cell, not the one the handle sits on', () => {
-		expect(header).toMatch(/nextElementSibling/);
+	it('measures the column it is about to size, by id', () => {
+		expect(header).toMatch(/querySelector<HTMLElement>\(`\[data-column="\$\{id\}"\]`\)/);
+		expect(header).toMatch(/data-column=\{column\.id\}/);
 	});
 
-	/** With nothing resizable on either side there is genuinely nothing to do. */
+	/** With nothing resizable anywhere to the left there is genuinely nothing to do. */
 	it('still marks a divider fixed when it has no target', () => {
 		expect(header).toMatch(/class:fixed=\{target === null\}/);
 	});
 
 	it('names the column it will actually size in its title', () => {
 		expect(header).toMatch(/Resize \$\{sized\}/);
+	});
+
+	/**
+	 * The message column must keep filling. A gap between it and the detail panel
+	 * is the defect this item exists to remove, and it can only appear if the
+	 * message column is given a width of its own.
+	 */
+	it('leaves the filling column filling', () => {
+		columns.reset();
+		const message = columns.catalogue.find((entry) => entry.column.id === 'message');
+
+		expect(message?.column.fills).toBe(true);
+		expect(columns.width('message')).toBe(0);
 	});
 });

@@ -21,6 +21,7 @@ use gitlumiere_core::record::{self, Executed};
 use gitlumiere_core::refs::RefIndex;
 use gitlumiere_core::repo::{self, RepoInfo, RepoSummary};
 use gitlumiere_core::search::Query;
+use gitlumiere_core::shell::PullMode;
 use gitlumiere_core::stash::{self, StashEntry};
 use gitlumiere_core::status::{self, RepoCounts, WorkingCopy};
 use gitlumiere_core::work;
@@ -515,6 +516,13 @@ pub fn stash_action(state: State<'_, AppState>, index: usize, action: StashActio
 #[tauri::command]
 pub fn fetch(state: State<'_, AppState>, remote: String) -> Result<String> {
     state.with_session(|session| ops::fetch(&session.repo.to_thread_local(), &remote))
+}
+
+/// Pull. Fetches and integrates in one `git pull`, so git resolves which
+/// upstream the current branch tracks rather than GitLumiere guessing.
+#[tauri::command]
+pub fn pull(state: State<'_, AppState>, remote: String, mode: PullMode) -> Result<String> {
+    state.with_session(|session| ops::pull(&session.repo.to_thread_local(), &remote, mode))
 }
 
 /// Push. `force` is `--force-with-lease`, never a plain force.
