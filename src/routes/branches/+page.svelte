@@ -124,13 +124,22 @@
 		</div>
 	{/if}
 
-	<footer class="foot">
-		{#if branches.writeError}
+	<!--
+		Only a failure gets a footer, the way Stash and Settings now work.
+
+		The sentence that used to sit here — "Nothing here deletes a branch." —
+		was true, and still went: it announced that the screen does not do
+		something, which is precisely the copy TASK-007 removed everywhere else.
+		It was also saying it in the wrong place. The Delete chip carries its own
+		reason in its title, at the control it is about, where someone wondering
+		will actually look; a strip along the bottom of the screen is where you
+		put it if you want it read by nobody.
+	-->
+	{#if branches.writeError}
+		<footer class="foot">
 			<span class="note error">{branches.writeError}</span>
-		{:else}
-			<span class="note">Nothing here deletes a branch.</span>
-		{/if}
-	</footer>
+		</footer>
+	{/if}
 </div>
 
 <style>
