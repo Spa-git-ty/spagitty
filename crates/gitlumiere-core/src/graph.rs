@@ -38,7 +38,8 @@ use crate::refs::{RefChip, RefIndex};
 ///
 /// This mirrors `ROW_PITCH` in `src/lib/metrics.ts`, which is the source of
 /// truth for the frontend. It exists here because lane geometry is described in
-/// row units, and the two must not drift; `metrics_match` asserts they agree.
+/// row units, and the two must not drift; `row_pitch_matches_the_frontend`
+/// reads that file and fails if one side is changed without the other.
 pub const ROW_PITCH: u32 = 30;
 
 /// Lane colors cycle through this many values. A lane keeps the color it was
@@ -537,6 +538,32 @@ mod tests {
         let mut bytes = [0u8; 20];
         bytes[0] = n;
         ObjectId::from_bytes_or_panic(&bytes)
+    }
+
+    /// The doc comment on [`ROW_PITCH`] has claimed since FEAT-001 that the Rust
+    /// mirror is asserted against the frontend's value. It never was, and the
+    /// two drifted apart in FEAT-029 until both were fixed by hand. This is that
+    /// assertion: it reads the declaration out of the TypeScript source, so
+    /// changing one side alone fails the workspace test run rather than shipping
+    /// lane elbows drawn to a pitch the rows are not laid out on.
+    #[test]
+    fn row_pitch_matches_the_frontend() {
+        let metrics = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../src/lib/metrics.ts")
+            .canonicalize()
+            .expect("src/lib/metrics.ts is part of the repository");
+        let source = std::fs::read_to_string(&metrics).expect("metrics.ts is readable");
+
+        let declared = source
+            .lines()
+            .find_map(|line| line.trim().strip_prefix("export const ROW_PITCH = "))
+            .and_then(|rest| rest.trim_end_matches(';').trim().parse::<u32>().ok())
+            .expect("metrics.ts declares ROW_PITCH as a whole number of pixels");
+
+        assert_eq!(
+            declared, ROW_PITCH,
+            "src/lib/metrics.ts says the row pitch is {declared}px, this crate says {ROW_PITCH}px"
+        );
     }
 
     /// Straight history: everything stays in lane 0 with one color.

@@ -35,13 +35,15 @@ describe('laneColumns', () => {
 
 describe('laneColumnWidth', () => {
 	it('fits five lanes and their slack', () => {
-		// Lanes at 14…102, r=9 for the portrait, 18px of slack: 129px.
+		// Lanes at 16…120, r=11 for the portrait, 18px of slack:
+		// 16 + 4×26 + 11 + 18 = 149px.
 		//
-		// It was 96 while a node was a 5.5px disc. FEAT-023 put a face on the
-		// node, and a face needs both a wider pitch and a wider node — the width
-		// is the price of the graph saying who, and the message column is still
-		// the wider of the two at five lanes.
-		expect(laneColumnWidth(LANE_COLUMNS_MIN)).toBe(129);
+		// It was 96 while a node was a 5.5px disc, then 129 at the first
+		// portrait size. FEAT-029 enlarged the face again, and a face needs both
+		// a wider pitch and a wider node — the width is the price of the graph
+		// saying who, and the message column is still the wider of the two at
+		// five lanes.
+		expect(laneColumnWidth(LANE_COLUMNS_MIN)).toBe(149);
 	});
 
 	it('rounds to whole pixels, so the canvas and the cells share a boundary', () => {
