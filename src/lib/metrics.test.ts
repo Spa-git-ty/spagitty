@@ -311,6 +311,30 @@ describe('laneColorVar', () => {
 });
 
 describe('applyMetrics', () => {
+	/**
+	 * FEAT-042 tightened the radii, and there are two copies of them: `RADII`
+	 * here, which is what the interface gets once this runs, and `app.css`,
+	 * which is what the first paint uses before it does. A change to one and not
+	 * the other shows up as corners that jump on load — the exact drift BUG-005
+	 * was about, in a different file. So the stylesheet is read rather than
+	 * trusted, the way `scale.test.ts` reads it for the type scale.
+	 */
+	it('agrees with the radii declared in the stylesheet', async () => {
+		const css = await import('node:fs').then((fs) =>
+			fs.readFileSync('src/app.css', 'utf8')
+		);
+		const published = new Map<string, string>();
+		const root = { style: { setProperty: (k: string, v: string) => published.set(k, v) } };
+
+		applyMetrics(root as unknown as HTMLElement);
+
+		for (const name of ['r-field', 'r-button', 'r-row', 'r-panel']) {
+			const declared = new RegExp(`--${name}:\\s*([0-9.]+)px`).exec(css);
+			expect(declared, `--${name} is missing from app.css`).not.toBeNull();
+			expect(published.get(`--${name}`), `--${name} at zoom 1`).toBe(`${declared?.[1]}px`);
+		}
+	});
+
 	it('publishes every structural metric as a px custom property', () => {
 		const set = new Map<string, string>();
 		const root = { style: { setProperty: (k: string, v: string) => set.set(k, v) } };

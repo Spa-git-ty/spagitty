@@ -94,6 +94,7 @@ rather than an audit.
 | [FEAT-038](items/FEAT-038-pull.md) | Pull | chrome | Done |
 | [FEAT-039](items/FEAT-039-resizable-graph-column.md) | The graph column resizes, and the lanes compress into it | 1A | Done |
 | [FEAT-041](items/FEAT-041-rail-drops-the-shortcut-hint.md) | The rail stops advertising a shortcut | chrome | Done |
+| [FEAT-042](items/FEAT-042-tighter-corners-and-a-round-cast.md) | Tighter corners, and a cast shadow that follows them | all | Done |
 
 ## Bugs
 
