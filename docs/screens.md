@@ -57,6 +57,18 @@ Persistent across every screen, built with FEAT-001.
   are the same fact. Counts are right-aligned; `·` means "not computed yet", and
   screens that do not exist report `·` rather than a number that would be wrong.
 
+  The top slot is **Open repository…**, painted as the primary action (FEAT-030).
+  It is the first thing a new user needs and it used to sit below a spacer at the
+  bottom, which is the least discoverable place in the rail. The slot previously
+  held a "filter commits / ⌘F" field that only duplicated the Log screen's own
+  query bar and the `Ctrl+F` shortcut; it is gone. The foot keeps the "Tags N ·
+  Submodules N" line, now alone.
+
+  Rail order is the screens roughly as they are worked through — Graph, Working
+  copy, Conflicts, Branches, Stash, Pull requests, Rebase, Log — then a divider,
+  then All repositories and Settings. Log follows Rebase because it is where you
+  go to look something up rather than a step in that sequence.
+
 ## 1A — Graph
 
 **Built.** `src/routes/+page.svelte`, `src/lib/graph/`.

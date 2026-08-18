@@ -52,20 +52,25 @@
 		{/if}
 	</div>
 
-	<div class="filter">
-		<button
-			class="field"
-			title="Search the log"
-			aria-label="Search the log"
-			onclick={() => goto('/search')}
-		>
-			{#if collapsed}
-				<span class="mono muted" aria-hidden="true">⌕</span>
-			{:else}
-				<span class="mono muted">filter commits</span>
-				<span class="mono muted">⌘F</span>
-			{/if}
-		</button>
+	<!--
+		Opening a repository is the first thing a new user needs and the least
+		discoverable place in the rail is below a spacer, which is where it used
+		to sit. It takes the top slot instead — the one the log filter had, which
+		only duplicated the Log screen's own query bar and the Ctrl+F shortcut.
+	-->
+	<div class="open">
+		{#if collapsed}
+			<button
+				class="item"
+				title="Open repository…"
+				aria-label="Open repository…"
+				onclick={() => repo.choose()}
+			>
+				<span class="glyph" aria-hidden="true">⊞</span>
+			</button>
+		{:else}
+			<Btn primary onclick={() => repo.choose()}>Open repository…</Btn>
+		{/if}
 	</div>
 
 	{#each NAV_ITEMS as item (item.href)}
@@ -92,21 +97,11 @@
 
 	<div class="spacer"></div>
 
-	<div class="foot">
-		{#if collapsed}
-			<button
-				class="item"
-				title="Open repository…"
-				aria-label="Open repository…"
-				onclick={() => repo.choose()}
-			>
-				<span class="glyph" aria-hidden="true">⊞</span>
-			</button>
-		{:else}
+	{#if !collapsed}
+		<div class="foot">
 			<span class="note">Tags {tagsLabel} · Submodules {submodulesLabel}</span>
-			<Btn onclick={() => repo.choose()}>Open repository…</Btn>
-		{/if}
-	</div>
+		</div>
+	{/if}
 </nav>
 
 <style>
@@ -151,17 +146,13 @@
 	/* Collapsed, an item is a glyph in a square: same order, same routes, no
 	   labels. The title attribute carries the name for a pointer, and
 	   `aria-label` carries it for everything else. */
-	.rail.collapsed .item,
-	.rail.collapsed .field {
+	.rail.collapsed .item {
 		justify-content: center;
 		padding-left: 0;
 		padding-right: 0;
 	}
 
-	.rail.collapsed .filter {
-		padding: 8px 4px;
-	}
-
+	.rail.collapsed .open,
 	.rail.collapsed .foot {
 		padding: 8px 4px;
 	}
@@ -171,23 +162,15 @@
 		line-height: 1;
 	}
 
-	.filter {
+	/* The primary action, so it gets the width of the rail rather than sitting
+	   in it at its own size. */
+	.open {
 		padding: 8px;
 	}
 
-	.field {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 6px;
+	.open :global(.btn) {
 		width: 100%;
-		padding: 5px 6px;
-		border: 1.5px dashed var(--soft);
-		border-radius: var(--r-field);
-	}
-
-	.field:hover {
-		border-color: var(--accent);
+		justify-content: center;
 	}
 
 	.item {

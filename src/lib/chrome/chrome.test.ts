@@ -344,18 +344,52 @@ describe('NavRail', () => {
 		view.destroy();
 	});
 
-	it('reaches the log search from the filter field', () => {
+	/**
+	 * FEAT-030. The rail's filter field duplicated the Log screen's own query
+	 * bar and the Ctrl+F shortcut, and it occupied the top slot — which now
+	 * carries the action a new user actually needs first.
+	 */
+	it('has no filter field, and does not reach Log from the rail’s top slot', () => {
 		const view = render(NavRail, {});
-		click(view.get('.filter .field'));
-		expect(goto).toHaveBeenCalledWith('/search');
+
+		expect(view.find('.filter')).toBeNull();
+		expect(view.find('.field')).toBeNull();
+		expect(view.text()).not.toContain('filter commits');
+
 		view.destroy();
 	});
 
-	it('opens the directory picker from the footer', () => {
+	it('opens the directory picker from the top of the rail', () => {
 		const view = render(NavRail, {});
-		const open = view.all('button').find((b) => b.textContent?.includes('Open repository'));
-		click(open as HTMLElement);
+
+		const open = view.get('.open');
+		const button = open.querySelector('button') as HTMLElement;
+		expect(button.textContent).toContain('Open repository');
+
+		click(button);
 		expect(repoCalls.chosen).toBe(1);
+
+		view.destroy();
+	});
+
+	/** It is the first thing a new user needs, so it is painted as the primary action. */
+	it('paints Open repository as the rail’s primary action', () => {
+		const view = render(NavRail, {});
+
+		const button = view.get('.open button');
+		expect(button.classList.contains('primary')).toBe(true);
+
+		view.destroy();
+	});
+
+	it('leaves the foot holding the counts alone', () => {
+		const view = render(NavRail, {});
+
+		const foot = view.get('.foot');
+		expect(foot.textContent).toContain('Tags');
+		expect(foot.textContent).toContain('Submodules');
+		expect(foot.querySelector('button')).toBeNull();
+
 		view.destroy();
 	});
 });

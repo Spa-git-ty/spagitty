@@ -59,4 +59,34 @@ describe('NAV_ITEMS', () => {
 		expect(NAV_ITEMS[0].href).toBe('/');
 		expect(NAV_ITEMS[0].code).toBe('1A');
 	});
+
+	/**
+	 * FEAT-030 put Log after Rebase. The order is the screens roughly as they
+	 * are worked through — what changed, what conflicts, what branches — and Log
+	 * is where you go to look something up rather than a step in that sequence.
+	 */
+	it('runs the screens in the order they are worked through', () => {
+		expect(NAV_ITEMS.map((item) => item.href)).toEqual([
+			'/',
+			'/changes',
+			'/conflicts',
+			'/branches',
+			'/stash',
+			'/requests',
+			'/rebase',
+			'/search',
+			'/repos',
+			'/settings'
+		]);
+	});
+
+	it('puts Log immediately after Rebase', () => {
+		const hrefs = NAV_ITEMS.map((item) => item.href);
+		expect(hrefs.indexOf('/search')).toBe(hrefs.indexOf('/rebase') + 1);
+	});
+
+	it('keeps the divider before All repositories', () => {
+		const repos = NAV_ITEMS.find((item) => item.href === '/repos');
+		expect(repos?.dividerBefore).toBe(true);
+	});
 });
