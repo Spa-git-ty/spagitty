@@ -8,9 +8,10 @@ canonical copy).
 
 ```
 agile/
-  items/     work items: features, tasks, bugs
-  plans/     one implementation plan per work item
-  testing/   test plans per work item — automated and manual sweep
+  items/       work items: features, tasks, bugs
+  plans/       one implementation plan per work item
+  testing/     test plans per work item — automated and manual sweep
+  roadmap.md   the order the outstanding work is meant to be taken in
 ```
 
 Identifiers are `FEAT-###`, `TASK-###` and `BUG-###`, assigned in sequence and
