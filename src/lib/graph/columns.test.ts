@@ -248,3 +248,61 @@ describe('BUG-009b — a divider sizes the column on its left', () => {
 		expect(columns.width('message')).toBe(0);
 	});
 });
+
+/**
+ * BUG-003's structural guard, written before FEAT-047 moved this store.
+ *
+ * The lane canvas does not know where the graph column starts. It is placed by
+ * a layer that mirrors the row — one spacer per column ahead of it, at the
+ * widths the cells use — so the browser does the arithmetic and the two cannot
+ * disagree. BUG-003 was that arrangement not existing: the canvas sat at a
+ * constant offset, and dragging, reordering or hiding the Branch/Tag column
+ * left the lanes drawn over the messages.
+ *
+ * Asserted against the source because happy-dom does no layout, so there are no
+ * real widths to measure. What can be checked is that the mirror is still built
+ * the way the fix built it, which is what makes the regression structurally
+ * unable to come back.
+ */
+describe('the lane layer still mirrors the row (BUG-003)', () => {
+	const rows = readFileSync('src/lib/graph/CommitRows.svelte', 'utf8');
+
+	function laneLayer(): string {
+		const start = rows.indexOf('class="lane-layer"');
+		const end = rows.indexOf('</div>', rows.indexOf('{/each}', start));
+		if (start < 0 || end < 0) throw new Error('no lane layer in CommitRows');
+		return rows.slice(start, end);
+	}
+
+	it('draws one spacer per shown column, in the order they are drawn', () => {
+		expect(laneLayer()).toMatch(/\{#each shown as column \(column\.id\)\}/);
+	});
+
+	it('gives every fixed column a spacer of that column’s own width', () => {
+		expect(laneLayer()).toMatch(/class="lane-gap" style="width: \{column\.width\}px"/);
+	});
+
+	it('lets the filling column fill on the layer too', () => {
+		// A fixed width here would put the canvas one gap out of step the moment
+		// the message column was left to fill.
+		expect(laneLayer()).toMatch(/class="lane-gap fill"/);
+	});
+
+	it('puts the canvas in the graph column’s own slot', () => {
+		const layer = laneLayer();
+		expect(layer).toMatch(/\{#if column\.id === 'graph'\}/);
+		expect(layer).toMatch(/class="lane-slot" style="width: \{laneWidth\}px"/);
+	});
+
+	it('never places the canvas from a constant', () => {
+		// The defect itself: `--refs-gutter-w` was the offset, and it was right
+		// only while Branch/Tag was first and at its default width.
+		expect(laneLayer()).not.toMatch(/refs-gutter/);
+	});
+
+	it('is the only thing that positions the canvas', () => {
+		// One layer, one canvas. A second placement is a second thing to keep in
+		// step with the cells, which is the shape of the original bug.
+		expect(rows.match(/<LaneCanvas/g)?.length).toBe(1);
+	});
+});
