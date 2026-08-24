@@ -38,6 +38,8 @@ export default defineConfig({
 	 */
 	test: {
 		environment: 'happy-dom',
+		// See the file: Node's own `localStorage` global shadows happy-dom's.
+		setupFiles: ['./vitest.setup.ts'],
 		// `tools/` is here for the record check (TASK-012), which reads `agile/`
 		// and `docs/` as data. It is not frontend code and is not counted for
 		// coverage — see `coverage.include` below.

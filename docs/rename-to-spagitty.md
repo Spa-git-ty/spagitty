@@ -5,7 +5,7 @@
 The project is being renamed **GitLumiere → Spagitty**. This document is the
 work order for that rename and the map of every place the old name lives.
 It follows the shape of TASK-004, which renamed GitLord to GitLumiere; read
-that item (`agile/items/TASK-004-rename-to-gitlumiere.md`) first — this is the
+that item (`agile/items/TASK-004-rename-to-spagitty.md`) first — this is the
 same operation with a new pair of names.
 
 A name in a Tauri project is not a string in one file: crate names, the bundle
@@ -139,7 +139,7 @@ Watch for these traps during the prose sweep:
 
 - `rg -i lumiere` over the working tree excluding `.git`, `node_modules`,
   `target`, `.svelte-kit`, `build`, `coverage` returns only this document and
-  `agile/items/TASK-004-rename-to-gitlumiere.md`.
+  `agile/items/TASK-004-rename-to-spagitty.md`.
 - `cargo build`, `cargo test --workspace`, `npm run check`, and `npm test`
   all pass against the renamed crate.
 - `productName`, the bundle identifier, and the capability manifest agree.
@@ -155,47 +155,65 @@ Watch for these traps during the prose sweep:
 
 ## Outcome
 
-The rename landed on `task/rename-to-spagitty` as a single commit.
+The rename landed on `task/rename-to-spagitty`.
 
 **Decisions taken.** D1: the bundle identifier is `dev.spagitty.app`, matching
-`productName: "Spagitty"` and the capability manifest. D2: `agile/` was swept,
-except the three TASK-004 records and the row that names TASK-004's title in
-`agile/README.md` — see the deviation below. D3: `design_handoff_gitlord/` was
+`productName: "Spagitty"` and the capability manifest. D2: `agile/` was swept
+with no exception — see the amendment below. D3: `design_handoff_gitlord/` was
 not touched.
 
-**Deviations from the plan above.**
+**Amendment to D2 — the TASK-004 records were swept too.** The plan above
+carved out TASK-004 so it would keep saying "from GitLord to GitLumiere". That
+exception was dropped: `agile/items/TASK-004-rename-to-spagitty.md` (renamed
+from `-gitlumiere.md`), `agile/plans/TASK-004-plan.md`,
+`agile/testing/TASK-004-sweep.md` and `agile/README.md`'s index row now all
+name Spagitty. The consequence is that TASK-004 reads as renaming GitLord to
+Spagitty, which is not what happened in that commit; this document is the only
+record that the intermediate name existed at all. That is the trade the
+one-name rule asks for, and it was made deliberately.
 
-1. *The acceptance criterion's residue is five files, not two.* The plan named
-   `agile/items/TASK-004-rename-to-gitlumiere.md` as the only record allowed to
-   keep the old name. `agile/plans/TASK-004-plan.md` and
-   `agile/testing/TASK-004-sweep.md` describe the same rename in the same
-   subject position ("`crates/gitlord-core/` → `crates/gitlumiere-core/`",
-   "Every visible name is GitLumiere"), and `agile/README.md`'s index row
-   carries TASK-004's title. Sweeping those would have made them describe a
-   rename that never happened, so all four stay, alongside this document.
-2. *One quoted error message in CI stays.* `.github/workflows/gates.yml:153`
+**Other deviations from the plan above.**
+
+1. *One quoted error message in CI stays.* `.github/workflows/gates.yml:153`
    quotes gitleaks-action verbatim: `"[GitLumiere] is an organization. License
    key is required."` That is the GitHub account's name, and the account has
    not been renamed. Rewriting the quote would fabricate it. Revisit when the
    GitHub organization is renamed.
-3. *The `git-foo` naming note was deleted, not renamed.* `README.md` and
+2. *The `git-foo` naming note was deleted, not renamed.* `README.md` and
    `src-tauri/src/main.rs` both explained why the binary is `gitlumiere` and
    never `git-lumiere`: git treats any `git-foo` on `PATH` as a subcommand.
    `spagitty` does not begin with `git-`, so the hazard is gone and the note
    would have renamed into nonsense.
-4. *The workspace `repository` URL now points at `github.com/spagitty/spagitty`,
+3. *The workspace `repository` URL now points at `github.com/spagitty/spagitty`,
    which does not exist yet.* The git remote is unchanged
    (`github.com/GitLumiere/gitlumiere`), per the out-of-scope note above.
    The manifest field and the remote disagree until the GitHub side moves.
-5. *Icons were not regenerated.* `tools/make-icons.py` names the project only in
-   its docstrings; the artwork is lane geometry with no text, so the icon bytes
-   do not depend on the name.
+
+**The icon was redrawn, not just renamed.** `tools/make-icons.py` previously
+drew a commit lane with a branch elbow — a mark that said nothing about the new
+name. It now draws three strands that begin tangled above the frame and
+straighten into parallel commit lanes, each capped by a commit node: spaghetti
+above, a commit graph below. The strokes are stamped discs rather than
+`ImageDraw.line` with `joint="curve"`, which left seams that showed as hatching
+once the image was scaled down. Every file in `src-tauri/icons/` was
+regenerated.
+
+**A test failure that came with the environment, fixed here.** `npm test` was
+failing 21 tests in `src/lib/scale.test.ts` before this branch started. Node 22
+added its own `localStorage` global, `undefined` unless the process was started
+with `--localstorage-file`, and it shadows the one happy-dom installs on the
+window. The bare `localStorage` every store uses — correct inside a webview —
+therefore resolved to nothing under test, so each persistence path silently took
+its catch branch, and the one test file that used storage without stubbing it
+first failed outright. `vitest.setup.ts` now installs one happy-dom `Storage`
+instance on both `globalThis` and `window`; `vi.stubGlobal` in the sibling test
+files still overrides it.
 
 **Verification.** `cargo build --workspace`, `cargo test --workspace`
-(282 passed) and `npm run check` (0 errors) all pass against the renamed crate.
-`Cargo.lock`, `package-lock.json` and `src-tauri/gen/schemas/` were regenerated,
-not hand-edited; the generated capability schema carries `Spagitty`.
+(282 passed), `npm run check` (0 errors) and `npm test` (1367 passed, 56 files)
+all pass against the renamed crate. `Cargo.lock`, `package-lock.json` and
+`src-tauri/gen/schemas/` were regenerated, not hand-edited; the generated
+capability schema carries `Spagitty`.
 
-`npm test` has one failing file, `src/lib/scale.test.ts` (21 tests,
-`localStorage` undefined under happy-dom). It fails identically on the commit
-before this branch, so it is not part of the rename — it needs its own item.
+`rg -i lumiere` over the working tree now returns this document and the quoted
+CI error, and nothing else.

@@ -10,12 +10,12 @@ BUG-005 carries the correction.*
 
 **A rename, not a fork of the name.** `git mv` on the crate directory, so the
 history of every file in `crates/gitlord-core` follows it to
-`crates/gitlumiere-core` rather than appearing as 20 deletions and 20 creations.
+`crates/spagitty-core` rather than appearing as 20 deletions and 20 creations.
 `git show --stat` confirms it: every file in the crate is recorded as a rename
 with a similarity index, and only the files that genuinely changed carry a diff.
 
 **The identifier changes with the name.** `dev.gitlord.app` →
-`dev.gitlumiere.app`. This is the one part of the rename with a user-visible
+`dev.spagitty.app`. This is the one part of the rename with a user-visible
 consequence — the OS treats it as a new application, so it gets a fresh app-data
 directory and the old one is orphaned. Accepted, because a bundle identifier
 carrying a name the product no longer has is worse: it surfaces in the installed
@@ -27,14 +27,14 @@ cost. See the non-scope note in the item.
 
 **Prose is rewritten, not search-and-replaced blindly.** `agile/` and `docs/`
 are a historical record; sentences that read "GitLord was measured against
-GitKraken" become "GitLumiere was measured against GitKraken", because the
+GitKraken" become "Spagitty was measured against GitKraken", because the
 subject is the product and the product is what was renamed.
 
 ## Files
 
 | Area | Change |
 | --- | --- |
-| `crates/gitlord-core/` → `crates/gitlumiere-core/` | Directory rename; `Cargo.toml` package name; `lib.rs` header |
+| `crates/gitlord-core/` → `crates/spagitty-core/` | Directory rename; `Cargo.toml` package name; `lib.rs` header |
 | `Cargo.toml`, `Cargo.lock` | Workspace members, workspace dependency, repository URL, authors |
 | `src-tauri/` | `Cargo.toml`, `build.rs`, `tauri.conf.json`, `capabilities/default.json`, `gen/schemas/`, and every `use gitlord_core::` |
 | `src/` | Imports, storage keys, user-facing labels, `app.html` title |

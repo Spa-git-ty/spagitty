@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# TASK-004 — Rename the project from GitLord to GitLumiere
+# TASK-004 — Rename the project from GitLord to Spagitty
 
 **Status:** Done, record backfilled
 **Branch:** none — landed directly on `main` as `994dbe9`
@@ -8,7 +8,7 @@
 ## Problem
 
 The project shipped its whole first arc under the name GitLord. The name changed
-to **GitLumiere**, and a name in a Tauri project is not a string in one file: it
+to **Spagitty**, and a name in a Tauri project is not a string in one file: it
 is the workspace crate name, the Rust package and library names, the Tauri
 product name and bundle identifier, the npm package, the capability manifest,
 the license and attribution headers, every `localStorage` key, every user-facing
@@ -18,12 +18,12 @@ the product is a different application to the operating system.
 
 ## Scope
 
-- `crates/gitlord-core` → `crates/gitlumiere-core`, and every dependant.
-- Rust crate, package, and library names, including `gitlumiere_lib`.
-- `src-tauri/tauri.conf.json`: `productName` GitLumiere, `identifier`
-  `dev.gitlumiere.app`; `capabilities/default.json` and the generated schema.
+- `crates/gitlord-core` → `crates/spagitty-core`, and every dependant.
+- Rust crate, package, and library names, including `spagitty_lib`.
+- `src-tauri/tauri.conf.json`: `productName` Spagitty, `identifier`
+  `dev.spagitty.app`; `capabilities/default.json` and the generated schema.
 - `package.json` / `package-lock.json` name.
-- Persisted keys: `gitlord.scale.*` → `gitlumiere.scale.*` and the equivalents
+- Persisted keys: `gitlord.scale.*` → `spagitty.scale.*` and the equivalents
   in the settings, recents, and workspace stores.
 - User-facing strings: title bar, About, notices, window class.
 - CI: `.github/workflows/gates.yml`, `prerelease.yml`, `actions/linux-deps`.
@@ -35,7 +35,7 @@ the product is a different application to the operating system.
 ## Non-scope
 
 - The repository directory on disk and the git remote path. The clone still sits
-  at `~/Dev/mywrok/gitlord` and the remote is `GitLumiere/gitlumiere`; neither
+  at `~/Dev/mywrok/gitlord` and the remote is `Spagitty/spagitty`; neither
   affects the built product.
 - Migrating existing users' persisted state from the old key names. This is a
   pre-release application with no shipped users; a migration shim would be code

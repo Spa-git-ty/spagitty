@@ -18,7 +18,7 @@
   1. Build and install the bundle for the host platform.
   2. Open the operating system's installed-application list.
   3. Launch it from there rather than from a shell.
-- **Expected:** It is listed as **GitLumiere**, launches, and paints the Graph
+- **Expected:** It is listed as **Spagitty**, launches, and paints the Graph
   screen. Nothing anywhere reads GitLord.
 - **Result:**
 
@@ -54,7 +54,7 @@
 - **Steps:** Walk every screen — Graph, Diff, Working copy, Branches, Stash, All
   repositories, Log search, Conflicts, Rebase, Pull requests, Settings — plus the
   Clone modal, the title bar, the command palette, and About.
-- **Expected:** Every visible name is GitLumiere. The window title, the About
+- **Expected:** Every visible name is Spagitty. The window title, the About
   dialog's product line, and the license/attribution text included.
 - **Result:**
 
@@ -64,6 +64,6 @@
 - **Preconditions:** Actions enabled on the repository.
 - **Steps:** Open the workflow run for this branch and look at the job names and
   any uploaded artifact names.
-- **Expected:** GitLumiere throughout; no artifact filename carrying the old
+- **Expected:** Spagitty throughout; no artifact filename carrying the old
   name.
 - **Result:**
