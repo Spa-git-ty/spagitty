@@ -1,9 +1,9 @@
-# GitLumiere
+# Spagitty
 
 A cross-platform desktop Git client. The commit graph is the center of gravity;
 every other view is one focused task.
 
-GitLumiere uses standard git terminology — fetch, push, stage, hunk, `stash@{n}`,
+Spagitty uses standard git terminology — fetch, push, stage, hunk, `stash@{n}`,
 pick/squash/reword/drop, ours/theirs — with no invented vocabulary.
 
 ## Status
@@ -11,12 +11,12 @@ pick/squash/reword/drop, ours/theirs — with no invented vocabulary.
 Early. The application chrome and the Graph, Diff, Working copy, Conflicts,
 Branches, Stash, Log search, Interactive rebase, Pull requests and All
 repositories screens are implemented; the remaining screens are placeholders
-being built one at a time. Nothing in GitLumiere talks to a network.
+being built one at a time. Nothing in Spagitty talks to a network.
 
 ## Stack
 
 - **Tauri 2** — desktop shell
-- **Rust core** (`crates/gitlumiere-core`) — all git operations
+- **Rust core** (`crates/spagitty-core`) — all git operations
 - **[gix](https://github.com/GitoxideLabs/gitoxide)** — log walking, refs, diffing, blame
 - **SvelteKit / TypeScript** — frontend, SPA mode (no SSR)
 
@@ -25,7 +25,7 @@ being built one at a time. Nothing in GitLumiere talks to a network.
 Some git operations are not reimplemented in Rust. Interactive rebase execution,
 hooks, LFS, submodule recursion and credential helpers shell out to the `git`
 binary instead. That boundary lives in exactly one module —
-`crates/gitlumiere-core/src/shell.rs` — and nothing else in the core spawns a
+`crates/spagitty-core/src/shell.rs` — and nothing else in the core spawns a
 process. See the header of that file for the reasoning.
 
 ## Building
@@ -50,15 +50,9 @@ npm run tauri build    # release bundle
 - [docs/ci.md](docs/ci.md) — the six pipeline gates and what each one proves
 - [agile/](agile/) — work items, plans and test plans
 
-## Naming
-
-The CLI binary is `gitlumiere`, never `git-lumiere`: git treats any `git-foo`
-executable on `PATH` as a subcommand, so `git lumiere` would start working by
-accident.
-
 ## License
 
-GitLumiere is free software: you can redistribute it and/or modify it under the
+Spagitty is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software
 Foundation, either version 3 of the License, or (at your option) any later
 version. See [LICENSE](LICENSE) for the full text, and [NOTICE](NOTICE) for
@@ -69,8 +63,8 @@ Contributions are accepted under GPL-3.0-or-later with a DCO sign-off. See
 
 ## Trademark
 
-> GitLumiere is not affiliated with, endorsed by, or sponsored by the Git project
+> Spagitty is not affiliated with, endorsed by, or sponsored by the Git project
 > or the Software Freedom Conservancy. Git and the Git logo are trademarks of
 > the Software Freedom Conservancy.
 
-The Git logo is never used as GitLumiere's icon or in its icon set.
+The Git logo is never used as Spagitty's icon or in its icon set.

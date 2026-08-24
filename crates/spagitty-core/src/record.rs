@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! What GitLumiere actually ran.
+//! What Spagitty actually ran.
 //!
 //! The Settings toggle "Show the git command behind each action" is answered
 //! from here. The record is written by [`crate::shell`] — the one module that
@@ -11,10 +11,10 @@
 //! way down. A record composed anywhere but the spawn site is a claim; this one
 //! is evidence.
 //!
-//! **Reads are absent on purpose.** Almost everything GitLumiere does — walking
+//! **Reads are absent on purpose.** Almost everything Spagitty does — walking
 //! the log, reading refs, diffing, status — happens in-process with `gix` and
 //! has no command line at all. Nothing is synthesised for them: showing a
-//! `git log` GitLumiere never ran would teach the user an invocation that does not
+//! `git log` Spagitty never ran would teach the user an invocation that does not
 //! exist. The panel that renders this says so.
 //!
 //! # Shape
@@ -304,18 +304,18 @@ mod tests {
     #[test]
     fn a_password_in_a_clone_url_is_replaced() {
         assert_eq!(
-            redact("https://maxmya:ghp_secret@github.com/maxmya/gitlumiere.git"),
-            "https://maxmya:***@github.com/maxmya/gitlumiere.git"
+            redact("https://maxmya:ghp_secret@github.com/maxmya/spagitty.git"),
+            "https://maxmya:***@github.com/maxmya/spagitty.git"
         );
     }
 
     #[test]
     fn a_url_without_credentials_is_left_exactly_as_it_was() {
         for url in [
-            "https://github.com/maxmya/gitlumiere.git",
-            "git@github.com:maxmya/gitlumiere.git",
-            "ssh://git@github.com/maxmya/gitlumiere.git",
-            "/home/maxmya/Dev/mywrok/gitlumiere",
+            "https://github.com/maxmya/spagitty.git",
+            "git@github.com:maxmya/spagitty.git",
+            "ssh://git@github.com/maxmya/spagitty.git",
+            "/home/maxmya/Dev/mywrok/spagitty",
             "--force-with-lease",
         ] {
             assert_eq!(redact(url), url, "{url} was altered");

@@ -89,7 +89,7 @@
 	</div>
 
 	<p class="note">
-		The first time GitLumiere runs it takes light or dark from the system preference and opens on
+		The first time Spagitty runs it takes light or dark from the system preference and opens on
 		{FAMILIES[0].name}. Choosing here replaces both until they are changed again.
 	</p>
 

@@ -2,7 +2,7 @@
 
 //! Filesystem watching for the open repository.
 //!
-//! GitLumiere does not poll. `notify` watches the `.git` directory and the UI is
+//! Spagitty does not poll. `notify` watches the `.git` directory and the UI is
 //! told when something it displays has actually changed — a branch moved, a
 //! commit landed, the index was touched. Polling a repository means either
 //! being slow to notice or burning CPU on a directory that is idle almost all
@@ -76,7 +76,7 @@ pub fn watch(app: AppHandle, git_dir: &Path) -> Option<RepoWatcher> {
     watcher.watch(git_dir, RecursiveMode::Recursive).ok()?;
 
     let handle = std::thread::Builder::new()
-        .name("gitlumiere-watch".into())
+        .name("spagitty-watch".into())
         .spawn(move || debounce(app, event_rx, stop_rx))
         .ok()?;
 

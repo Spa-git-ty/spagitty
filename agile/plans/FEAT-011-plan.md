@@ -8,7 +8,7 @@ Replace the stub with a real screen in five sections, and build the two
 obligations properly: the About section's build identity, and a dependency
 licence list generated from the lockfiles.
 
-- **`crates/gitlumiere-core/src/identity.rs`** — reading and writing `user.name`
+- **`crates/spagitty-core/src/identity.rs`** — reading and writing `user.name`
   and `user.email`, per scope.
 - **`src-tauri/src/settings.rs`** — the behaviour toggles, application state
   beside `recents.rs`.
@@ -64,7 +64,7 @@ alone, and Appearance, Accounts and About never needed one.
 
 ## Files
 
-- `crates/gitlumiere-core/src/identity.rs` — new; `shell.rs` gains
+- `crates/spagitty-core/src/identity.rs` — new; `shell.rs` gains
   `set_config` / `unset_config`; `lib.rs`
 - `src-tauri/build.rs`, `src-tauri/licenses.rs` — new build-script module
 - `src-tauri/src/settings.rs` — new; `commands.rs`, `lib.rs`

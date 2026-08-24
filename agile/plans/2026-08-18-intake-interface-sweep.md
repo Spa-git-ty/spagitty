@@ -21,7 +21,7 @@ These were discovered by reading the code, and three of them contradict what
 the screens currently say about themselves.
 
 1. **Rebase execution already exists in the backend.** `shell::rebase_interactive`
-   (`crates/gitlumiere-core/src/shell.rs:545`) is fully implemented — it drives
+   (`crates/spagitty-core/src/shell.rs:545`) is fully implemented — it drives
    `git rebase -i` through `GIT_SEQUENCE_EDITOR`. `commands::rebase_run`
    (`src-tauri/src/commands.rs:408`) and `api.rebaseRun` both exist. FEAT-015 is
    *not* an unbuilt subsystem; it is an unwired button plus the surrounding
@@ -387,7 +387,7 @@ and `api.rebaseRun` exist. Correcting that document is step one (Amendment 11).
 5. **Abort and undo.** `git rebase --abort`, and `reset --hard ORIG_HEAD` for
    the finished-but-regretted case, behind the confirmation destructive
    operations already get.
-6. **Interrupted state.** GitLumiere closing mid-rebase must leave a repository
+6. **Interrupted state.** Spagitty closing mid-rebase must leave a repository
    the command line can finish. Nothing in the on-disk rebase state is
    reimplemented.
 7. Remove the two "FEAT-015" strings — the disabled title and the empty-state
@@ -403,7 +403,7 @@ and `api.rebaseRun` exist. Correcting that document is step one (Amendment 11).
 **Genuinely unbuilt.** `commands.rs` exposes only `conflicts` and
 `conflict_sides`. Everything below is new.
 
-**Backend, `crates/gitlumiere-core/src/`:**
+**Backend, `crates/spagitty-core/src/`:**
 - `shell::checkout_ours(repo, path)` / `checkout_theirs` — `git checkout --ours|--theirs -- <path>`.
 - `shell::add(repo, paths)` — marking resolved. The three index stages
   disappearing is the only real proof resolution worked, so it is checked after,
@@ -451,7 +451,7 @@ three questions and none has been answered. They cannot be defaulted:
    consistent with the project's "git does the work" architecture and it keeps
    the promise on the All repositories screen that nothing leaves the machine
    except through a tool the user already authenticated.
-3. **Read-only, or writes too?** Approving and merging from GitLumiere is a
+3. **Read-only, or writes too?** Approving and merging from Spagitty is a
    different risk surface from reading.
 
 **What can be planned regardless:**

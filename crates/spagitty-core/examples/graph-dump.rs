@@ -5,11 +5,11 @@
 //! Useful for checking lane assignment against `git log --graph --date-order`
 //! without starting the app.
 //!
-//!     cargo run -p gitlumiere-core --example graph-dump -- /path/to/repo [limit]
+//!     cargo run -p spagitty-core --example graph-dump -- /path/to/repo [limit]
 
-use gitlumiere_core::graph::{self, Flow};
-use gitlumiere_core::refs::RefIndex;
-use gitlumiere_core::repo;
+use spagitty_core::graph::{self, Flow};
+use spagitty_core::refs::RefIndex;
+use spagitty_core::repo;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);

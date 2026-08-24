@@ -19,7 +19,7 @@ cargo clippy --workspace --all-targets -- -D warnings   clean
 | Frontend (`src/lib/**`) | 96.35% | 84.16% | 93.82% | 96.67% |
 | `src/lib/rebase/**` | 95.63% | 77.94% | 96.36% | 96.32% |
 | Rust workspace | 88.14% | — | 76.83% | 86.96% |
-| `crates/gitlumiere-core/src/rebase.rs` | 94.20% | — | 83.33% | 93.87% |
+| `crates/spagitty-core/src/rebase.rs` | 94.20% | — | 83.33% | 93.87% |
 
 ## Rust — `rebase.rs`, 20 tests
 

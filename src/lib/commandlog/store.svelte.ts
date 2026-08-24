@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * What GitLumiere ran, for the panel that shows it.
+ * What Spagitty ran, for the panel that shows it.
  *
  * The Settings toggle 'Show the git command behind each action' is answered
  * here. It is answered with a record rather than a label: the command text
- * comes from `crates/gitlumiere-core/src/record.rs`, written by the module that
+ * comes from `crates/spagitty-core/src/record.rs`, written by the module that
  * spawns the process, so this store never composes a line of its own. A screen
  * that wrote its own would be describing what it asked for, which is not the
  * same claim as what ran.
@@ -71,7 +71,7 @@ export const commandLog = {
 	 * Subscribed regardless of the toggle. The toggle governs whether the panel
 	 * can be reached, not whether the record is kept: turning it on should show
 	 * what has already happened this session, and a subscription that started
-	 * at the moment of the flip would show an empty panel and imply GitLumiere had
+	 * at the moment of the flip would show an empty panel and imply Spagitty had
 	 * run nothing.
 	 */
 	async attach(): Promise<() => void> {

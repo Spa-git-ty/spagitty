@@ -10,7 +10,7 @@
 	/**
 	 * What is waiting on you, above what is waiting on everyone else.
 	 *
-	 * **GitLumiere talks to no hosting service**, and nothing here does either: no
+	 * **Spagitty talks to no hosting service**, and nothing here does either: no
 	 * HTTP client is linked into this application, in either language. The
 	 * layout and the empty state are real; the data is FEAT-017.
 	 *
@@ -42,7 +42,7 @@
 				<div class="empty">
 					<p class="note">No account is connected.</p>
 					<p class="note">
-						GitLumiere reads pull requests from whichever service hosts your
+						Spagitty reads pull requests from whichever service hosts your
 						repository, and no service is connected yet. Connect one in Settings →
 						Accounts and they appear here.
 					</p>

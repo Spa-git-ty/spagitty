@@ -6,7 +6,7 @@
  * The logic worth testing is the asymmetry: a success acknowledges itself and
  * leaves, a failure waits to be read. Getting that backwards either makes the
  * user dismiss every routine fetch by hand, or hides git's own explanation of
- * what went wrong — which is usually the most useful sentence GitLumiere has.
+ * what went wrong — which is usually the most useful sentence Spagitty has.
  *
  * Timers are faked rather than waited on: `LINGER` is four seconds, and a suite
  * that actually sleeps for them is a suite nobody runs.

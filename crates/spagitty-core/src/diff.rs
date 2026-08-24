@@ -31,7 +31,7 @@ const CONTEXT: u32 = 3;
 const MAX_BLOB_BYTES: usize = 8 * 1024 * 1024;
 
 /// How far into a blob we look for a NUL byte before calling it text. This is
-/// git's rule (`xdiff`'s `FIRST_FEW_BYTES`), so GitLumiere calls the same files
+/// git's rule (`xdiff`'s `FIRST_FEW_BYTES`), so Spagitty calls the same files
 /// binary that `git diff` does.
 const BINARY_SNIFF_BYTES: usize = 8000;
 

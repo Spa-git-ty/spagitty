@@ -6,10 +6,10 @@ Test tickets for the All repositories screen (1J).
 
 **Fixture.** At least three repositories on disk: one clean and fully pushed,
 one with uncommitted changes and a stash, and one throwaway clone that can be
-moved and deleted. Keep a terminal open — most tickets are "does GitLumiere agree
+moved and deleted. Keep a terminal open — most tickets are "does Spagitty agree
 with git, without having opened that repository".
 
-**The config file.** The list lives at `repositories.json` in GitLumiere's
+**The config file.** The list lives at `repositories.json` in Spagitty's
 app-config directory — on Linux `~/.config/<bundle id>/repositories.json`.
 Several tickets read or edit it directly. Take a copy before the sweep so the
 list can be put back.
@@ -24,9 +24,9 @@ list can be put back.
 ### SWEEP-1J-01 — An empty list offers the action, not an empty grid
 
 - **Priority:** P1
-- **Preconditions:** `repositories.json` moved aside; GitLumiere restarted.
+- **Preconditions:** `repositories.json` moved aside; Spagitty restarted.
 - **Steps:** Open **All repositories** from the rail.
-- **Expected:** No grid. The screen says GitLumiere has not been shown a
+- **Expected:** No grid. The screen says Spagitty has not been shown a
   repository yet and that it never goes looking for one, with an **Open
   repository…** button in the middle of it. Acceptance criterion 7.
 - **Result:**
@@ -62,11 +62,11 @@ list can be put back.
 - **Preconditions:** A fixture that is listed but not open.
 - **Steps:**
   1. `stat -c %y .git/index` in that repository, and note the time.
-  2. In GitLumiere, open **All repositories** and press **Refresh** three times.
+  2. In Spagitty, open **All repositories** and press **Refresh** three times.
   3. `stat -c %y .git/index` again.
   4. `ls .git/index.lock` — expect no such file.
 - **Expected:** The index mtime is unchanged and no lock file was left behind.
-  GitLumiere may not modify a repository the user is not working in. Acceptance
+  Spagitty may not modify a repository the user is not working in. Acceptance
   criterion 5.
 - **Result:**
 
@@ -107,7 +107,7 @@ list can be put back.
 - **Priority:** P1
 - **Steps:**
   1. Note the cards and their order.
-  2. Quit GitLumiere fully and start it again.
+  2. Quit Spagitty fully and start it again.
   3. Open **All repositories**.
   4. Open `repositories.json` in an editor and count the entries.
 - **Expected:** The same cards, same order — most recently opened first.
@@ -123,7 +123,7 @@ list can be put back.
   1. Hover the **Forget** control on a card and read its tooltip.
   2. Press it.
   3. In the terminal: `ls -a <that path>`.
-  4. Restart GitLumiere and return to the screen.
+  4. Restart Spagitty and return to the screen.
 - **Expected:** The tooltip says the directory on disk is not touched. The card
   goes. The directory and its `.git` are still there in full. The card is still
   gone after the restart. The footer states permanently that forgetting removes
@@ -141,9 +141,9 @@ list can be put back.
 ### SWEEP-1J-11 — A hand-edited list does not stop the application
 
 - **Priority:** P1
-- **Steps:** With GitLumiere closed, replace `repositories.json` with `{` and start
+- **Steps:** With Spagitty closed, replace `repositories.json` with `{` and start
   it. Repeat with `[1, 2, 3]` and with a line of prose.
-- **Expected:** GitLumiere starts every time. The screen shows the empty state
+- **Expected:** Spagitty starts every time. The screen shows the empty state
   rather than an error dialog or a crash, and opening a repository writes a
   valid list again. A convenience file the user is invited to edit may not be
   able to stop the application.
@@ -152,7 +152,7 @@ list can be put back.
 ### SWEEP-1J-12 — A missing config directory
 
 - **Priority:** P3
-- **Steps:** With GitLumiere closed, move its whole app-config directory aside and
+- **Steps:** With Spagitty closed, move its whole app-config directory aside and
   start it. Open a repository.
 - **Expected:** It starts on the empty state, and opening a repository recreates
   the directory and the file.
@@ -162,7 +162,7 @@ list can be put back.
 
 - **Priority:** P1
 - **Steps:** Read the footer. Then confirm no repository appears on the screen
-  that was never opened in GitLumiere — in particular, check that a git repository
+  that was never opened in Spagitty — in particular, check that a git repository
   sitting beside a listed one has not been picked up.
 - **Expected:** Only repositories that were opened are listed. The footer states
   that repositories are read where they sit and that nothing is uploaded

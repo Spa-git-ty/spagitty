@@ -16,7 +16,7 @@ true — is invisible to the check.
 
 | # | Step | Expected |
 | --- | --- | --- |
-| 1 | Read `FEAT-036-plan.md` beside `crates/gitlumiere-core/src/refs.rs` | The merge is per commit, keyed on the short name; `Host::from_url` reads the authority. |
+| 1 | Read `FEAT-036-plan.md` beside `crates/spagitty-core/src/refs.rs` | The merge is per commit, keyed on the short name; `Host::from_url` reads the authority. |
 | 2 | Read `FEAT-038-plan.md` beside `src/lib/graph/actions.ts` | The click is `--ff-only`; the stash/pull/restore ordering is as described. |
 | 3 | Read `FEAT-039-plan.md` beside `src/lib/graph/columns.svelte.ts` and `lanes.ts` | The refusal is gone, the catalogue width is `0`, `laneSpanFor` exists. |
 | 4 | Read `TASK-011-plan.md` beside `.github/workflows/gates.yml` | The command, the pin, `--redact`, and `detect` rather than `protect`. |

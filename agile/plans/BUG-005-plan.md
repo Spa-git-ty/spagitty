@@ -53,7 +53,7 @@ it is unstaged (index only, nothing on disk touched) and added to `.gitignore`.
 | `src/lib/metrics.test.ts` | Expectation 129 → 149; comment carries the arithmetic |
 | `src/lib/metrics.ts` | Eight stale doc comments corrected, including the `LANE_COLUMNS_MAX` width table and its rationale |
 | `src/app.css` | `line-height: var(--lh-ui)` restored on `body` |
-| `crates/gitlumiere-core/src/graph.rs` | `ROW_PITCH` doc comment corrected; `row_pitch_matches_the_frontend` added |
+| `crates/spagitty-core/src/graph.rs` | `ROW_PITCH` doc comment corrected; `row_pitch_matches_the_frontend` added |
 | `docs/screens.md` | Graph geometry paragraph corrected |
 | `.gitignore` | `.idea/` |
 | `agile/items,plans,testing/` | TASK-004, FEAT-029, BUG-005 documents; TASK-005 item |
@@ -71,7 +71,7 @@ it is unstaged (index only, nothing on disk touched) and added to `.gitignore`.
 
 ## Risk
 
-- **The mirror test reads a path outside the crate.** If `crates/gitlumiere-core`
+- **The mirror test reads a path outside the crate.** If `crates/spagitty-core`
   is ever vendored or published standalone, `../../src/lib/metrics.ts` is not
   there and the test fails on a missing file rather than on a real drift. The
   crate is a workspace member of an application, never published; if that ever

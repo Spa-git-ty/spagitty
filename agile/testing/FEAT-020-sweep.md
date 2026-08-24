@@ -5,7 +5,7 @@
 Test tickets for "Show the git command behind each action".
 
 **What this is.** A Settings toggle that reveals a Commands drawer listing every
-`git` command GitLumiere has executed this session — the command as spawned, its
+`git` command Spagitty has executed this session — the command as spawned, its
 outcome, its exit code and how long it took. The lines are recorded by the
 module that spawns the process, so they are what ran, not what a screen believed
 it asked for.
@@ -17,7 +17,7 @@ screen does is missing from it, and that nothing appears for an operation that
 never ran. Several tickets therefore ask you to compare the panel against
 `git reflog`, `.git/` state, or your own terminal.
 
-**Preconditions for everything below unless a ticket says otherwise:** GitLumiere
+**Preconditions for everything below unless a ticket says otherwise:** Spagitty
 built from `feature/FEAT-020-show-git-commands`, a scratch clone of a repository
 you do not mind damaging, and a terminal open on that same clone.
 
@@ -31,7 +31,7 @@ you do not mind damaging, and a terminal open on that same clone.
 ### SWEEP-020-01 — Off by default, and invisible
 
 - **Priority:** P1
-- **Preconditions:** A fresh config (no GitLumiere settings file), repository open.
+- **Preconditions:** A fresh config (no Spagitty settings file), repository open.
 - **Steps:** Look at the toolbar. Open the command palette and type "commands".
 - **Expected:** No Commands button. The palette lists "Show git commands"
   disabled, with the reason naming the Settings toggle. Acceptance criterion 1.
@@ -53,7 +53,7 @@ you do not mind damaging, and a terminal open on that same clone.
 - **Priority:** P1
 - **Steps:** With the toggle on, use Fetch. Read the line in the panel.
 - **Expected:** `git fetch --prune --progress --all` — not `git fetch`. Compare
-  against what you would have typed: the extra flags are GitLumiere's, and the
+  against what you would have typed: the extra flags are Spagitty's, and the
   point of this feature is that they are shown. Acceptance criterion 3.
 - **Result:**
 

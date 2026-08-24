@@ -8,7 +8,7 @@
 
 ## Problem
 
-GitLumiere can read history and cannot add to it. The toolbar's primary button says
+Spagitty can read history and cannot add to it. The toolbar's primary button says
 "Commit" and lands on a placeholder; the rail's Working copy count is a `·`
 because nothing computes it. Making a commit means leaving for the terminal,
 which is the single most common thing anyone does in a git client.
@@ -17,7 +17,7 @@ which is the single most common thing anyone does in a git client.
 
 This is the screen the whole application is arranged around — the toolbar's
 primary action points at it, and two rail counts depend on the status walk it
-needs. Until it exists, GitLumiere is a history viewer.
+needs. Until it exists, Spagitty is a history viewer.
 
 ## Scope
 
@@ -40,7 +40,7 @@ needs. Until it exists, GitLumiere is a history viewer.
   FEAT-015's territory.
 - Partial-line staging.
 - Signing configuration — the commit goes through the `git` binary, so signing
-  works if the user has configured it, but GitLumiere does not configure it here.
+  works if the user has configured it, but Spagitty does not configure it here.
 
 ## Acceptance criteria
 

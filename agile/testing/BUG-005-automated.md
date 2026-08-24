@@ -21,7 +21,7 @@ Before the fix, on `main` at `c46c603`: `npm test` was 823 passed, **1 failed**.
 
 | Test | File | Asserts |
 | --- | --- | --- |
-| `row_pitch_matches_the_frontend` | `crates/gitlumiere-core/src/graph.rs` | Reads `src/lib/metrics.ts`, parses `export const ROW_PITCH`, asserts it equals the crate's constant. **New.** This is the regression test for the drift class this item exists for: changing either side alone fails `cargo test` with a message naming both values |
+| `row_pitch_matches_the_frontend` | `crates/spagitty-core/src/graph.rs` | Reads `src/lib/metrics.ts`, parses `export const ROW_PITCH`, asserts it equals the crate's constant. **New.** This is the regression test for the drift class this item exists for: changing either side alone fails `cargo test` with a message naming both values |
 | `fits five lanes and their slack` | `src/lib/metrics.test.ts` | `laneColumnWidth(5) === 149`. **Corrected**, and its comment now carries the arithmetic |
 
 Confirmed to fail without the fix, as Amendment 9 requires of a regression test:

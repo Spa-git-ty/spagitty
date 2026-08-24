@@ -2,10 +2,10 @@
 
 //! # The `git` binary boundary
 //!
-//! This module is the **only** place in GitLumiere that spawns a process. Nothing
-//! else in `gitlumiere-core` shells out; if you need to, add it here.
+//! This module is the **only** place in Spagitty that spawns a process. Nothing
+//! else in `spagitty-core` shells out; if you need to, add it here.
 //!
-//! Everything GitLumiere *reads* — log walking, refs, diffing, status — is done
+//! Everything Spagitty *reads* — log walking, refs, diffing, status — is done
 //! in-process with `gix`. But a specific set of operations is deliberately
 //! **not** reimplemented in Rust:
 //!
@@ -17,7 +17,7 @@
 //! | **Submodule recursion** | Recursive init/update/sync spans nested repositories with their own config, URLs and credentials. `git submodule` is the reference implementation. |
 //! | **Cloning** | The first operation that needs credentials, and therefore the one credential helpers exist for. It is also transport — the smart protocol over HTTPS or SSH — which is the largest thing in git that is not worth a second implementation. |
 //! | **Credential helpers** | Helpers are external programs resolved through config with a documented stdin/stdout protocol, and they are where OS keychain integration already lives. Reimplementing the protocol would mean reimplementing every helper's quirks. |
-//! | **Committing** | `pre-commit` and `commit-msg` hooks have to run, and a signed commit goes through the user's configured GPG or SSH program. Writing the commit object ourselves would silently skip both, so a commit made in GitLumiere would differ from the same commit made on the command line. |
+//! | **Committing** | `pre-commit` and `commit-msg` hooks have to run, and a signed commit goes through the user's configured GPG or SSH program. Writing the commit object ourselves would silently skip both, so a commit made in Spagitty would differ from the same commit made on the command line. |
 //! | **Staging** | The index is the most-read piece of shared state there is: the user's own `git status`, their prompt, their editor's gutter and their hooks all read it. Writing it ourselves — including through `git apply --cached` for a single hunk — keeps the on-disk format and its locking in git's hands. |
 //!
 //! The rule of thumb: if the operation *mutates* state that the wider git
@@ -73,7 +73,7 @@ fn finish(mut command: Command, args: &[&str]) -> Result<String> {
         Err(error) => {
             // git missing from PATH, or the repository gone from under us. It
             // never ran, and that is worth showing in the log too — an empty
-            // log next to a failed operation reads as "GitLumiere did nothing".
+            // log next to a failed operation reads as "Spagitty did nothing".
             record::push(
                 args,
                 Outcome::Failed {
@@ -416,7 +416,7 @@ pub fn blame(repo: &Path, revision: &str, path: &str) -> Result<String> {
 // recoverable — a reimplementation that forgot either would turn "undo" into
 // "restore from backup". And each of them can stop half-way with conflicts, in
 // which case the repository is left in a documented state (`MERGE_HEAD`,
-// `rebase-merge/`, `CHERRY_PICK_HEAD`) that the user's own `git` and GitLumiere's
+// `rebase-merge/`, `CHERRY_PICK_HEAD`) that the user's own `git` and Spagitty's
 // Conflicts screen both already know how to read.
 
 /// How far back a reset takes the index and the working tree.
@@ -453,7 +453,7 @@ pub fn reset(repo: &Path, commit: &str, mode: ResetMode) -> Result<()> {
 /// `--no-edit` so the message git writes ("Revert \"…\"") is used rather than
 /// an editor being opened against a terminal that does not exist. Reverting a
 /// merge needs `-m 1`, which git otherwise refuses to guess; the first parent is
-/// the mainline in every case GitLumiere can show, because that is what the graph's
+/// the mainline in every case Spagitty can show, because that is what the graph's
 /// first parent *is*.
 pub fn revert(repo: &Path, commit: &str, is_merge: bool) -> Result<()> {
     let mut args = vec!["revert", "--no-edit"];
@@ -573,7 +573,7 @@ impl SequenceScripts {
         // again. `--absolute-git-dir` because the scripts are invoked with
         // whatever working directory git happens to have at the time.
         let git_dir = run(repo, &["rev-parse", "--absolute-git-dir"])?;
-        let dir = PathBuf::from(git_dir.trim()).join("gitlumiere");
+        let dir = PathBuf::from(git_dir.trim()).join("spagitty");
         std::fs::create_dir_all(&dir)?;
 
         let plan = dir.join("rebase-todo");
@@ -905,7 +905,7 @@ mod tests {
     fn a_clone_is_recorded_at_spawn_with_its_credentials_removed() {
         let _gate = crate::record::test_gate();
         // Nothing waits for a clone, so the record cannot wait either — and the
-        // URL is the one argument in GitLumiere that can carry a live secret.
+        // URL is the one argument in Spagitty that can carry a live secret.
         let source = Fixture::woven();
         let into = tempfile::tempdir().expect("temp dir");
         let before = crate::record::recent(0).last().map_or(0, |entry| entry.seq);

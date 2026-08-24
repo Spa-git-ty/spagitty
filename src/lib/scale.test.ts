@@ -23,8 +23,8 @@ import {
 	ZOOM_STEP
 } from '$lib/scale.svelte';
 
-const TEXT_KEY = 'gitlumiere.scale.text';
-const ZOOM_KEY = 'gitlumiere.scale.zoom';
+const TEXT_KEY = 'spagitty.scale.text';
+const ZOOM_KEY = 'spagitty.scale.zoom';
 
 /** Read a type token back off the document, as a number of pixels. */
 function token(name: string): number {

@@ -256,7 +256,7 @@
 		<span class="vr" style="height: 26px"></span>
 		<button
 			class="tool"
-			title="What GitLumiere has run"
+			title="What Spagitty has run"
 			aria-pressed={commandLog.open}
 			onclick={() => commandLog.toggle()}
 		>

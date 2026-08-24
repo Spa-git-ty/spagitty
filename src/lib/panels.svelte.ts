@@ -15,7 +15,7 @@
 
 import { CHANGES_FILES_W, DETAIL_W, DIFF_FILES_W, RAIL_W, REQUESTS_DETAIL_W } from './metrics';
 
-const STORAGE_KEY = 'gitlumiere.panels';
+const STORAGE_KEY = 'spagitty.panels';
 
 export const RAIL_MIN = 140;
 export const RAIL_MAX = 340;

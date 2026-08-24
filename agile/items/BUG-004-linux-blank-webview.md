@@ -25,7 +25,7 @@ to know, and a user who does not know it sees a broken application.
 ## Reproduction
 
 1. Build the release AppImage.
-2. Run `./GitLumiere.AppImage` from a shell with no WebKit variables set, on a
+2. Run `./Spagitty.AppImage` from a shell with no WebKit variables set, on a
    driver and compositor combination whose GBM allocation WebKit's DMABuf path
    cannot satisfy (reported on Wayland, Linux 7.1.8-arch1-3).
 3. The window opens white and stays white; stderr shows the GBM line above.

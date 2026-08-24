@@ -6,11 +6,11 @@
 //! diffed against each other to check the hunk headers, the context and the
 //! line numbering without starting the app:
 //!
-//!     cargo run -p gitlumiere-core --example diff-dump -- /path/to/repo <sha>
+//!     cargo run -p spagitty-core --example diff-dump -- /path/to/repo <sha>
 //!     git -C /path/to/repo show --no-color --no-renames <sha>
 
-use gitlumiere_core::diff::{self, LineOrigin};
-use gitlumiere_core::repo;
+use spagitty_core::diff::{self, LineOrigin};
+use spagitty_core::repo;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);

@@ -56,7 +56,7 @@ The alternative readings were considered and rejected:
   gate advisory-only and would hide a genuine vulnerability.
 - **Dropping the advisories check** — same, more honestly.
 - **Downgrading unmaintained to a warning globally** — closer, but it would also
-  silence a *future* unmaintained crate that GitLumiere itself chose, which is
+  silence a *future* unmaintained crate that Spagitty itself chose, which is
   exactly the case worth failing on.
 
 ## Acceptance criteria

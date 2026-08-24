@@ -1209,29 +1209,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gitlumiere"
-version = "0.1.0"
-dependencies = [
- "gitlumiere-core",
- "notify",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
-]
-
-[[package]]
-name = "gitlumiere-core"
-version = "0.1.0"
-dependencies = [
- "gix",
- "serde",
- "tempfile",
- "thiserror 2.0.20",
-]
-
-[[package]]
 name = "gix"
 version = "0.86.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4168,6 +4145,29 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps",
+]
+
+[[package]]
+name = "spagitty"
+version = "0.1.0"
+dependencies = [
+ "notify",
+ "serde",
+ "serde_json",
+ "spagitty-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
+name = "spagitty-core"
+version = "0.1.0"
+dependencies = [
+ "gix",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
-GitLumiere
-Copyright (C) 2026 GitLumiere contributors
+Spagitty
+Copyright (C) 2026 Spagitty contributors
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -17,7 +17,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 TRADEMARK
 ---------
 
-GitLumiere is not affiliated with, endorsed by, or sponsored by the Git project or
+Spagitty is not affiliated with, endorsed by, or sponsored by the Git project or
 the Software Freedom Conservancy. Git and the Git logo are trademarks of the
 Software Freedom Conservancy.
 
@@ -44,7 +44,7 @@ All are compatible with distribution inside a GPL-3.0-or-later work.
 FONTS
 -----
 
-GitLumiere ships no bundled font. The UI uses the host platform's system font
+Spagitty ships no bundled font. The UI uses the host platform's system font
 stack. The design handoff wireframes used "Architects Daughter" to signal draft
 status; it is deliberately not shipped.
 

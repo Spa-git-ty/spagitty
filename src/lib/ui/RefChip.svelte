@@ -90,7 +90,7 @@
 						<path d="M15 3.7v8.5l-3.5 2.8-5.4-2v2L3 11.3l8.4.65V4.05L15 3.7Zm-3.6.4L4.7 1v2.6L1.4 4.6 1 11l2.9-.5V5.6l7.5-1.5Z" />
 					</svg>
 				{:else}
-					<!-- A cloud: a remote whose host GitLumiere does not recognise. -->
+					<!-- A cloud: a remote whose host Spagitty does not recognise. -->
 					<svg class="mark" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
 						<path
 							d="M4.5 12.1h6.8a2.85 2.85 0 0 0 .3-5.66A3.95 3.95 0 0 0 4.1 5.85 2.85 2.85 0 0 0 4.5 12.1Z"

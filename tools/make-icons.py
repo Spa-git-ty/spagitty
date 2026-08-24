@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Generate GitLumiere's application icon set.
+"""Generate Spagitty's application icon set.
 
 The icon is an original mark: a commit lane with a branch elbow and three
 nodes, drawn with the same geometry language as the Graph screen. It uses the
-lane palette, not Git's orange, and none of the Git logo's shapes — GitLumiere must
+lane palette, not Git's orange, and none of the Git logo's shapes — Spagitty must
 never ship anything that could read as the Git project's mark.
 
 This script is the icon's source form. Regenerate with:

@@ -9,7 +9,7 @@
 	 * The open pull request.
 	 *
 	 * Every action here is disabled and names FEAT-017, because reviewing,
-	 * approving and merging all need a host and GitLumiere talks to none. A
+	 * approving and merging all need a host and Spagitty talks to none. A
 	 * control that looks live and does nothing is worse than one that explains
 	 * itself.
 	 */

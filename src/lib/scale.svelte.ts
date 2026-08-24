@@ -48,8 +48,8 @@ export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 2;
 export const ZOOM_STEP = 0.1;
 
-const TEXT_KEY = 'gitlumiere.scale.text';
-const ZOOM_KEY = 'gitlumiere.scale.zoom';
+const TEXT_KEY = 'spagitty.scale.text';
+const ZOOM_KEY = 'spagitty.scale.zoom';
 
 let text = $state(1);
 let zoom = $state(1);

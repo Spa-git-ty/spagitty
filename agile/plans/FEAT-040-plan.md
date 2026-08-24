@@ -75,7 +75,7 @@ the same words.
 
 ## Files
 
-`crates/gitlumiere-core/src/repo.rs` — `last_fetched`, `RepoInfo.last_fetched`,
+`crates/spagitty-core/src/repo.rs` — `last_fetched`, `RepoInfo.last_fetched`,
 and two tests.
 `src/lib/types.ts` — `RepoInfo.lastFetched: number | null`, with what `null`
 means written where the type is.

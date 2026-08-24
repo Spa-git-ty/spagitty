@@ -67,7 +67,7 @@ Rust toolchain. No running application is required: this item adds no UI.
      Run `npm test`.
   2. Revert. In `src/lib/nav.ts`, change `isActive` to plain `startsWith`.
      Run `npm test`.
-  3. Revert. In `crates/gitlumiere-core/src/refs.rs`, remove the `peel_to_id`
+  3. Revert. In `crates/spagitty-core/src/refs.rs`, remove the `peel_to_id`
      call's effect by skipping tags. Run `cargo test --workspace`.
   4. Revert everything.
 - **Expected:** Each break fails at least one test, with a message that points

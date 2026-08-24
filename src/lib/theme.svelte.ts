@@ -28,8 +28,8 @@ import {
 } from './themes';
 
 /** Kept from before the family existed, so an upgrade keeps its light/dark. */
-const MODE_KEY = 'gitlumiere.theme';
-const FAMILY_KEY = 'gitlumiere.theme.family';
+const MODE_KEY = 'spagitty.theme';
+const FAMILY_KEY = 'spagitty.theme.family';
 
 let mode = $state<Mode>('light');
 let family = $state<FamilyId>(DEFAULT_FAMILY);

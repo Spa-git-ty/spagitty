@@ -4,7 +4,7 @@
 
 ## Approach
 
-One new core module, `crates/gitlumiere-core/src/conflicts.rs`, and one screen.
+One new core module, `crates/spagitty-core/src/conflicts.rs`, and one screen.
 The module answers three questions and writes nothing:
 
 - **What is conflicted** — the index's stage 1/2/3 entries, grouped by path.
@@ -36,7 +36,7 @@ progress are possible too, and that state is reported honestly rather than
 guessed at.
 
 **Binary sides are named, not decoded.** The same NUL-byte sniff `diff.rs`
-uses, so GitLumiere calls the same files binary that `git diff` does, and the pane
+uses, so Spagitty calls the same files binary that `git diff` does, and the pane
 says so instead of rendering mojibake.
 
 **Nothing writes.** Not the module, not the commands, not the screen. The
@@ -50,8 +50,8 @@ window.
 
 ## Files
 
-- `crates/gitlumiere-core/src/conflicts.rs` — new; `lib.rs` gains the module
-- `crates/gitlumiere-core/src/fixture.rs` — fixtures for add/add, delete/modify
+- `crates/spagitty-core/src/conflicts.rs` — new; `lib.rs` gains the module
+- `crates/spagitty-core/src/fixture.rs` — fixtures for add/add, delete/modify
   and a binary conflict
 - `src-tauri/src/commands.rs` — `conflicts`, `conflict_sides`; `lib.rs`
 - `src/lib/types.ts`, `src/lib/api.ts`

@@ -5,7 +5,7 @@
 	import { settings } from './store.svelte';
 
 	/**
-	 * GitLumiere's own preferences, stored in its config directory rather than in
+	 * Spagitty's own preferences, stored in its config directory rather than in
 	 * `.git/config` — none of them is a fact about a repository.
 	 *
 	 * **A toggle that does nothing yet says so.** Each one below persists, and
@@ -32,7 +32,7 @@
 			// Not "the equivalent command line": what is shown is the command that
 			// ran, recorded where it was spawned. Reads never run one, and the
 			// panel says so rather than inventing one.
-			what: 'Adds a Commands panel listing every git command GitLumiere executes.',
+			what: 'Adds a Commands panel listing every git command Spagitty executes.',
 			pending: null
 		}
 	];
@@ -41,7 +41,7 @@
 <section class="section">
 	<header>
 		<h2 class="heading">Behaviour</h2>
-		<span class="note">Stored in GitLumiere's own configuration, not in any repository.</span>
+		<span class="note">Stored in Spagitty's own configuration, not in any repository.</span>
 	</header>
 
 	{#each TOGGLES as toggle (toggle.key)}

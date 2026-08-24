@@ -16,7 +16,7 @@ A branch that exists locally and on a remote renders as **two chips**:
 something the user already knows, and a commit carrying three tracked branches
 shows six chips.
 
-`crates/gitlumiere-core/src/refs.rs:69-71` builds them independently:
+`crates/spagitty-core/src/refs.rs:69-71` builds them independently:
 
 ```rust
 let (kind, name) = if let Some(rest) = full.strip_prefix("refs/heads/") {

@@ -62,8 +62,8 @@ aimed.
 
 ## Files
 
-`crates/gitlumiere-core/src/shell.rs` — `pull`, and `PullMode`.
-`crates/gitlumiere-core/src/ops.rs` — the op.
+`crates/spagitty-core/src/shell.rs` — `pull`, and `PullMode`.
+`crates/spagitty-core/src/ops.rs` — the op.
 `src-tauri/src/commands.rs`, `src-tauri/src/lib.rs` — the command and its
 registration.
 `src/lib/api.ts`, `src/lib/types.ts` — the call and the mode type.

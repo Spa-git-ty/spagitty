@@ -5,7 +5,7 @@
 Test tickets for the Stash screen (1G).
 
 **Fixture.** The repository from `docs/testing.md`, which already carries one
-stash entry. Keep a terminal open: most tickets are "does GitLumiere agree with
+stash entry. Keep a terminal open: most tickets are "does Spagitty agree with
 `git stash list`".
 
 **Use a fixture.** Stashing moves files out of the working copy, and bringing

@@ -44,7 +44,7 @@ read as scaffolding rather than as the graph:
   column, so the two can never disagree about a person's face.
 - Portraits are rendered once per author into an offscreen tile at device
   resolution and cached, keyed by palette so a theme change replaces them.
-- `crates/gitlumiere-core/src/graph.rs` carries `author_email` on every row,
+- `crates/spagitty-core/src/graph.rs` carries `author_email` on every row,
   because the address is what identifies a person across the several names one
   human commits under.
 - Geometry retuned in `src/lib/metrics.ts`: node radius 5.5 → 8.5, lane pitch
@@ -57,7 +57,7 @@ read as scaffolding rather than as the graph:
   theme, with a hairline down each side. Each row paints its own slice so the
   fill scrolls with the rows rather than lagging them by a frame.
 - Hover dimming and the ghost branch are gone. `ancestry`, `ghostPath` and
-  `rowOfRef` went with them — moved to `~/claudetrashbin/gitlumiere-FEAT-023/`
+  `rowOfRef` went with them — moved to `~/claudetrashbin/spagitty-FEAT-023/`
   with their tests under Amendment 6, not deleted.
 
 ## Acceptance criteria

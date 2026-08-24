@@ -17,7 +17,7 @@
 	 * minimize and maximize controls there are.
 	 *
 	 * Deliberately neither macOS traffic lights nor Windows' full-height filled
-	 * blocks: small, evenly weighted glyph buttons that read as GitLumiere's own,
+	 * blocks: small, evenly weighted glyph buttons that read as Spagitty's own,
 	 * and entirely colourless — they use the theme's neutral tokens and nothing
 	 * else, including the close button.
 	 */
@@ -38,7 +38,7 @@
 	tabindex="-1"
 	aria-label="Window"
 >
-	<span class="name">GitLumiere</span>
+	<span class="name">Spagitty</span>
 
 	<!--
 		The tabs and the way back to every repository were both here. The tabs

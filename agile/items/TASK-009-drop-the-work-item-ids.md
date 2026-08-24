@@ -49,7 +49,7 @@ The privacy sentence in Settings → Accounts, rewritten to
 yourself."*
 
 It is not the application narrating its limitations. It is a commitment about
-what GitLumiere does with someone's repositories — exactly the sort of thing a
+what Spagitty does with someone's repositories — exactly the sort of thing a
 person cannot verify for themselves and would want to know **before** connecting
 an account. TASK-007's rule keeps a sentence that carries information the user
 cannot see on the screen, and this is the clearest case of one.

@@ -109,7 +109,7 @@ Run the application from this branch. Tester fills the **Result** column.
 | 2 | Zoom out repeatedly to the minimum | Stops at 100%. |
 | 3 | Set text size and zoom to non-default values, close and reopen the app | Both are restored. |
 | 4 | *Reset* the zoom | **Both** dials return to 100%, not just the zoom. |
-| 5 | Edit `gitlumiere.scale.zoom` in `localStorage` to `banana`, reload | The app opens at 100% rather than a broken size. |
+| 5 | Edit `spagitty.scale.zoom` in `localStorage` to `banana`, reload | The app opens at 100% rather than a broken size. |
 
 **Result:**
 

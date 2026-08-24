@@ -4,7 +4,7 @@
 
 **Status:** Fixed on `bugfix/BUG-008-menu-arrow-up-from-nothing`.
 **Found by:** TASK-005, while writing `src/lib/ui/Menu.test.ts`.
-**Screen:** every one — `Menu.svelte` is every right-click menu in GitLumiere.
+**Screen:** every one — `Menu.svelte` is every right-click menu in Spagitty.
 
 ## Problem
 

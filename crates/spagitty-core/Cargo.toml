@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 [package]
-name = "gitlumiere-core"
-description = "Git operations for GitLumiere"
+name = "spagitty-core"
+description = "Git operations for Spagitty"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

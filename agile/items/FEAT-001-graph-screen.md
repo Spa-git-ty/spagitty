@@ -11,7 +11,7 @@ contemporaneous record and does not pretend to be one.
 
 ## Problem
 
-GitLumiere's premise is that the commit graph is the centre of gravity and every
+Spagitty's premise is that the commit graph is the centre of gravity and every
 other screen is one focused task. Nothing else can be built or judged until the
 graph exists: it is what the nav rail counts against, what the Diff screen is
 opened from, and what the application chrome is shaped around.

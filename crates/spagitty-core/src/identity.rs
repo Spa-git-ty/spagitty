@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::{Error, Result};
 use crate::shell;
 
-/// A configuration file GitLumiere will write to.
+/// A configuration file Spagitty will write to.
 ///
 /// The two `git config` offers a person by name. System configuration and
 /// worktree configuration are readable — see [`Origin`] — but not writable
@@ -66,7 +66,7 @@ impl Key {
 
 /// Where the value git would actually use comes from.
 ///
-/// Wider than [`Scope`], because a value can come from somewhere GitLumiere will
+/// Wider than [`Scope`], because a value can come from somewhere Spagitty will
 /// not write. Saying "system" out loud is the point: it explains why editing the
 /// global field did not change the effective value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -119,8 +119,8 @@ pub fn read(repo: &gix::Repository) -> Identity {
 /// Read the identity with no repository open: system, global and environment.
 ///
 /// Settings does not need an open repository, so this is the ordinary path when
-/// GitLumiere starts with no repository chosen. A configuration that cannot be
-/// parsed is reported rather than swallowed — an identity GitLumiere cannot read
+/// Spagitty starts with no repository chosen. A configuration that cannot be
+/// parsed is reported rather than swallowed — an identity Spagitty cannot read
 /// is one it must not offer to overwrite.
 pub fn read_global() -> Result<Identity> {
     let globals =
@@ -191,12 +191,12 @@ fn value_of(config: &gix::config::File, key: Key) -> Value {
     value
 }
 
-/// The scope GitLumiere would write this source's value to, if it writes there at
+/// The scope Spagitty would write this source's value to, if it writes there at
 /// all.
 ///
 /// A worktree's own configuration counts as local: it is inside the repository,
 /// and `git config --local` is what an ordinary repository override is. System
-/// and environment sources have no scope here — GitLumiere does not write either.
+/// and environment sources have no scope here — Spagitty does not write either.
 fn writable(source: gix::config::Source) -> Option<Scope> {
     use gix::config::Source::*;
     match source {

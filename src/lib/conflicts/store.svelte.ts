@@ -104,7 +104,7 @@ export const conflicts = {
 	/**
 	 * Keep the pager pointing at something real after a reload.
 	 *
-	 * A file that was resolved outside GitLumiere leaves the list while the screen
+	 * A file that was resolved outside Spagitty leaves the list while the screen
 	 * is open. Staying on it would show three sides of a file that is no longer
 	 * conflicted, so the selection falls back to the first remaining file.
 	 */

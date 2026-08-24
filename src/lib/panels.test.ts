@@ -13,7 +13,7 @@ import {
 } from './panels.svelte';
 import { CHANGES_FILES_W, DETAIL_W, DIFF_FILES_W, RAIL_W, REQUESTS_DETAIL_W } from './metrics';
 
-const KEY = 'gitlumiere.panels';
+const KEY = 'spagitty.panels';
 
 function stubStorage(initial: Record<string, string> = {}) {
 	const store = new Map(Object.entries(initial));

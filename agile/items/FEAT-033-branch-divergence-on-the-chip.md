@@ -12,7 +12,7 @@ document behind it.
 A branch chip on the graph says where a branch lives — on this machine, on a
 remote, on both — and nothing about whether the two have moved apart. The
 Branches screen already answers that: `BranchRow` carries `ahead` and `behind`,
-counted in `crates/gitlumiere-core/src/branches.rs` against the remote-tracking
+counted in `crates/spagitty-core/src/branches.rs` against the remote-tracking
 ref on disk, and `BranchTable` shows them in an `ahead / behind` column.
 
 So the graph shows one chip for `main` and `origin/main` (FEAT-036) while

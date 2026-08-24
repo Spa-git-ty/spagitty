@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! The list of repositories GitLumiere has been shown.
+//! The list of repositories Spagitty has been shown.
 //!
 //! This is application state, not repository state, so it lives here rather
-//! than in `gitlumiere-core`: it is a record of what the *user* opened, and it
-//! belongs to GitLumiere's own config directory alongside their other preferences.
+//! than in `spagitty-core`: it is a record of what the *user* opened, and it
+//! belongs to Spagitty's own config directory alongside their other preferences.
 //!
-//! GitLumiere never goes looking for repositories. It remembers what it has been
+//! Spagitty never goes looking for repositories. It remembers what it has been
 //! given and nothing else — no filesystem scan, no home-directory crawl, and
 //! nothing leaves the machine.
 
@@ -41,7 +41,7 @@ pub fn remember(app: &AppHandle, repo: &Path) {
 
 /// Forget one path.
 ///
-/// The repository on disk is not touched. This removes a row from GitLumiere's
+/// The repository on disk is not touched. This removes a row from Spagitty's
 /// own list and nothing else — the one destructive-sounding action on the
 /// screen that is not destructive at all.
 pub fn forget(app: &AppHandle, repo: &Path) {
@@ -103,7 +103,7 @@ mod tests {
     fn a_hand_edited_file_that_is_not_a_list_does_not_stop_the_application() {
         // The file sits in the user's config directory and invites editing.
         // Truncated JSON, an object, a list of numbers — none of it may be the
-        // reason GitLumiere will not start.
+        // reason Spagitty will not start.
         for corrupt in ["{", "{\"repos\": []}", "[1, 2, 3]", "null", "not json"] {
             assert_eq!(parse(corrupt), Vec::<PathBuf>::new(), "for {corrupt:?}");
         }

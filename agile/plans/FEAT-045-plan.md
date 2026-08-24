@@ -18,7 +18,7 @@ The two pickers become one line that reads as a location:
 
 ```
 before                                  after
-  repository  [ gitlumiere ▾ ]  ->/repos    **gitlumiere** › [ main ▾ ]
+  repository  [ spagitty ▾ ]  ->/repos    **spagitty** › [ main ▾ ]
   branch      [ main ▾ ]        ->/branches
 ```
 

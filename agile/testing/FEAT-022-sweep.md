@@ -24,7 +24,7 @@ clone, never on work you need.
 
 **Preconditions shared by every ticket.** A scratch clone of a repository with
 at least: one merge commit, two local branches, one remote, one tag, one stash,
-and commits from more than one author. GitLumiere open on the Graph screen.
+and commits from more than one author. Spagitty open on the Graph screen.
 
 ---
 

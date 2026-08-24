@@ -20,7 +20,7 @@ is where that chain is written down:
 Changing `NODE_R` without walking that table is how the drift in BUG-005
 happened.
 
-**The Rust mirror moves in the same commit.** `crates/gitlumiere-core/src/graph.rs`
+**The Rust mirror moves in the same commit.** `crates/spagitty-core/src/graph.rs`
 describes lane elbows in row units, so its `ROW_PITCH` must equal the
 frontend's. It was updated by hand here; BUG-005 adds the test that makes the
 next such edit impossible to get wrong.
@@ -45,7 +45,7 @@ does not have.
 | File | Change |
 | --- | --- |
 | `src/lib/metrics.ts` | `ROW_PITCH`, `LANE_PITCH`, `LANE_X0`, `NODE_R` |
-| `crates/gitlumiere-core/src/graph.rs` | `ROW_PITCH` mirror; `visited` set in `LaneState::step` |
+| `crates/spagitty-core/src/graph.rs` | `ROW_PITCH` mirror; `visited` set in `LaneState::step` |
 | `src/app.css` | Type scale +20%, font smoothing |
 | `src/lib/scale.svelte.ts` | `TYPE_BASE` mirrors the new scale |
 | `src/lib/chrome/NavRail.svelte` | Glyph and label sizes read tokens |

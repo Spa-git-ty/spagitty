@@ -9,8 +9,8 @@
 
 | Test | Layer | What it asserts |
 | --- | --- | --- |
-| `a_repository_that_has_never_been_fetched_has_no_fetch_time` | `crates/gitlumiere-core/src/repo.rs` | An empty fixture has no `.git/FETCH_HEAD`; `last_fetched` is `None`, and so is `info().last_fetched`. The never-fetched case is a value, not an accident. |
-| `a_fetch_head_dates_the_last_fetch` | `crates/gitlumiere-core/src/repo.rs` | With `FETCH_HEAD` written a moment ago, the stamp is within a minute of now in either direction, and `info()` carries the same number. The file is written *empty* on purpose — the contents are not the answer, the mtime is. |
+| `a_repository_that_has_never_been_fetched_has_no_fetch_time` | `crates/spagitty-core/src/repo.rs` | An empty fixture has no `.git/FETCH_HEAD`; `last_fetched` is `None`, and so is `info().last_fetched`. The never-fetched case is a value, not an accident. |
+| `a_fetch_head_dates_the_last_fetch` | `crates/spagitty-core/src/repo.rs` | With `FETCH_HEAD` written a moment ago, the stamp is within a minute of now in either direction, and `info()` carries the same number. The file is written *empty* on purpose — the contents are not the answer, the mtime is. |
 | `dates the walk when it completes` | `src/lib/graph/store.test.ts` | `graph.refreshedAt` is null while rows arrive and is set, no earlier than the moment the test started, when a `complete: true` done payload lands. |
 | `does not date a walk that was cancelled` | `src/lib/graph/store.test.ts` | A done payload with `complete: false` leaves `refreshedAt` null. A walk that did not finish refreshed nothing. |
 | `no longer explains the screen to the person using it` | `src/lib/graph/store.test.ts` | The footer's markup mentions neither dragging a branch, nor right-clicking a row, nor double-clicking one. |
@@ -51,7 +51,7 @@ command on its own line with its exit status read rather than piped:
 | 2 code quality | `cargo fmt --all --check` | Failed once on `last_fetched`'s method chain — the read landed unformatted. `cargo fmt --all` fixed it; clean since. |
 | 2 code quality | `cargo clippy --all-targets --all-features -- -D warnings` | Clean. |
 | 2 code quality | `npm run check` | Clean. |
-| 3 tests | `cargo test --workspace` | 320 passing — 282 in `gitlumiere-core`, 38 in `src-tauri`. |
+| 3 tests | `cargo test --workspace` | 320 passing — 282 in `spagitty-core`, 38 in `src-tauri`. |
 | 3 tests | `npm run coverage` | 1338 passing across 56 files. |
 | 3 coverage | `cargo llvm-cov --workspace --ignore-filename-regex 'fixture\.rs' --fail-under-lines 70` | Lines 81.17%, regions 82.26%, functions executed 72.60%. Over the floor. |
 | 3 coverage | `npm run coverage` thresholds | Statements 86.97%, branches 72.83%, functions 83.98%, lines 86.11%. All four over the Amendment 10 floor of 70%. |
@@ -65,7 +65,7 @@ merge into `main` under Amendment 15.
 
 ### The touched code specifically
 
-`crates/gitlumiere-core/src/repo.rs` — lines 96.17%, regions 97.14%, functions
+`crates/spagitty-core/src/repo.rs` — lines 96.17%, regions 97.14%, functions
 90.91%.
 `src/lib/graph/store.svelte.ts` — statements 95.41%, branches 95%, functions
 92.30%, lines 94.95%.

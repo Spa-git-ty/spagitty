@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! GitLumiere's Tauri shell.
+//! Spagitty's Tauri shell.
 //!
 //! This crate owns the window, the commands, and the background workers
 //! (history walking, log searching and filesystem watching). All git logic
-//! lives in `gitlumiere-core`.
+//! lives in `spagitty-core`.
 
 mod about;
 mod clone_worker;
@@ -93,5 +93,5 @@ pub fn run() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("starting GitLumiere");
+        .expect("starting Spagitty");
 }

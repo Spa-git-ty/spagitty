@@ -59,7 +59,7 @@ pub fn open_sync(path: &Path) -> Result<gix::ThreadSafeRepository> {
 
 /// One card on the All repositories screen.
 ///
-/// Read without opening the repository as GitLumiere's *current* one: no walk, no
+/// Read without opening the repository as Spagitty's *current* one: no walk, no
 /// worker, no watcher. A repository that is not there any more is reported as
 /// missing rather than dropped from the list — a path that has moved is
 /// something the user should see, not something the list should quietly forget.

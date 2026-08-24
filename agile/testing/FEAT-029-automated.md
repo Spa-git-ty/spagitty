@@ -21,8 +21,8 @@ is after the correction.
 
 | Test | File | Asserts |
 | --- | --- | --- |
-| `already_visited_parents_do_not_leave_dangling_edges` | `crates/gitlumiere-core/src/graph.rs` | A merge whose second parent was already walked closes its lane instead of opening one; the walk ends with `width() == 0` and no edge left pointing at an undrawn row. Written with the fix |
-| `row_pitch_matches_the_frontend` | `crates/gitlumiere-core/src/graph.rs` | The Rust `ROW_PITCH` equals the value declared in `src/lib/metrics.ts`, read from the file. Added by BUG-005 to hold this item's geometry together |
+| `already_visited_parents_do_not_leave_dangling_edges` | `crates/spagitty-core/src/graph.rs` | A merge whose second parent was already walked closes its lane instead of opening one; the walk ends with `width() == 0` and no edge left pointing at an undrawn row. Written with the fix |
+| `row_pitch_matches_the_frontend` | `crates/spagitty-core/src/graph.rs` | The Rust `ROW_PITCH` equals the value declared in `src/lib/metrics.ts`, read from the file. Added by BUG-005 to hold this item's geometry together |
 | `fits five lanes and their slack` | `src/lib/metrics.test.ts` | `laneColumnWidth(5) === 149` — the arithmetic of the new node radius, lane pitch and origin. Corrected by BUG-005 |
 | `widens by one lane pitch per extra column` | `src/lib/metrics.test.ts` | Derived from `LANE_PITCH`, so it followed the constant without editing |
 | `steps by the lane pitch`, `places lane 0 at the design offset` | `src/lib/metrics.test.ts` | Same — expressed in terms of the constants, which is why they survived the change |

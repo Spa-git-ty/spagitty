@@ -58,7 +58,7 @@ the authority instead. Recovered from the commit message.
 
 ## Files
 
-`crates/gitlumiere-core/src/refs.rs` — the merge, `Host`, `remote_hosts`,
+`crates/spagitty-core/src/refs.rs` — the merge, `Host`, `remote_hosts`,
 ordering, and the Rust tests.
 `src/lib/types.ts` — the `RefChip` shape and `Host`.
 `src/lib/ui/RefChip.svelte` — the glyphs and the title.

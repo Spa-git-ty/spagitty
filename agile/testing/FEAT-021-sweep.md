@@ -76,16 +76,16 @@ would show up.
 ### SWEEP-1M-06 — The choice survives a restart
 
 - **Priority:** P1
-- **Steps:** Choose Gruvbox dark. Quit GitLumiere completely, start it again.
+- **Steps:** Choose Gruvbox dark. Quit Spagitty completely, start it again.
 - **Expected:** Gruvbox dark, from the first frame. Acceptance criterion 3.
 - **Result:**
 
 ### SWEEP-1M-07 — An old installation keeps its light or dark
 
 - **Priority:** P1
-- **Steps:** Quit. In the webview's local storage, remove `gitlumiere.theme.family`
-  and set `gitlumiere.theme` to `dark` — the state an installation from before this
-  change is in. Start GitLumiere.
+- **Steps:** Quit. In the webview's local storage, remove `spagitty.theme.family`
+  and set `spagitty.theme` to `dark` — the state an installation from before this
+  change is in. Start Spagitty.
 - **Expected:** Dark, in Catppuccin. Nobody loses their setting to an upgrade.
   Acceptance criterion 3.
 - **Result:**
@@ -93,7 +93,7 @@ would show up.
 ### SWEEP-1M-08 — The first frame is not a flash of white
 
 - **Priority:** P2
-- **Steps:** With Catppuccin dark chosen, quit and start GitLumiere several times,
+- **Steps:** With Catppuccin dark chosen, quit and start Spagitty several times,
   watching the very first frame.
 - **Expected:** It comes up in a theme, not in white and then a theme. The boot
   values in `src/app.css` are the default family, so the first frame is Latte or
@@ -103,8 +103,8 @@ would show up.
 ### SWEEP-1M-09 — A hand-edited theme setting does not break anything
 
 - **Priority:** P2
-- **Steps:** Quit. Set `gitlumiere.theme.family` to `solarized` and `gitlumiere.theme`
-  to `chartreuse`. Start GitLumiere.
+- **Steps:** Quit. Set `spagitty.theme.family` to `solarized` and `spagitty.theme`
+  to `chartreuse`. Start Spagitty.
 - **Expected:** It starts, in Catppuccin, light or dark by the system
   preference. No window with no colours in it. Acceptance criterion 4.
 - **Result:**

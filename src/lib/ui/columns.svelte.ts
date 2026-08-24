@@ -15,7 +15,7 @@
  * `localStorage`, keyed by repository path under a prefix each table chooses.
  * This is view state for one person on one machine: putting it in the
  * repository would mean a layout choice arriving in someone else's checkout,
- * and putting it in GitLumiere's config directory would mean a backend round
+ * and putting it in Spagitty's config directory would mean a backend round
  * trip before the first paint of a screen that has to be instant.
  */
 

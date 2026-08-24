@@ -3,7 +3,7 @@
 # FEAT-036 — Automated tests
 
 **Item:** [`agile/items/FEAT-036-one-chip-per-branch.md`](../items/FEAT-036-one-chip-per-branch.md)
-**Files:** `crates/gitlumiere-core/src/refs.rs` (the `tests` module) and
+**Files:** `crates/spagitty-core/src/refs.rs` (the `tests` module) and
 `src/lib/ui/ui.test.ts`.
 
 *Backfilled by TASK-013. Every test named here exists and passes; the table says

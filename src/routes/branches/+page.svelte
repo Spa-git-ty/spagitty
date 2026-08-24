@@ -75,7 +75,7 @@
 					active={branches.active.includes(filter)}
 					onclick={() => branches.toggle(filter)}
 					title={filter === 'mine'
-						? 'Local branches — not "authored by me", which GitLumiere cannot know yet'
+						? 'Local branches — not "authored by me", which Spagitty cannot know yet'
 						: undefined}
 				>
 					{filter}

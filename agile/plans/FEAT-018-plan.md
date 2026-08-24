@@ -68,8 +68,8 @@ not folded into anything else.
 
 ## Files
 
-`crates/gitlumiere-core/src/shell.rs` — `fetch`, `push`.
-`crates/gitlumiere-core/src/ops.rs` — both ops.
+`crates/spagitty-core/src/shell.rs` — `fetch`, `push`.
+`crates/spagitty-core/src/ops.rs` — both ops.
 `src-tauri/src/commands.rs`, `src-tauri/src/lib.rs` — commands and registration.
 `src/lib/api.ts` — `fetch`, `push`.
 `src/lib/graph/actions.ts` — `fetchAll`, `pushCurrent`.
@@ -83,7 +83,7 @@ behaviour the existing shell tests cover.
 
 ## Risk
 
-Push is the first thing GitLumiere does that other people can see, which is why
+Push is the first thing Spagitty does that other people can see, which is why
 there is no force in any interface and why the failure path is tested before the
 success path.
 

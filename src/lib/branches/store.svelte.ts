@@ -24,7 +24,7 @@ export const STALE_DAYS = 90;
 /**
  * The filter chips, in the order the screen draws them.
  *
- * `mine` means "local", not "authored by me": GitLumiere does not know who you are
+ * `mine` means "local", not "authored by me": Spagitty does not know who you are
  * until Settings does, and a chip that guessed would be wrong for anyone who
  * commits under more than one identity.
  */

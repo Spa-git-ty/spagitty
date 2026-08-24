@@ -14,7 +14,7 @@
 //! Whether the destination existed is decided *before* the process starts and
 //! carried here. If it did, the directory is left exactly as it was found: the
 //! partial contents of a cancelled clone inside a directory the user already
-//! had is not something GitLumiere may delete. If it did not, the directory is
+//! had is not something Spagitty may delete. If it did not, the directory is
 //! removed — after the child is reaped, never after the kill signal, or the two
 //! race and files reappear behind the removal.
 
@@ -24,8 +24,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-use gitlumiere_core::clone::{self, Progress};
-use gitlumiere_core::shell;
+use spagitty_core::clone::{self, Progress};
+use spagitty_core::shell;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
@@ -93,7 +93,7 @@ pub fn spawn(
     destination: PathBuf,
     remove_on_cancel: bool,
     token: u64,
-) -> gitlumiere_core::Result<CloneWorker> {
+) -> spagitty_core::Result<CloneWorker> {
     let mut child = shell::clone_start(&url, &destination)?;
     let stderr = child.stderr.take();
 
@@ -101,7 +101,7 @@ pub fn spawn(
     let cancelled = Arc::new(AtomicBool::new(false));
 
     let handle = std::thread::Builder::new()
-        .name(format!("gitlumiere-clone-{token}"))
+        .name(format!("spagitty-clone-{token}"))
         .spawn({
             let child = child.clone();
             let cancelled = cancelled.clone();

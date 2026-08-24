@@ -34,7 +34,7 @@ pub enum Problem {
     ///
     /// An existing *empty* directory is fine, because `git clone` allows it.
     /// Matching git's own rule rather than inventing a stricter one is what
-    /// makes a GitLumiere clone the same as a command-line clone.
+    /// makes a Spagitty clone the same as a command-line clone.
     DestinationNotEmpty(String),
 }
 
@@ -286,7 +286,7 @@ mod tests {
     #[test]
     fn a_bare_host_gives_the_host_as_the_name_the_way_git_clone_does() {
         // Not a special case: `git clone https://example.com/` clones into
-        // `example.com`. Refusing it here would make GitLumiere stricter than the
+        // `example.com`. Refusing it here would make Spagitty stricter than the
         // command line for no reason the user could see.
         let parent = temp();
         let plan = plan("https://example.com/", parent.path());

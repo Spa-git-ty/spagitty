@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! GitLumiere's own preferences.
+//! Spagitty's own preferences.
 //!
 //! Application state rather than repository state, so it lives here beside
-//! [`crate::recents`] rather than in `gitlumiere-core`: none of it is a fact about
+//! [`crate::recents`] rather than in `spagitty-core`: none of it is a fact about
 //! a repository, and none of it belongs in `.git/config` where every other tool
 //! would read it.
 //!
 //! The identity — `user.name` and `user.email` — is deliberately *not* here. It
 //! is git's own configuration, every tool reads it, and it is handled by
-//! `gitlumiere_core::identity` through `git config`.
+//! `spagitty_core::identity` through `git config`.
 //!
 //! A hand-edited file must not stop the application starting, so anything that
 //! does not parse reads as the defaults. That is the same treatment the

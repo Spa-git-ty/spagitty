@@ -15,7 +15,7 @@ request.
 
 The author's decision. It is a subsystem, not a screen: an HTTP client, at least
 two incompatible REST APIs, token storage in the OS keychain, rate limiting,
-offline behaviour, and a new class of failure the rest of GitLumiere does not have.
+offline behaviour, and a new class of failure the rest of Spagitty does not have.
 Deciding it separately keeps it from being designed by accident inside a screen.
 
 ## Scope when started
@@ -31,7 +31,7 @@ Deciding it separately keeps it from being designed by accident inside a screen.
 - Which hosts, and in what order.
 - Whether to talk to the APIs directly or to reuse an already-authenticated
   host CLI, which avoids storing a token at all.
-- Whether writes — approving, merging — are ever in scope, or whether GitLumiere
+- Whether writes — approving, merging — are ever in scope, or whether Spagitty
   stays read-only against a forge.
 
 ## Notes for whoever picks this up

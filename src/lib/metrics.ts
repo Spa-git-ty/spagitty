@@ -8,7 +8,7 @@
  * stylesheet (via `applyMetrics`). There is no second `30` anywhere in the
  * frontend, and no `height: 30px` in any component.
  *
- * The Rust side mirrors ROW_PITCH in `crates/gitlumiere-core/src/graph.rs` because
+ * The Rust side mirrors ROW_PITCH in `crates/spagitty-core/src/graph.rs` because
  * lane elbows are described in row units there; that mirror is asserted against
  * this value by `row_pitch_matches_the_frontend`, a test in that module which
  * reads this file and fails if the two ever drift.
@@ -27,7 +27,7 @@ export const ROW_PITCH = 30;
  * 100%.
  *
  * It was 15 while nodes were 11px initials discs, itself retuned down from 24
- * after measuring GitLumiere against GitKraken on the same repository, then 22
+ * after measuring Spagitty against GitKraken on the same repository, then 22
  * at the first portrait size. Going back up costs width, and the trade is
  * deliberate: a graph whose nodes say *who* earns the pixels, and the message
  * column is still the wider of the two at five lanes.

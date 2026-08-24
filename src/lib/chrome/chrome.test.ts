@@ -81,7 +81,7 @@ beforeEach(() => {
 describe('TitleBar', () => {
 	it('falls back to the product name with no repository open', () => {
 		const view = render(TitleBar, {});
-		expect(view.get('.name').textContent).toBe('GitLumiere');
+		expect(view.get('.name').textContent).toBe('Spagitty');
 		view.destroy();
 	});
 
@@ -92,7 +92,7 @@ describe('TitleBar', () => {
 		repoControl.setInfo(info('main'));
 		const view = render(TitleBar, {});
 
-		expect(view.get('.name').textContent).toBe('GitLumiere');
+		expect(view.get('.name').textContent).toBe('Spagitty');
 		view.destroy();
 	});
 

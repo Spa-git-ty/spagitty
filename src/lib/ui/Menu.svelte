@@ -6,7 +6,7 @@
 	/**
 	 * A floating menu, positioned at a point.
 	 *
-	 * Every right-click menu in GitLumiere is this component with a different list,
+	 * Every right-click menu in Spagitty is this component with a different list,
 	 * because the behaviour that has to be right — closing on an outside click,
 	 * closing on Escape, staying inside the window, arrow-key navigation, not
 	 * letting a disabled entry be chosen — is the same every time and is not

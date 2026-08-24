@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * The floating menu every right-click in GitLumiere opens.
+ * The floating menu every right-click in Spagitty opens.
  *
  * The component's own doc comment names what has to be right — closing on an
  * outside click, closing on Escape, arrow-key navigation, not letting a

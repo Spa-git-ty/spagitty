@@ -226,8 +226,8 @@ fn npm_dependencies(manifest_dir: &Path) -> Result<Vec<Dependency>, String> {
 
     let mut dependencies: Vec<Dependency> = packages
         .iter()
-        // The empty key is the project itself, which is GitLumiere rather than
-        // something GitLumiere depends on.
+        // The empty key is the project itself, which is Spagitty rather than
+        // something Spagitty depends on.
         .filter(|(path, entry)| !path.is_empty() && entry["dev"] != json!(true))
         .map(|(path, entry)| Dependency {
             name: package_name(path),

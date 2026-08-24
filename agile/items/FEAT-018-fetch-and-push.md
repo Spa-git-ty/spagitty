@@ -14,13 +14,13 @@ ahead/behind counts.
 
 The toolbar's Fetch and Push buttons carry a "Not built yet" tooltip.
 `shell::fetch` and `shell::push` are `unimplemented!()` stubs. Every ahead and
-behind count in GitLumiere is therefore as old as the last fetch someone ran from a
+behind count in Spagitty is therefore as old as the last fetch someone ran from a
 terminal.
 
 ## Why it was deferred
 
 Both are network operations needing credential helpers, and push is the first
-thing GitLumiere would do that other people can see. Neither belongs inside another
+thing Spagitty would do that other people can see. Neither belongs inside another
 screen's item.
 
 ## What actually shipped

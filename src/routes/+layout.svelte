@@ -205,7 +205,7 @@
 <Notice />
 
 <!--
-	The record of what GitLumiere ran. Mounted by the shell for the same reason as
+	The record of what Spagitty ran. Mounted by the shell for the same reason as
 	the dialog: a command started on one screen finishes wherever the user is.
 -->
 <CommandLog />

@@ -11,7 +11,7 @@
 	 * navigation and a modal owned by a screen would not.
 	 *
 	 * The clone goes through the `git` binary, so credential helpers and the OS
-	 * keychain work exactly as they do on the command line. GitLumiere never asks
+	 * keychain work exactly as they do on the command line. Spagitty never asks
 	 * for a password itself: a repository whose credentials no helper can supply
 	 * fails with git's own message.
 	 */
@@ -105,7 +105,7 @@
 			<footer class="foot">
 				<span class="note">
 					Cloning goes through <span class="mono">git</span>, so your credential helper and
-					keychain work as they do on the command line. GitLumiere never asks for a password
+					keychain work as they do on the command line. Spagitty never asks for a password
 					itself.
 				</span>
 				<span class="spacer"></span>

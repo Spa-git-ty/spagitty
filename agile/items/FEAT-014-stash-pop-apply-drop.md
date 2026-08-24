@@ -16,7 +16,7 @@ It did, and had for some time:
 
 | Piece | Where |
 | --- | --- |
-| `shell::stash_pop` / `stash_apply` / `stash_drop` | `crates/gitlumiere-core/src/shell.rs:695`, `:701`, `:711` |
+| `shell::stash_pop` / `stash_apply` / `stash_drop` | `crates/spagitty-core/src/shell.rs:695`, `:701`, `:711` |
 | `commands::stash_action` | `src-tauri/src/commands.rs:510` |
 | `api.stashAction` | `src/lib/api.ts:364` |
 | `actions.stash` — **including the confirmation** | `src/lib/graph/actions.ts:363` |

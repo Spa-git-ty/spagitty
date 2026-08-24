@@ -13,7 +13,7 @@
 Run the scanner instead of the action.
 
 `gitleaks/gitleaks-action@v2` refuses to start for an organization account
-without a paid licence, and `GitLumiere` is an organization. The gate was
+without a paid licence, and `Spagitty` is an organization. The gate was
 therefore failing on the scanner never running, not on anything it found — the
 check had been decorative since the day it was written, and no diff in this
 repository's history had ever been scanned.

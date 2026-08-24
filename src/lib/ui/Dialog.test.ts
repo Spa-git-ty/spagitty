@@ -9,7 +9,7 @@
  * about what a user gets.
  *
  * What matters here is the promise contract. Every destructive action in
- * GitLumiere reads `if (!(await dialog.confirm(…))) return;`, so a dialog that
+ * Spagitty reads `if (!(await dialog.confirm(…))) return;`, so a dialog that
  * resolves the wrong way, or fails to resolve at all, either performs an
  * operation the user cancelled or hangs the caller forever.
  */

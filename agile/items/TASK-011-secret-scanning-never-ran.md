@@ -10,13 +10,13 @@
 Gate 4's last step fails, and has always failed, on this:
 
 ```
-[GitLumiere] is an organization. License key is required.
+[Spagitty] is an organization. License key is required.
 🛑 missing gitleaks license. Go grab one at gitleaks.io and store it as a
    GitHub Secret named GITLEAKS_LICENSE.
 ```
 
 `gitleaks/gitleaks-action@v2` requires a **paid licence for organization
-accounts**. `GitLumiere` is an organization, so the action refuses to start.
+accounts**. `Spagitty` is an organization, so the action refuses to start.
 
 **The gate was not failing on a finding. It was failing on the scanner never
 running.** No diff in this repository's history has ever been scanned for

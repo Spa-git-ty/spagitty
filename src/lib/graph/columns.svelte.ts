@@ -49,7 +49,7 @@ const DEFAULT_ORDER: ColumnId[] = ['refs', 'graph', 'message'];
 const store = createColumns<ColumnId>({
 	catalogue: CATALOGUE,
 	defaultOrder: DEFAULT_ORDER,
-	storageKey: 'gitlumiere.graph.columns:'
+	storageKey: 'spagitty.graph.columns:'
 });
 
 let author = $state('');

@@ -4,7 +4,7 @@
 	 * The empty state the Pull requests screen points at.
 	 *
 	 * There is nothing to connect to yet, and this says exactly that rather than
-	 * offering a button that would fail. GitLumiere links no HTTP client in either
+	 * offering a button that would fail. Spagitty links no HTTP client in either
 	 * language — there is a test asserting it — so an account cannot be
 	 * connected by this build at all, and nothing here writes to the OS keychain.
 	 */
@@ -17,13 +17,13 @@
 	</header>
 
 	<p class="note">
-		GitLumiere reads pull requests from whichever service hosts a repository. Connecting one
+		Spagitty reads pull requests from whichever service hosts a repository. Connecting one
 		takes the host, an ssh key and a token, kept in the OS keychain.
 	</p>
 
 	<!--
 		The privacy promise stays. It is not the application narrating its own
-		limitations — it is a commitment about what GitLumiere does with the
+		limitations — it is a commitment about what Spagitty does with the
 		user's repositories, which is exactly the sort of thing a person cannot
 		see for themselves and would want to know before connecting an account.
 	-->

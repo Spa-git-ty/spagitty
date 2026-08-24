@@ -574,7 +574,7 @@ mod tests {
 
     #[test]
     fn a_nul_byte_after_the_sniff_window_is_still_text() {
-        // Git's rule, so GitLumiere calls the same files binary that git does.
+        // Git's rule, so Spagitty calls the same files binary that git does.
         let mut late = vec![b'a'; BINARY_SNIFF_BYTES + 10];
         late[BINARY_SNIFF_BYTES + 5] = 0;
 

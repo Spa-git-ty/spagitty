@@ -19,7 +19,7 @@ cargo clippy --workspace --all-targets -- -D warnings   clean
 | Frontend (`src/lib/**`) | 97.32% | 86.38% | 94.47% | 97.85% |
 | `src/lib/conflicts/**` | 97.19% | 87.95% | 92.00% | 97.67% |
 | Rust workspace | 88.20% | — | 76.99% | 86.41% |
-| `crates/gitlumiere-core/src/conflicts.rs` | 94.42% | — | 90.00% | 95.30% |
+| `crates/spagitty-core/src/conflicts.rs` | 94.42% | — | 90.00% | 95.30% |
 
 ## Rust — `conflicts.rs`, 18 tests
 
@@ -40,7 +40,7 @@ cargo clippy --workspace --all-targets -- -D warnings   clean
 | `the_state_carries_the_operation_and_the_files_together` | One call fills the screen's header and its pager |
 | `an_operation_names_itself_the_way_git_does` | |
 | `a_line_count_treats_a_trailing_newline_as_ending_the_last_line` | |
-| `a_nul_byte_after_the_sniff_window_is_still_text` | Git's own `FIRST_FEW_BYTES` rule, so GitLumiere calls the same files binary that `git diff` does |
+| `a_nul_byte_after_the_sniff_window_is_still_text` | Git's own `FIRST_FEW_BYTES` rule, so Spagitty calls the same files binary that `git diff` does |
 | `a_side_over_the_ceiling_is_reported_rather_than_sent_to_the_screen` | Three panes render at once; a 9MB side is named, not drawn |
 | `stages_map_to_the_kind_of_conflict_they_describe` | The whole stage-to-kind table, including the case that is not a conflict anyone can act on |
 

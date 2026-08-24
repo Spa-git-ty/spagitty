@@ -10,7 +10,7 @@ this document; the reasoning is taken from the implementation and its comments.
 
 The Graph screen answers "what happened". It cannot answer "what changed" —
 the detail panel lists the files a commit touched but shows no content. Opening
-a commit's actual diff meant leaving GitLumiere for the terminal.
+a commit's actual diff meant leaving Spagitty for the terminal.
 
 ## Motivation
 

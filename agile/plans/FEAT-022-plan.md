@@ -50,7 +50,7 @@ anything about rows that are not on screen.
 ### 4. Visibility changes the walk, not the rendering
 
 Hide, solo, smart and pin all resolve to a **root set** handed to a new walk in
-`gitlumiere-core`, whose token the store adopts. Filtering client-side would leave
+`spagitty-core`, whose token the store adopts. Filtering client-side would leave
 lanes drawing edges between commits that are no longer parent and child.
 
 The exception is the author filter, which **dims**: on the graph the shape is
@@ -76,7 +76,7 @@ is one function returning a typed result, and interactive rebase runs through
 
 ## Files
 
-**Rust.** `crates/gitlumiere-core/src/ops.rs` (new: reset, revert, cherry-pick,
+**Rust.** `crates/spagitty-core/src/ops.rs` (new: reset, revert, cherry-pick,
 merge, rebase, tags, branch rename and delete, detached checkout, stash
 apply/pop/drop, fetch, push); `shell.rs`, `graph.rs` (`tips_for`,
 `LaneState::reserve`, `walk_pinned`), `repo.rs`, `rebase.rs`, `lib.rs`;
@@ -120,4 +120,4 @@ apply/pop/drop, fetch, push); `shell.rs`, `graph.rs` (`tips_for`,
 
 Every piece is additive and reachable from its own module. Reverting the branch
 restores the read-only graph; no schema, no migration, and nothing persisted
-outside `localStorage` keys namespaced under `gitlumiere.graph.*`.
+outside `localStorage` keys namespaced under `spagitty.graph.*`.

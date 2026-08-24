@@ -5,7 +5,7 @@
  *
  * Git operations fail in ways only git can describe — "your local changes would
  * be overwritten", "not something we can merge" — and those sentences are the
- * most useful thing GitLumiere can show. Before this existed they went to a
+ * most useful thing Spagitty can show. Before this existed they went to a
  * `catch` that put them in a store belonging to whichever screen started the
  * operation, which meant an action started from the command palette had nowhere
  * to report to.

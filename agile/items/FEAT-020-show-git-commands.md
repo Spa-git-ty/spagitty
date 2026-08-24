@@ -18,20 +18,20 @@ nothing.
 ## Why it was deferred
 
 The honest version of this feature is not a label — it is a record of what
-GitLumiere actually ran, which means the reporting has to come from the place that
+Spagitty actually ran, which means the reporting has to come from the place that
 runs it rather than from each screen guessing. `shell.rs` is the only module
 that spawns a process, so it is the only place that knows, and threading that
 back out to the UI is a design decision rather than a string.
 
 ## Scope when started
 
-- A record of each executed command, produced by `crates/gitlumiere-core/src/shell.rs`
+- A record of each executed command, produced by `crates/spagitty-core/src/shell.rs`
   itself, so a screen cannot claim a command that was never run.
 - A place to read it: a log the toggle reveals, rather than a toast that is gone
   before it is read.
-- The `gix` half stated honestly. Most of what GitLumiere does — every read — is
+- The `gix` half stated honestly. Most of what Spagitty does — every read — is
   in-process and has no command line, and pretending otherwise would teach the
-  user a `git` invocation GitLumiere never made.
+  user a `git` invocation Spagitty never made.
 - Redaction of anything that must not be shown: a URL with credentials in it is
   a plausible argument to a fetch.
 
@@ -54,7 +54,7 @@ FEAT-011 (the toggle).
 
 ## What was built
 
-- `crates/gitlumiere-core/src/record.rs` — a process-wide ring buffer of the last
+- `crates/spagitty-core/src/record.rs` — a process-wide ring buffer of the last
   200 executions (argv, outcome, exit code, duration), written by `shell.rs`
   itself. Every spawn now goes through `shell::finish` or `shell::record_spawn`,
   so a spawn added later cannot bypass the record.
