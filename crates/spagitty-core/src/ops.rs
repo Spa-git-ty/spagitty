@@ -105,6 +105,33 @@ pub fn rebase_interactive(repo: &gix::Repository, upstream: &str, todo: &str) ->
     shell::rebase_interactive(workdir(repo)?, upstream, todo)
 }
 
+/// Start a planned interactive rebase without waiting for it.
+///
+/// The caller owns the child. See [`shell::rebase_interactive_spawn`] for why
+/// this form exists and why nothing kills it.
+pub fn rebase_interactive_spawn(
+    repo: &gix::Repository,
+    upstream: &str,
+    todo: &str,
+) -> Result<std::process::Child> {
+    shell::rebase_interactive_spawn(workdir(repo)?, upstream, todo)
+}
+
+/// Carry on with a rebase that stopped, once its conflicts are resolved.
+pub fn rebase_continue(repo: &gix::Repository) -> Result<()> {
+    shell::rebase_continue(workdir(repo)?)
+}
+
+/// Drop the commit a rebase stopped on and carry on with the rest.
+pub fn rebase_skip(repo: &gix::Repository) -> Result<()> {
+    shell::rebase_skip(workdir(repo)?)
+}
+
+/// Unwind a rebase and put the branch back where it started.
+pub fn rebase_abort(repo: &gix::Repository) -> Result<()> {
+    shell::rebase_abort(workdir(repo)?)
+}
+
 /// Check out a commit with no branch attached.
 pub fn checkout_detached(repo: &gix::Repository, revision: &str) -> Result<()> {
     shell::checkout_detached(workdir(repo)?, revision)
@@ -326,6 +353,84 @@ mod tests {
         let list = fixture.git(&["branch", "--list"]);
         assert!(list.contains("feature/renamed"), "unexpected: {list}");
         assert!(!list.contains("feature/split-view"), "unexpected: {list}");
+    }
+
+    /// A branch whose replay onto `main` is guaranteed to stop on a conflict.
+    ///
+    /// Both sides change the same line of the same file, which is the one shape
+    /// git cannot resolve on its own.
+    fn conflicting() -> Fixture {
+        let fixture = Fixture::empty();
+        fixture.write("shared.txt", "original\n");
+        fixture.git(&["add", "-A"]);
+        fixture.commit("Base");
+
+        fixture.git(&["switch", "-q", "-c", "work"]);
+        fixture.write("shared.txt", "theirs\n");
+        fixture.commit_all("Their change");
+
+        fixture.git(&["switch", "-q", "-"]);
+        fixture.write("shared.txt", "ours\n");
+        fixture.commit_all("Our change");
+
+        fixture.git(&["switch", "-q", "work"]);
+        fixture
+    }
+
+    #[test]
+    fn a_rebase_that_conflicts_stops_and_leaves_state_to_read() {
+        // The hand-off the whole screen is built around: git does not fail, it
+        // stops, and it says where by leaving its counters behind.
+        let fixture = conflicting();
+        let repo = fixture.open();
+        let todo = crate::rebase::todo(&repo, "main").expect("todo");
+        let text = crate::rebase::todo_text(
+            &todo,
+            &todo
+                .rows
+                .iter()
+                .map(|row| crate::rebase::Edit {
+                    id: row.id.clone(),
+                    action: crate::rebase::Action::Pick,
+                    message: None,
+                })
+                .collect::<Vec<_>>(),
+        )
+        .expect("todo text");
+
+        let stopped = rebase_interactive(&repo, "main", &text).is_err();
+
+        assert!(stopped, "the rebase was meant to stop on a conflict");
+        let progress = crate::rebase::progress(&fixture.open()).expect("a rebase in progress");
+        assert_eq!(progress.step, 1);
+        assert_eq!(progress.branch.as_deref(), Some("work"));
+    }
+
+    #[test]
+    fn aborting_puts_the_branch_back_and_clears_the_state() {
+        let fixture = conflicting();
+        let before = fixture.head();
+        let repo = fixture.open();
+        let todo = crate::rebase::todo(&repo, "main").expect("todo");
+        let text = crate::rebase::todo_text(
+            &todo,
+            &todo
+                .rows
+                .iter()
+                .map(|row| crate::rebase::Edit {
+                    id: row.id.clone(),
+                    action: crate::rebase::Action::Pick,
+                    message: None,
+                })
+                .collect::<Vec<_>>(),
+        )
+        .expect("todo text");
+        let _ = rebase_interactive(&repo, "main", &text);
+
+        rebase_abort(&fixture.open()).expect("abort");
+
+        assert_eq!(fixture.head(), before);
+        assert!(crate::rebase::progress(&fixture.open()).is_none());
     }
 
     #[test]

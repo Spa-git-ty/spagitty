@@ -72,7 +72,7 @@ rather than an audit.
 | [FEAT-012](items/FEAT-012-clone.md) | Clone | 1L | Done |
 | [FEAT-013](items/FEAT-013-branch-destructive-operations.md) | Branch delete and rename | 1F | Done |
 | [FEAT-014](items/FEAT-014-stash-pop-apply-drop.md) | Stash pop, apply and drop | 1G | Done |
-| [FEAT-015](items/FEAT-015-rebase-execution.md) | Rebase execution | 1E | Partial |
+| [FEAT-015](items/FEAT-015-rebase-execution.md) | Rebase execution | 1E | Done |
 | [FEAT-016](items/FEAT-016-conflict-resolution-writes.md) | Conflict resolution writes | 1D | Backlog |
 | [FEAT-017](items/FEAT-017-forge-integration.md) | Forge integration | 1H, 1K | Backlog |
 | [FEAT-018](items/FEAT-018-fetch-and-push.md) | Fetch and push | chrome | Partial |
@@ -163,4 +163,3 @@ missing documents are not listed here, and fails again if a row here is stale.
 | ID | Missing | Why, and what closes it |
 | --- | --- | --- |
 | BUG-001 | plan, automated, sweep | Fixed inside FEAT-003's change before it had a branch of its own; its item document says so. No separate work to plan. |
-| FEAT-015 | plan, automated, sweep | `Partial`. Same — written when the frontend work starts. |

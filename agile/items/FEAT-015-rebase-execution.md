@@ -2,10 +2,10 @@
 
 # FEAT-015 — Rebase execution
 
-**Status:** Partial. `ops::rebase_interactive` and the `rebase_run` command
-are built; the frontend is unwired — Apply is a hardcoded `disabled`, and
-there is no progress or abort path. Corrected by TASK-012. No plan yet; one
-is written when the remainder starts.
+**Status:** Done on `feature/FEAT-015-rebase-execution`. `ops::rebase_interactive`
+and the `rebase_run` command were already built; the worker, the progress read,
+the conflict hand-off and the abort path were built here. The undo back to
+`ORIG_HEAD` is deliberately not a button — see the plan's non-scope.
 **Screen:** Interactive rebase (1E).
 
 ## Problem

@@ -15,11 +15,38 @@
 //! [`crate::ops::rebase_interactive`], which hands that file to `git` — so the
 //! preview the user approved and the instructions git receives are generated
 //! from one ordering, and cannot describe two different rebases.
+//!
+//! [`progress`] is the one thing here that reads a running rebase, and it still
+//! runs nothing: it reads the counters git itself writes into its state
+//! directory. That is deliberate. Parsing `Rebasing (3/7)` out of git's stderr
+//! would tie the screen to the wording of a progress message that is localised
+//! and has changed before; `rebase-merge/msgnum` and `rebase-merge/end` are the
+//! same numbers, in a file, in a format other tools already depend on.
 
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 use crate::graph::short_id;
+
+/// How far a rebase that is running has got.
+///
+/// `None` for a repository that is not in the middle of one. A rebase that has
+/// stopped — on a conflict, or on an `edit` — is still in progress, and this is
+/// what says where it stopped.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Progress {
+    /// Which commit is being applied, counting from 1.
+    pub step: usize,
+    /// How many there are in total.
+    pub total: usize,
+    /// The branch being rebased, when git recorded one. A rebase started from
+    /// a detached HEAD has none.
+    pub branch: Option<String>,
+    /// The commit the branch was on before the rebase — `ORIG_HEAD`, and the
+    /// whole of the undo path once the rebase has finished.
+    pub original: Option<String>,
+}
 
 /// The longest range this screen will plan.
 ///
@@ -439,10 +466,159 @@ fn walk_err(e: impl std::fmt::Display) -> Error {
     Error::Walk(e.to_string())
 }
 
+/// Read how far a running rebase has got, from git's own state directory.
+///
+/// Both interactive and non-interactive rebases keep their state under
+/// `rebase-merge/`; the plain `rebase-apply/` form is what `git am` and an
+/// old-style `--am` rebase use, and it counts the same way in `next` and
+/// `last`. Both are read, so a rebase started from the command line while
+/// Spagitty was open is still legible here.
+///
+/// A missing or unparseable counter is `None` rather than a zero: "not
+/// rebasing" and "rebasing, position unknown" are different answers, and only
+/// one of them should make a progress bar appear.
+pub fn progress(repo: &gix::Repository) -> Option<Progress> {
+    progress_in(repo.git_dir())
+}
+
+/// [`progress`] against a git directory rather than an open repository.
+///
+/// The rebase worker has a path and no repository — it took one while it held
+/// the session lock and gave the lock back — and opening one just to read two
+/// counters would be work done to satisfy a signature.
+pub fn progress_in(git_dir: &std::path::Path) -> Option<Progress> {
+    let (dir, current, total) = [
+        ("rebase-merge", "msgnum", "end"),
+        ("rebase-apply", "next", "last"),
+    ]
+    .into_iter()
+    .find_map(|(dir, current, total)| {
+        let dir = git_dir.join(dir);
+        Some((
+            dir.clone(),
+            number(&dir.join(current))?,
+            number(&dir.join(total))?,
+        ))
+    })?;
+
+    Some(Progress {
+        step: current,
+        total,
+        branch: text(&dir.join("head-name")).map(|name| {
+            name.strip_prefix("refs/heads/")
+                .unwrap_or(&name)
+                .to_string()
+        }),
+        // Shortened here rather than by the caller: it is only ever shown, and
+        // the caller that needs the full id has `ORIG_HEAD` itself.
+        original: text(&git_dir.join("ORIG_HEAD")).map(|id| id.chars().take(7).collect()),
+    })
+}
+
+fn text(path: &std::path::Path) -> Option<String> {
+    let contents = std::fs::read_to_string(path).ok()?;
+    let trimmed = contents.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
+}
+
+fn number(path: &std::path::Path) -> Option<usize> {
+    text(path)?.parse().ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::fixture::Fixture;
+
+    /// Write the counters git writes, without running a rebase to get them.
+    ///
+    /// A real interrupted rebase in a test is a race: it depends on git
+    /// stopping where the fixture expects. The counters are a documented file
+    /// format, and what is being asserted here is that they are read.
+    fn write_state(fixture: &Fixture, dir: &str, current: &str, total: &str, step: usize, end: usize) {
+        let git_dir = fixture.path().join(".git").join(dir);
+        std::fs::create_dir_all(&git_dir).expect("state directory");
+        std::fs::write(git_dir.join(current), format!("{step}\n")).expect("current");
+        std::fs::write(git_dir.join(total), format!("{end}\n")).expect("total");
+    }
+
+    #[test]
+    fn a_repository_that_is_not_rebasing_has_no_progress() {
+        // Not a zero: "not rebasing" and "rebasing, position unknown" are
+        // different answers, and only one should make a bar appear.
+        let fixture = Fixture::woven();
+        assert!(progress(&fixture.open()).is_none());
+    }
+
+    #[test]
+    fn an_interactive_rebase_reports_its_step_and_total() {
+        let fixture = Fixture::woven();
+        write_state(&fixture, "rebase-merge", "msgnum", "end", 3, 7);
+
+        let progress = progress(&fixture.open()).expect("progress");
+
+        assert_eq!(progress.step, 3);
+        assert_eq!(progress.total, 7);
+    }
+
+    #[test]
+    fn an_old_style_rebase_counts_the_same_way() {
+        // `rebase-apply/` is what `git am` and a `--am` rebase use. A rebase
+        // started from the command line is still legible here.
+        let fixture = Fixture::woven();
+        write_state(&fixture, "rebase-apply", "next", "last", 2, 5);
+
+        let progress = progress(&fixture.open()).expect("progress");
+
+        assert_eq!(progress.step, 2);
+        assert_eq!(progress.total, 5);
+    }
+
+    #[test]
+    fn the_branch_is_reported_without_its_refs_heads_prefix() {
+        let fixture = Fixture::woven();
+        write_state(&fixture, "rebase-merge", "msgnum", "end", 1, 2);
+        std::fs::write(
+            fixture.path().join(".git/rebase-merge/head-name"),
+            "refs/heads/feature/split-view\n",
+        )
+        .expect("head-name");
+
+        let progress = progress(&fixture.open()).expect("progress");
+
+        assert_eq!(progress.branch.as_deref(), Some("feature/split-view"));
+    }
+
+    #[test]
+    fn a_rebase_from_a_detached_head_has_no_branch() {
+        let fixture = Fixture::woven();
+        write_state(&fixture, "rebase-merge", "msgnum", "end", 1, 2);
+
+        assert!(progress(&fixture.open()).expect("progress").branch.is_none());
+    }
+
+    #[test]
+    fn the_original_position_is_shortened_for_showing() {
+        let fixture = Fixture::woven();
+        write_state(&fixture, "rebase-merge", "msgnum", "end", 1, 2);
+        let head = fixture.head();
+        std::fs::write(fixture.path().join(".git/ORIG_HEAD"), format!("{head}\n"))
+            .expect("ORIG_HEAD");
+
+        let progress = progress(&fixture.open()).expect("progress");
+
+        assert_eq!(progress.original.as_deref(), Some(&head[..7]));
+    }
+
+    #[test]
+    fn a_state_directory_with_no_counters_is_not_progress() {
+        // git creates the directory before it writes the numbers. Reading a
+        // half-written state as "step 0 of 0" would flash a bar at zero.
+        let fixture = Fixture::woven();
+        std::fs::create_dir_all(fixture.path().join(".git/rebase-merge")).expect("directory");
+
+        assert!(progress(&fixture.open()).is_none());
+    }
 
     /// A branch of three commits on top of main, each touching its own file.
     fn linear() -> Fixture {

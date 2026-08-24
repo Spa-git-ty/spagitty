@@ -1,11 +1,35 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RebaseEdit, RebasePreview, RebaseTodo, TodoRow } from '$lib/types';
+import {
+	REBASE_DONE_EVENT,
+	REBASE_PROGRESS_EVENT,
+	type RebaseEdit,
+	type RebasePreview,
+	type RebaseTodo,
+	type TodoRow
+} from '$lib/types';
+
+/** Handlers registered by `rebase.attach`, keyed by event name. */
+const handlers = new Map<string, (event: { payload: unknown }) => void>();
+
+vi.mock('@tauri-apps/api/event', () => ({
+	listen: vi.fn((name: string, handler: (event: { payload: unknown }) => void) => {
+		handlers.set(name, handler);
+		return Promise.resolve(vi.fn());
+	})
+}));
+
+vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
 
 vi.mock('$lib/api', () => ({
 	rebaseTodo: vi.fn(),
-	rebasePreview: vi.fn()
+	rebasePreview: vi.fn(),
+	rebaseRun: vi.fn(),
+	rebaseProgress: vi.fn(),
+	rebaseContinue: vi.fn(),
+	rebaseSkip: vi.fn(),
+	rebaseAbort: vi.fn()
 }));
 
 import * as api from '$lib/api';
@@ -13,6 +37,11 @@ import { ACTION_MEANINGS, ACTIONS, rebase } from './store.svelte';
 
 const rebaseTodo = vi.mocked(api.rebaseTodo);
 const rebasePreview = vi.mocked(api.rebasePreview);
+const rebaseRun = vi.mocked(api.rebaseRun);
+const rebaseProgress = vi.mocked(api.rebaseProgress);
+const rebaseContinue = vi.mocked(api.rebaseContinue);
+const rebaseSkip = vi.mocked(api.rebaseSkip);
+const rebaseAbort = vi.mocked(api.rebaseAbort);
 
 function todoRow(n: number): TodoRow {
 	return {
@@ -277,5 +306,212 @@ describe('clear', () => {
 		expect(rebase.preview).toBeNull();
 		expect(rebase.upstream).toBe('');
 		expect(rebase.loaded).toBe(false);
+	});
+});
+
+/** Deliver one event to whatever `attach` registered for it. */
+function emit(name: string, payload: unknown): void {
+	handlers.get(name)?.({ payload });
+}
+
+/**
+ * Put the store back to "no rebase running".
+ *
+ * `clear()` deliberately does not forget a running rebase — it belongs to the
+ * repository rather than to the screen's plan — so a test that started one
+ * finishes it the way the application would, with a done event.
+ */
+async function idle(): Promise<void> {
+	if (rebase.token === null) return;
+	await rebase.attach();
+	rebaseProgress.mockResolvedValue(null);
+	emit(REBASE_DONE_EVENT, { token: rebase.token, ok: true, stopped: false, error: null });
+	await Promise.resolve();
+}
+
+/** A rebase running, with its listeners attached and its token known. */
+async function started(token = 7) {
+	await rebase.attach();
+	rebaseRun.mockResolvedValueOnce(token);
+	await rebase.run();
+	return token;
+}
+
+describe('running a plan', () => {
+	beforeEach(async () => {
+		await idle();
+		handlers.clear();
+		rebaseProgress.mockResolvedValue(null);
+		rebaseTodo.mockResolvedValue(todoOf());
+		rebasePreview.mockResolvedValue(previewOf());
+		rebase.upstream = 'main';
+		await rebase.load();
+	});
+
+	it('resolves when the rebase has started, not when it has finished', async () => {
+		rebaseRun.mockResolvedValueOnce(7);
+
+		expect(await rebase.run()).toBe(true);
+		expect(rebase.running).toBe(true);
+		// Nothing has been decided yet: the outcome arrives on an event.
+		expect(rebase.outcome).toBeNull();
+	});
+
+	it('sends the whole plan, so what was previewed is what runs', async () => {
+		rebaseRun.mockResolvedValueOnce(7);
+		await rebase.run();
+
+		expect(rebaseRun).toHaveBeenCalledWith(rebase.plan);
+	});
+
+	it('refuses a second rebase while one is running', async () => {
+		await started();
+		rebaseRun.mockClear();
+
+		expect(await rebase.run()).toBe(false);
+		expect(rebaseRun).not.toHaveBeenCalled();
+	});
+
+	it('reports a rebase that could not be started at all', async () => {
+		rebaseRun.mockRejectedValueOnce(new Error('no rebase is being planned'));
+
+		expect(await rebase.run()).toBe(false);
+		expect(rebase.running).toBe(false);
+		expect(rebase.outcome).toBe('failed');
+		expect(rebase.runError).toContain('no rebase is being planned');
+	});
+});
+
+describe('what arrives while it runs', () => {
+	beforeEach(async () => {
+		await idle();
+		handlers.clear();
+		rebaseProgress.mockResolvedValue(null);
+		rebaseTodo.mockResolvedValue(todoOf());
+		rebasePreview.mockResolvedValue(previewOf());
+		rebase.upstream = 'main';
+		await rebase.load();
+	});
+
+	it('follows the step count', async () => {
+		const token = await started();
+
+		emit(REBASE_PROGRESS_EVENT, { token, step: 2, total: 5, branch: 'work', original: 'abc1234' });
+
+		expect(rebase.progress).toEqual({
+			step: 2,
+			total: 5,
+			branch: 'work',
+			original: 'abc1234'
+		});
+	});
+
+	it('ignores steps from a rebase that is not the one running', async () => {
+		const token = await started(7);
+
+		emit(REBASE_PROGRESS_EVENT, { token: token + 1, step: 9, total: 9, branch: null, original: null });
+
+		expect(rebase.progress).toBeNull();
+	});
+
+	it('finishes when git got to the end', async () => {
+		const token = await started();
+		rebaseProgress.mockResolvedValue(null);
+
+		emit(REBASE_DONE_EVENT, { token, ok: true, stopped: false, error: null });
+		await Promise.resolve();
+
+		expect(rebase.running).toBe(false);
+		expect(rebase.outcome).toBe('ran');
+	});
+
+	it('calls a stop a stop, not a failure', async () => {
+		// The distinction the whole hand-off rests on: git exits non-zero both
+		// for "I stopped, your turn" and for "this did not work".
+		const token = await started();
+
+		emit(REBASE_DONE_EVENT, { token, ok: false, stopped: true, error: null });
+
+		expect(rebase.outcome).toBe('stopped');
+	});
+
+	it('reports a real failure with git’s own words', async () => {
+		const token = await started();
+
+		emit(REBASE_DONE_EVENT, { token, ok: false, stopped: false, error: 'cannot rebase: you have unstaged changes' });
+
+		expect(rebase.outcome).toBe('failed');
+		expect(rebase.runError).toContain('unstaged changes');
+	});
+});
+
+describe('a rebase that is standing still', () => {
+	beforeEach(async () => {
+		await idle();
+		handlers.clear();
+		rebaseContinue.mockResolvedValue(undefined);
+		rebaseSkip.mockResolvedValue(undefined);
+		rebaseAbort.mockResolvedValue(undefined);
+	});
+
+	it('is recognised on arrival, not only after this screen ran one', async () => {
+		// A rebase left unfinished by a previous session, or started from the
+		// command line, is the screen's state when it opens.
+		rebaseProgress.mockResolvedValue({ step: 2, total: 4, branch: 'work', original: 'abc1234' });
+
+		await rebase.refreshProgress();
+
+		expect(rebase.stopped).toBe(true);
+		expect(rebase.progress?.step).toBe(2);
+	});
+
+	it('continues, and re-reads where that left things', async () => {
+		rebaseProgress.mockResolvedValue(null);
+
+		expect(await rebase.continue()).toBe(true);
+		expect(rebaseContinue).toHaveBeenCalled();
+		// The call's own result cannot say whether the rebase finished or
+		// stopped again, so the repository is asked.
+		expect(rebase.stopped).toBe(false);
+		expect(rebase.outcome).toBe('ran');
+	});
+
+	it('knows when continuing stopped it again', async () => {
+		rebaseProgress.mockResolvedValue({ step: 3, total: 4, branch: 'work', original: 'abc1234' });
+
+		await rebase.continue();
+
+		expect(rebase.outcome).toBe('stopped');
+		expect(rebase.progress?.step).toBe(3);
+	});
+
+	it('surfaces a refusal rather than pretending it worked', async () => {
+		rebaseProgress.mockResolvedValue({ step: 3, total: 4, branch: 'work', original: 'abc1234' });
+		rebaseContinue.mockRejectedValueOnce(new Error('unresolved conflicts'));
+
+		expect(await rebase.continue()).toBe(false);
+		expect(rebase.runError).toContain('unresolved conflicts');
+	});
+
+	it('skips and aborts through the same path', async () => {
+		rebaseProgress.mockResolvedValue(null);
+
+		await rebase.skip();
+		expect(rebaseSkip).toHaveBeenCalled();
+
+		await rebase.abort();
+		expect(rebaseAbort).toHaveBeenCalled();
+	});
+
+	it('refuses a control while the worker is still running', async () => {
+		rebaseTodo.mockResolvedValue(todoOf());
+		rebasePreview.mockResolvedValue(previewOf());
+		rebase.upstream = 'main';
+		await rebase.load();
+		await started();
+		rebaseAbort.mockClear();
+
+		expect(await rebase.abort()).toBe(false);
+		expect(rebaseAbort).not.toHaveBeenCalled();
 	});
 });

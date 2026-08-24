@@ -32,6 +32,7 @@ use tauri::{AppHandle, Manager, State};
 use crate::about::{About, Licenses};
 use crate::clone_worker::{self, CloneWorker};
 use crate::graph_worker::{self, GraphWorker};
+use crate::rebase_worker::{self, RebaseWorker};
 use crate::recents;
 use crate::search_worker::{self, SearchWorker};
 use crate::settings::Settings;
@@ -70,6 +71,12 @@ pub struct AppState {
     /// whole list back each time would be both wasteful and a way for the
     /// screen to plan against a list the repository never produced.
     rebase_todo: Mutex<Option<Todo>>,
+    /// The rebase running right now, if any.
+    ///
+    /// Held so that a second one can be refused and so that Abort can wait for
+    /// the worker before unwinding the state it is reading. Dropping it waits;
+    /// nothing cancels it, for the reason written out in `rebase_worker`.
+    rebase: Mutex<Option<RebaseWorker>>,
     /// The clone running right now, if any.
     ///
     /// One at a time: a second clone is refused rather than queued. Two is not
@@ -423,14 +430,19 @@ pub fn rebase_preview(state: State<'_, AppState>, edits: Vec<Edit>) -> Result<Pr
 // could not be scripted or tested — and no operation is inferred from another.
 // "Reset" is three commands in the menu because it is three different things.
 
-/// Execute the plan the Rebase screen built.
+/// Execute the plan the Rebase screen built. Returns the token its events carry.
 ///
 /// The todo is generated from the same order the preview was generated from, so
 /// what was on screen is what git runs. It is generated here rather than sent
 /// from the webview for the same reason the preview is: a plan the repository
 /// never produced must not be executable by asking nicely.
+///
+/// The rebase itself runs on a worker (FEAT-015). Every other write holds the
+/// session lock until it finishes, which is fine for a commit and wrong for a
+/// hundred replayed commits: the screen showing the progress could not ask for
+/// it, because the command answering would want the same lock.
 #[tauri::command]
-pub fn rebase_run(state: State<'_, AppState>, edits: Vec<Edit>) -> Result<()> {
+pub fn rebase_run(app: AppHandle, state: State<'_, AppState>, edits: Vec<Edit>) -> Result<u64> {
     let (upstream, todo) = {
         let guard = state.rebase_todo.lock().expect("rebase lock");
         let todo = guard
@@ -439,9 +451,58 @@ pub fn rebase_run(state: State<'_, AppState>, edits: Vec<Edit>) -> Result<()> {
         (todo.upstream.clone(), rebase::todo_text(todo, &edits)?)
     };
 
-    state.with_session(|session| {
-        ops::rebase_interactive(&session.repo.to_thread_local(), &upstream, &todo)
-    })
+    // A second rebase while one is running is refused rather than queued: git
+    // would refuse it anyway, and the screen would then have two sets of
+    // progress events to tell apart.
+    if state.rebase.lock().expect("rebase worker lock").is_some() {
+        return Err(Error::NotStageable("a rebase is already running".into()));
+    }
+
+    let (workdir, git_dir) = state.with_session(|session| {
+        let repo = session.repo.to_thread_local();
+        Ok((
+            spagitty_core::repo::workdir(&repo)?.to_path_buf(),
+            repo.git_dir().to_path_buf(),
+        ))
+    })?;
+
+    let token = state.next_token.fetch_add(1, Ordering::Relaxed);
+    let worker = rebase_worker::spawn(app, workdir, git_dir, upstream, todo, token)?;
+    *state.rebase.lock().expect("rebase worker lock") = Some(worker);
+
+    Ok(token)
+}
+
+/// How far a rebase that is running has got, or null when none is.
+///
+/// Read from git's own state directory, so a rebase started from the command
+/// line while Spagitty was open is visible here too.
+#[tauri::command]
+pub fn rebase_progress(state: State<'_, AppState>) -> Result<Option<rebase::Progress>> {
+    state.with_session(|session| Ok(rebase::progress(&session.repo.to_thread_local())))
+}
+
+/// Carry on with a rebase that stopped, once its conflicts are resolved.
+#[tauri::command]
+pub fn rebase_continue(state: State<'_, AppState>) -> Result<()> {
+    state.with_session(|session| ops::rebase_continue(&session.repo.to_thread_local()))
+}
+
+/// Drop the commit a rebase stopped on and carry on with the rest.
+#[tauri::command]
+pub fn rebase_skip(state: State<'_, AppState>) -> Result<()> {
+    state.with_session(|session| ops::rebase_skip(&session.repo.to_thread_local()))
+}
+
+/// Unwind a rebase and put the branch back where it started.
+///
+/// The worker is dropped first, which waits for its thread. Aborting while it
+/// is still emitting progress would leave the screen showing a step count for a
+/// rebase that no longer exists.
+#[tauri::command]
+pub fn rebase_abort(state: State<'_, AppState>) -> Result<()> {
+    state.rebase.lock().expect("rebase worker lock").take();
+    state.with_session(|session| ops::rebase_abort(&session.repo.to_thread_local()))
 }
 
 /// Move the current branch to `commit`.

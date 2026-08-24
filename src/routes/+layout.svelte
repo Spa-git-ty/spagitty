@@ -8,6 +8,7 @@
 	import * as api from '$lib/api';
 	import CloneModal from '$lib/clone/CloneModal.svelte';
 	import { clone } from '$lib/clone/store.svelte';
+	import { rebase } from '$lib/rebase/store.svelte';
 	import CommandLog from '$lib/commandlog/CommandLog.svelte';
 	import { commandLog } from '$lib/commandlog/store.svelte';
 	import NavRail from '$lib/chrome/NavRail.svelte';
@@ -66,6 +67,10 @@
 			// A clone survives navigation, so its listener belongs to the shell
 			// rather than to whichever screen started it.
 			cleanups.push(await clone.attach());
+			// A rebase survives navigation for the same reason: people leave the
+			// screen for Conflicts while it is still running, and its progress
+			// must not stop being heard when they do.
+			cleanups.push(await rebase.attach());
 			// Recording starts with the app, not with the panel: turning the
 			// toggle on mid-session should show what has already run.
 			cleanups.push(await commandLog.attach());

@@ -48,15 +48,12 @@ to bring an unmerged branch back rather than pointing vaguely at the reflog.
 
 ### 4. FEAT-015 — rebase execution
 
-`ops::rebase_interactive` and the `rebase_run` command are built. The frontend
-is unwired: Apply is a hardcoded `disabled`, and there is no progress or abort
-path. This is the first half of the merge story and the natural pair to the
-conflict work below.
+**Done**, on `feature/FEAT-015-rebase-execution`.
 
-**Closes when:** a rebase runs from the app with visible progress, hands off to
-the conflict screen when it stops, and can be aborted from either place.
-**Depends on:** nothing built; pairs with FEAT-016.
-**Size:** two to three days. No plan document yet.
+**Closed by:** a worker that runs the rebase without holding the session lock,
+progress read from git's own state counters rather than parsed from its output,
+and a stopped state that hands off to Conflicts with continue, skip and abort
+beside it.
 
 ### 5. FEAT-016 — conflict resolution writes
 

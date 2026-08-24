@@ -674,6 +674,35 @@ export interface CloneDoneEvent {
 	path: string;
 }
 
+/** How far a rebase that is running has got, from git's own state directory. */
+export interface RebaseProgress {
+	/** Which commit is being applied, counting from 1. */
+	step: number;
+	total: number;
+	/** The branch being rebased. Null for one started from a detached HEAD. */
+	branch: string | null;
+	/** Short id of `ORIG_HEAD` — where the branch was before any of this. */
+	original: string | null;
+}
+
+/** Payload of `rebase-progress`. */
+export interface RebaseProgressEvent extends RebaseProgress {
+	token: number;
+}
+
+/**
+ * Payload of `rebase-done`: the rebase for `token` is no longer running.
+ *
+ * `stopped` is the hand-off, not a failure — git got part-way and is waiting
+ * for a conflict to be resolved or for an `edit` to be finished.
+ */
+export interface RebaseDoneEvent {
+	token: number;
+	ok: boolean;
+	stopped: boolean;
+	error: string | null;
+}
+
 // --- Settings -------------------------------------------------------------
 
 /** A configuration file Spagitty will write to. Never inferred — always chosen. */
@@ -793,3 +822,5 @@ export const GRAPH_ROWS_EVENT = 'graph-rows';
 export const GRAPH_DONE_EVENT = 'graph-done';
 export const REPO_CHANGED_EVENT = 'repo-changed';
 export const GIT_COMMAND_EVENT = 'git-command';
+export const REBASE_PROGRESS_EVENT = 'rebase-progress';
+export const REBASE_DONE_EVENT = 'rebase-done';

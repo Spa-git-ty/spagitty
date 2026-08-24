@@ -12,6 +12,7 @@ mod command_log;
 mod commands;
 mod graph_worker;
 mod platform;
+mod rebase_worker;
 mod recents;
 mod search_worker;
 mod settings;
@@ -50,6 +51,10 @@ pub fn run() {
             commands::rebase_todo,
             commands::rebase_preview,
             commands::rebase_run,
+            commands::rebase_progress,
+            commands::rebase_continue,
+            commands::rebase_skip,
+            commands::rebase_abort,
             commands::graph_visibility,
             commands::reset,
             commands::revert,

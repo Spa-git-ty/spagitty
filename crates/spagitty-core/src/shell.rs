@@ -108,9 +108,9 @@ fn finish(mut command: Command, args: &[&str]) -> Result<String> {
 
 /// Spawn a prepared command without waiting, and record it as started.
 ///
-/// Only [`clone_start`] uses this: a clone runs for minutes and is cancellable,
-/// so waiting for its outcome before recording would hide the one command the
-/// user is most likely to be asking about while it runs.
+/// [`clone_start`] and [`rebase_interactive_spawn`] use this: both run for long
+/// enough that waiting for the outcome before recording would hide the one
+/// command the user is most likely to be asking about while it runs.
 fn record_spawn(mut command: Command, args: &[&str]) -> Result<std::process::Child> {
     match command.spawn() {
         Ok(child) => {
@@ -599,6 +599,64 @@ pub fn rebase_interactive(repo: &Path, upstream: &str, todo: &str) -> Result<()>
         .env("GIT_EDITOR", scripts.message_editor());
 
     finish(command, &args)?;
+    Ok(())
+}
+
+/// Start a planned interactive rebase, without waiting for it.
+///
+/// The same invocation as [`rebase_interactive`], handed back as a child so the
+/// caller can watch it. A rebase of a hundred commits takes long enough that a
+/// blocking call would hold whatever lock the caller has for the duration, and
+/// the progress the screen shows is read from git's own state directory while
+/// this child is running.
+///
+/// The caller owns the child and must reap it. Nothing here kills it: a rebase
+/// stopped by a signal leaves state on disk that only `git rebase --abort`
+/// knows how to unwind.
+pub fn rebase_interactive_spawn(
+    repo: &Path,
+    upstream: &str,
+    todo: &str,
+) -> Result<std::process::Child> {
+    let scripts = SequenceScripts::write(repo, todo)?;
+    let args = ["rebase", "--interactive", upstream];
+
+    let mut command = command(repo, &args);
+    command
+        .env("GIT_SEQUENCE_EDITOR", scripts.sequence_editor())
+        .env("GIT_EDITOR", scripts.message_editor());
+
+    record_spawn(command, &args)
+}
+
+/// Carry on with a rebase that stopped, once its conflicts are resolved.
+///
+/// `GIT_EDITOR` is pointed at the accept-as-is script for the same reason it is
+/// during the rebase itself: continuing past a `squash` or a `reword` opens an
+/// editor, and there is no terminal for it to open on.
+pub fn rebase_continue(repo: &Path) -> Result<()> {
+    let scripts = SequenceScripts::write(repo, "")?;
+    let args = ["rebase", "--continue"];
+
+    let mut command = command(repo, &args);
+    command.env("GIT_EDITOR", scripts.message_editor());
+
+    finish(command, &args)?;
+    Ok(())
+}
+
+/// Drop the commit a rebase stopped on and carry on with the rest.
+pub fn rebase_skip(repo: &Path) -> Result<()> {
+    run(repo, &["rebase", "--skip"])?;
+    Ok(())
+}
+
+/// Unwind a rebase and put the branch back where it started.
+///
+/// git's own undo, and the reason nothing here reimplements the state
+/// directory: `--abort` knows what to unwind because git wrote it.
+pub fn rebase_abort(repo: &Path) -> Result<()> {
+    run(repo, &["rebase", "--abort"])?;
     Ok(())
 }
 

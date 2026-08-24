@@ -29,6 +29,7 @@ import type {
 	PullMode,
 	RebaseEdit,
 	RebasePreview,
+	RebaseProgress,
 	RebaseTodo,
 	ResetMode,
 	StashAction,
@@ -349,8 +350,35 @@ export function rebaseOnto(onto: string, upstream = '', branch = ''): Promise<vo
 }
 
 /** Run the plan the Rebase screen built against the todo it is holding. */
-export function rebaseRun(edits: RebaseEdit[]): Promise<void> {
+/**
+ * Execute the plan. Resolves to the token its events carry, not to the outcome.
+ *
+ * The rebase runs on a worker: progress arrives as `rebase-progress` and it
+ * ends with `rebase-done`, which says whether git finished or stopped part-way
+ * waiting for a conflict to be resolved.
+ */
+export function rebaseRun(edits: RebaseEdit[]): Promise<number> {
 	return invoke('rebase_run', { edits });
+}
+
+/** How far a rebase that is running has got, or null when none is. */
+export function rebaseProgress(): Promise<RebaseProgress | null> {
+	return invoke('rebase_progress');
+}
+
+/** Carry on with a rebase that stopped, once its conflicts are resolved. */
+export function rebaseContinue(): Promise<void> {
+	return invoke('rebase_continue');
+}
+
+/** Drop the commit a rebase stopped on and carry on with the rest. */
+export function rebaseSkip(): Promise<void> {
+	return invoke('rebase_skip');
+}
+
+/** Unwind a rebase and put the branch back where it started. */
+export function rebaseAbort(): Promise<void> {
+	return invoke('rebase_abort');
 }
 
 /** Check out a commit with no branch attached — a detached HEAD. */
