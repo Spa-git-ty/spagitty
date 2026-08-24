@@ -750,6 +750,40 @@ pub fn checkout_detached(repo: &Path, revision: &str) -> Result<()> {
     Ok(())
 }
 
+/// Take one whole side of a conflicted path into the working tree.
+///
+/// `--ours` and `--theirs` read the index's stage 2 and stage 3, which is why
+/// this is a git call rather than us writing the blob: git's answer is the one
+/// the rest of the ecosystem will see, and a reconstruction could differ.
+pub fn checkout_side(repo: &Path, path: &str, side: crate::conflicts::Side) -> Result<()> {
+    let which = match side {
+        crate::conflicts::Side::Ours => "--ours",
+        crate::conflicts::Side::Theirs => "--theirs",
+    };
+    run(repo, &["checkout", which, "--", path])?;
+    Ok(())
+}
+
+/// `git <command> --continue` or `--abort`, for whatever is in progress.
+///
+/// One function rather than eight, because the difference between continuing a
+/// merge and continuing a cherry-pick is the word, and eight near-identical
+/// wrappers is eight places for that word to be wrong.
+///
+/// `GIT_EDITOR` is the accept-as-is script for the same reason it is during a
+/// rebase: continuing a merge or a cherry-pick opens an editor on the message,
+/// and there is no terminal for it to open on.
+pub fn sequencer(repo: &Path, command: &str, action: &str) -> Result<()> {
+    let scripts = SequenceScripts::write(repo, "")?;
+    let args = [command, action];
+
+    let mut prepared = self::command(repo, &args);
+    prepared.env("GIT_EDITOR", scripts.message_editor());
+
+    finish(prepared, &args)?;
+    Ok(())
+}
+
 /// Rename a branch.
 ///
 /// `-m`, never `-M`: forcing would clobber an existing branch of the target

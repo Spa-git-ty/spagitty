@@ -671,6 +671,79 @@ pub fn conflict_sides(state: State<'_, AppState>, path: String) -> Result<Confli
     state.with_session(|session| conflicts::sides(&session.repo.to_thread_local(), &path))
 }
 
+/// Every conflict region in a file's merged text, so the screen can offer one
+/// button per region rather than only per file.
+#[tauri::command]
+pub fn conflict_regions(text: String) -> Vec<conflicts::Region> {
+    conflicts::regions(&text)
+}
+
+/// Take one whole side of a conflicted file into the working tree.
+///
+/// The file stays conflicted afterwards. Marking it resolved is a separate
+/// command on purpose: looking at the result is the point of the screen.
+#[tauri::command]
+pub fn conflict_take(state: State<'_, AppState>, path: String, side: conflicts::Side) -> Result<()> {
+    state.with_session(|session| conflicts::take(&session.repo.to_thread_local(), &path, side))
+}
+
+/// Resolve one marker region, or every region, and write the file back.
+///
+/// The text is re-read here rather than taken from the webview: a screen that
+/// sent the whole file back could send one it had edited since it was read, and
+/// the region indexes would then point somewhere else.
+#[tauri::command]
+pub fn conflict_resolve_region(
+    state: State<'_, AppState>,
+    path: String,
+    index: Option<usize>,
+    side: conflicts::Side,
+) -> Result<()> {
+    state.with_session(|session| {
+        let repo = session.repo.to_thread_local();
+        let current = std::fs::read_to_string(spagitty_core::repo::workdir(&repo)?.join(&path))?;
+        let resolved = match index {
+            Some(index) => conflicts::resolve_region(&current, index, side)?,
+            None => conflicts::resolve_all(&current, side),
+        };
+        conflicts::write_merged(&repo, &path, &resolved)
+    })
+}
+
+/// Write the merged pane's text to the file, exactly as given.
+#[tauri::command]
+pub fn conflict_write(state: State<'_, AppState>, path: String, text: String) -> Result<()> {
+    state.with_session(|session| {
+        conflicts::write_merged(&session.repo.to_thread_local(), &path, &text)
+    })
+}
+
+/// Mark paths resolved: `git add`.
+#[tauri::command]
+pub fn conflict_resolve(state: State<'_, AppState>, paths: Vec<String>) -> Result<()> {
+    state.with_session(|session| {
+        conflicts::mark_resolved(&session.repo.to_thread_local(), &paths)
+    })
+}
+
+/// Carry on with whatever the repository is in the middle of.
+#[tauri::command]
+pub fn conflict_continue(state: State<'_, AppState>) -> Result<()> {
+    state.with_session(|session| {
+        let repo = session.repo.to_thread_local();
+        conflicts::continue_operation(&repo, conflicts::operation(&repo))
+    })
+}
+
+/// Abandon it and put the repository back.
+#[tauri::command]
+pub fn conflict_abort(state: State<'_, AppState>) -> Result<()> {
+    state.with_session(|session| {
+        let repo = session.repo.to_thread_local();
+        conflicts::abort_operation(&repo, conflicts::operation(&repo))
+    })
+}
+
 /// Every remembered repository, as a card.
 ///
 /// Each is read where it sits, without becoming the open one: no walk, no

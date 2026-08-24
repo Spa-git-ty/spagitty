@@ -3,7 +3,9 @@
 	import { onMount } from 'svelte';
 	import * as api from '$lib/api';
 	import ConflictPager from '$lib/conflicts/ConflictPager.svelte';
+	import ResolveBar from '$lib/conflicts/ResolveBar.svelte';
 	import SidePane from '$lib/conflicts/SidePane.svelte';
+	import { abortOperation, continueOperation } from '$lib/conflicts/actions';
 	import { conflicts } from '$lib/conflicts/store.svelte';
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
@@ -11,9 +13,13 @@
 	/**
 	 * A repository stopped mid-operation: ours, the merged result, and theirs.
 	 *
-	 * Read-only in this pass. Every control that would write is disabled and
-	 * says which item builds it — a button that looks live and does nothing is
-	 * worse than one that explains itself.
+	 * It writes since FEAT-016. Three ways out of a file — a whole side, one
+	 * marker region, or text typed into the merged pane — and one way out of the
+	 * operation, which is Continue once nothing is conflicted any more.
+	 *
+	 * Continue is offered only when the list is empty. git refuses it otherwise
+	 * and says so clearly, but a button that is live for the whole time it
+	 * cannot work reads as broken rather than as guarded.
 	 */
 
 	onMount(() => {
@@ -44,13 +50,26 @@
 		</div>
 		<div class="right">
 			{#if conflicts.loading}<span class="note">Reading…</span>{/if}
-			<Btn onclick={() => conflicts.load()}>Refresh</Btn>
-			<Btn disabled title="Marking a file resolved is not built yet">
-				Mark resolved
-			</Btn>
-			<Btn disabled title="Aborting discards work, and is not built yet">
-				Abort {conflicts.operation === 'none' ? '' : conflicts.operationLabel}
-			</Btn>
+			<Btn disabled={conflicts.busy} onclick={() => conflicts.load()}>Refresh</Btn>
+			{#if conflicts.operation !== 'none'}
+				<Btn
+					primary
+					disabled={conflicts.busy || conflicts.files.length > 0}
+					title={conflicts.files.length > 0
+						? 'Resolve every file first'
+						: `Finish the ${conflicts.operationLabel}`}
+					onclick={() => continueOperation(conflicts.operation)}
+				>
+					Continue
+				</Btn>
+				<Btn
+					disabled={conflicts.busy}
+					title="Abandon it and put the repository back"
+					onclick={() => abortOperation(conflicts.operation)}
+				>
+					Abort {conflicts.operationLabel}
+				</Btn>
+			{/if}
 		</div>
 	</header>
 
@@ -67,7 +86,13 @@
 			<p class="note">Reading…</p>
 		{:else if conflicts.files.length === 0}
 			<div class="empty">
-				<p class="note">Nothing is conflicted.</p>
+				{#if conflicts.operation === 'none'}
+					<p class="note">Nothing is conflicted.</p>
+				{:else}
+					<p class="note">
+						Every file is resolved. Continue to finish the {conflicts.operationLabel}.
+					</p>
+				{/if}
 				<p class="note">
 					When git cannot merge two versions of a file it keeps all three — the common
 					ancestor, yours and theirs — and they appear here side by side.
@@ -79,6 +104,7 @@
 			<p class="note">Reading…</p>
 		{:else}
 			<div class="path mono muted">{conflicts.sides.path}</div>
+			<ResolveBar />
 			<div class="panes">
 				<SidePane
 					title="Ours"

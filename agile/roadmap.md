@@ -57,16 +57,12 @@ beside it.
 
 ### 5. FEAT-016 — conflict resolution writes
 
-The single biggest functional gap. Ours, theirs and base render read-only;
-take-ours, take-theirs, edit, mark-resolved and abort are all disabled. Until
-this lands, every conflict — including one a rebase or a stash apply causes —
-ends in the terminal, which also parks the designed recovery flow for a
-conflicted stash apply.
+**Done**, on `feature/FEAT-016-conflict-writes`.
 
-**Closes when:** a conflicted file can be resolved per file and per hunk from
-the app, edited inline, marked resolved, and the whole operation abandoned.
-**Depends on:** nothing, but FEAT-015 makes it reachable more often.
-**Size:** three to four days. The inline editor is most of it.
+**Closed by:** three ways out of a file — a whole side, one marker region, or
+text typed into the merged pane — each followed by an explicit `git add`, plus
+Continue and an Abort that says what comes back for the operation it is aborting.
+The conflicted stash apply recovery flow is still parked; it was not in scope.
 
 ## Next
 

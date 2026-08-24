@@ -8,11 +8,24 @@
 //! is the whole data model of this module: read those stages and say what each
 //! side held.
 //!
-//! Nothing here writes. Reading is the entire first pass; taking a side, editing
-//! the merged result and marking a file resolved are FEAT-016, and they are
-//! deliberately absent rather than half-present.
+//! Since FEAT-016 it writes as well, and the writing half is built on the same
+//! three stages. There are exactly three ways a file leaves this screen — a
+//! whole side taken, one marker region resolved, or text supplied by the person
+//! reading it — and all three end at the same place: the file on disk, followed
+//! by an explicit `git add`. Nothing marks a file resolved on the user's behalf.
+//! That is the one check that resolution actually worked, and it belongs to the
+//! person who looked at the result.
+//!
+//! # Marker parsing is a text format, not a guess
+//!
+//! [`regions`] reads the conflict markers git wrote. It is deliberately strict:
+//! a region needs its opening, its separator and its close, in that order, at
+//! the start of a line. Anything else — a `<<<<<<<` inside a string literal, a
+//! half-edited file — is left alone rather than reinterpreted, because the
+//! failure mode of guessing here is silently keeping the wrong half of
+//! somebody's work.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 
@@ -63,6 +76,37 @@ impl Operation {
             Operation::None => "none",
         }
     }
+}
+
+/// Which side of a conflict to keep.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Side {
+    /// Stage 2 — what the branch you are on had.
+    Ours,
+    /// Stage 3 — what is coming in.
+    Theirs,
+}
+
+/// One `<<<<<<< ======= >>>>>>>` block in a file on disk.
+///
+/// Line numbers are 1-based and inclusive, matching what the merged pane shows,
+/// so a region can be pointed at on screen without a second numbering scheme.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Region {
+    /// Position in the file, counting from 0. What a caller names it by.
+    pub index: usize,
+    /// The `<<<<<<<` line.
+    pub start_line: usize,
+    /// The `>>>>>>>` line.
+    pub end_line: usize,
+    /// Our lines, without the markers.
+    pub ours: String,
+    /// The base's lines, when the file was merged with `diff3` markers.
+    pub base: Option<String>,
+    /// Their lines, without the markers.
+    pub theirs: String,
 }
 
 /// Which sides a conflicted path has, which is the same thing as what kind of
@@ -351,8 +395,475 @@ fn is_binary(data: &[u8]) -> bool {
     data[..data.len().min(BINARY_SNIFF_BYTES)].contains(&0)
 }
 
+// --- Resolving (FEAT-016) ---------------------------------------------------
+
+const OPEN: &str = "<<<<<<<";
+const BASE: &str = "|||||||";
+const SPLIT: &str = "=======";
+const CLOSE: &str = ">>>>>>>";
+
+/// Every conflict region in a merged file, in the order they appear.
+///
+/// Strict by design: a region must open, then optionally give a base, then
+/// split, then close, each at the start of its own line. A file that does not
+/// parse that way returns the regions it *could* read and stops — a marker
+/// inside a string literal is far likelier than a file with a genuinely broken
+/// conflict, and reinterpreting it would silently keep the wrong half.
+pub fn regions(text: &str) -> Vec<Region> {
+    let lines: Vec<&str> = text.lines().collect();
+    let mut regions = Vec::new();
+    let mut i = 0;
+
+    while i < lines.len() {
+        if !lines[i].starts_with(OPEN) {
+            i += 1;
+            continue;
+        }
+
+        let start = i;
+        let mut ours: Vec<&str> = Vec::new();
+        let mut base: Option<Vec<&str>> = None;
+        let mut theirs: Vec<&str> = Vec::new();
+        let mut phase = Phase::Ours;
+        i += 1;
+
+        let end = loop {
+            let Some(line) = lines.get(i) else {
+                // Ran off the end with the region still open. Not a region.
+                break None;
+            };
+
+            if line.starts_with(BASE) && phase == Phase::Ours {
+                phase = Phase::Base;
+                base = Some(Vec::new());
+            } else if line.starts_with(SPLIT) && phase != Phase::Theirs {
+                phase = Phase::Theirs;
+            } else if line.starts_with(CLOSE) {
+                break if phase == Phase::Theirs { Some(i) } else { None };
+            } else {
+                match phase {
+                    Phase::Ours => ours.push(line),
+                    Phase::Base => base.as_mut().expect("base started").push(line),
+                    Phase::Theirs => theirs.push(line),
+                }
+            }
+            i += 1;
+        };
+
+        match end {
+            Some(end) => {
+                regions.push(Region {
+                    index: regions.len(),
+                    start_line: start + 1,
+                    end_line: end + 1,
+                    ours: joined(&ours),
+                    base: base.as_deref().map(joined),
+                    theirs: joined(&theirs),
+                });
+                i = end + 1;
+            }
+            // Unterminated: give up on this file rather than guessing where it
+            // was meant to end.
+            None => break,
+        }
+    }
+
+    regions
+}
+
+#[derive(PartialEq, Eq)]
+enum Phase {
+    Ours,
+    Base,
+    Theirs,
+}
+
+/// Lines back into text, each one ended rather than separated.
+///
+/// An empty side is an empty string, not a newline: "this side contributed
+/// nothing" and "this side contributed a blank line" are different results and
+/// the second one is wrong.
+fn joined(lines: &[&str]) -> String {
+    if lines.is_empty() {
+        return String::new();
+    }
+    let mut text = lines.join("\n");
+    text.push('\n');
+    text
+}
+
+/// Replace one region with the side chosen, markers and all.
+///
+/// The index is the region's position, not a line number, so a caller holding a
+/// list from [`regions`] cannot be off by the length of an earlier resolution.
+pub fn resolve_region(text: &str, index: usize, side: Side) -> Result<String> {
+    let regions = regions(text);
+    let region = regions
+        .get(index)
+        .ok_or_else(|| Error::NotStageable(format!("there is no conflict {} in this file", index + 1)))?;
+
+    Ok(replace(text, region, keep(region, side)))
+}
+
+/// Replace every region with the side chosen.
+///
+/// Applied back to front, so each replacement's line numbers are still the ones
+/// [`regions`] reported.
+pub fn resolve_all(text: &str, side: Side) -> String {
+    let mut result = text.to_string();
+    for region in regions(text).iter().rev() {
+        result = replace(&result, region, keep(region, side));
+    }
+    result
+}
+
+fn keep(region: &Region, side: Side) -> &str {
+    match side {
+        Side::Ours => &region.ours,
+        Side::Theirs => &region.theirs,
+    }
+}
+
+/// Swap `region`'s lines — markers included — for `kept`.
+fn replace(text: &str, region: &Region, kept: &str) -> String {
+    let lines: Vec<&str> = text.lines().collect();
+    let mut result = String::new();
+
+    for line in &lines[..region.start_line - 1] {
+        result.push_str(line);
+        result.push('\n');
+    }
+    result.push_str(kept);
+    for line in &lines[region.end_line..] {
+        result.push_str(line);
+        result.push('\n');
+    }
+
+    result
+}
+
+/// Write the merged file, exactly as given.
+///
+/// A plain filesystem write rather than a `git` call, and it is the one write in
+/// this crate that is: there is no git command for "put these bytes in the
+/// working tree", and the working tree is not the shared state the `shell.rs`
+/// boundary is about. The index is untouched, so the file stays conflicted until
+/// somebody marks it resolved.
+pub fn write_merged(repo: &gix::Repository, path: &str, text: &str) -> Result<()> {
+    let full = crate::repo::workdir(repo)?.join(path);
+    std::fs::write(full, text)?;
+    Ok(())
+}
+
+/// Take one whole side of a conflicted file into the working tree.
+///
+/// `git checkout --ours` / `--theirs`, which reads the stage out of the index
+/// rather than us reconstructing it — the two could disagree, and git's answer
+/// is the one the rest of the ecosystem will see.
+pub fn take(repo: &gix::Repository, path: &str, side: Side) -> Result<()> {
+    crate::shell::checkout_side(crate::repo::workdir(repo)?, path, side)
+}
+
+/// Mark paths resolved: `git add`.
+///
+/// The index's three stages collapse to one when this succeeds, which is the
+/// only real check that a resolution worked. It is never done on the user's
+/// behalf as part of taking a side or saving an edit — looking at the result is
+/// the point of the screen, and staging for them skips it.
+pub fn mark_resolved(repo: &gix::Repository, paths: &[String]) -> Result<()> {
+    crate::shell::stage(crate::repo::workdir(repo)?, paths)
+}
+
+/// Carry on with whatever the repository is in the middle of.
+///
+/// The operation decides the command. Telling git to continue a merge during a
+/// rebase does not work, and guessing from the presence of conflicts is how
+/// people end up running the wrong one.
+pub fn continue_operation(repo: &gix::Repository, operation: Operation) -> Result<()> {
+    let command = resumable(operation)?;
+    crate::shell::sequencer(crate::repo::workdir(repo)?, command, "--continue")
+}
+
+/// Abandon it and put the repository back.
+pub fn abort_operation(repo: &gix::Repository, operation: Operation) -> Result<()> {
+    let command = resumable(operation)?;
+    crate::shell::sequencer(crate::repo::workdir(repo)?, command, "--abort")
+}
+
+/// The `git` subcommand that continues or aborts this operation.
+///
+/// Bisect and `am` are refused rather than guessed at: neither is something this
+/// screen starts, and `git bisect --abort` in particular means something quite
+/// different from the others.
+fn resumable(operation: Operation) -> Result<&'static str> {
+    match operation {
+        Operation::Merge => Ok("merge"),
+        Operation::Rebase | Operation::RebaseInteractive => Ok("rebase"),
+        Operation::CherryPick => Ok("cherry-pick"),
+        Operation::Revert => Ok("revert"),
+        other => Err(Error::NotStageable(format!(
+            "there is no {} to continue or abort from here",
+            other.label()
+        ))),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+
+    /// A file with one ordinary conflict in the middle of it.
+    const ONE: &str = "before\n<<<<<<< HEAD\nours line\n=======\ntheirs line\n>>>>>>> other\nafter\n";
+
+    /// The same, written with `diff3` markers, which carry the base as well.
+    const WITH_BASE: &str =
+        "before\n<<<<<<< HEAD\nours\n||||||| base\nancestor\n=======\ntheirs\n>>>>>>> other\nafter\n";
+
+    #[test]
+    fn a_file_with_no_markers_has_no_regions() {
+        assert!(regions("just some text\nand more\n").is_empty());
+    }
+
+    #[test]
+    fn a_region_carries_both_sides_without_its_markers() {
+        let regions = regions(ONE);
+
+        assert_eq!(regions.len(), 1);
+        assert_eq!(regions[0].ours, "ours line\n");
+        assert_eq!(regions[0].theirs, "theirs line\n");
+        assert!(regions[0].base.is_none());
+    }
+
+    #[test]
+    fn a_region_knows_where_it_is_in_the_file() {
+        // 1-based and inclusive, so the merged pane can point at it without a
+        // second numbering scheme.
+        let regions = regions(ONE);
+
+        assert_eq!(regions[0].start_line, 2);
+        assert_eq!(regions[0].end_line, 6);
+    }
+
+    #[test]
+    fn diff3_markers_give_the_base_as_well() {
+        let regions = regions(WITH_BASE);
+
+        assert_eq!(regions[0].ours, "ours\n");
+        assert_eq!(regions[0].base.as_deref(), Some("ancestor\n"));
+        assert_eq!(regions[0].theirs, "theirs\n");
+    }
+
+    #[test]
+    fn several_regions_are_numbered_in_order() {
+        let text = format!("{ONE}{ONE}");
+        let regions = regions(&text);
+
+        assert_eq!(regions.len(), 2);
+        assert_eq!(regions[0].index, 0);
+        assert_eq!(regions[1].index, 1);
+        assert!(regions[1].start_line > regions[0].end_line);
+    }
+
+    #[test]
+    fn an_empty_side_is_empty_rather_than_a_blank_line() {
+        // "contributed nothing" and "contributed a blank line" are different
+        // results, and only one of them is right when a side deleted the lines.
+        let text = "<<<<<<< HEAD\n=======\ntheirs\n>>>>>>> other\n";
+        let regions = regions(text);
+
+        assert_eq!(regions[0].ours, "");
+        assert_eq!(regions[0].theirs, "theirs\n");
+    }
+
+    #[test]
+    fn an_unterminated_region_is_not_a_region() {
+        // A half-edited file, or a `<<<<<<<` that is really a string literal.
+        // Guessing where it ends is how the wrong half of somebody's work gets
+        // silently kept.
+        let text = "<<<<<<< HEAD\nours\n=======\ntheirs\nno close here\n";
+        assert!(regions(text).is_empty());
+    }
+
+    #[test]
+    fn a_region_with_no_separator_is_not_a_region() {
+        let text = "<<<<<<< HEAD\nours\n>>>>>>> other\n";
+        assert!(regions(text).is_empty());
+    }
+
+    #[test]
+    fn regions_before_a_broken_one_are_still_read() {
+        let text = format!("{ONE}<<<<<<< HEAD\nunterminated\n");
+        assert_eq!(regions(&text).len(), 1);
+    }
+
+    #[test]
+    fn taking_ours_keeps_our_lines_and_removes_every_marker() {
+        let resolved = resolve_region(ONE, 0, Side::Ours).expect("resolve");
+
+        assert_eq!(resolved, "before\nours line\nafter\n");
+    }
+
+    #[test]
+    fn taking_theirs_keeps_theirs() {
+        let resolved = resolve_region(ONE, 0, Side::Theirs).expect("resolve");
+
+        assert_eq!(resolved, "before\ntheirs line\nafter\n");
+    }
+
+    #[test]
+    fn a_region_that_is_not_there_is_refused_by_name() {
+        let error = resolve_region(ONE, 4, Side::Ours).unwrap_err();
+
+        assert!(
+            format!("{error}").contains("conflict 5"),
+            "unexpected: {error}"
+        );
+    }
+
+    #[test]
+    fn resolving_one_of_several_leaves_the_others_alone() {
+        let text = format!("{ONE}{ONE}");
+
+        let resolved = resolve_region(&text, 0, Side::Ours).expect("resolve");
+
+        assert!(resolved.starts_with("before\nours line\nafter\n"));
+        // The second region is still a region, and is now the only one.
+        assert_eq!(regions(&resolved).len(), 1);
+    }
+
+    #[test]
+    fn resolving_all_of_them_leaves_no_markers_anywhere() {
+        let text = format!("{ONE}middle\n{ONE}");
+
+        let resolved = resolve_all(&text, Side::Theirs);
+
+        assert!(regions(&resolved).is_empty());
+        assert_eq!(
+            resolved,
+            "before\ntheirs line\nafter\nmiddle\nbefore\ntheirs line\nafter\n"
+        );
+    }
+
+    #[test]
+    fn resolving_all_of_a_file_with_no_conflicts_changes_nothing() {
+        let text = "nothing to see\n";
+        assert_eq!(resolve_all(text, Side::Ours), text);
+    }
+
+    #[test]
+    fn a_side_that_deleted_the_lines_resolves_to_nothing_at_all() {
+        let text = "keep\n<<<<<<< HEAD\ngoing away\n=======\n>>>>>>> other\nkeep too\n";
+
+        assert_eq!(
+            resolve_region(text, 0, Side::Theirs).expect("resolve"),
+            "keep\nkeep too\n"
+        );
+    }
+
+    #[test]
+    fn the_base_is_dropped_along_with_the_markers() {
+        let resolved = resolve_region(WITH_BASE, 0, Side::Ours).expect("resolve");
+
+        assert_eq!(resolved, "before\nours\nafter\n");
+    }
+
+    #[test]
+    fn taking_a_side_writes_the_working_file_and_leaves_the_index_conflicted() {
+        // Taking a side is not resolving. The stages stay until somebody says
+        // they looked at the result.
+        let fixture = Fixture::conflicted();
+
+        take(&fixture.open(), "shared.txt", Side::Ours).expect("take ours");
+
+        assert_eq!(fixture.read("shared.txt"), "one\nOURS\nthree\n");
+        assert_eq!(
+            conflicted(&fixture.open()).expect("conflicted").len(),
+            1,
+            "the path is still conflicted until it is marked resolved"
+        );
+    }
+
+    #[test]
+    fn taking_theirs_takes_the_incoming_side() {
+        let fixture = Fixture::conflicted();
+
+        take(&fixture.open(), "shared.txt", Side::Theirs).expect("take theirs");
+
+        assert_eq!(fixture.read("shared.txt"), "one\nTHEIRS\nthree\n");
+    }
+
+    #[test]
+    fn writing_the_merged_file_puts_exactly_what_it_was_given_on_disk() {
+        let fixture = Fixture::conflicted();
+
+        write_merged(&fixture.open(), "shared.txt", "one\nboth, actually\nthree\n").expect("write");
+
+        assert_eq!(fixture.read("shared.txt"), "one\nboth, actually\nthree\n");
+        assert_eq!(conflicted(&fixture.open()).expect("conflicted").len(), 1);
+    }
+
+    #[test]
+    fn marking_resolved_collapses_the_index_stages() {
+        // The only real check that a resolution worked: three stages become
+        // one entry.
+        let fixture = Fixture::conflicted();
+        take(&fixture.open(), "shared.txt", Side::Ours).expect("take");
+
+        mark_resolved(&fixture.open(), &["shared.txt".to_string()]).expect("mark");
+
+        assert!(conflicted(&fixture.open())
+            .expect("conflicted")
+            .is_empty());
+    }
+
+    #[test]
+    fn continuing_a_merge_once_everything_is_resolved_makes_the_commit() {
+        let fixture = Fixture::conflicted();
+        take(&fixture.open(), "shared.txt", Side::Theirs).expect("take");
+        mark_resolved(&fixture.open(), &["shared.txt".to_string()]).expect("mark");
+
+        continue_operation(&fixture.open(), Operation::Merge).expect("continue");
+
+        assert_eq!(operation(&fixture.open()), Operation::None);
+        // A merge commit has two parents, which is the thing that was being
+        // attempted in the first place.
+        let parents = fixture.git(&["rev-list", "--parents", "-n", "1", "HEAD"]);
+        assert_eq!(parents.split_whitespace().count(), 3, "unexpected: {parents}");
+    }
+
+    #[test]
+    fn continuing_with_a_file_still_conflicted_is_refused() {
+        let fixture = Fixture::conflicted();
+
+        let error = continue_operation(&fixture.open(), Operation::Merge).unwrap_err();
+
+        assert!(!format!("{error}").is_empty());
+        assert_eq!(operation(&fixture.open()), Operation::Merge);
+    }
+
+    #[test]
+    fn aborting_a_merge_puts_the_file_and_the_repository_back() {
+        let fixture = Fixture::conflicted();
+        take(&fixture.open(), "shared.txt", Side::Theirs).expect("take");
+
+        abort_operation(&fixture.open(), Operation::Merge).expect("abort");
+
+        assert_eq!(operation(&fixture.open()), Operation::None);
+        assert_eq!(fixture.read("shared.txt"), "one\nOURS\nthree\n");
+        assert!(conflicted(&fixture.open()).expect("conflicted").is_empty());
+    }
+
+    #[test]
+    fn continuing_or_aborting_a_bisect_is_refused_rather_than_guessed() {
+        // `git bisect --abort` means something quite different from the others,
+        // and this screen never starts one.
+        let error = resumable(Operation::Bisect).unwrap_err();
+        assert!(format!("{error}").contains("bisect"), "unexpected: {error}");
+    }
+
+    #[test]
+    fn an_interactive_rebase_continues_as_a_rebase() {
+        assert_eq!(resumable(Operation::RebaseInteractive).expect("rebase"), "rebase");
+    }
     use super::*;
     use crate::fixture::Fixture;
     use crate::status;

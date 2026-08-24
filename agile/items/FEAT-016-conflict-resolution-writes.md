@@ -2,7 +2,7 @@
 
 # FEAT-016 — Conflict resolution writes
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done on `feature/FEAT-016-conflict-writes`.
 **Screen:** Conflicts (1D).
 
 ## Problem

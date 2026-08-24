@@ -674,6 +674,26 @@ export interface CloneDoneEvent {
 	path: string;
 }
 
+/** Which side of a conflict to keep. */
+export type ConflictSideName = 'ours' | 'theirs';
+
+/**
+ * One `<<<<<<< ======= >>>>>>>` block in a file on disk.
+ *
+ * Line numbers are 1-based and inclusive, matching the merged pane, so a region
+ * can be pointed at on screen without a second numbering scheme.
+ */
+export interface ConflictRegion {
+	/** Position in the file, counting from 0. What a caller names it by. */
+	index: number;
+	startLine: number;
+	endLine: number;
+	ours: string;
+	/** Present only when the file was merged with `diff3` markers. */
+	base: string | null;
+	theirs: string;
+}
+
 /** How far a rebase that is running has got, from git's own state directory. */
 export interface RebaseProgress {
 	/** Which commit is being applied, counting from 1. */

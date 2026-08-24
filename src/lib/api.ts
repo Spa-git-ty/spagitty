@@ -15,6 +15,8 @@ import type {
 	BranchRow,
 	ClonePlan,
 	CommitDiff,
+	ConflictRegion,
+	ConflictSideName,
 	ConflictSides,
 	ConflictState,
 	DiffSide,
@@ -214,6 +216,55 @@ export function conflicts(): Promise<ConflictState> {
 /** The three index stages of one conflicted path, plus the file on disk. */
 export function conflictSides(path: string): Promise<ConflictSides> {
 	return invoke('conflict_sides', { path });
+}
+
+/** Every conflict region in a file's merged text. */
+export function conflictRegions(text: string): Promise<ConflictRegion[]> {
+	return invoke('conflict_regions', { text });
+}
+
+/**
+ * Take one whole side of a conflicted file into the working tree.
+ *
+ * The file stays conflicted afterwards: marking it resolved is a separate call,
+ * because looking at the result is the point of the screen.
+ */
+export function conflictTake(path: string, side: ConflictSideName): Promise<void> {
+	return invoke('conflict_take', { path, side });
+}
+
+/**
+ * Resolve one marker region, or every region when `index` is null.
+ *
+ * The file is re-read on the other side rather than sent from here, so a stale
+ * screen cannot resolve a region that has moved.
+ */
+export function conflictResolveRegion(
+	path: string,
+	index: number | null,
+	side: ConflictSideName
+): Promise<void> {
+	return invoke('conflict_resolve_region', { path, index, side });
+}
+
+/** Write the merged pane's text to the file, exactly as given. */
+export function conflictWrite(path: string, text: string): Promise<void> {
+	return invoke('conflict_write', { path, text });
+}
+
+/** Mark paths resolved: `git add`. */
+export function conflictResolve(paths: string[]): Promise<void> {
+	return invoke('conflict_resolve', { paths });
+}
+
+/** Carry on with whatever the repository is in the middle of. */
+export function conflictContinue(): Promise<void> {
+	return invoke('conflict_continue');
+}
+
+/** Abandon it and put the repository back. */
+export function conflictAbort(): Promise<void> {
+	return invoke('conflict_abort');
 }
 
 /** Every remembered repository, as a card. Reads each where it sits. */
