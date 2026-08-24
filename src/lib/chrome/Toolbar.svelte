@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { branches } from '$lib/branches/store.svelte';
 	import { clone } from '$lib/clone/store.svelte';
 	import { commandLog } from '$lib/commandlog/store.svelte';
 	import { fetchAll, pull, pushCurrent } from '$lib/graph/actions';
@@ -10,6 +11,72 @@
 	import { settings } from '$lib/settings/store.svelte';
 
 	const head = $derived(repo.info?.head ?? null);
+
+	/**
+	 * The location line, and the dropdown that is actually a dropdown (FEAT-045).
+	 *
+	 * The repository's name is text: a name, not a control. What used to be a
+	 * button here navigated to All repositories, which the rail and the tabs row
+	 * both already reach, so the third route was a control that looked like a
+	 * list and replaced the screen instead.
+	 */
+	const branchLabel = $derived(head?.branch ?? head?.short ?? '—');
+
+	let branchMenu = $state<{ x: number; y: number } | null>(null);
+
+	/**
+	 * Opened under the control rather than at the pointer, so a keyboard
+	 * activation puts the list in the same place a click does.
+	 *
+	 * The list is loaded on opening and not before: the toolbar is drawn for
+	 * every screen, and reading every branch on start-up to fill a menu nobody
+	 * opened is work done for nothing. `branches.load` is the same call the
+	 * Branches screen makes and is guarded by the store's own sequence counter,
+	 * so the two cannot race into a stale list.
+	 */
+	function openBranchMenu(event: MouseEvent) {
+		const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		branchMenu = { x: box.left, y: box.bottom + 4 };
+		if (!branches.loaded && !branches.loading) void branches.load();
+	}
+
+	/**
+	 * Local branches only.
+	 *
+	 * A remote-tracking ref is not a thing to check out — doing so detaches HEAD
+	 * — so offering one in a switcher is how an accidental detached HEAD
+	 * happens. The Branches screen still shows every ref there is.
+	 *
+	 * The branch already checked out is listed, disabled, with its reason, which
+	 * is the convention `Menu` is built around: a list whose contents change with
+	 * state is one nobody can learn.
+	 */
+	const BRANCH_ITEMS: MenuItem[] = $derived.by(() => {
+		const heading: MenuItem = { heading: 'Switch to' };
+
+		if (!branches.loaded) {
+			return [heading, { id: 'loading', label: 'reading branches…', disabled: true, run: () => {} }];
+		}
+
+		const local = branches.rows.filter((row) => row.kind === 'branch');
+		if (local.length === 0) {
+			return [heading, { id: 'none', label: 'no local branches', disabled: true, run: () => {} }];
+		}
+
+		return [
+			heading,
+			...local.map((row) => ({
+				id: row.fullName,
+				label: row.name,
+				note: row.upstream ?? undefined,
+				disabled: row.current,
+				reason: row.current ? 'already on it' : undefined,
+				run: () => {
+					void branches.checkout(row.name);
+				}
+			}))
+		];
+	});
 
 	/**
 	 * Actions that are still not built say so when you point at them, rather
@@ -101,6 +168,16 @@
 	];
 </script>
 
+{#if branchMenu}
+	<Menu
+		x={branchMenu.x}
+		y={branchMenu.y}
+		label="Switch branch"
+		items={BRANCH_ITEMS}
+		onclose={() => (branchMenu = null)}
+	/>
+{/if}
+
 {#if pullMenu}
 	<Menu
 		x={pullMenu.x}
@@ -112,21 +189,37 @@
 {/if}
 
 <div class="toolbar">
-	<div class="pickers">
-		<div class="picker">
-			<span class="note">repository</span>
-			<button class="field" onclick={() => goto('/repos')}>
-				<span class="value">{repo.info?.name ?? 'no repository'}</span>
+	<!--
+		Where you are: the repository, then the branch. The name is text and the
+		branch is a real list (FEAT-045).
+	-->
+	<div class="location">
+		{#if repo.info}
+			<span class="repo" title={repo.info.path}>{repo.info.name}</span>
+			<span class="sep" aria-hidden="true">›</span>
+			<button
+				class="field"
+				aria-haspopup="menu"
+				aria-expanded={branchMenu !== null}
+				title="Switch branch"
+				onclick={openBranchMenu}
+			>
+				<span class="value">{branchLabel}</span>
 				<span class="mono muted" aria-hidden="true">▾</span>
 			</button>
-		</div>
-		<div class="picker">
-			<span class="note">branch</span>
-			<button class="field" onclick={() => goto('/branches')}>
-				<span class="value">{head?.branch ?? head?.short ?? '—'}</span>
-				<span class="mono muted" aria-hidden="true">▾</span>
-			</button>
-		</div>
+		{:else}
+			<span class="repo none">no repository</span>
+		{/if}
+
+		<!--
+			A checkout git refused. It is said here, where the action was taken,
+			rather than left for the Branches screen to show — that screen may
+			never be opened, and a switch that silently did not happen is the
+			worst outcome this control has.
+		-->
+		{#if branches.writeError}
+			<span class="note error" role="alert" title={branches.writeError}>{branches.writeError}</span>
+		{/if}
 	</div>
 
 	<!--
@@ -206,19 +299,39 @@
 		justify-self: end;
 	}
 
-	.pickers {
+	.location {
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		width: 280px;
+		gap: 8px;
+		min-width: 0;
 	}
 
-	.picker {
-		display: flex;
-		flex-direction: column;
-		gap: 3px;
-		flex: 1;
-		min-width: 0;
+	.repo {
+		font-weight: 650;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.repo.none {
+		font-weight: 400;
+		color: var(--muted);
+	}
+
+	.sep {
+		color: var(--muted);
+	}
+
+	/*
+	 * Long enough to say why, truncated rather than allowed to grow: the
+	 * actions sit in the middle track and a message that widened this one would
+	 * push them off centre.
+	 */
+	.error {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: var(--accent);
 	}
 
 	.field {

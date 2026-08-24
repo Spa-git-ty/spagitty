@@ -27,6 +27,14 @@ vi.mock('$lib/chrome/window', () => ({ appWindow }));
 /** A controllable stand-in for the repo store. */
 vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
 
+/** The same, for the branch list the toolbar's dropdown reads (FEAT-045). */
+vi.mock('$lib/branches/store.svelte', async () => await import('../../testing/branches-store.svelte'));
+
+import {
+	branchRow,
+	control as branchControl,
+	calls as branchCalls
+} from '../../testing/branches-store.svelte';
 import { control as repoControl, calls as repoCalls } from '../../testing/repo-store.svelte';
 import { control as graphControl } from '../../testing/graph-store.svelte';
 import NavRail from './NavRail.svelte';
@@ -66,6 +74,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	repoControl.reset();
 	graphControl.reset();
+	branchControl.reset();
 	vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} });
 });
 
@@ -276,19 +285,25 @@ describe('StatusStrip', () => {
 });
 
 describe('Toolbar', () => {
-	it('says there is no repository rather than showing an empty picker', () => {
+	it('says there is no repository, and offers no control that cannot work', () => {
+		// FEAT-045: an empty dropdown is worse than an absent one.
 		const view = render(Toolbar, {});
+
 		expect(view.text()).toContain('no repository');
-		expect(view.text()).toContain('—');
+		expect(view.all('.field')).toHaveLength(0);
 		view.destroy();
 	});
 
-	it('shows the repository and branch once one is open', () => {
+	it('reads as a location once a repository is open', () => {
 		repoControl.setInfo(info('main'));
 		const view = render(Toolbar, {});
 
-		expect(view.text()).toContain('fixture');
-		expect(view.text()).toContain('main');
+		// The name is a name, not a control: nothing to click, nothing to
+		// navigate. All repositories is on the rail and in the tabs row.
+		expect(view.get('.repo').textContent).toBe('fixture');
+		expect(view.get('.repo').tagName).toBe('SPAN');
+		expect(view.text()).toContain('›');
+		expect(view.get('.field .value').textContent).toBe('main');
 		view.destroy();
 	});
 
@@ -353,19 +368,123 @@ describe('Toolbar', () => {
 		view.destroy();
 	});
 
-	it('reaches the repository and branch screens from the pickers', () => {
+	it('opens the branch list in place rather than replacing the screen (FEAT-045)', async () => {
+		repoControl.setInfo(info('main'));
+		branchControl.setRows([branchRow({ name: 'main', current: true }), branchRow({ name: 'topic' })]);
+
 		const view = render(Toolbar, {});
-		const [repositories, branches] = view.all('.field');
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
 
-		click(repositories);
-		expect(goto).toHaveBeenCalledWith('/repos');
-
-		click(branches);
-		expect(goto).toHaveBeenCalledWith('/branches');
+		expect(goto).not.toHaveBeenCalledWith('/branches');
+		expect(document.body.textContent).toContain('topic');
 
 		view.destroy();
 	});
 
+	it('lists local branches and not remote-tracking refs', async () => {
+		// A remote ref is not a thing to check out; offering one is how an
+		// accidental detached HEAD happens.
+		repoControl.setInfo(info('main'));
+		branchControl.setRows([
+			branchRow({ name: 'main', current: true }),
+			branchRow({ name: 'topic' }),
+			branchRow({ name: 'origin/topic', kind: 'remote', fullName: 'refs/remotes/origin/topic' })
+		]);
+
+		const view = render(Toolbar, {});
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		const labels = [...document.querySelectorAll('.entry')].map((e) => e.textContent ?? '');
+		expect(labels.some((label) => label.includes('topic'))).toBe(true);
+		expect(labels.some((label) => label.includes('origin/topic'))).toBe(false);
+
+		view.destroy();
+	});
+
+	it('shows the branch already checked out, disabled, with its reason', async () => {
+		repoControl.setInfo(info('main'));
+		branchControl.setRows([branchRow({ name: 'main', current: true }), branchRow({ name: 'topic' })]);
+
+		const view = render(Toolbar, {});
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		const current = [...document.querySelectorAll('.entry')].find((entry) =>
+			entry.textContent?.includes('main')
+		);
+		expect((current as HTMLButtonElement).disabled).toBe(true);
+		expect(current?.textContent).toContain('already on it');
+
+		view.destroy();
+	});
+
+	it('reads the branch list when the dropdown is opened, and not before', async () => {
+		repoControl.setInfo(info('main'));
+		branchControl.setUnloaded();
+
+		const view = render(Toolbar, {});
+		expect(branchCalls.loads).toBe(0);
+
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		expect(branchCalls.loads).toBe(1);
+		view.destroy();
+	});
+
+	it('checks out the branch that was chosen', async () => {
+		repoControl.setInfo(info('main'));
+		branchControl.setRows([branchRow({ name: 'main', current: true }), branchRow({ name: 'topic' })]);
+
+		const view = render(Toolbar, {});
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		const topic = [...document.querySelectorAll('.entry')].find((entry) =>
+			entry.textContent?.includes('topic')
+		);
+		click(topic as HTMLElement);
+		flushSync();
+		await Promise.resolve();
+
+		expect(branchCalls.checkedOut).toEqual(['topic']);
+		view.destroy();
+	});
+
+	it('says why a checkout was refused, where the switch was asked for', async () => {
+		repoControl.setInfo(info('main'));
+		branchControl.setRows([branchRow({ name: 'main', current: true }), branchRow({ name: 'topic' })]);
+		branchControl.failNextCheckout('your local changes would be overwritten');
+
+		const view = render(Toolbar, {});
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		const topic = [...document.querySelectorAll('.entry')].find((entry) =>
+			entry.textContent?.includes('topic')
+		);
+		click(topic as HTMLElement);
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		expect(view.text()).toContain('your local changes would be overwritten');
+		view.destroy();
+	});
 });
 
 describe('NavRail', () => {

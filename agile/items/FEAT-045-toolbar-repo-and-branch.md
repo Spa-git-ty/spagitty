@@ -2,7 +2,9 @@
 
 # FEAT-045 — The toolbar names the repository, and picks a branch for real
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done on `feature/FEAT-045-toolbar-location`. Plan in
+`agile/plans/FEAT-045-plan.md`, tests in `agile/testing/FEAT-045-automated.md`
+and `agile/testing/FEAT-045-sweep.md`.
 **Screen:** the chrome, so every screen.
 **Requested by:** the author, 2026-08-18.
 
