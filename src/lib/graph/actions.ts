@@ -28,6 +28,7 @@ import * as api from '../api';
 import { graph } from './store.svelte';
 import { repo } from '../repo.svelte';
 import { settings } from '../settings/store.svelte';
+import { deleteBody } from '$lib/branches/actions';
 import { dialog } from '../ui/dialog.svelte';
 import { notice } from '../ui/notice.svelte';
 import type { Integration, PullMode, ResetMode, StashAction } from '../types';
@@ -326,9 +327,10 @@ export async function renameBranch(name: string): Promise<void> {
 export async function deleteBranch(name: string, merged: boolean): Promise<void> {
 	const agreed = await dialog.confirm({
 		title: `Delete ${name}`,
-		body: merged
-			? `Everything on ${name} is already in the branch you have checked out, so nothing is lost.`
-			: `${name} has commits that are on no other branch. Deleting it leaves them reachable only through the reflog, until git expires them.`,
+		// One sentence, shared with the Branches screen (FEAT-013), so the two
+		// places that delete a branch cannot come to say different things about
+		// what it costs.
+		body: deleteBody(name, merged),
 		confirmLabel: 'Delete',
 		danger: !merged
 	});

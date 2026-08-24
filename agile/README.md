@@ -70,7 +70,7 @@ rather than an audit.
 | [FEAT-010](items/FEAT-010-pull-requests.md) | Pull requests | 1H | Done |
 | [FEAT-011](items/FEAT-011-settings.md) | Settings | 1K | Done |
 | [FEAT-012](items/FEAT-012-clone.md) | Clone | 1L | Done |
-| [FEAT-013](items/FEAT-013-branch-destructive-operations.md) | Branch delete and rename | 1F | Partial |
+| [FEAT-013](items/FEAT-013-branch-destructive-operations.md) | Branch delete and rename | 1F | Done |
 | [FEAT-014](items/FEAT-014-stash-pop-apply-drop.md) | Stash pop, apply and drop | 1G | Done |
 | [FEAT-015](items/FEAT-015-rebase-execution.md) | Rebase execution | 1E | Partial |
 | [FEAT-016](items/FEAT-016-conflict-resolution-writes.md) | Conflict resolution writes | 1D | Backlog |
@@ -163,5 +163,4 @@ missing documents are not listed here, and fails again if a row here is stale.
 | ID | Missing | Why, and what closes it |
 | --- | --- | --- |
 | BUG-001 | plan, automated, sweep | Fixed inside FEAT-003's change before it had a branch of its own; its item document says so. No separate work to plan. |
-| FEAT-013 | plan, automated, sweep | `Partial`. The plan is written when the remaining Branches-screen work starts. |
 | FEAT-015 | plan, automated, sweep | `Partial`. Same — written when the frontend work starts. |

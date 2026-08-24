@@ -4,6 +4,7 @@
 	import BranchTable from '$lib/branches/BranchTable.svelte';
 	import { branches, FILTERS } from '$lib/branches/store.svelte';
 	import { columns } from '$lib/branches/columns.svelte';
+	import { deleteMerged, mergedBranches } from '$lib/branches/actions';
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
@@ -11,10 +12,11 @@
 	/**
 	 * Every branch, how far it has drifted, and what is safe to forget.
 	 *
-	 * Nothing here removes anything. Checking out is refused by git if it would
-	 * overwrite uncommitted work, and creating a branch adds a ref and nothing
-	 * else — so the worst this screen can do is leave you somewhere you did not
-	 * mean to be, which is one more checkout away from fixed.
+	 * Since FEAT-013 this screen does remove things. Everything destructive here
+	 * asks first, and the bulk cleanup asks with the whole list in the question:
+	 * it is the one operation on the screen that touches refs the user did not
+	 * point at individually, and a count is a thing people agree to where a list
+	 * of names is a thing people read.
 	 */
 
 	let generation: number | null = null;
@@ -44,6 +46,9 @@
 
 	/** Whether any counts on screen could be out of date. */
 	const anyUpstream = $derived(branches.rows.some((row) => row.upstream !== null));
+
+	/** Local, merged, and not the one you are standing on. */
+	const merged = $derived(mergedBranches(branches.rows));
 </script>
 
 <div class="screen">
@@ -92,6 +97,22 @@
 		</div>
 
 		<BranchTable />
+
+		{#if merged.length > 0}
+			<div class="cleanup">
+				<span class="note">
+					{merged.length} merged {merged.length === 1 ? 'branch' : 'branches'} — nothing on
+					{merged.length === 1 ? 'it is' : 'them is'} only there
+				</span>
+				<Btn
+					disabled={branches.busy}
+					title="Delete every merged branch, after showing you the list"
+					onclick={() => deleteMerged(branches.rows)}
+				>
+					Delete merged
+				</Btn>
+			</div>
+		{/if}
 
 		<div class="create">
 			<span class="note">New branch</span>
@@ -157,6 +178,7 @@
 
 	.head,
 	.foot,
+	.cleanup,
 	.filters,
 	.create {
 		flex: none;
@@ -179,6 +201,15 @@
 	.create {
 		padding: 8px 12px;
 		border-top: 1.5px solid var(--soft);
+	}
+
+	/* Above the create row, because it is about what is already there rather
+	   than about what comes next, and it only exists when there is something
+	   to clean up. */
+	.cleanup {
+		padding: 8px 12px;
+		border-top: 1.5px solid var(--soft);
+		justify-content: space-between;
 	}
 
 	.foot {

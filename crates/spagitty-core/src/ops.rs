@@ -281,6 +281,53 @@ mod tests {
         assert_eq!(after, before + 1, "history grew by the revert commit");
     }
 
+    /// A branch with a commit on it that is on no other branch.
+    fn unmerged(fixture: &Fixture) -> &'static str {
+        fixture.git(&["switch", "-q", "-c", "feature/alone"]);
+        fixture.write("alone.txt", "only here\n");
+        fixture.git(&["add", "alone.txt"]);
+        fixture.commit("A commit on no other branch");
+        fixture.git(&["switch", "-q", "-"]);
+        "feature/alone"
+    }
+
+    #[test]
+    fn an_unmerged_branch_is_refused_without_force() {
+        // The whole reason the screen distinguishes merged from unmerged: git
+        // itself is the guard, and it only holds while `force` is false.
+        let fixture = Fixture::woven();
+        let name = unmerged(&fixture);
+
+        let error = delete_branch(&fixture.open(), name, false).unwrap_err();
+
+        assert!(
+            format!("{error}").contains("not fully merged"),
+            "unexpected: {error}"
+        );
+        assert!(fixture.git(&["branch", "--list"]).contains(name));
+    }
+
+    #[test]
+    fn forcing_deletes_an_unmerged_branch() {
+        let fixture = Fixture::woven();
+        let name = unmerged(&fixture);
+
+        delete_branch(&fixture.open(), name, true).expect("delete");
+
+        assert!(!fixture.git(&["branch", "--list"]).contains(name));
+    }
+
+    #[test]
+    fn renaming_carries_the_branch_and_leaves_no_old_name() {
+        let fixture = Fixture::woven();
+
+        rename_branch(&fixture.open(), "feature/split-view", "feature/renamed").expect("rename");
+
+        let list = fixture.git(&["branch", "--list"]);
+        assert!(list.contains("feature/renamed"), "unexpected: {list}");
+        assert!(!list.contains("feature/split-view"), "unexpected: {list}");
+    }
+
     #[test]
     fn a_detached_checkout_leaves_head_on_no_branch() {
         let fixture = Fixture::woven();

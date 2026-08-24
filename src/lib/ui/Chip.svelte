@@ -11,12 +11,18 @@
 		 * an error state rather than as a set of available actions.
 		 */
 		danger?: boolean;
+		/**
+		 * Only meaningful with `onclick`. A chip that acts is a button and has
+		 * to be able to go dead while a write is in flight, the same as `Btn` —
+		 * otherwise the one control that deletes things stays pressable twice.
+		 */
+		disabled?: boolean;
 		title?: string;
 		onclick?: (event: MouseEvent) => void;
 		children: Snippet;
 	}
 
-	let { active = false, danger = false, title, onclick, children }: Props = $props();
+	let { active = false, danger = false, disabled = false, title, onclick, children }: Props = $props();
 </script>
 
 <svelte:element
@@ -26,6 +32,7 @@
 	class:danger
 	{title}
 	{onclick}
+	disabled={onclick ? disabled : undefined}
 	role={onclick ? 'button' : undefined}
 >
 	{@render children()}
@@ -43,19 +50,23 @@
 		gap: 4px;
 	}
 
+	.chip:disabled {
+		opacity: 0.4;
+	}
+
 	.chip.active {
 		border-color: var(--accent);
 		color: var(--accent);
 	}
 
-	button.chip:hover {
+	button.chip:hover:not(:disabled) {
 		border-color: var(--accent);
 		color: var(--accent);
 	}
 
 	/* `--lane-3` is the palette's red, and what Notice already uses to mean
 	   "this one is not routine". */
-	button.chip.danger:hover {
+	button.chip.danger:hover:not(:disabled) {
 		border-color: var(--lane-3);
 		color: var(--lane-3);
 	}

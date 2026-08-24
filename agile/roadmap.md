@@ -40,16 +40,11 @@ deleted. The staged side is deliberately untouched.
 
 ### 3. FEAT-013 — branch delete and rename
 
-`ops::delete_branch` and `ops::rename_branch` are built and reachable from the
-graph's context menu. The Branches screen's own delete and rename, and the bulk
-merged-branch cleanup, are not. Sits behind FEAT-047 because both edit the same
-screen and would collide.
+**Done**, on `feature/FEAT-013-branch-delete-rename`.
 
-**Closes when:** the Branches screen deletes and renames a branch, refuses an
-unmerged delete without an explicit override, and offers the merged-branch
-cleanup as one action.
-**Depends on:** FEAT-047.
-**Size:** a day. No plan document yet; one is written when it starts.
+**Closed by:** row-level delete and rename, a bulk merged cleanup that shows
+every name before it runs, and a confirmation that carries the actual command
+to bring an unmerged branch back rather than pointing vaguely at the reflog.
 
 ### 4. FEAT-015 — rebase execution
 

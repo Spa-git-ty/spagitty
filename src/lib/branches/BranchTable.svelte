@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { branches } from '$lib/branches/store.svelte';
+	import { deleteBranch, renameBranch, undeletable } from '$lib/branches/actions';
 	import { columns, type ColumnId } from '$lib/branches/columns.svelte';
 	import DivergenceBar from '$lib/branches/DivergenceBar.svelte';
 	import { widest } from '$lib/branches/divergence';
@@ -12,10 +13,13 @@
 	 * Branch, drift, last change, actions.
 	 *
 	 * Merged branches render dashed: the same device the rest of the application
-	 * uses for "not settled", here meaning "nothing here is only here". Deleting
-	 * them is FEAT-013, so the button says so rather than being hidden — a
-	 * screen that shows what is safe to remove and no way to remove it should at
-	 * least admit that is what it is doing.
+	 * uses for "not settled", here meaning "nothing here is only here". FEAT-013
+	 * made that reading actionable: they can be deleted, one at a time from the
+	 * row or all at once from the footer.
+	 *
+	 * A row that cannot be deleted keeps its button and says why in the title,
+	 * rather than losing it. A control that disappears leaves the reader
+	 * wondering whether they misremembered; one that explains itself does not.
 	 *
 	 * The columns were a hardcoded `grid-template-columns` until FEAT-047. They
 	 * are the same store the graph uses now, so they drag and they come back
@@ -23,8 +27,6 @@
 	 * under which the boundary follows the pointer — the reasoning is written
 	 * out once, in `GraphHeader.svelte`.
 	 */
-
-	const DELETE_PENDING = 'Deleting branches is not built yet';
 
 	const rows = $derived(branches.filtered);
 	const shown = $derived(columns.shown);
@@ -124,11 +126,28 @@
 						</span>
 					{:else if row.current}
 						<span class="note">on this branch</span>
+						<Chip title={undeletable(row) ?? undefined}>Delete</Chip>
 					{:else if row.kind === 'branch'}
 						<Btn disabled={branches.busy} onclick={() => branches.checkout(row.name)}>
 							Check out
 						</Btn>
-						<Chip title={DELETE_PENDING}>Delete</Chip>
+						<Chip
+							disabled={branches.busy}
+							title="Rename {row.name}"
+							onclick={() => renameBranch(row)}
+						>
+							Rename
+						</Chip>
+						<Chip
+							disabled={branches.busy}
+							danger={!row.merged}
+							title={row.merged
+								? `Delete ${row.name} — everything on it is already merged`
+								: `Delete ${row.name} — it has commits that are on no other branch`}
+							onclick={() => deleteBranch(row)}
+						>
+							Delete
+						</Chip>
 					{:else}
 						<Btn
 							disabled={branches.busy}
@@ -140,7 +159,7 @@
 						>
 							Branch from it
 						</Btn>
-						<Chip title={DELETE_PENDING}>Delete</Chip>
+						<Chip title={undeletable(row) ?? undefined}>Delete</Chip>
 					{/if}
 				</div>
 			{/each}

@@ -218,13 +218,56 @@ describe('BranchTable', () => {
 		view.destroy();
 	});
 
-	it('says deleting is not built rather than hiding the button', async () => {
+	/**
+	 * FEAT-013. Delete is a button on a local branch and a label everywhere it
+	 * would not work — on the branch you are standing on, and on a
+	 * remote-tracking ref. The label keeps its reason in the title rather than
+	 * disappearing, so nobody has to wonder whether they misremembered.
+	 */
+	it('offers delete and rename on a local branch that is not checked out', async () => {
 		const view = await show([row('merged/old', { merged: true })]);
 
 		const del = view.all('.chip').find((c) => c.textContent?.includes('Delete'));
-		expect(del?.getAttribute('title')).toBe('Deleting branches is not built yet');
-		// A label, not a button: it does nothing, and looking clickable would lie.
+		expect(del?.tagName).toBe('BUTTON');
+		expect(del?.getAttribute('title')).toContain('already merged');
+
+		const rename = view.all('.chip').find((c) => c.textContent?.includes('Rename'));
+		expect(rename?.tagName).toBe('BUTTON');
+
+		view.destroy();
+	});
+
+	it('paints delete as destructive only when commits would be lost', async () => {
+		const view = await show([
+			row('merged/old', { merged: true }),
+			row('feature/live', { merged: false })
+		]);
+
+		const chips = view.all('.chip').filter((c) => c.textContent?.includes('Delete'));
+		expect(chips[0].classList.contains('danger')).toBe(false);
+		expect(chips[1].classList.contains('danger')).toBe(true);
+		expect(chips[1].getAttribute('title')).toContain('on no other branch');
+
+		view.destroy();
+	});
+
+	it('will not delete the branch you are standing on, and says why', async () => {
+		const view = await show([row('main', { current: true })]);
+
+		const del = view.all('.chip').find((c) => c.textContent?.includes('Delete'));
+		// A label, not a button: it would not work, and looking clickable lies.
 		expect(del?.tagName).toBe('SPAN');
+		expect(del?.getAttribute('title')).toBe('This is the branch you have checked out');
+
+		view.destroy();
+	});
+
+	it('will not delete a remote-tracking ref from this screen', async () => {
+		const view = await show([row('origin/main', { kind: 'remote' })]);
+
+		const del = view.all('.chip').find((c) => c.textContent?.includes('Delete'));
+		expect(del?.tagName).toBe('SPAN');
+		expect(del?.getAttribute('title')).toContain('follows its remote');
 
 		view.destroy();
 	});
@@ -237,6 +280,8 @@ describe('BranchTable', () => {
 		const button = view.all('button').find((b) => b.textContent?.includes('Check out'));
 		click(button as HTMLElement);
 
+		// Every control that writes, chips included: the one that deletes a
+		// branch must not stay pressable a second time.
 		for (const b of view.all('button')) {
 			expect((b as HTMLButtonElement).disabled).toBe(true);
 		}

@@ -2,10 +2,10 @@
 
 # FEAT-013 — Branch delete and rename
 
-**Status:** Partial. `ops::delete_branch` and `ops::rename_branch` are built
-and reachable from the graph's context menu; the Branches screen's own
-delete and rename, and the bulk merged-branch cleanup, are not. Corrected by
-TASK-012. No plan yet; one is written when the remainder starts.
+**Status:** Done on `feature/FEAT-013-branch-delete-rename`. `ops::delete_branch`
+and `ops::rename_branch` were built with FEAT-004 and reachable from the graph;
+the Branches screen's own delete and rename, the bulk merged-branch cleanup, and
+the recovery instruction the notes below asked for were built here.
 **Screen:** Branches (1F).
 
 ## Problem
