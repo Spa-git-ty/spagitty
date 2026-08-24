@@ -40,6 +40,8 @@ pub fn run() {
             commands::unstage,
             commands::stage_hunk,
             commands::unstage_hunk,
+            commands::discard,
+            commands::discard_hunk,
             commands::commit,
             commands::head_message,
             commands::branches,

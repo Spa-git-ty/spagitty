@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { changes } from '$lib/changes/store.svelte';
+	import { discardAll, discardPaths } from '$lib/changes/discard';
 	import { statusGlyph } from '$lib/format';
 	import Btn from '$lib/ui/Btn.svelte';
 	import type { DiffSide, StatusEntry } from '$lib/types';
@@ -13,6 +14,12 @@
 	 * appear in both sections at once, because a file can be staged in part;
 	 * collapsing that into one row is what makes people commit something they
 	 * did not mean to.
+	 *
+	 * Discard is offered on the unstaged side only (FEAT-048). That is the side
+	 * where the change has not been kept yet, and it is the side whose contents
+	 * `git restore --worktree` is defined against. A staged change is one
+	 * unstage away from being discardable, and putting the destructive button
+	 * next to `−` in the staged section would make the two easy to confuse.
 	 */
 
 	/** See FileList.svelte: keeps `.gitignore` from rendering as `gitignore.`. */
@@ -94,6 +101,13 @@
 					<Btn disabled={changes.busy} onclick={() => changes.stage(paths(work.unstaged))}>
 						Stage all
 					</Btn>
+					<Btn
+						disabled={changes.busy}
+						title="Throw away every unstaged change — this cannot be undone"
+						onclick={() => discardAll()}
+					>
+						Discard all
+					</Btn>
 				{/if}
 			</div>
 		</header>
@@ -120,6 +134,16 @@
 					onclick={() => changes.stage([entry.path])}
 				>
 					+
+				</button>
+				<button
+					class="act discard mono"
+					disabled={changes.busy}
+					title={entry.status === 'untracked'
+						? `Delete ${entry.path} — this cannot be undone`
+						: `Discard changes to ${entry.path} — this cannot be undone`}
+					onclick={() => discardPaths([entry])}
+				>
+					✕
 				</button>
 			</div>
 		{/each}
@@ -249,5 +273,11 @@
 
 	.act:disabled {
 		opacity: 0.4;
+	}
+
+	/* Red on hover only. A column of red crosses would read as a list of
+	   errors rather than as a column of available actions. */
+	.act.discard:hover:not(:disabled) {
+		color: var(--lane-3);
 	}
 </style>

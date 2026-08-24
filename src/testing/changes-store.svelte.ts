@@ -35,6 +35,8 @@ export const calls = {
 	staged: [] as string[][],
 	unstaged: [] as string[][],
 	hunks: [] as Array<{ index: number; header: string }>,
+	discarded: [] as string[][],
+	discardedHunks: [] as Array<{ index: number; header: string }>,
 	opened: [] as Selection[],
 	commits: 0,
 	loads: 0,
@@ -96,6 +98,8 @@ export const control = {
 		calls.staged = [];
 		calls.unstaged = [];
 		calls.hunks = [];
+		calls.discarded = [];
+		calls.discardedHunks = [];
 		calls.opened = [];
 		calls.commits = 0;
 		calls.loads = 0;
@@ -179,6 +183,15 @@ export const changes = {
 	},
 	async hunk(index: number, header: string) {
 		calls.hunks.push({ index, header });
+		return true;
+	},
+	async discard(paths: string[]) {
+		calls.discarded.push(paths);
+		return true;
+	},
+	async discardHunk(index: number, header: string) {
+		if (selection?.side !== 'unstaged') return false;
+		calls.discardedHunks.push({ index, header });
 		return true;
 	},
 	async commit() {

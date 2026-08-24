@@ -117,6 +117,21 @@ export function unstageHunk(path: string, index: number, header: string): Promis
 	return invoke('unstage_hunk', { path, index, header });
 }
 
+/**
+ * Throw away unstaged changes to whole paths.
+ *
+ * The only call in this file that destroys work git cannot get back. The
+ * confirmation is the caller's job, and every caller has one.
+ */
+export function discard(paths: string[]): Promise<void> {
+	return invoke('discard', { paths });
+}
+
+/** Throw away one unstaged hunk. Refused if the view it came from is stale. */
+export function discardHunk(path: string, index: number, header: string): Promise<void> {
+	return invoke('discard_hunk', { path, index, header });
+}
+
 /** Commit what is staged. Resolves to the new commit's id. */
 export function commit(subject: string, body: string, amend: boolean): Promise<string> {
 	return invoke('commit', { subject, body, amend });

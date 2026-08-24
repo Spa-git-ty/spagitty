@@ -243,6 +243,53 @@ pub fn apply_to_index(repo: &Path, patch: &str, reverse: bool) -> Result<()> {
     Ok(())
 }
 
+/// Apply one hunk's patch to the working tree, in reverse, to discard it.
+///
+/// The mirror of [`apply_to_index`] with the `--cached` taken off: this one
+/// writes the file on disk and nothing else, so a discarded hunk leaves both
+/// the index and the rest of the file exactly as they were.
+pub fn apply_to_worktree(repo: &Path, patch: &str, reverse: bool) -> Result<()> {
+    let mut args = vec!["apply", "--whitespace=nowarn"];
+    if reverse {
+        args.push("--reverse");
+    }
+    args.push("-");
+
+    run_with_stdin(repo, &args, patch)?;
+    Ok(())
+}
+
+/// Throw away working-tree changes to tracked paths, back to the index.
+///
+/// Not `--staged`: what is staged is a decision the user has already made, and
+/// discarding an unstaged change must not quietly undo it as well. A file
+/// staged in part keeps its staged part and loses the rest, which is exactly
+/// what the Unstaged column is showing.
+///
+/// This is the first operation in Spagitty that destroys work with no way back
+/// — there is no reflog for the working tree — so the caller confirms first.
+pub fn discard(repo: &Path, paths: &[String]) -> Result<()> {
+    if paths.is_empty() {
+        return Ok(());
+    }
+    run(repo, &with_paths(&["restore", "--worktree"], paths))?;
+    Ok(())
+}
+
+/// Delete untracked paths.
+///
+/// `git clean` rather than removing the files directly, so that the same rules
+/// the user's own `git clean` follows apply here — in particular no `-x`, so an
+/// ignored file is never deleted by a screen that never showed it. `-d` covers
+/// an untracked directory, which status reports as one entry.
+pub fn remove_untracked(repo: &Path, paths: &[String]) -> Result<()> {
+    if paths.is_empty() {
+        return Ok(());
+    }
+    run(repo, &with_paths(&["clean", "-f", "-d", "-q"], paths))?;
+    Ok(())
+}
+
 /// Commit what is staged.
 ///
 /// Through `git` so that `pre-commit` and `commit-msg` hooks run and a

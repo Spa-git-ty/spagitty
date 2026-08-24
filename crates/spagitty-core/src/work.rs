@@ -8,14 +8,19 @@
 //! reads, and hooks and signing have to run. The header of that module has the
 //! full argument.
 //!
-//! What is *not* here is as deliberate as what is. Nothing discards a change:
-//! there is no revert, no checkout of a path, no clean. Every operation below
-//! either moves something between the working tree and the index, or turns the
-//! index into a commit; a mistake costs an unstage, never work.
+//! Everything here but [`discard`] and [`discard_hunk`] is reversible: it moves
+//! something between the working tree and the index, or turns the index into a
+//! commit, and a mistake costs an unstage. Those two are not, and they are the
+//! only operations in Spagitty that destroy work git cannot get back — there is
+//! no reflog for the working tree. They were left out until FEAT-048 for that
+//! reason, and the reason turned out to be the wrong one: a client that cannot
+//! throw away a mistake sends people to the terminal for the most ordinary
+//! thing in a working day. What guards them is a confirmation on the way in and
+//! a narrow definition of what they touch, both written down below.
 
 use std::path::Path;
 
-use crate::diff::{self, Side};
+use crate::diff::{self, FileStatus, Side};
 use crate::error::{Error, Result};
 use crate::shell;
 
@@ -47,6 +52,54 @@ pub fn stage_hunk(repo: &gix::Repository, path: &str, index: usize, header: &str
 pub fn unstage_hunk(repo: &gix::Repository, path: &str, index: usize, header: &str) -> Result<()> {
     let patch = diff::working_hunk_patch(repo, path, Side::Staged, index, header)?;
     shell::apply_to_index(workdir(repo)?, &patch, true)
+}
+
+/// Throw away unstaged changes to whole paths.
+///
+/// "Unstaged" is the whole definition, and it is what makes this safe enough to
+/// offer: a tracked path goes back to what the index holds, so anything already
+/// staged survives, and an untracked path is deleted, because there is no
+/// earlier version of it to go back to. A path that is both staged and changed
+/// again keeps its staged part.
+///
+/// The split is read from the status rather than taken from the caller. The
+/// screen knows which column a row came from, but a row can be stale, and
+/// telling `git restore` about a file it does not track fails the whole call —
+/// so the classification is done here, against the repository as it is now.
+///
+/// Nothing here can be undone. The caller confirms first.
+pub fn discard(repo: &gix::Repository, paths: &[String]) -> Result<()> {
+    let workdir = workdir(repo)?;
+    let work = crate::status::working_copy(repo)?;
+
+    let untracked: Vec<String> = work
+        .unstaged
+        .iter()
+        .filter(|entry| entry.status == FileStatus::Untracked)
+        .map(|entry| entry.path.clone())
+        .collect();
+
+    let (remove, restore): (Vec<String>, Vec<String>) = paths
+        .iter()
+        .cloned()
+        .partition(|path| untracked.iter().any(|known| known == path));
+
+    // Restore first. If the clean fails — a permission, a file that vanished —
+    // the tracked half has still happened, and the error names what is left.
+    shell::discard(workdir, &restore)?;
+    shell::remove_untracked(workdir, &remove)
+}
+
+/// Throw away one unstaged hunk of one file.
+///
+/// `index` and `header` identify the hunk in the *unstaged* diff of `path`, the
+/// same way [`stage_hunk`] does, and the patch is refused if the header no
+/// longer matches — a file that changed under an open screen cannot have the
+/// wrong part of it discarded from a stale view. That check matters more here
+/// than it does for staging: staging the wrong hunk is undone by unstaging it.
+pub fn discard_hunk(repo: &gix::Repository, path: &str, index: usize, header: &str) -> Result<()> {
+    let patch = diff::working_hunk_patch(repo, path, Side::Unstaged, index, header)?;
+    shell::apply_to_worktree(workdir(repo)?, &patch, true)
 }
 
 /// Commit what is staged. Returns the new commit's id.
@@ -432,6 +485,146 @@ mod tests {
             fixture.git(&["log", "-1", "--pretty=%s"]).trim(),
             "Reworded"
         );
+    }
+
+    #[test]
+    fn discarding_a_path_puts_the_file_back_the_way_the_index_has_it() {
+        let fixture = Fixture::woven();
+        let before = fixture.read("notes.md");
+        fixture.write("notes.md", "wrong\n");
+
+        discard(&fixture.open(), &["notes.md".to_string()]).expect("discard");
+
+        assert_eq!(fixture.read("notes.md"), before);
+        let work = working_copy(&fixture.open()).expect("status");
+        assert!(paths(&work.unstaged).is_empty());
+    }
+
+    #[test]
+    fn discarding_keeps_what_was_already_staged() {
+        // The whole reason `--staged` is not passed: a decision already made
+        // must survive throwing away the change made after it.
+        let fixture = Fixture::woven();
+        fixture.write("notes.md", "staged\n");
+        stage(&fixture.open(), &["notes.md".to_string()]).expect("stage");
+        fixture.write("notes.md", "staged\nand then more\n");
+
+        discard(&fixture.open(), &["notes.md".to_string()]).expect("discard");
+
+        assert_eq!(fixture.read("notes.md"), "staged\n");
+        let work = working_copy(&fixture.open()).expect("status");
+        assert_eq!(paths(&work.staged), vec!["notes.md"]);
+        assert!(paths(&work.unstaged).is_empty());
+    }
+
+    #[test]
+    fn discarding_an_untracked_file_deletes_it() {
+        // There is no earlier version to restore, so the only meaning discard
+        // can have here is removal.
+        let fixture = Fixture::woven();
+        fixture.write("scratch.txt", "notes to self\n");
+
+        discard(&fixture.open(), &["scratch.txt".to_string()]).expect("discard");
+
+        let work = working_copy(&fixture.open()).expect("status");
+        assert!(paths(&work.unstaged).is_empty());
+        assert!(!fixture.at("scratch.txt").exists());
+    }
+
+    #[test]
+    fn discarding_a_deletion_brings_the_file_back() {
+        let fixture = Fixture::woven();
+        let before = fixture.read("notes.md");
+        fixture.remove("notes.md");
+
+        discard(&fixture.open(), &["notes.md".to_string()]).expect("discard");
+
+        assert_eq!(fixture.read("notes.md"), before);
+    }
+
+    #[test]
+    fn discarding_a_mixed_selection_handles_each_path_by_what_it_is() {
+        let fixture = Fixture::woven();
+        fixture.write("notes.md", "wrong\n");
+        fixture.write("scratch.txt", "notes to self\n");
+
+        discard(
+            &fixture.open(),
+            &["notes.md".to_string(), "scratch.txt".to_string()],
+        )
+        .expect("discard");
+
+        let work = working_copy(&fixture.open()).expect("status");
+        assert!(paths(&work.unstaged).is_empty());
+        assert!(!fixture.at("scratch.txt").exists());
+    }
+
+    #[test]
+    fn discarding_never_touches_an_ignored_file() {
+        // `git clean` without `-x`. An ignored file is one the screen never
+        // showed, and deleting it would be the surprise this operation cannot
+        // afford to spring.
+        let fixture = Fixture::woven();
+        fixture.write(".cache/build.log", "noise\n");
+
+        discard(&fixture.open(), &["notes.md".to_string()]).expect("discard");
+
+        assert!(fixture.at(".cache/build.log").exists());
+    }
+
+    #[test]
+    fn discarding_nothing_is_not_an_error_and_does_nothing() {
+        let fixture = Fixture::woven();
+        fixture.write("notes.md", "changed\n");
+
+        discard(&fixture.open(), &[]).expect("discard");
+
+        assert_eq!(fixture.read("notes.md"), "changed\n");
+    }
+
+    #[test]
+    fn discarding_one_hunk_discards_only_that_hunk() {
+        let fixture = Fixture::woven();
+        let changed = two_hunks(&fixture);
+        let hunks = unstaged_hunks(&fixture, "wide.txt");
+        assert_eq!(hunks.len(), 2);
+
+        discard_hunk(&fixture.open(), "wide.txt", 0, &hunks[0].header).expect("discard hunk");
+
+        let now = fixture.read("wide.txt");
+        assert!(now.contains("line 2\n"), "the first hunk should be gone");
+        assert!(
+            now.contains("LINE THIRTY-EIGHT\n"),
+            "the second hunk should still be there"
+        );
+        assert_ne!(now, changed);
+    }
+
+    #[test]
+    fn discarding_a_hunk_never_touches_the_index() {
+        let fixture = Fixture::woven();
+        two_hunks(&fixture);
+        let before = fixture.git(&["ls-files", "--stage"]);
+        let hunks = unstaged_hunks(&fixture, "wide.txt");
+
+        discard_hunk(&fixture.open(), "wide.txt", 0, &hunks[0].header).expect("discard hunk");
+
+        assert_eq!(fixture.git(&["ls-files", "--stage"]), before);
+    }
+
+    #[test]
+    fn a_hunk_that_has_moved_is_refused_rather_than_discarded_from_a_stale_view() {
+        // Staging the wrong hunk costs an unstage. Discarding the wrong one
+        // costs the work, so the staleness check matters more here.
+        let fixture = Fixture::woven();
+        two_hunks(&fixture);
+        let hunks = unstaged_hunks(&fixture, "wide.txt");
+
+        fixture.write("wide.txt", "something else entirely\n");
+
+        let error = discard_hunk(&fixture.open(), "wide.txt", 0, &hunks[0].header).unwrap_err();
+
+        assert!(matches!(error, Error::Stale(p) if p == "wide.txt"));
     }
 
     #[test]

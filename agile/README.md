@@ -102,6 +102,7 @@ rather than an audit.
 | [FEAT-045](items/FEAT-045-toolbar-repo-and-branch.md) | The toolbar names the repository, and picks a branch for real | chrome | Done |
 | [FEAT-046](items/FEAT-046-graph-squeeze-keeps-the-portraits.md) | Squeezing the graph column must not shrink the portraits | 1A | Done |
 | [FEAT-047](items/FEAT-047-branch-table-columns-and-divergence.md) | The branches table: resizable columns, and a divergence worth reading | 1F | Done |
+| [FEAT-048](items/FEAT-048-discard-changes.md) | Discard changes | 1C | Done |
 
 ## Bugs
 

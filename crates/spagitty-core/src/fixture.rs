@@ -14,7 +14,7 @@
 //! Every fixture lives in a temporary directory that is removed when the
 //! `Fixture` is dropped. Nothing here writes outside it.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use tempfile::TempDir;
@@ -292,6 +292,18 @@ impl Fixture {
             std::fs::create_dir_all(parent).expect("fixture directory");
         }
         std::fs::write(full, contents).expect("fixture file");
+    }
+
+    /// One path inside the fixture, for asserting a file exists or does not.
+    pub fn at(&self, path: &str) -> PathBuf {
+        self.dir.path().join(path)
+    }
+
+    /// Read a fixture file back as text. Panics if it is not there, which is
+    /// the assertion a test wanted to make anyway.
+    pub fn read(&self, path: &str) -> String {
+        std::fs::read_to_string(self.at(path))
+            .unwrap_or_else(|e| panic!("reading fixture file {path}: {e}"))
     }
 
     pub fn remove(&self, path: &str) {

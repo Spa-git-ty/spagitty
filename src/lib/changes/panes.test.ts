@@ -83,6 +83,56 @@ describe('FileColumn', () => {
 		view.destroy();
 	});
 
+	/**
+	 * FEAT-048. The controls that throw work away are asserted for where they
+	 * are as much as for what they do: a discard button in the staged section
+	 * would sit next to `−` and mean something very different.
+	 */
+	it('offers discard on unstaged rows and on no staged row', () => {
+		control.setWork(work({ staged: [entry('a.txt')], unstaged: [entry('b.txt')] }));
+		const view = render(FileColumn, {});
+
+		const rows = view.all('.row');
+		expect(rows[0].querySelector('.act.discard')).toBeNull();
+		expect(rows[1].querySelector('.act.discard')).not.toBeNull();
+
+		view.destroy();
+	});
+
+	it('says an untracked row will be deleted rather than reverted', () => {
+		control.setWork(work({ unstaged: [entry('new.txt', 'untracked')] }));
+		const view = render(FileColumn, {});
+
+		expect(view.get('.act.discard').getAttribute('title')).toBe(
+			'Delete new.txt — this cannot be undone'
+		);
+
+		view.destroy();
+	});
+
+	it('warns on a tracked row that the change cannot come back', () => {
+		control.setWork(work({ unstaged: [entry('b.txt')] }));
+		const view = render(FileColumn, {});
+
+		expect(view.get('.act.discard').getAttribute('title')).toBe(
+			'Discard changes to b.txt — this cannot be undone'
+		);
+
+		view.destroy();
+	});
+
+	it('offers Discard all beside Stage all, and neither with nothing unstaged', () => {
+		control.setWork(work({ unstaged: [entry('b.txt')] }));
+		const view = render(FileColumn, {});
+		expect(view.text()).toContain('Discard all');
+		view.destroy();
+
+		control.setWork(work({ staged: [entry('a.txt')] }));
+		const empty = render(FileColumn, {});
+		expect(empty.text()).not.toContain('Discard all');
+		empty.destroy();
+	});
+
 	it('marks untracked files with the untracked glyph', () => {
 		control.setWork(work({ unstaged: [entry('new.txt', 'untracked')] }));
 		const view = render(FileColumn, {});
@@ -221,6 +271,35 @@ describe('HunkPane', () => {
 		const view = render(HunkPane, {});
 
 		expect(view.text()).toContain('unstage hunk');
+		view.destroy();
+	});
+
+	it('offers to discard a hunk on the unstaged side only', () => {
+		// FEAT-048. On the staged side the change has been kept once already
+		// and unstaging is the reversible way back to it, so a destructive
+		// button there would sit next to a safe one reading almost the same.
+		control.setSelection({ path: 'core.txt', side: 'unstaged' });
+		control.setFile(diff());
+		const unstaged = render(HunkPane, {});
+		expect(unstaged.text()).toContain('discard hunk');
+		unstaged.destroy();
+
+		control.setSelection({ path: 'core.txt', side: 'staged' });
+		control.setFile(diff());
+		const staged = render(HunkPane, {});
+		expect(staged.text()).not.toContain('discard hunk');
+		staged.destroy();
+	});
+
+	it('paints the discard chip as the destructive one', () => {
+		control.setSelection({ path: 'core.txt', side: 'unstaged' });
+		control.setFile(diff());
+		const view = render(HunkPane, {});
+
+		const chips = view.all('.chip');
+		expect(chips[0].classList.contains('danger')).toBe(false);
+		expect(chips[1].classList.contains('danger')).toBe(true);
+
 		view.destroy();
 	});
 

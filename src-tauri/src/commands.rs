@@ -295,6 +295,30 @@ pub fn unstage_hunk(
     })
 }
 
+/// Throw away unstaged changes to whole paths.
+///
+/// The only command here that destroys work git cannot get back. The screen
+/// confirms first; nothing in this layer asks a second time, because a
+/// confirmation the caller cannot see the wording of is not a confirmation.
+#[tauri::command]
+pub fn discard(state: State<'_, AppState>, paths: Vec<String>) -> Result<()> {
+    state.with_session(|session| work::discard(&session.repo.to_thread_local(), &paths))
+}
+
+/// Throw away one unstaged hunk. `header` identifies it, so a stale view is
+/// refused rather than the wrong part of a file being lost.
+#[tauri::command]
+pub fn discard_hunk(
+    state: State<'_, AppState>,
+    path: String,
+    index: usize,
+    header: String,
+) -> Result<()> {
+    state.with_session(|session| {
+        work::discard_hunk(&session.repo.to_thread_local(), &path, index, &header)
+    })
+}
+
 /// Commit what is staged. Returns the new commit's id.
 #[tauri::command]
 pub fn commit(

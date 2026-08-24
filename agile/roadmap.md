@@ -7,7 +7,7 @@ where it does. This is a reading of the index in [README.md](README.md) against
 the gap analysis in [../docs/analysis/gitkraken-gap.md](../docs/analysis/gitkraken-gap.md);
 the index stays the authority on what exists and what state it is in.
 
-Four entries below have no identifier yet. They came out of the gap analysis
+Three entries below have no identifier yet. They came out of the gap analysis
 rather than out of a request, and an identifier is assigned when the work
 starts — the record test refuses a cited identifier that resolves to nothing,
 so naming them early would break the suite for no gain.
@@ -25,19 +25,18 @@ leaves the Branches screen ready for the delete and rename work that follows.
 **Closed by:** a per-repository column store with its own storage prefix, and a
 two-sided divergence bar scaled against the widest drift on screen.
 
-### 2. Discard changes — no identifier yet
+### 2. FEAT-048 — discard changes
+
+**Done**, on `feature/FEAT-048-discard-changes`.
 
 The largest hole in daily use, and the cheapest to fill. Working copy can
 stage, unstage and commit; nothing there can throw a change away, so the most
 common mistake in a working day sends the user to the terminal. The gap
 analysis names it as the one deliberate omission that should not have been one.
 
-**Closes when:** discard file, discard hunk and discard all exist on Working
-copy, each behind a confirmation, each recorded in the command log like every
-other write.
-**Depends on:** nothing.
-**Size:** a day, most of it the confirmation and the log entries rather than
-the git work.
+**Closed by:** discard file, discard hunk and discard all on the unstaged side,
+each behind a confirmation whose wording says whether the file is reverted or
+deleted. The staged side is deliberately untouched.
 
 ### 3. FEAT-013 — branch delete and rename
 

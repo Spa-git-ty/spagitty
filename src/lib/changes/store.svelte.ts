@@ -228,6 +228,31 @@ export const changes = {
 		return this.run(() => api.unstage(paths));
 	},
 
+	/**
+	 * Throw away unstaged changes to whole paths.
+	 *
+	 * No confirmation here. `$lib/changes/discard.ts` owns the wording, because
+	 * what the sentence has to say depends on what the paths are, and a store
+	 * that asked as well would ask twice.
+	 */
+	discard(paths: string[]): Promise<boolean> {
+		return this.run(() => api.discard(paths));
+	},
+
+	/**
+	 * Throw away one hunk of the open file.
+	 *
+	 * Only from the unstaged side. On the staged side the hunk buttons unstage,
+	 * which is not destructive, and there is nothing to discard until it has
+	 * come back across.
+	 */
+	discardHunk(index: number, header: string): Promise<boolean> {
+		const current = selection;
+		if (current === null || current.side !== 'unstaged') return Promise.resolve(false);
+
+		return this.run(() => api.discardHunk(current.path, index, header));
+	},
+
 	/** Stage or unstage one hunk of the open file, whichever side it is on. */
 	hunk(index: number, header: string): Promise<boolean> {
 		const current = selection;

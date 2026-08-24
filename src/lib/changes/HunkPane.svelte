@@ -1,12 +1,19 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { changes } from '$lib/changes/store.svelte';
+	import { discardHunk } from '$lib/changes/discard';
 	import Chip from '$lib/ui/Chip.svelte';
 	import type { DiffLine } from '$lib/types';
 
 	/**
-	 * The hunks of the selected file, each with the one action that makes sense
-	 * for the side it is on: stage it, or take it back out.
+	 * The hunks of the selected file, each with the actions that make sense for
+	 * the side it is on: stage it or throw it away on the unstaged side, take it
+	 * back out on the staged side.
+	 *
+	 * Discard is only offered where there is something to discard. On the staged
+	 * side the change has been kept once already, and unstaging it is one click
+	 * away from being discardable — offering both there would put a destructive
+	 * button next to a reversible one that reads almost the same.
 	 *
 	 * Deliberately unified only. Split is for reading a commit someone else
 	 * wrote; here the question is "does this hunk belong in the commit", and one
@@ -41,14 +48,25 @@
 			<section class="hunk">
 				<div class="hunk-head">
 					<span class="mono muted">{hunk.header}</span>
-					<Chip
-						onclick={() => changes.hunk(index, hunk.header)}
-						title={side === 'unstaged'
-							? 'Stage this hunk and nothing else'
-							: 'Take this hunk back out of the next commit'}
-					>
-						{side === 'unstaged' ? 'stage hunk' : 'unstage hunk'}
-					</Chip>
+					<div class="acts">
+						<Chip
+							onclick={() => changes.hunk(index, hunk.header)}
+							title={side === 'unstaged'
+								? 'Stage this hunk and nothing else'
+								: 'Take this hunk back out of the next commit'}
+						>
+							{side === 'unstaged' ? 'stage hunk' : 'unstage hunk'}
+						</Chip>
+						{#if side === 'unstaged'}
+							<Chip
+								danger
+								onclick={() => discardHunk(index, hunk.header)}
+								title="Throw these lines away — this cannot be undone"
+							>
+								discard hunk
+							</Chip>
+						{/if}
+					</div>
 				</div>
 				{#each hunk.lines as line, row (row)}
 					<div class="line {line.origin}">
@@ -64,6 +82,12 @@
 </div>
 
 <style>
+	.acts {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+
 	.pane {
 		flex: 1;
 		min-width: 0;
