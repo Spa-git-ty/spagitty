@@ -12,7 +12,7 @@
 	import { selection } from '$lib/graph/selection.svelte';
 	import * as act from '$lib/graph/actions';
 	import { clockTime, fullDate, isNotable, relativeTime } from '$lib/format';
-	import { laneColumnWidth, laneSpanFor, LANE_COLUMNS_MIN } from '$lib/metrics';
+	import { laneColumnWidth, laneSpanFor } from '$lib/metrics';
 	import { scale } from '$lib/scale.svelte';
 	import RefChip from '$lib/ui/RefChip.svelte';
 	import Menu from '$lib/ui/Menu.svelte';
@@ -78,26 +78,35 @@
 	 * for a moment. Without that, scrolling through varying history would make
 	 * the message column jump left and right under the reader's eyes.
 	 *
-	 * `laneCount` is the *true* number of lanes on screen and is deliberately
-	 * not clamped here (FEAT-035). The width it produces still is —
-	 * `laneColumnWidth` caps at LANE_COLUMNS_MAX — but the geometry needs the
-	 * real figure, because past the cap it is the pitch that gives rather than
-	 * the column. Clamping it at this line is what used to draw the thirteenth
-	 * lane on top of the twelfth.
+	 * `laneCount` is the *true* number of lanes on screen and is clamped at
+	 * neither end (FEAT-035, FEAT-046). The width it produces is clamped at
+	 * both — `laneColumnWidth` runs it through `laneColumns`, so the column is
+	 * never narrower than five lanes' worth nor wider than the cap — but the
+	 * geometry needs the real figure.
+	 *
+	 * Past the cap it is the pitch that gives rather than the column, and
+	 * clamping high is what used to draw the thirteenth lane on top of the
+	 * twelfth. Below five it decides when compression *starts*: floored at five,
+	 * a two-lane repository was squeezed as though five lanes had to fit, and
+	 * the squeeze began long before any two lanes were touching (FEAT-046).
 	 */
 	const SHRINK_DELAY = 400;
 
-	let laneCount = $state(LANE_COLUMNS_MIN);
+	/*
+	 * One lane before the first measurement, not five: an assumed five would
+	 * compress a two-lane repository for the length of the shrink delay every
+	 * time the screen is opened, and then relax — a visible pop at exactly the
+	 * moment there is nothing to compress. The effect below runs on mount and
+	 * grows immediately, so the true count arrives in the first frame.
+	 */
+	let laneCount = $state(1);
 	/** Untracked mirror, so the effect below doesn't depend on what it writes. */
-	let currentColumns = LANE_COLUMNS_MIN;
+	let currentColumns = 1;
 	let shrinkTimer: ReturnType<typeof setTimeout> | null = null;
 
 	$effect(() => {
 		void graph.version;
-		const needed = Math.max(
-			LANE_COLUMNS_MIN,
-			lanesNeeded(range.first, range.last, (i) => graph.row(i))
-		);
+		const needed = lanesNeeded(range.first, range.last, (i) => graph.row(i));
 
 		if (needed > currentColumns) {
 			if (shrinkTimer) clearTimeout(shrinkTimer);

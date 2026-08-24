@@ -99,7 +99,7 @@ rather than an audit.
 | [FEAT-043](items/FEAT-043-app-status-strip.md) | A status strip along the bottom of the window | chrome | Done |
 | [FEAT-044](items/FEAT-044-repo-tabs-own-row.md) | The repository tabs get a row of their own | chrome | Done |
 | [FEAT-045](items/FEAT-045-toolbar-repo-and-branch.md) | The toolbar names the repository, and picks a branch for real | chrome | Done |
-| [FEAT-046](items/FEAT-046-graph-squeeze-keeps-the-portraits.md) | Squeezing the graph column must not shrink the portraits | 1A | Backlog |
+| [FEAT-046](items/FEAT-046-graph-squeeze-keeps-the-portraits.md) | Squeezing the graph column must not shrink the portraits | 1A | Done |
 
 ## Bugs
 

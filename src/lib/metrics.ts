@@ -321,11 +321,17 @@ export function rowCenterY(index: number, pitch: number = ROW_PITCH): number {
  * what decides the pitch, and clamping it before it arrives here is what used to
  * fold the overflow onto the last column.
  *
- * Two clamps remain, and they are different things. Below
- * [`LANE_COLUMNS_MIN`] the pitch stays at the design value rather than spreading
- * three lanes across the whole column. Above [`LANE_INDEX_MAX`] the pitch has
- * hit its floor and there is no room left, so the deepest lanes do stack — the
- * old behaviour, now reached at 48 lanes instead of 12.
+ * One clamp remains: above [`LANE_INDEX_MAX`] the pitch has hit its floor and
+ * there is no room left, so the deepest lanes do stack — the old behaviour, now
+ * reached at 48 lanes instead of 12.
+ *
+ * There used to be a second, flooring the count at [`LANE_COLUMNS_MIN`] so that
+ * three lanes would not spread across the whole column. At the design span it
+ * did nothing — [`lanePitch`] caps at [`LANE_PITCH`], so two lanes and five sit
+ * at identical x. Against a *dragged* span it compressed a two-lane repository
+ * as though five lanes had to fit, and the squeeze began long before any two
+ * lanes were touching (FEAT-046). The floor belongs to the column's width,
+ * where [`laneColumns`] still applies it, and not to where the lanes go.
  *
  * `zoom` scales the horizontal geometry the same way `applyMetrics` scales the
  * CSS widths, so the canvas and the reserved column keep agreeing.
@@ -336,7 +342,7 @@ export function laneX(
 	zoom = 1,
 	span: number = LANE_SPAN
 ): number {
-	const pitch = lanePitch(Math.max(columns, LANE_COLUMNS_MIN), span);
+	const pitch = lanePitch(columns, span);
 
 	// How many lanes land on a distinct x. Above the floor the pitch was chosen
 	// so that all of them do, by construction; at the floor it is the span that

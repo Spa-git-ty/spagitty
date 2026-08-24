@@ -70,6 +70,19 @@ describe('laneColumnWidth', () => {
 	it('stops widening past the cap', () => {
 		expect(laneColumnWidth(200)).toBe(laneColumnWidth(LANE_COLUMNS_MAX));
 	});
+
+	/**
+	 * The five-lane floor is a width and nothing else (FEAT-046). It used to be
+	 * applied to the lane *count* as well, which compressed a two-lane
+	 * repository as though five lanes had to fit whenever the column was
+	 * dragged narrow. The column itself still never asks for less than five
+	 * lanes' worth.
+	 */
+	it('never asks for less than the design width, however few lanes there are', () => {
+		for (const lanes of [0, 1, 2, 3, 4]) {
+			expect(laneColumnWidth(lanes)).toBe(laneColumnWidth(LANE_COLUMNS_MIN));
+		}
+	});
 });
 
 describe('rowCenterY', () => {

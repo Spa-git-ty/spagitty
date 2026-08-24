@@ -2,7 +2,9 @@
 
 # FEAT-046 — Squeezing the graph column must not shrink the portraits
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done on `feature/FEAT-046-portraits-keep-size`. Plan in
+`agile/plans/FEAT-046-plan.md`, tests in `agile/testing/FEAT-046-automated.md`
+and `agile/testing/FEAT-046-sweep.md`.
 **Screen:** Graph (1A).
 **Requested by:** the author, 2026-08-18, with a GitKraken screencast.
 

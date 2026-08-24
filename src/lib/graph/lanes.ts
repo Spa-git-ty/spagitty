@@ -147,11 +147,20 @@ export function drawLanes(options: LaneDrawOptions): void {
 	}
 	ctx.globalAlpha = 1;
 
-	// The node follows the pitch (FEAT-035). It is what set the pitch in the
-	// first place, so a compressed lane column with full-size portraits on it
-	// would draw the faces straight back over the lanes the compression made
-	// room for.
-	const radius = laneNodeRadius(columns, span) * zoom;
+	// The node follows the *depth*, not the drag (FEAT-046).
+	//
+	// Measured against the design span rather than the one in effect, so a
+	// column someone dragged narrower keeps full-size portraits and the lanes
+	// fold behind them — which is what the reference does, and what dragging a
+	// column is asking for: less of the window for the graph, not smaller
+	// faces. A history deeper than the design span can hold still shrinks, and
+	// there the shrink is what keeps the column readable rather than something
+	// anyone chose.
+	//
+	// This reverses FEAT-035's decision in the case the user caused. Its
+	// argument — that portraits at full size redraw over the compression they
+	// were meant to make room for — is true, and is now the intended picture.
+	const radius = laneNodeRadius(columns) * zoom;
 	const ratio = devicePixelRatio();
 	const tileSize = Math.max(8, Math.round(radius * 2 * ratio));
 
