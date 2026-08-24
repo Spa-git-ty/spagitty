@@ -3,54 +3,98 @@
 # FEAT-047 — Plan
 
 **Item:** [`agile/items/FEAT-047-branch-table-columns-and-divergence.md`](../items/FEAT-047-branch-table-columns-and-divergence.md)
-**Branch:** `feature/FEAT-047-branch-table-columns`
-**Status:** in progress — step 1 of 3 done.
+**Branch:** `feature/FEAT-047-branch-table`
+**Status:** implemented.
 
-**Branch point.** Cut from `feature/FEAT-046-portraits-keep-size`, continuing
-the unmerged stack rather than from `dev`, as the rest of the stack does.
+**Branch point.** Cut from `task/rename-to-spagitty`, continuing the unmerged
+stack. The item's own first commit — extracting the column store — is already in
+that history, and the branch it named (`feature/FEAT-047-branch-table-columns`)
+points at that commit's parent generation; it was left where it is rather than
+moved. The deviation from Amendment 13 is the same one the rest of the stack
+carries.
 
-## Step 1 — the guard, then the extraction *(done)*
+## Approach
 
-BUG-003 was the lane canvas being placed from a constant while the columns moved
-underneath it. The fix made `CommitRows` mirror the row — one spacer per column,
-the canvas in the graph's slot — and that arrangement is what the extraction
-must not disturb. So the guard was written **first**, against the source,
-because happy-dom does no layout and there are no real widths to measure.
+Two halves, and they only meet in `BranchTable.svelte`.
 
-Then the generic half of `src/lib/graph/columns.svelte.ts` moved to
-`src/lib/ui/columns.svelte.ts` as `createColumns({ catalogue, defaultOrder,
-storageKey })`. The graph's file is now a thin adapter: its catalogue, its
-defaults, and the two things that were always its own — the author filter, and
-the Graph column whose width comes from the lanes rather than from a drag.
+### The columns
 
-## Step 2 — the branch table's columns *(not started)*
+`$lib/ui/columns.svelte` already does all of it — order, per-column widths with
+minimums, one column that fills, `localStorage` keyed by repository. It was
+extracted from the graph for exactly this. So the branches table gets its own
+thin store, `$lib/branches/columns.svelte`, which supplies four columns, a
+default order and a storage prefix of its own, and nothing else.
 
-A second consumer of `createColumns`, catalogue `branch | drift | when |
-actions`: `branch` fills, the other three have widths and minimums, and the
-storage key is its own so the two tables cannot overwrite each other's layout.
-`BranchTable`'s `grid-template-columns` is built from `shown` rather than
-written down, and each header cell carries a divider, dragged the way the
-graph's are and double-clicked to reset.
+The prefix matters more than it looks: `spagitty.branches.columns:` against the
+graph's `spagitty.graph.columns:`. One prefix for both would mean a width chosen
+on one screen arriving on the other, keyed by the same repository path.
 
-Reordering and hiding are deliberately left out: resizing is what request 8
-asked for, and a header menu on a four-column table is furniture.
+Every column is marked `required`. The item puts hiding and reordering out of
+scope, and a four-column table where one column is the branch name and one is
+the actions has nothing worth hiding; `required` is what makes a stored layout
+from some future version that dropped one get repaired rather than rendered.
 
-## Step 3 — the divergence bar *(not started)*
+Widths carry over from the grid this replaces — `220px`, `210px` — so nobody's
+table moves on the first paint after the upgrade. The drift column is the one
+exception: 90px was the cell the author called awful, and the bar needs room, so
+150 is the width and 90 stays as the minimum.
 
-`src/lib/branches/Divergence.svelte`. A fixed-width two-sided bar, the branch's
-own position at the centre, behind left and ahead right, each segment scaled
-against the widest divergence among the rows on screen — so the bar answers
-"which of these has drifted most" as well as "has this one drifted". The four
-states are the point: absent, a centre tick, one segment, two.
+**The grid becomes a flex row.** `grid-template-columns` cannot express "this
+one fills and the rest are what the store says" without rebuilding the template
+string on every change, and the graph already answered this with flex plus a
+per-cell width. The header and the rows use the same `sizing()` so they cannot
+disagree.
 
-## Risk
+**The divider sizes the column it sits on.** Not the one after it. The reasoning
+is written out at length in `GraphHeader.svelte` and is not repeated here; the
+handler is the same shape, including measuring the start width from the DOM
+rather than from the store so that dragging the filling column does not snap it
+to its minimum first.
 
-The extraction is the risk, and it is BUG-003's. It is mitigated by the guard
-test landing before the move, by the graph's own column tests being untouched
-and still passing, and by the graph adapter keeping the same public shape, so
-every existing caller is unchanged.
+### The divergence bar
 
-## Rollback
+The arithmetic goes in `$lib/branches/divergence.ts`, not in the component, for
+two reasons: the four states can then be asserted without mounting anything, and
+there is one place that turns a pair of counts into two widths, so the bar and
+the store cannot disagree about what the counts are.
 
-Revert the branch. No schema, no persistence format change — the graph's
-`localStorage` key and payload are exactly what they were.
+```
+no upstream   no upstream          (no bar at all — not a dash, not an empty bar)
+level         ▏                    (the tick alone, accented)
+ahead         ▏████                 
+behind    ████▏
+both      ██▏███
+```
+
+Three decisions worth writing down:
+
+1. **The scale is per screen, not per row.** Every bar is scaled against
+   `widest()` — the largest single-sided count on screen. A per-row scale would
+   draw one commit and two hundred identically, which is the failure the bar
+   exists to fix.
+2. **A sliver floor of 12%.** One commit against a maximum of four hundred is a
+   quarter of a percent, which paints as nothing and reads as level. The floor
+   keeps "one commit" and "no commits" different at a glance. Zero is still
+   zero: the floor applies to a count that exists, not to an empty side.
+3. **Level draws a bar.** The tick is the branch's own position and is always
+   present, so an empty cell cannot be confused with "not loaded".
+
+Each half is its own flex track with its own justification, so a segment grows
+outward from the centre line. Growing inward from the cell edges would put the
+longest bars furthest from the line they are measured against.
+
+The counts stay beside the bar as `behind/ahead`, and the sentence stays in
+`title` and in `aria-label`. Nothing here is glyph-only.
+
+### Where the store is pointed at a repository
+
+`columns.open()` is called from the Branches route's existing repository effect,
+next to `branches.clear()` — before the table paints rather than after.
+
+## What was not done
+
+- The graph's columns are untouched. The item makes that a criterion, and the
+  only shared file, `$lib/ui/columns.svelte`, was not edited.
+- No sorting, no hiding, no reordering on this table. Resizing is what was
+  asked for.
+- The backend counts are untouched. They were already built and tested.

@@ -3,6 +3,7 @@
 	import { untrack } from 'svelte';
 	import BranchTable from '$lib/branches/BranchTable.svelte';
 	import { branches, FILTERS } from '$lib/branches/store.svelte';
+	import { columns } from '$lib/branches/columns.svelte';
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
@@ -24,6 +25,9 @@
 
 		generation = current;
 		untrack(() => {
+			// The column layout is per repository, so it is pointed at the new
+			// one before the table paints rather than after.
+			columns.open(repo.info?.path ?? null);
 			branches.clear();
 			branches.load();
 		});

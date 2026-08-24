@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { tick } from 'svelte';
 import { click, render } from '../../testing/mount';
 import type { BranchRow } from '$lib/types';
 
@@ -15,6 +16,7 @@ vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.s
 import * as api from '$lib/api';
 import { branches } from './store.svelte';
 import BranchTable from './BranchTable.svelte';
+import { columns } from './columns.svelte';
 
 const list = vi.mocked(api.branches);
 const checkout = vi.mocked(api.checkout);
@@ -44,9 +46,15 @@ async function show(rows: BranchRow[]) {
 	return render(BranchTable, {});
 }
 
+/** The rendered width of a column's header cell, which the rows follow. */
+function cellWidth(view: { get(selector: string): HTMLElement }, id: string): string {
+	return view.get(`[data-column="${id}"]`).style.width;
+}
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	branches.clear();
+	columns.reset();
 });
 
 describe('BranchTable', () => {
@@ -92,26 +100,53 @@ describe('BranchTable', () => {
 		view.destroy();
 	});
 
-	it('shows drift as arrows, and says level when there is none', async () => {
+	/**
+	 * The four states the item asks to be distinguishable at a glance, checked
+	 * on the shape rather than on the text beside it: one-sided each way, both,
+	 * and level. `4/0` reads behind/ahead, in the order the bar draws them.
+	 */
+	it('draws the divergence as a bar, one side per direction', async () => {
 		const view = await show([
 			row('ahead-only', { upstream: 'origin/a', ahead: 2, behind: 0 }),
-			row('behind-only', { upstream: 'origin/b', ahead: 0, behind: 3 }),
-			row('both', { upstream: 'origin/c', ahead: 2, behind: 3 }),
+			row('behind-only', { upstream: 'origin/b', ahead: 0, behind: 4 }),
+			row('both', { upstream: 'origin/c', ahead: 2, behind: 4 }),
 			row('level', { upstream: 'origin/d', ahead: 0, behind: 0 })
 		]);
 
-		const drift = view.all('.row .drift').map((d) => d.textContent?.trim());
-		expect(drift).toEqual(['↑2', '↓3', '↑2 ↓3', 'level']);
+		const widths = view.all('.row').map((r) => [
+			(r.querySelector<HTMLElement>('.behind')?.style.width ?? '') as string,
+			(r.querySelector<HTMLElement>('.ahead')?.style.width ?? '') as string
+		]);
+
+		// Four is the widest on screen, so it fills its half; two is half of it.
+		expect(widths).toEqual([
+			['0%', '50%'],
+			['100%', '0%'],
+			['100%', '50%'],
+			['0%', '0%']
+		]);
+
+		// Level still draws a bar — the tick is the branch's own position, and
+		// an empty cell could equally mean "not loaded".
+		expect(view.all('.row .tick.level')).toHaveLength(1);
+		expect(view.all('.row .counts').map((c) => c.textContent?.trim())).toEqual([
+			'0/2',
+			'4/0',
+			'4/2',
+			'level'
+		]);
 
 		view.destroy();
 	});
 
-	it('shows a dash when there is no upstream to compare against', async () => {
-		// Not `0`, which would claim the branch is level with something.
+	it('draws no bar at all when there is no upstream to compare against', async () => {
+		// Not a zero-length bar, which would claim the branch is level with
+		// something, and not a dash, which the author called out by name.
 		const view = await show([row('main')]);
 
-		expect(view.get('.row .drift').textContent?.trim()).toBe('—');
-		expect(view.get('.row .drift').getAttribute('title')).toBe('No upstream configured');
+		expect(view.all('.row .bar')).toHaveLength(0);
+		expect(view.get('.row .none').textContent?.trim()).toBe('no upstream');
+		expect(view.get('.row .none').getAttribute('title')).toBe('No upstream configured');
 
 		view.destroy();
 	});
@@ -120,7 +155,34 @@ describe('BranchTable', () => {
 		const view = await show([row('main', { upstream: 'origin/main', ahead: 1, behind: 0 })]);
 
 		expect(view.get('.up').textContent).toContain('origin/main');
-		expect(view.get('.row .drift').getAttribute('title')).toContain('as of the last fetch');
+		expect(view.get('.row .bar').getAttribute('title')).toContain('as of the last fetch');
+		// Nothing on the bar is glyph-only: the sentence is its accessible name.
+		expect(view.get('.row .bar').getAttribute('aria-label')).toContain('origin/main');
+
+		view.destroy();
+	});
+
+	it('resizes a column, and hands the width back on a double-click', async () => {
+		const view = await show([row('main', { upstream: 'origin/main', ahead: 1, behind: 0 })]);
+
+		const before = columns.width('when');
+		columns.resize('when', before + 40);
+		await tick();
+		expect(cellWidth(view, 'when')).toBe(`${before + 40}px`);
+
+		columns.unsize('when');
+		await tick();
+		expect(cellWidth(view, 'when')).toBe(`${before}px`);
+
+		view.destroy();
+	});
+
+	it('refuses to shrink a column past what it can say anything in', async () => {
+		const view = await show([row('main')]);
+
+		columns.resize('drift', 10);
+		await tick();
+		expect(cellWidth(view, 'drift')).toBe('90px');
 
 		view.destroy();
 	});

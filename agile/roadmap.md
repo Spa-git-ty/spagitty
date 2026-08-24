@@ -19,14 +19,11 @@ and they assume the existing test conventions are followed.
 
 ### 1. FEAT-047 — the branches table: resizable columns, and a divergence worth reading
 
-In flight on `feature/FEAT-047-branch-table-columns`. The column store is
-already extracted behind a guard for BUG-003; the branch table and the
-divergence bar are not built. Finishing it clears the only open branch and
+**Done**, on `feature/FEAT-047-branch-table`. Finishing it clears the only open branch and
 leaves the Branches screen ready for the delete and rename work that follows.
 
-**Closes when:** the table's columns resize and persist per repository, and the
-divergence reads as ahead/behind rather than a raw pair of numbers.
-**Size:** half a day.
+**Closed by:** a per-repository column store with its own storage prefix, and a
+two-sided divergence bar scaled against the widest drift on screen.
 
 ### 2. Discard changes — no identifier yet
 

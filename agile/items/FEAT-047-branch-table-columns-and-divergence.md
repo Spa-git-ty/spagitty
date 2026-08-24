@@ -2,8 +2,9 @@
 
 # FEAT-047 — The branches table: resizable columns, and a divergence worth reading
 
-**Status:** Open on `feature/FEAT-047-branch-table-columns`. The column store is
-extracted; the branch table and the divergence bar are not built yet.
+**Status:** Done on `feature/FEAT-047-branch-table`. The column store was
+extracted first, on `feature/FEAT-047-branch-table-columns`; the branch table
+and the divergence bar were built on the branch that continued it.
 **Screen:** Branches (1F).
 **Requested by:** the author, 2026-08-18, as request 8 of the interface sweep.
 
