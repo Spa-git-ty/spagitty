@@ -906,17 +906,60 @@ pub fn pull(repo: &Path, remote: &str, mode: PullMode) -> Result<String> {
     run(repo, &args)
 }
 
+// --- Remotes (FEAT-049) -----------------------------------------------------
+
+/// Add a remote. Configuration only — nothing is fetched.
+///
+/// Through `git` rather than a config write because `remote add` also writes
+/// the fetch refspec, and a remote without one looks configured and fetches
+/// nothing.
+pub fn remote_add(repo: &Path, name: &str, url: &str) -> Result<()> {
+    run(repo, &["remote", "add", name, url])?;
+    Ok(())
+}
+
+/// Rename a remote, its tracking refs, and every upstream pointing at it.
+///
+/// The three-things-at-once is the reason this is not a config edit: a rename
+/// that moved only the config would leave `refs/remotes/old/` behind and every
+/// branch tracking a remote that no longer exists.
+pub fn remote_rename(repo: &Path, from: &str, to: &str) -> Result<()> {
+    run(repo, &["remote", "rename", from, to])?;
+    Ok(())
+}
+
+/// Remove a remote, its tracking refs, and the upstreams pointing at it.
+pub fn remote_remove(repo: &Path, name: &str) -> Result<()> {
+    run(repo, &["remote", "remove", name])?;
+    Ok(())
+}
+
+/// Change where a remote points, leaving everything else as it is.
+pub fn remote_set_url(repo: &Path, name: &str, url: &str) -> Result<()> {
+    run(repo, &["remote", "set-url", name, url])?;
+    Ok(())
+}
+
 /// Push. Same reason as [`fetch`], plus `pre-push` hooks.
 ///
 /// `--force-with-lease` rather than `--force` when a force is asked for: it
 /// refuses if the remote moved since the last fetch, which is the case where a
 /// plain force destroys somebody else's work.
+///
+/// `--set-upstream` whenever a remote is named (FEAT-049). Without it, the
+/// first push of a new branch sends the commits and leaves the branch tracking
+/// nothing — so the Branches screen shows no upstream, the divergence bar has
+/// nothing to compare against, and the next plain `push` or `pull` fails with a
+/// message about upstreams that reads as though something is broken. Setting it
+/// is what the user meant by pushing to that remote, and git does nothing when
+/// the upstream is already what it would set.
 pub fn push(repo: &Path, remote: &str, refspec: &str, force: bool) -> Result<String> {
     let mut args = vec!["push", "--progress"];
     if force {
         args.push("--force-with-lease");
     }
     if !remote.is_empty() {
+        args.push("--set-upstream");
         args.push(remote);
         if !refspec.is_empty() {
             args.push(refspec);

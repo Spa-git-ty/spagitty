@@ -33,6 +33,7 @@ import type {
 	RebasePreview,
 	RebaseProgress,
 	RebaseTodo,
+	Remote,
 	ResetMode,
 	StashAction,
 	RepoSummary,
@@ -265,6 +266,31 @@ export function conflictContinue(): Promise<void> {
 /** Abandon it and put the repository back. */
 export function conflictAbort(): Promise<void> {
 	return invoke('conflict_abort');
+}
+
+/** Every configured remote, in name order. */
+export function remotes(): Promise<Remote[]> {
+	return invoke('remotes');
+}
+
+/** Add a remote. Configuration only — nothing is fetched. */
+export function remoteAdd(name: string, url: string): Promise<void> {
+	return invoke('remote_add', { name, url });
+}
+
+/** Rename a remote, its tracking refs, and every upstream pointing at it. */
+export function remoteRename(from: string, to: string): Promise<void> {
+	return invoke('remote_rename', { from, to });
+}
+
+/** Remove a remote, its tracking refs, and the upstreams pointing at it. */
+export function remoteRemove(name: string): Promise<void> {
+	return invoke('remote_remove', { name });
+}
+
+/** Change where a remote points. */
+export function remoteSetUrl(name: string, url: string): Promise<void> {
+	return invoke('remote_set_url', { name, url });
 }
 
 /** Every remembered repository, as a card. Reads each where it sits. */

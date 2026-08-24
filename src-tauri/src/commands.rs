@@ -17,6 +17,7 @@ use spagitty_core::graph::ROW_PITCH;
 use spagitty_core::identity::{self, Identity, Key, Scope};
 use spagitty_core::ops::{self, Integration, ResetMode, StashAction};
 use spagitty_core::rebase::{self, Edit, Preview, Todo};
+use spagitty_core::remotes;
 use spagitty_core::record::{self, Executed};
 use spagitty_core::refs::RefIndex;
 use spagitty_core::repo::{self, RepoInfo, RepoSummary};
@@ -742,6 +743,36 @@ pub fn conflict_abort(state: State<'_, AppState>) -> Result<()> {
         let repo = session.repo.to_thread_local();
         conflicts::abort_operation(&repo, conflicts::operation(&repo))
     })
+}
+
+/// Every configured remote, in name order.
+#[tauri::command]
+pub fn remotes(state: State<'_, AppState>) -> Result<Vec<remotes::Remote>> {
+    state.with_session(|session| Ok(remotes::remotes(&session.repo.to_thread_local())))
+}
+
+/// Add a remote. Configuration only — nothing is fetched.
+#[tauri::command]
+pub fn remote_add(state: State<'_, AppState>, name: String, url: String) -> Result<()> {
+    state.with_session(|session| remotes::add(&session.repo.to_thread_local(), &name, &url))
+}
+
+/// Rename a remote, its tracking refs, and every upstream pointing at it.
+#[tauri::command]
+pub fn remote_rename(state: State<'_, AppState>, from: String, to: String) -> Result<()> {
+    state.with_session(|session| remotes::rename(&session.repo.to_thread_local(), &from, &to))
+}
+
+/// Remove a remote, its tracking refs, and the upstreams pointing at it.
+#[tauri::command]
+pub fn remote_remove(state: State<'_, AppState>, name: String) -> Result<()> {
+    state.with_session(|session| remotes::remove(&session.repo.to_thread_local(), &name))
+}
+
+/// Change where a remote points.
+#[tauri::command]
+pub fn remote_set_url(state: State<'_, AppState>, name: String, url: String) -> Result<()> {
+    state.with_session(|session| remotes::set_url(&session.repo.to_thread_local(), &name, &url))
 }
 
 /// Every remembered repository, as a card.

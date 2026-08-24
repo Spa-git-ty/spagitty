@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import AccountsSection from '$lib/settings/AccountsSection.svelte';
+	import RemotesSection from '$lib/settings/RemotesSection.svelte';
 	import LicenseSection from '$lib/settings/LicenseSection.svelte';
 	import AppearanceSection from '$lib/settings/AppearanceSection.svelte';
 	import BehaviourSection from '$lib/settings/BehaviourSection.svelte';
@@ -61,6 +62,8 @@
 			<IdentitySection />
 		{:else if settings.section === 'accounts'}
 			<AccountsSection />
+		{:else if settings.section === 'remotes'}
+			<RemotesSection />
 		{:else if settings.section === 'behaviour'}
 			<BehaviourSection />
 		{:else if settings.section === 'appearance'}

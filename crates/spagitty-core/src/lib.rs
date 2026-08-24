@@ -33,6 +33,7 @@ pub mod ops;
 pub mod rebase;
 pub mod record;
 pub mod refs;
+pub mod remotes;
 pub mod repo;
 pub mod search;
 pub mod shell;

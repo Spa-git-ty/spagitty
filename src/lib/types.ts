@@ -674,6 +674,25 @@ export interface CloneDoneEvent {
 	path: string;
 }
 
+/** One configured remote (FEAT-049). */
+export interface Remote {
+	name: string;
+	/** Where it is fetched from. */
+	url: string;
+	/**
+	 * Where it is pushed to, when that is configured separately. Null is the
+	 * ordinary case and means "the same as `url`".
+	 */
+	pushUrl: string | null;
+	/** Which forge the URL points at — the same glyph the graph's chips use. */
+	host: Host;
+	/**
+	 * Refs under `refs/remotes/<name>/`. Zero means it has never been fetched,
+	 * which is what tells "added a moment ago" from "gone stale".
+	 */
+	refs: number;
+}
+
 /** Which side of a conflict to keep. */
 export type ConflictSideName = 'ours' | 'theirs';
 
