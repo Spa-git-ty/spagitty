@@ -39,6 +39,14 @@ export interface RefChip {
 	local: boolean;
 	/** The remotes carrying this branch **at this commit**, in name order. */
 	remotes: RemoteMark[];
+	/**
+	 * How far the local branch has drifted from its upstream (FEAT-033).
+	 *
+	 * Null for a tag, for a branch with no upstream, and for a chip with no
+	 * local ref — none of them has anything to have drifted from. It comes from
+	 * the same read the Branches screen uses, so the two cannot disagree.
+	 */
+	divergence: BranchDivergence | null;
 }
 
 // --- Graph ----------------------------------------------------------------
@@ -753,6 +761,14 @@ export interface Reflog {
 	 * that has never moved. Different from an empty list, and said differently.
 	 */
 	exists: boolean;
+}
+
+/** How far a branch has drifted from its upstream (FEAT-033). */
+export interface BranchDivergence {
+	/** Short name of the configured upstream. */
+	upstream: string;
+	ahead: number;
+	behind: number;
 }
 
 /** One configured remote (FEAT-049). */

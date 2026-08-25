@@ -44,10 +44,10 @@
 	{:else}
 		<div class="branch">
 			{#if card.branch}
-				<RefChip chip={{ name: card.branch, kind: 'branch', current: true, local: true, remotes: [] }} />
+				<RefChip chip={{ name: card.branch, kind: 'branch', current: true, local: true, remotes: [], divergence: null }} />
 			{:else if card.short}
 				<RefChip
-					chip={{ name: `detached at ${card.short}`, kind: 'branch', current: false, local: true, remotes: [] }}
+					chip={{ name: `detached at ${card.short}`, kind: 'branch', current: false, local: true, remotes: [], divergence: null }}
 				/>
 			{:else}
 				<span class="note">no commits yet</span>

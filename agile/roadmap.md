@@ -16,6 +16,10 @@ broken the suite for no gain.
 Sizes are the author's working estimate for someone who already knows the tree,
 and they assume the existing test conventions are followed.
 
+**Every entry under Now and Next is done.** They were worked in order, one
+commit each, between 2026-08-24 and 2026-08-25; what is left is the Later
+section, which was deliberately not started.
+
 ## Now
 
 ### 1. FEAT-047 — the branches table: resizable columns, and a divergence worth reading
@@ -103,11 +107,12 @@ push had already been fixed in FEAT-049.
 
 ### 10. FEAT-033 — branch divergence on the chip
 
-Backlog. Naturally follows FEAT-047, which builds the divergence reading the
-chip would reuse.
+**Done**, on `feature/FEAT-033-divergence-on-the-chip`.
 
-**Depends on:** FEAT-047.
-**Size:** half a day.
+**Closed by:** `branches::divergences`, one read that both the Branches rows and
+the graph's chips look up — the item made not having two of them a criterion —
+and `↓3 ↑2` on the chip in the same order and colours as the bar. A level branch
+draws nothing and still answers in its tooltip.
 
 ## Later
 

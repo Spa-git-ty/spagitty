@@ -161,7 +161,7 @@ describe('ResultRows', () => {
 	});
 
 	it('shows the refs a result carries', async () => {
-		await withRows([row(0, { refs: [{ name: 'main', kind: 'branch', current: true, local: true, remotes: [] }] })]);
+		await withRows([row(0, { refs: [{ name: 'main', kind: 'branch', current: true, local: true, remotes: [], divergence: null }] })]);
 		const view = render(ResultRows, {});
 
 		expect(view.text()).toContain('main');

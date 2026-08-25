@@ -47,7 +47,15 @@
 
 			<div class="text">
 				<div class="top">
-					<RefChip chip={{ name: entry.name, kind: 'branch', current: false, local: true, remotes: [] }} />
+					<RefChip chip={{
+						name: entry.name,
+						kind: 'branch',
+						current: false,
+						local: true,
+						remotes: [],
+						// A stash's branch name is a label, not a live ref to compare.
+						divergence: null
+					}} />
 					<span class="message" title={entry.message}>{entry.message}</span>
 				</div>
 				<div class="note base" title={entry.parentSummary}>

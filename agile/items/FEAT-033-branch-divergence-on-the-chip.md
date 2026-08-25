@@ -2,7 +2,7 @@
 
 # FEAT-033 — Branch divergence on the chip
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done on `feature/FEAT-033-divergence-on-the-chip`.
 **Screen:** Graph (1A), and everywhere else `RefChip` is drawn.
 **Recorded by:** TASK-012, which found this identifier cited by FEAT-036 with no
 document behind it.

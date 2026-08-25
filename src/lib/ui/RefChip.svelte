@@ -39,7 +39,32 @@
 			parts.push(`on ${remote.name}${host}`);
 		}
 
-		return parts.length === 0 ? chip.name : `${chip.name} — ${parts.join(', ')}`;
+		const said = parts.length === 0 ? chip.name : `${chip.name} — ${parts.join(', ')}`;
+		// On `chip.divergence`, not on `drift`: a level branch draws nothing and
+		// still says "level" when asked. Silence on the chip is about crowding;
+		// the tooltip has room and the answer is worth having.
+		return chip.divergence === null ? said : `${said}. ${drifted}`;
+	});
+
+	/**
+	 * How far this branch has drifted from its upstream (FEAT-033).
+	 *
+	 * A level branch is `null` here rather than a pair of zeroes: the chip must
+	 * say nothing, because `0/0` on every row is noise on every row, and the
+	 * graph gutter is the most crowded place in the application.
+	 */
+	const drift = $derived.by(() => {
+		const found = chip.divergence;
+		if (!found || (found.ahead === 0 && found.behind === 0)) return null;
+		return found;
+	});
+
+	/** The sentence the title carries, so the arrows are never the only telling. */
+	const drifted = $derived.by(() => {
+		const found = chip.divergence;
+		if (!found) return '';
+		if (found.ahead === 0 && found.behind === 0) return `Level with ${found.upstream}`;
+		return `${found.ahead} ahead of and ${found.behind} behind ${found.upstream}, as of the last fetch`;
 	});
 </script>
 
@@ -56,6 +81,18 @@
 	title={where}
 >
 	{#if chip.current}<span aria-hidden="true">✔</span>{/if}<span class="name">{chip.name}</span>
+
+	<!--
+		The drift, when there is any (FEAT-033). Behind then ahead, the same
+		order and the same two colours the Branches screen's bar uses, so the
+		two places that show a divergence read the same way round.
+	-->
+	{#if drift}
+		<span class="drift mono" aria-hidden="true">
+			{#if drift.behind > 0}<span class="behind">↓{drift.behind}</span>{/if}
+			{#if drift.ahead > 0}<span class="ahead">↑{drift.ahead}</span>{/if}
+		</span>
+	{/if}
 
 	{#if chip.kind !== 'tag' && (chip.local || chip.remotes.length > 0)}
 		<span class="marks" aria-hidden="true">
@@ -138,6 +175,24 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		min-width: 0;
+	}
+
+	.drift {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 3px;
+		flex: none;
+		font-size: var(--fs-mono);
+	}
+
+	/* The same two colours as the divergence bar on the Branches screen. Two
+	   places showing one fact should not disagree about which way is which. */
+	.behind {
+		color: var(--lane-2);
+	}
+
+	.ahead {
+		color: var(--lane-1);
 	}
 
 	.marks {

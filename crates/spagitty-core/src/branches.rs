@@ -13,6 +13,8 @@
 //! a network, so the numbers are exact for what is known locally and cannot be
 //! more current than that. The screen says so rather than implying it is live.
 
+use std::collections::HashMap;
+
 use gix::ObjectId;
 use serde::Serialize;
 
@@ -58,6 +60,9 @@ pub fn list(repo: &gix::Repository) -> Result<Vec<BranchRow>> {
     let head = repo.head_id().ok().map(|id| id.detach());
     let current = current_branch(repo);
 
+    // Once, for every row (FEAT-033). The graph's chips read the same function.
+    let drifts = divergences(repo);
+
     let platform = repo.references().map_err(|e| Error::Refs(e.to_string()))?;
     let mut rows = Vec::new();
 
@@ -90,9 +95,15 @@ pub fn list(repo: &gix::Repository) -> Result<Vec<BranchRow>> {
                 continue;
             };
 
-            let upstream = upstream_of(repo, &reference);
-            let (ahead, behind) = match &upstream {
-                Some((up, _)) => counts(repo, id, *up),
+            // Looked up rather than recomputed (FEAT-033): the graph's chips
+            // read the same map, and two counts of the same thing eventually
+            // disagree.
+            let drift = (kind == RefKind::Branch)
+                .then(|| drifts.get(&name))
+                .flatten();
+            let upstream = drift.map(|drift| drift.upstream.clone());
+            let (ahead, behind) = match drift {
+                Some(drift) => (Some(drift.ahead), Some(drift.behind)),
                 None => (None, None),
             };
 
@@ -107,7 +118,7 @@ pub fn list(repo: &gix::Repository) -> Result<Vec<BranchRow>> {
                 summary: tip.summary,
                 author_name: tip.author_name,
                 time: tip.time,
-                upstream: upstream.map(|(_, name)| name),
+                upstream,
                 ahead,
                 behind,
             });
@@ -147,6 +158,66 @@ fn upstream_of(
     let id = tracking.peel_to_id().ok()?.detach();
 
     Some((id, short))
+}
+
+/// How far a branch has drifted from its upstream.
+///
+/// Shared by the Branches screen and the graph's chips (FEAT-033). One
+/// definition, computed once per walk, so the two cannot come to disagree — the
+/// item made that a criterion, and two reads of the same thing eventually
+/// answer differently.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Divergence {
+    /// Short name of the configured upstream.
+    pub upstream: String,
+    pub ahead: usize,
+    pub behind: usize,
+}
+
+impl Divergence {
+    /// True when the two are at the same commit, which is worth saying nothing
+    /// about: a chip reading `0/0` on every row is noise.
+    pub fn level(&self) -> bool {
+        self.ahead == 0 && self.behind == 0
+    }
+}
+
+/// Every local branch that has an upstream, by short name.
+///
+/// One traversal for both consumers. `branches` looks its rows up in this, and
+/// `refs` attaches it to the chips, so there is one place that counts.
+pub fn divergences(repo: &gix::Repository) -> HashMap<String, Divergence> {
+    let mut found = HashMap::new();
+
+    let Ok(platform) = repo.references() else {
+        return found;
+    };
+    let Ok(iter) = platform.prefixed("refs/heads/") else {
+        return found;
+    };
+
+    for reference in iter.flatten() {
+        let name = reference.name().shorten().to_string();
+        let Ok(id) = reference.clone().into_fully_peeled_id() else {
+            continue;
+        };
+        let Some((up, upstream)) = upstream_of(repo, &reference) else {
+            continue;
+        };
+
+        let (ahead, behind) = counts(repo, id.detach(), up);
+        found.insert(
+            name,
+            Divergence {
+                upstream,
+                ahead: ahead.unwrap_or(0),
+                behind: behind.unwrap_or(0),
+            },
+        );
+    }
+
+    found
 }
 
 /// `(ahead, behind)` — what `git rev-list --count --left-right` reports.
@@ -377,6 +448,54 @@ mod tests {
 
         assert_eq!(main.ahead, Some(ahead));
         assert_eq!(main.behind, Some(behind));
+    }
+
+    #[test]
+    fn the_chip_and_the_row_never_disagree_about_the_drift() {
+        // FEAT-033 made this a criterion. Both come from `divergences`, so the
+        // test is really that neither consumer recomputes it — but asserted on
+        // the values, because that is what a reader would notice going wrong.
+        let fixture = Fixture::woven();
+        configure_origin(&fixture);
+        fixture.git(&["update-ref", "refs/remotes/origin/main", "HEAD~2"]);
+        let repo = fixture.open();
+
+        let row = row(&rows(&fixture), "main").clone();
+        let index = crate::refs::RefIndex::build(&repo).expect("refs");
+        let head = repo.head_id().expect("head").detach();
+        let chip = index
+            .chips_for(&head)
+            .iter()
+            .find(|chip| chip.name == "main")
+            .expect("a chip for main")
+            .clone();
+
+        let drift = chip.divergence.expect("the chip carries the drift");
+        assert_eq!(Some(drift.ahead), row.ahead);
+        assert_eq!(Some(drift.behind), row.behind);
+        assert_eq!(Some(drift.upstream.as_str()), row.upstream.as_deref());
+    }
+
+    #[test]
+    fn a_level_branch_is_marked_level_rather_than_left_to_the_caller() {
+        let fixture = Fixture::woven();
+        configure_origin(&fixture);
+        fixture.git(&["update-ref", "refs/remotes/origin/main", "HEAD"]);
+
+        let drift = divergences(&fixture.open())
+            .remove("main")
+            .expect("a divergence");
+
+        assert!(drift.level());
+    }
+
+    #[test]
+    fn a_branch_with_no_upstream_is_absent_from_the_map() {
+        // Absent rather than zeroed: "level" and "nothing to compare against"
+        // are different, and a chip must not draw the first for the second.
+        let fixture = Fixture::woven();
+
+        assert!(divergences(&fixture.open()).is_empty());
     }
 
     #[test]

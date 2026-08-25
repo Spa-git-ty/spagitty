@@ -22,7 +22,7 @@ function makeRow(
 		kind: 'branch',
 		current: false,
 		local: true,
-		remotes: []
+		remotes: [], divergence: null
 	}));
 
 	return {

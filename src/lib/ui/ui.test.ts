@@ -88,10 +88,91 @@ describe('Chip', () => {
 
 /** A chip as the backend now sends one (FEAT-036). */
 function chip(over: Partial<Chip_> = {}): Chip_ {
-	return { name: 'main', kind: 'branch', current: false, local: true, remotes: [], ...over };
+	return {
+		name: 'main',
+		kind: 'branch',
+		current: false,
+		local: true,
+		remotes: [],
+		divergence: null,
+		...over
+	};
 }
 
 describe('RefChip', () => {
+	/**
+	 * FEAT-033. The chip says how far the branch has drifted from its upstream,
+	 * because the person looking at the graph is the person about to push.
+	 */
+	it('shows how far the branch has drifted, behind then ahead', () => {
+		const view = render(RefChip, {
+			chip: chip({ divergence: { upstream: 'origin/main', ahead: 2, behind: 3 } })
+		});
+
+		expect(view.get('.behind').textContent?.trim()).toBe('↓3');
+		expect(view.get('.ahead').textContent?.trim()).toBe('↑2');
+
+		view.destroy();
+	});
+
+	it('shows one side only when the drift is one-sided', () => {
+		const ahead = render(RefChip, {
+			chip: chip({ divergence: { upstream: 'origin/main', ahead: 4, behind: 0 } })
+		});
+		expect(ahead.all('.behind')).toHaveLength(0);
+		expect(ahead.get('.ahead').textContent?.trim()).toBe('↑4');
+		ahead.destroy();
+
+		const behind = render(RefChip, {
+			chip: chip({ divergence: { upstream: 'origin/main', ahead: 0, behind: 1 } })
+		});
+		expect(behind.all('.ahead')).toHaveLength(0);
+		expect(behind.get('.behind').textContent?.trim()).toBe('↓1');
+		behind.destroy();
+	});
+
+	it('says nothing at all when the branch is level', () => {
+		// `0/0` on every row is noise on every row, and the gutter is the most
+		// crowded place in the application.
+		const view = render(RefChip, {
+			chip: chip({ divergence: { upstream: 'origin/main', ahead: 0, behind: 0 } })
+		});
+
+		expect(view.all('.drift')).toHaveLength(0);
+		view.destroy();
+	});
+
+	it('says nothing when there is no upstream to have drifted from', () => {
+		const view = render(RefChip, { chip: chip({ divergence: null }) });
+
+		expect(view.all('.drift')).toHaveLength(0);
+		view.destroy();
+	});
+
+	it('keeps the whole sentence in the title, so the arrows are never the only telling', () => {
+		const view = render(RefChip, {
+			chip: chip({ divergence: { upstream: 'origin/main', ahead: 2, behind: 3 } })
+		});
+
+		const title = view.get('.ref').getAttribute('title') ?? '';
+		expect(title).toContain('main');
+		expect(title).toContain('2 ahead of and 3 behind origin/main');
+		expect(title).toContain('as of the last fetch');
+
+		view.destroy();
+	});
+
+	it('says a level branch is level in the title, even saying nothing on the chip', () => {
+		// The chip is silent and the tooltip is not: "level" is worth knowing
+		// when you ask, and not worth a mark on every row.
+		const view = render(RefChip, {
+			chip: chip({ divergence: { upstream: 'origin/main', ahead: 0, behind: 0 } })
+		});
+
+		expect(view.get('.ref').getAttribute('title')).toContain('Level with origin/main');
+		view.destroy();
+	});
+
 	it('marks the current branch with a check', () => {
 		const view = render(RefChip, { chip: chip({ current: true }) });
 		const element = view.get('.ref');

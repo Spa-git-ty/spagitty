@@ -111,6 +111,13 @@ pub struct RefChip {
     pub local: bool,
     /// The remotes carrying this branch **at this commit**, in name order.
     pub remotes: Vec<RemoteMark>,
+    /// How far the local branch has drifted from its upstream (FEAT-033).
+    ///
+    /// `None` for a tag, for a branch with no upstream, and for a chip that has
+    /// no local ref — there is nothing to have drifted. Read from
+    /// [`crate::branches::divergences`], the same function the Branches screen
+    /// uses, so the two cannot disagree.
+    pub divergence: Option<crate::branches::Divergence>,
 }
 
 /// Commit id -> the refs pointing at it.
@@ -143,6 +150,10 @@ impl RefIndex {
         };
 
         let hosts = remote_hosts(repo);
+        // One read, shared with the Branches screen (FEAT-033). Two counts of
+        // the same thing eventually answer differently, and this item made not
+        // doing that a criterion.
+        let drifts = crate::branches::divergences(repo);
 
         let platform = repo.references().map_err(|e| Error::Refs(e.to_string()))?;
         let iter = platform.all().map_err(|e| Error::Refs(e.to_string()))?;
@@ -211,6 +222,7 @@ impl RefIndex {
                     current: false,
                     local: false,
                     remotes: Vec::new(),
+                    divergence: None,
                 });
 
             match remote {
@@ -238,6 +250,12 @@ impl RefIndex {
 
             for chip in &mut chips {
                 chip.remotes.sort_by(|a, b| a.name.cmp(&b.name));
+
+                // Only a chip with a local ref can have drifted from anything.
+                // A remote-only chip *is* the upstream, and a tag has none.
+                if chip.local && chip.kind != RefKind::Tag {
+                    chip.divergence = drifts.get(&chip.name).cloned();
+                }
             }
 
             // Order within a commit: the current branch first, then local
