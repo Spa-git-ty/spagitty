@@ -192,13 +192,12 @@ npm run tauri dev -- -- -- /tmp/spagitty-fixture
 The trailing path is passed to the binary and read by the `launch_path`
 command, so the app opens straight onto the fixture with no dialog.
 
-`WEBKIT_DISABLE_DMABUF_RENDERER` no longer has to be set by hand: since
-BUG-004 the binary sets it to `1` on Linux itself, before the webview starts, so
-a bare `npm run tauri dev` and a packaged launch both paint. It is still worth
-knowing about in two cases — setting it to `0` restores WebKit's DMABuf renderer
-on hardware that serves it, and a blank webview with `Failed to create GBM
-buffer` on stderr means something has stopped the app from applying its own
-default. See `src-tauri/src/platform.rs`.
+`WEBKIT_DISABLE_DMABUF_RENDERER` is left to the environment (FEAT-055): the
+binary used to set it to `1` on Linux, which cost every host the GPU path, and
+now it sets nothing. If the webview comes up blank with `Failed to create GBM
+buffer` on stderr, export `WEBKIT_DISABLE_DMABUF_RENDERER=1` before launching —
+that is the BUG-004 workaround, now opt-in. The binary does set
+`WEBKIT_FORCE_COMPOSITING_MODE=1` unless the environment already has an opinion.
 
 ### Driving it without a desk
 

@@ -83,17 +83,31 @@ Commands registered today, grouped by what they are for:
   `clone_start`, `clone_release`, `about`, `licenses`, `identity`,
   `set_identity`, `settings`, `set_settings`, `launch_path`.
 
-`platform.rs` is the other file that is not about git at all. WebKitGTK's
-DMABuf renderer cannot allocate a GBM buffer on some Linux driver and compositor
-combinations, and a webview with no frame to present is a white window for the
-whole session (BUG-004). The process therefore sets
-`WEBKIT_DISABLE_DMABUF_RENDERER=1` on itself as the first statement of `run` —
-before the builder, and while the process is still single-threaded, which is the
-only state in which `set_var` is sound. A value already present in the
-environment is never overwritten, in either direction, so the accelerated path
-stays reachable on hosts that can serve it. The trade is deliberate and its cost
-is recorded in `agile/plans/BUG-004-plan.md`: every Linux host repaints through
-shared memory, including the ones that did not need the fix.
+`platform.rs` is the other file that is not about git at all. It arranges the
+webview's environment as the first statement of `run` — before the builder, and
+while the process is still single-threaded, which is the only state in which
+`set_var` is sound.
+
+It sets `WEBKIT_FORCE_COMPOSITING_MODE=1`, which keeps the whole page on the
+GPU rather than letting WebKitGTK fall back to software for the parts its
+heuristics misjudge.
+
+It deliberately does **not** set `WEBKIT_DISABLE_DMABUF_RENDERER`, and that is a
+reversal (FEAT-055). BUG-004 set it to `1` on every Linux start, because
+WebKitGTK's DMABuf renderer cannot allocate a GBM buffer on some driver and
+compositor combinations and a webview with no frame to present is a white window
+for the whole session. The cost of the workaround was recorded in
+`agile/plans/BUG-004-plan.md` and then lived with for too long: with the
+renderer off, every Linux host repaints **through shared memory**, on the CPU —
+including the hosts that never had the bug. On a real window that is a frame
+that lags the pointer during a resize and a history that scrolls at a fraction
+of the display's rate.
+
+The accelerated path is the default now. A host that hits the GBM bug — a blank
+window, `Failed to create GBM buffer` on stderr — sets
+`WEBKIT_DISABLE_DMABUF_RENDERER=1` in its own environment, which the process
+still honours, along with an explicit value for either variable in either
+direction.
 
 `graph_visibility` is the one worth naming here: hide, solo, smart visibility
 and pin-to-left all resolve to a **root set** for a fresh walk rather than to a
