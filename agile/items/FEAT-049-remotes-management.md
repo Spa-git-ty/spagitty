@@ -2,9 +2,7 @@
 
 # FEAT-049 — Remotes management
 
-**Status:** Open on `feature/FEAT-049-remotes`. The core, the commands, the
-store and the Settings section are built and the `-u` defect is fixed; the
-frontend tests and the plan and testing documents are not written yet.
+**Status:** Done on `feature/FEAT-049-remotes`.
 **Screen:** Settings → Remotes.
 **Requested by:** the gap analysis
 [`docs/analysis/gitkraken-gap.md`](../../docs/analysis/gitkraken-gap.md),

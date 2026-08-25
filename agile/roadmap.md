@@ -7,7 +7,7 @@ where it does. This is a reading of the index in [README.md](README.md) against
 the gap analysis in [../docs/analysis/gitkraken-gap.md](../docs/analysis/gitkraken-gap.md);
 the index stays the authority on what exists and what state it is in.
 
-Three entries below have no identifier yet. They came out of the gap analysis
+Two entries below have no identifier yet. They came out of the gap analysis
 rather than out of a request, and an identifier is assigned when the work
 starts — the record test refuses a cited identifier that resolves to nothing,
 so naming them early would break the suite for no gain.
@@ -66,16 +66,14 @@ The conflicted stash apply recovery flow is still parked; it was not in scope.
 
 ## Next
 
-### 6. Remotes management — no identifier yet
+### 6. FEAT-049 — remotes management
 
-Fetch, push and pull work against remotes that already exist. Adding, renaming
-or removing one requires the terminal. Verify at the same time whether first
-push uses `-u`; if it does not, every new branch is left unmapped and the
-divergence work in FEAT-047 has nothing to read.
+**Done**, on `feature/FEAT-049-remotes`.
 
-**Closes when:** remotes can be added, renamed and removed from Settings or the
-Branches screen, and a first push sets upstream.
-**Size:** a day, mostly screen.
+**Closed by:** a Settings → Remotes section that adds, renames, removes and
+retargets, each through `git remote` rather than a config edit. The `-u`
+question was answered: push had no `--set-upstream`, so every new branch was
+left unmapped and FEAT-047's divergence bar had nothing to read. Fixed.
 
 ### 7. Reflog view — no identifier yet
 
