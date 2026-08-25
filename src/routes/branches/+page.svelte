@@ -5,6 +5,8 @@
 	import { branches, FILTERS } from '$lib/branches/store.svelte';
 	import { columns } from '$lib/branches/columns.svelte';
 	import { deleteMerged, mergedBranches } from '$lib/branches/actions';
+	import { relativeTime } from '$lib/format';
+	import { network } from '$lib/network/store.svelte';
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
@@ -47,6 +49,21 @@
 	/** Whether any counts on screen could be out of date. */
 	const anyUpstream = $derived(branches.rows.some((row) => row.upstream !== null));
 
+	/**
+	 * How old the ahead/behind numbers are (FEAT-018).
+	 *
+	 * They are computed against remote-tracking refs, which only move when
+	 * something fetches — so a divergence bar on a repository nobody has
+	 * fetched for a week is a week out of date and looks exactly as confident
+	 * as one from a minute ago. Only said when a branch actually tracks
+	 * something: with no upstreams there is nothing here that a fetch changes.
+	 */
+	const staleness = $derived.by(() => {
+		if (!anyUpstream || repo.info === null) return null;
+		const at = repo.info.lastFetched;
+		return at === null ? 'never fetched' : `as of ${relativeTime(at)}`;
+	});
+
 	/** Local, merged, and not the one you are standing on. */
 	const merged = $derived(mergedBranches(branches.rows));
 </script>
@@ -56,9 +73,25 @@
 		<div class="left">
 			<span class="title">Branches</span>
 			{#if branches.loaded}<span class="note">{counts}</span>{/if}
+			{#if staleness}
+				<span
+					class="note"
+					title="Ahead and behind are counted against what the last fetch brought down"
+				>
+					· drift {staleness}
+				</span>
+			{/if}
 		</div>
 		<div class="right">
+			{#if network.running}<span class="note">{network.label}</span>{/if}
 			{#if branches.loading}<span class="note">Reading…</span>{/if}
+			<Btn
+				disabled={branches.busy || network.running}
+				title="Bring the remote-tracking refs up to date, so the drift is current"
+				onclick={() => network.fetch()}
+			>
+				Fetch
+			</Btn>
 			<Btn disabled={branches.busy} onclick={() => branches.load()}>Refresh</Btn>
 		</div>
 	</header>

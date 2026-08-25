@@ -94,14 +94,12 @@ the difference decides whether a message can exist at all.
 
 ### 9. FEAT-018 — finish fetch and push
 
-Partial: the buttons are live and the plumbing is complete, but three of the
-five things the item scoped were never built. Read the item's **What actually
-shipped** section before planning — the problem statement above it describes
-the tree as it was before any of it existed.
+**Done**, on `feature/FEAT-018-finish-fetch-push`.
 
-**Closes when:** the three unbuilt pieces named in the item are built, or the
-item is rescoped in writing to drop them.
-**Size:** unknown until the item is re-read; assume a day.
+**Closed by:** pruning as a setting rather than something that always happened,
+progress streamed from a worker, per-remote fetch behind a right-click, and a
+Branches header that says how old its drift numbers are. The upstream on first
+push had already been fixed in FEAT-049.
 
 ### 10. FEAT-033 — branch divergence on the chip
 

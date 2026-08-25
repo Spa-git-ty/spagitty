@@ -34,6 +34,16 @@
 			// panel says so rather than inventing one.
 			what: 'Adds a Commands panel listing every git command Spagitty executes.',
 			pending: null
+		},
+		{
+			key: 'pruneOnFetch',
+			label: 'Prune deleted branches when fetching',
+			// FEAT-018. `--prune` was passed on every fetch, so refs were being
+			// deleted without anybody choosing it. The wording says what is
+			// deleted and what is not: a remote-tracking ref, never a local
+			// branch, and never a commit.
+			what: 'Deletes remote-tracking refs for branches the remote no longer has. Your own local branches are untouched.',
+			pending: null
 		}
 	];
 </script>

@@ -108,9 +108,10 @@ fn finish(mut command: Command, args: &[&str]) -> Result<String> {
 
 /// Spawn a prepared command without waiting, and record it as started.
 ///
-/// [`clone_start`] and [`rebase_interactive_spawn`] use this: both run for long
-/// enough that waiting for the outcome before recording would hide the one
-/// command the user is most likely to be asking about while it runs.
+/// [`clone_start`], [`rebase_interactive_spawn`], [`fetch_spawn`] and
+/// [`push_spawn`] use this: each runs for long enough that waiting for the
+/// outcome before recording would hide the one command the user is most likely
+/// to be asking about while it runs.
 fn record_spawn(mut command: Command, args: &[&str]) -> Result<std::process::Child> {
     match command.spawn() {
         Ok(child) => {
@@ -856,16 +857,34 @@ pub fn stash_drop(repo: &Path, index: usize) -> Result<()> {
 
 /// Fetch. Goes through `git` so credential helpers and the OS keychain work.
 ///
-/// `--prune` so a branch deleted on the remote stops appearing in the graph as
-/// a lane that goes nowhere. An empty `remote` means git's own default.
-pub fn fetch(repo: &Path, remote: &str) -> Result<String> {
-    let mut args = vec!["fetch", "--prune", "--progress"];
+/// `prune` deletes remote-tracking refs the remote no longer has. It used to be
+/// passed unconditionally, which meant a destructive operation ran on every
+/// fetch without anybody choosing it — the opposite of what FEAT-018 asked for
+/// and of what Amendment 6 means. It is a parameter now, and the choice is the
+/// caller's.
+///
+/// An empty `remote` means every remote.
+pub fn fetch(repo: &Path, remote: &str, prune: bool) -> Result<String> {
+    run(repo, &fetch_args(remote, prune))
+}
+
+/// Start a fetch without waiting for it, so its progress can be watched.
+pub fn fetch_spawn(repo: &Path, remote: &str, prune: bool) -> Result<std::process::Child> {
+    let args = fetch_args(remote, prune);
+    record_spawn(command(repo, &args), &args)
+}
+
+fn fetch_args(remote: &str, prune: bool) -> Vec<&str> {
+    let mut args = vec!["fetch", "--progress"];
+    if prune {
+        args.push("--prune");
+    }
     if remote.is_empty() {
         args.push("--all");
     } else {
         args.push(remote);
     }
-    run(repo, &args)
+    args
 }
 
 /// How a pull should bring the remote's commits in.
@@ -954,6 +973,21 @@ pub fn remote_set_url(repo: &Path, name: &str, url: &str) -> Result<()> {
 /// is what the user meant by pushing to that remote, and git does nothing when
 /// the upstream is already what it would set.
 pub fn push(repo: &Path, remote: &str, refspec: &str, force: bool) -> Result<String> {
+    run(repo, &push_args(remote, refspec, force))
+}
+
+/// Start a push without waiting for it, so its progress can be watched.
+pub fn push_spawn(
+    repo: &Path,
+    remote: &str,
+    refspec: &str,
+    force: bool,
+) -> Result<std::process::Child> {
+    let args = push_args(remote, refspec, force);
+    record_spawn(command(repo, &args), &args)
+}
+
+fn push_args<'a>(remote: &'a str, refspec: &'a str, force: bool) -> Vec<&'a str> {
     let mut args = vec!["push", "--progress"];
     if force {
         args.push("--force-with-lease");
@@ -965,7 +999,7 @@ pub fn push(repo: &Path, remote: &str, refspec: &str, force: bool) -> Result<Str
             args.push(refspec);
         }
     }
-    run(repo, &args)
+    args
 }
 
 #[cfg(test)]
@@ -1048,14 +1082,32 @@ mod tests {
         let fixture = Fixture::woven();
         let before = crate::record::recent(0).last().map_or(0, |entry| entry.seq);
 
-        let _ = fetch(fixture.path(), "");
+        let _ = fetch(fixture.path(), "", true);
 
         let entry = crate::record::recent(before)
             .into_iter()
             .find(|entry| entry.argv.get(1).map(String::as_str) == Some("fetch"))
             .expect("the fetch was recorded");
 
-        assert_eq!(entry.line(), "git fetch --prune --progress --all");
+        assert_eq!(entry.line(), "git fetch --progress --prune --all");
+    }
+
+    #[test]
+    fn a_fetch_that_is_not_pruning_says_so_by_omission() {
+        // FEAT-018. `--prune` used to be unconditional, so the log could not
+        // tell a fetch that deleted refs from one that did not. Now it can.
+        let _gate = crate::record::test_gate();
+        let fixture = Fixture::woven();
+        let before = crate::record::recent(0).last().map_or(0, |entry| entry.seq);
+
+        let _ = fetch(fixture.path(), "origin", false);
+
+        let entry = crate::record::recent(before)
+            .into_iter()
+            .find(|entry| entry.argv.get(1).map(String::as_str) == Some("fetch"))
+            .expect("the fetch was recorded");
+
+        assert_eq!(entry.line(), "git fetch --progress origin");
     }
 
     #[test]

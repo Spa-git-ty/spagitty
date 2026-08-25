@@ -11,6 +11,7 @@ mod clone_worker;
 mod command_log;
 mod commands;
 mod graph_worker;
+mod network_worker;
 mod platform;
 mod rebase_worker;
 mod recents;
@@ -93,6 +94,7 @@ pub fn run() {
             commands::tag_create,
             commands::tag_delete,
             commands::tag_retag,
+            commands::network_release,
             commands::stashes,
             commands::stash_push,
             commands::recent_repos,

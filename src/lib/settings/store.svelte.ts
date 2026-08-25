@@ -39,7 +39,8 @@ export const SECTIONS: { id: Section; label: string }[] = [
 const DEFAULTS: Settings = {
 	signCommits: false,
 	confirmHistoryRewrite: true,
-	showGitCommands: false
+	showGitCommands: false,
+	pruneOnFetch: false
 };
 
 function isSection(value: string): value is Section {

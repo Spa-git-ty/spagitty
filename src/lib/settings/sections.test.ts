@@ -68,7 +68,7 @@ beforeEach(async () => {
 	settingsCall.mockResolvedValue({
 		signCommits: false,
 		confirmHistoryRewrite: true,
-		showGitCommands: false
+		showGitCommands: false, pruneOnFetch: false
 	});
 	licenses.mockResolvedValue(LIST);
 	about.mockResolvedValue({ version: '0.1.0', commit: 'abc1234', license: 'GPL-3.0-or-later' });
@@ -167,7 +167,7 @@ describe('BehaviourSection', () => {
 		expect(setSettings).toHaveBeenCalledWith({
 			signCommits: true,
 			confirmHistoryRewrite: true,
-			showGitCommands: false
+			showGitCommands: false, pruneOnFetch: false
 		});
 		mounted.destroy();
 	});
@@ -176,15 +176,17 @@ describe('BehaviourSection', () => {
 		settingsCall.mockResolvedValue({
 			signCommits: true,
 			confirmHistoryRewrite: false,
-			showGitCommands: true
+			showGitCommands: true, pruneOnFetch: false
 		});
 		await settings.load();
 		const mounted = render(BehaviourSection, {});
 
+		// Four toggles since FEAT-018 added pruning, and the fourth is off.
 		expect(mounted.all('button.chip').map((chip) => chip.textContent?.trim())).toEqual([
 			'on',
 			'off',
-			'on'
+			'on',
+			'off'
 		]);
 		mounted.destroy();
 	});

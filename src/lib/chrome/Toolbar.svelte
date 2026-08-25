@@ -5,6 +5,8 @@
 	import { clone } from '$lib/clone/store.svelte';
 	import { commandLog } from '$lib/commandlog/store.svelte';
 	import { fetchAll, pull, pushCurrent } from '$lib/graph/actions';
+	import { network } from '$lib/network/store.svelte';
+	import { remotes } from '$lib/remotes/store.svelte';
 	import Menu from '$lib/ui/Menu.svelte';
 	import type { MenuItem } from '$lib/ui/menu';
 	import { repo } from '$lib/repo.svelte';
@@ -97,6 +99,8 @@
 		title?: string;
 		/** Offers a choice of how, on right-click. */
 		menu?: boolean;
+		/** Offers a choice of which remote, on right-click (FEAT-018). */
+		fetchMenu?: boolean;
 	}
 
 	/**
@@ -105,6 +109,41 @@
 	 * you can aim at without reading every label.
 	 */
 	let pullMenu = $state<{ x: number; y: number } | null>(null);
+	let fetchMenu = $state<{ x: number; y: number } | null>(null);
+
+	/**
+	 * Right-clicking Fetch offers one remote at a time (FEAT-018).
+	 *
+	 * Every layer has taken a remote since the plumbing was built; the button
+	 * always sent the empty string, so "fetch one remote" existed everywhere
+	 * except where somebody could ask for it. The list is read on opening the
+	 * menu rather than kept live: remotes change about once a year, and a store
+	 * loaded on every repository change to fill a menu nobody opened would be
+	 * work done for nothing.
+	 */
+	async function openFetchMenu(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		await remotes.load();
+		fetchMenu = { x: event.clientX, y: event.clientY };
+	}
+
+	const FETCH_ITEMS = $derived<MenuItem[]>([
+		{ heading: 'Fetch' },
+		{
+			id: 'all',
+			label: 'Every remote',
+			note: settings.settings.pruneOnFetch ? 'pruning' : undefined,
+			run: () => void fetchAll()
+		},
+		...(remotes.list.length > 0 ? [{ separator: true as const }] : []),
+		...remotes.list.map((remote) => ({
+			id: remote.name,
+			label: remote.name,
+			note: remote.url,
+			run: () => void network.fetch(remote.name)
+		}))
+	]);
 
 	function openPullMenu(event: MouseEvent) {
 		event.preventDefault();
@@ -151,7 +190,15 @@
 				act: () => pull(),
 				menu: true
 			},
-			{ glyph: '⇩', label: 'Fetch', title: 'Fetch every remote, pruning', act: () => fetchAll() },
+			{
+				glyph: '⇩',
+				label: 'Fetch',
+				title: settings.settings.pruneOnFetch
+					? 'Fetch every remote, pruning — right-click for one'
+					: 'Fetch every remote — right-click for one',
+				act: () => fetchAll(),
+				fetchMenu: true
+			},
 			{
 				glyph: '⇧',
 				label: 'Push',
@@ -175,6 +222,16 @@
 		label="Switch branch"
 		items={BRANCH_ITEMS}
 		onclose={() => (branchMenu = null)}
+	/>
+{/if}
+
+{#if fetchMenu}
+	<Menu
+		x={fetchMenu.x}
+		y={fetchMenu.y}
+		label="What to fetch"
+		items={FETCH_ITEMS}
+		onclose={() => (fetchMenu = null)}
 	/>
 {/if}
 
@@ -220,6 +277,20 @@
 		{#if branches.writeError}
 			<span class="note error" role="alert" title={branches.writeError}>{branches.writeError}</span>
 		{/if}
+
+		<!--
+			What the network is doing, in git's own words (FEAT-018). Beside the
+			location rather than over the buttons: it is about the repository,
+			and a spinner on the button that started it would move the target
+			out from under the pointer.
+		-->
+		{#if network.running}
+			<span class="note working" role="status">{network.label}</span>
+		{:else if network.error}
+			<span class="note error" role="alert" title={network.error}>{network.error}</span>
+		{:else if network.summary}
+			<span class="note" title={network.summary}>{network.summary}</span>
+		{/if}
 	</div>
 
 	<!--
@@ -237,7 +308,10 @@
 				<button
 					class="tool"
 					title={action.title}
-					oncontextmenu={(event) => action.menu && openPullMenu(event)}
+					oncontextmenu={(event) => {
+						if (action.menu) openPullMenu(event);
+						else if (action.fetchMenu) void openFetchMenu(event);
+					}}
 					onclick={() => (action.act ? action.act() : action.href && goto(action.href))}
 				>
 					<span aria-hidden="true">{action.glyph}</span>
@@ -308,6 +382,15 @@
 
 	.repo {
 		font-weight: 650;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* git's own progress line, which can be long. It gets whatever room is
+	   left rather than pushing the branch picker off the bar. */
+	.working {
+		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;

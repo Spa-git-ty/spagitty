@@ -3,96 +3,98 @@
 # FEAT-018 — Plan
 
 **Item:** [`agile/items/FEAT-018-fetch-and-push.md`](../items/FEAT-018-fetch-and-push.md)
-**Branches:** none of its own. The plumbing landed in `994dbe9`, the live
-buttons in `b71f8aa` on `feature/FEAT-038-pull`.
-**Status:** partly implemented. This plan is **backfilled by TASK-013** and
-covers both halves: what was built, and what the item still owes.
+**Branch:** `feature/FEAT-018-finish-fetch-push`
+**Status:** implemented.
 
-*A plan written after the fact is a reconstruction, and this one says which
-parts are which. What shipped is read from the code; why it shipped that way is
-read from the code's own comments and from the commit messages, and is marked
-where it is inference rather than record.*
+**Branch point.** Cut from `feature/FEAT-051-tags`, continuing the unmerged
+stack.
 
-## What was built, and why that way
+## What was owed
 
-### Through `shell.rs`, not `gix`
+The item's own **What actually shipped** section, written by TASK-013 from the
+code, listed five things still owed. One of them — setting an upstream on first
+push — was fixed in FEAT-049, because the divergence bar had nothing to read
+without it. The other four are this plan.
 
-Both operations spawn `git`. `shell.rs`'s header gives the reason and this item's
-notes repeat it: credential helpers are external programs, and `pre-push` hooks
-must run. A library implementation would silently skip both.
+## Approach
 
-### `--prune` always, `--force-with-lease` always
+### Pruning stops being silent
 
-`shell::fetch` passes `--prune` unconditionally, and `shell::push` uses
-`--force-with-lease` whenever a force is asked for, never a plain `--force`.
+`shell::fetch` passed `--prune` on every call. Pruning deletes remote-tracking
+refs; a branch quietly vanishing from the graph because somebody pressed Fetch
+is exactly the destructive-without-being-chosen case Amendment 6 exists for, and
+the item's own notes said so.
 
-The second is the item's own instruction, honoured: force destroys other
-people's work, so the only force available anywhere in the codebase is the one
-that refuses when the remote has moved — and no interface offers even that.
+It is a parameter now, and a **setting** — `pruneOnFetch`, off by default,
+beside the other two that change what the application does. Off because a
+branch disappearing is a surprise and a preference nobody set should not spring
+one.
 
-The first is **not** what the item asked for. Pruning was scoped as an explicit
-choice because it deletes remote-tracking refs, which Amendment 6 counts as
-destructive. It is currently silent and unconditional. Recorded as owed rather
-than defended.
+It is read in **one place**, `network.fetch`, rather than passed by each caller.
+A button that supplied its own value could prune when the setting said not to,
+and there is no reason for two answers to exist.
 
-### Every layer takes a remote; the button sends none
+The command log benefits too: `git fetch --progress --prune --all` and
+`git fetch --progress origin` are now different lines, so the log can tell a
+fetch that deleted refs from one that did not. It could not before.
 
-`fetch(remote)`, `push(remote, refspec, force)` exist all the way from
-`shell.rs` through the command and `api.ts`. The toolbar calls them with their
-defaults — all remotes, and whatever `git push` alone means for the current
-branch. So per-remote work needs an interface, not plumbing.
+### Progress, on a worker
 
-### Failure is a sentence
+`--progress` was being passed and nothing read it, so git's output arrived all
+at once when the process ended. On a large fetch that is a minute of silence
+followed by everything, which is indistinguishable from an application that has
+hung.
 
-Both go through `actions.perform`, which reports git's own message and does not
-re-read on failure. `GIT_TERMINAL_PROMPT=0` in `shell.rs` means a missing
-credential fails rather than hanging behind an invisible prompt, which is what
-makes "a sentence the user can act on" possible at all.
+`network_worker.rs` spawns fetch or push and streams stderr, the same way the
+clone worker does — and it reuses `clone::progress` to parse it, because
+`git fetch --progress` and `git push --progress` write the same
+`phase: 42% (…)` lines a clone does. Three operations, one parser.
 
-## What is still owed
+It is deliberately **not** the clone worker. A clone is cancellable and owns a
+destination directory it may have to remove. Fetch and push change a repository
+that is already open and neither is cancelled: killing a push mid-transfer has
+no defined outcome, and an interrupted fetch simply keeps the refs it had
+already written.
 
-In the order they are worth doing:
+The second reason for a worker is the one the rebase worker already gave: a
+blocking command holds the session lock, so nothing else can ask the repository
+anything while a slow network operation runs.
 
-1. **Pruning as a choice.** It is destructive and it is silent. Either offer it
-   or say it is happening.
-2. **`--set-upstream` on first push.** A new branch pushes with git's error
-   today; the app knows there is no upstream and could offer it.
-3. **Per-remote fetch and push**, for repositories with more than one.
-4. **Progress.** `--progress` is passed and nothing streams it. The command log
-   shows the invocation, not its output as it arrives.
-5. **Staleness on the Branches screen.** The counts are as old as the last
-   fetch, and the screen does not say so.
+**The worker is released by the screen**, on the done event. It cannot let go of
+itself — dropping it joins its own thread — and a leak would refuse every later
+fetch with "already running".
 
-Each is small on its own; together they are the second half of this item and are
-not folded into anything else.
+### Per-remote fetch
 
-## Files
+Every layer has taken a remote since the plumbing was built. The button always
+sent the empty string, so "fetch one remote" existed everywhere except where
+anybody could ask for it. Right-clicking Fetch now offers each remote by name,
+alongside "every remote".
 
-`crates/spagitty-core/src/shell.rs` — `fetch`, `push`.
-`crates/spagitty-core/src/ops.rs` — both ops.
-`src-tauri/src/commands.rs`, `src-tauri/src/lib.rs` — commands and registration.
-`src/lib/api.ts` — `fetch`, `push`.
-`src/lib/graph/actions.ts` — `fetchAll`, `pushCurrent`.
-`src/lib/chrome/Toolbar.svelte` — the two buttons.
+The remote list is read when the menu opens rather than kept live. Remotes
+change about once a year, and a store loaded on every repository change to fill
+a menu nobody opened is work done for nothing.
 
-## Testing
+### The Branches screen says how old its numbers are
 
-See `FEAT-018-automated.md`. The frontend tests own the confirmations and the
-failure reporting; the shell layer is argument assembly over `run`, whose
-behaviour the existing shell tests cover.
+Ahead and behind are counted against remote-tracking refs, which only move when
+something fetches. A divergence bar on a repository nobody has fetched for a
+week is a week out of date and looks exactly as confident as one from a minute
+ago.
 
-## Risk
+The header now says `drift as of 20 minutes ago`, or `drift never fetched`, and
+only when a branch actually tracks something — with no upstreams there is
+nothing on the screen a fetch would change. A Fetch button sits beside Refresh,
+because the answer to a stale number is not to re-read the same refs.
 
-Push is the first thing Spagitty does that other people can see, which is why
-there is no force in any interface and why the failure path is tested before the
-success path.
+## What was not done
 
-The live risk today is the silent prune: a user who fetches loses remote-tracking
-refs without being asked. Nothing local is lost, and git's own default for
-`fetch --prune` in many configurations is the same, but it is still a destructive
-default the item did not sanction.
-
-## Rollback
-
-The buttons can be disabled without touching the plumbing. Reverting either
-commit would take unrelated work with it.
+- **Cancelling a fetch or push.** See above: neither has a defined outcome when
+  killed part-way.
+- **Force push through the interface.** The parameter exists in every layer and
+  nothing offers it, which the item says is deliberate and this plan does not
+  change.
+- **Pull on the worker.** `pull` is still blocking. It is fetch-and-integrate in
+  one command, and the integrate half can stop in a conflict — which is a
+  different shape of outcome from what this worker reports, and worth its own
+  pass rather than a hasty one.

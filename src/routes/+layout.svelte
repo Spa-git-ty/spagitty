@@ -8,6 +8,7 @@
 	import * as api from '$lib/api';
 	import CloneModal from '$lib/clone/CloneModal.svelte';
 	import { clone } from '$lib/clone/store.svelte';
+	import { network } from '$lib/network/store.svelte';
 	import { rebase } from '$lib/rebase/store.svelte';
 	import CommandLog from '$lib/commandlog/CommandLog.svelte';
 	import { commandLog } from '$lib/commandlog/store.svelte';
@@ -71,6 +72,9 @@
 			// screen for Conflicts while it is still running, and its progress
 			// must not stop being heard when they do.
 			cleanups.push(await rebase.attach());
+			// A fetch survives navigation too: somebody who starts one from the
+			// toolbar and walks to Branches should not stop hearing about it.
+			cleanups.push(await network.attach());
 			// Recording starts with the app, not with the panel: turning the
 			// toggle on mid-session should show what has already run.
 			cleanups.push(await commandLog.attach());

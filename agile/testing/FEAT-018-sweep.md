@@ -2,83 +2,101 @@
 
 # FEAT-018 — Manual sweep
 
-**Item:** [`agile/items/FEAT-018-fetch-and-push.md`](../items/FEAT-018-fetch-and-push.md)
+| Field | Meaning |
+| --- | --- |
+| Priority | P1 blocks the item, P2 should be fixed before release, P3 cosmetic |
+| Result | left blank for the tester: pass / fail |
 
-*Backfilled by TASK-013. These are the only tests that touch a network, so run
-them against a scratch repository and a remote you own.*
-
----
-
-## FEAT-018-T1 — Fetch
-
-**Priority:** high.
-
-| # | Step | Expected |
-| --- | --- | --- |
-| 1 | Push a commit to the remote from elsewhere; click Fetch | It reports success, and the new remote-tracking ref appears on the graph. |
-| 2 | Open the Branches screen | Ahead/behind counts reflect the fetch. |
-| 3 | Turn on "Show the git command behind each action" and fetch again | The log shows `git fetch --prune --progress --all`. |
-| 4 | **Delete a branch on the remote, then fetch** | Its remote-tracking ref disappears **without being asked**. This is the known gap: pruning is unconditional. Confirm nothing local was touched. |
-
-**Result:**
+Needs a real remote and, for -02, a repository large enough that a fetch takes
+more than a second. A clone of something substantial is the easiest way.
 
 ---
 
-## FEAT-018-T2 — Push
+### SWEEP-018-01 — Fetch does not prune unless asked
 
-**Priority:** high — the first thing other people can see.
+- **Priority:** P1
+- **Steps:** With **Prune deleted branches when fetching** off, delete a branch
+  on the remote and fetch. Check `git branch -r`. Then turn the setting on and
+  fetch again.
+- **Expected:** The remote-tracking ref is **still there** after the first
+  fetch and gone after the second. The command log shows `--prune` only on the
+  second. This is the defect: it used to prune every time.
+- **Result:**
 
-| # | Step | Expected |
-| --- | --- | --- |
-| 1 | Commit locally on a branch that has an upstream; click Push | It reports success; the remote has the commit. |
-| 2 | Push again with nothing to push | It says so; nothing is written. |
-| 3 | Have someone else push first, then push | Rejected, with git's own message shown as a sentence. Nothing local changed. |
-| 4 | Look for any force option in the interface | **There is none, anywhere.** That is deliberate. |
+### SWEEP-018-02 — Progress moves while it runs
 
-**Result:**
+- **Priority:** P1
+- **Steps:** Fetch a large repository and watch the toolbar.
+- **Expected:** git's own phases appear and change — counting, compressing,
+  receiving — with percentages where git gives them. It does not sit silent and
+  then finish all at once.
+- **Result:**
 
----
+### SWEEP-018-03 — Fetching one remote
 
-## FEAT-018-T3 — A branch with no upstream
+- **Priority:** P1
+- **Steps:** On a repository with two remotes, right-click **Fetch**.
+- **Expected:** A menu with "Every remote" and each remote by name with its URL.
+  Choosing one fetches only that one — the command log shows its name, not
+  `--all`.
+- **Result:**
 
-**Priority:** high — the case everyone meets, and the one still owed.
+### SWEEP-018-04 — The Branches screen says how stale it is
 
-| # | Step | Expected |
-| --- | --- | --- |
-| 1 | Create a branch, commit, click Push | Today: it fails with git's "no upstream branch" message. |
-| 2 | Read the message | Decide whether a person could act on it as shown. |
-| 3 | Set the upstream from a terminal and push again | Works. |
+- **Priority:** P1
+- **Steps:** Open Branches on a repository not fetched for a while. Read the
+  header. Press **Fetch** there and read it again.
+- **Expected:** "drift as of …" with a real age, and it becomes recent after
+  fetching. On a repository whose branches track nothing, the line is absent
+  rather than saying something meaningless.
+- **Result:**
 
-Step 1's behaviour is the deferred half of the item, not a regression. Record
-what the message actually looks like — it is the input to building the offer.
+### SWEEP-018-05 — A rejected push says why
 
-**Result:**
+- **Priority:** P1
+- **Steps:** Make the remote branch ahead of yours, then push.
+- **Expected:** git's own "non-fast-forward" wording, in a notice and on the
+  toolbar. Nothing offers to force.
+- **Result:**
 
----
+### SWEEP-018-06 — Nothing else freezes while it runs
 
-## FEAT-018-T4 — Credentials fail rather than hang
+- **Priority:** P1
+- **Steps:** Start a slow fetch and immediately navigate to Branches, then to
+  the Graph, and open a commit.
+- **Expected:** Everything responds. The fetch's progress is still visible on
+  the toolbar throughout, and finishing it refreshes what is on screen.
+- **Result:**
 
-**Priority:** high — a hang is the worst outcome, and nothing automated covers
-this.
+### SWEEP-018-07 — A second operation is refused, not queued
 
-| # | Step | Expected |
-| --- | --- | --- |
-| 1 | Point a remote at a URL needing credentials the machine does not have; click Fetch | It **fails**, with a message. It does not hang, and no terminal prompt appears anywhere. |
-| 2 | Click Push against the same remote | The same. |
-| 3 | Watch the window while it happens | The app stays responsive. |
+- **Priority:** P2
+- **Steps:** Start a slow fetch and press Push before it finishes.
+- **Expected:** A message saying one is already running. Nothing is queued, and
+  when the fetch finishes the push has *not* silently happened.
+- **Result:**
 
-**Result:**
+### SWEEP-018-08 — The worker is let go of
 
----
+- **Priority:** P1
+- **Steps:** Fetch, let it finish, then fetch again. Three or four times.
+- **Expected:** Every one starts. If the worker were leaked, the second would
+  refuse with "already running" — which is the failure this is looking for.
+- **Result:**
 
-## FEAT-018-T5 — Several remotes
+### SWEEP-018-09 — First push still sets upstream
 
-**Priority:** medium — the other deferred half.
+- **Priority:** P1
+- **Steps:** Push a brand-new branch, then check `git branch -vv`.
+- **Expected:** It tracks the remote. FEAT-049 fixed this and this item's
+  changes must not have undone it.
+- **Result:**
 
-| # | Step | Expected |
-| --- | --- | --- |
-| 1 | Add a second remote and click Fetch | Both are fetched — the button means all remotes. |
-| 2 | Look for a way to fetch just one | There is none. Deferred, not broken. |
-| 3 | Click Push | It pushes the current branch to its own upstream, not to both. |
+### SWEEP-018-10 — The command log matches what ran
 
-**Result:**
+- **Priority:** P3
+- **Steps:** Fetch all, fetch one remote with pruning on, and push. Read the
+  log.
+- **Expected:** Three different lines, each with the flags actually used. A
+  fetch that pruned is distinguishable from one that did not.
+- **Result:**

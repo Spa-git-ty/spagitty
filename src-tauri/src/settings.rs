@@ -36,6 +36,13 @@ pub struct Settings {
     pub confirm_history_rewrite: bool,
     /// Show the `git` command behind each action.
     pub show_git_commands: bool,
+    /// Delete remote-tracking refs the remote no longer has, when fetching.
+    ///
+    /// A setting rather than something that always happens (FEAT-018).
+    /// Pruning deletes refs, and a destructive step that nobody chose is the
+    /// thing Amendment 6 exists to stop — it was passed on every fetch before
+    /// this was added.
+    pub prune_on_fetch: bool,
 }
 
 impl Default for Settings {
@@ -50,6 +57,10 @@ impl Default for Settings {
             sign_commits: false,
             confirm_history_rewrite: true,
             show_git_commands: false,
+            // Off, like the other two that change what the application does.
+            // A branch that vanishes from the graph because a fetch pruned it
+            // is a surprise, and one nobody asked for.
+            prune_on_fetch: false,
         }
     }
 }
@@ -144,6 +155,7 @@ mod tests {
             sign_commits: true,
             confirm_history_rewrite: false,
             show_git_commands: true,
+            prune_on_fetch: true,
         };
         let text = serde_json::to_string_pretty(&written).expect("serialising");
 
@@ -159,5 +171,6 @@ mod tests {
         assert!(text.contains("signCommits"), "{text}");
         assert!(text.contains("confirmHistoryRewrite"), "{text}");
         assert!(text.contains("showGitCommands"), "{text}");
+        assert!(text.contains("pruneOnFetch"), "{text}");
     }
 }

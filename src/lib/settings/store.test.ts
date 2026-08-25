@@ -40,7 +40,7 @@ function anIdentity(overrides: Partial<Identity> = {}): Identity {
 const STORED: Settings = {
 	signCommits: false,
 	confirmHistoryRewrite: true,
-	showGitCommands: false
+	showGitCommands: false, pruneOnFetch: false
 };
 
 const LIST: Licenses = {

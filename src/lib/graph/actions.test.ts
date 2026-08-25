@@ -45,6 +45,24 @@ vi.mock('$lib/ui/notice.svelte', () => ({
 const reload = vi.fn(() => Promise.resolve());
 vi.mock('$lib/graph/store.svelte', () => ({ graph: { reload: () => reload() } }));
 
+/**
+ * The network store is a collaborator here, not the thing under test — and it
+ * is a module singleton holding a live token, so a real one would still be
+ * running the first test's fetch during the second test's push.
+ */
+const startFetch = vi.fn(() => Promise.resolve(true));
+const startPush = vi.fn(() => Promise.resolve(true));
+let startError: string | null = null;
+vi.mock('$lib/network/store.svelte', () => ({
+	network: {
+		get error() {
+			return startError;
+		},
+		fetch: () => startFetch(),
+		push: () => startPush()
+	}
+}));
+
 const repoRefresh = vi.fn(() => Promise.resolve());
 
 let working = 0;
@@ -509,30 +527,54 @@ describe('stash', () => {
 	});
 });
 
+/**
+ * FEAT-018 changed the shape of these two. They start a worker and return, so
+ * there is no outcome here to report — the notice comes from the done event,
+ * which is `$lib/network/store.svelte`'s job and is tested there.
+ *
+ * What is still this module's job, and still asserted, is that neither asks a
+ * question first: nothing is lost by fetching, and a push that would lose
+ * something is refused by git rather than by a dialog we would have to keep in
+ * step with git's rules.
+ */
 describe('remotes', () => {
+	beforeEach(() => {
+		startError = null;
+		startFetch.mockResolvedValue(true);
+		startPush.mockResolvedValue(true);
+	});
+
 	it('fetches without asking — nothing is lost by fetching', async () => {
 		await actions.fetchAll();
 
 		expect(confirm).not.toHaveBeenCalled();
-		expect(api.fetch).toHaveBeenCalledTimes(1);
-		expect(ok).toHaveBeenCalledWith('Fetched', undefined);
+		expect(startFetch).toHaveBeenCalledTimes(1);
 	});
 
 	it('pushes without asking', async () => {
 		await actions.pushCurrent();
 
 		expect(confirm).not.toHaveBeenCalled();
-		expect(api.push).toHaveBeenCalledTimes(1);
-		expect(ok).toHaveBeenCalledWith('Pushed', undefined);
+		expect(startPush).toHaveBeenCalledTimes(1);
 	});
 
-	it('reports a rejected push', async () => {
-		const boom = new Error('non-fast-forward');
-		api.push.mockRejectedValueOnce(boom);
+	it('reports a start that failed, which is the only outcome it sees', async () => {
+		// A push git rejects fails on the done event, not here. This is the
+		// other case: the worker could not be started at all.
+		startPush.mockResolvedValueOnce(false);
+		startError = 'a fetch or push is already running';
 
 		await actions.pushCurrent();
 
-		expect(failed).toHaveBeenCalledWith('Could not push', boom);
+		expect(failed).toHaveBeenCalledWith('Could not push', startError);
+	});
+
+	it('says nothing when a start was refused for no stated reason', async () => {
+		startPush.mockResolvedValueOnce(false);
+
+		await actions.pushCurrent();
+
+		expect(failed).not.toHaveBeenCalled();
 	});
 });
 

@@ -121,7 +121,7 @@ describe('command names and arguments', () => {
 		const settings = {
 			signCommits: true,
 			confirmHistoryRewrite: false,
-			showGitCommands: true
+			showGitCommands: true, pruneOnFetch: false
 		};
 		await api.setSettings(settings);
 		expect(invoked).toHaveBeenCalledWith('set_settings', { settings });

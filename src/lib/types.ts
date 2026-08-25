@@ -674,6 +674,28 @@ export interface CloneDoneEvent {
 	path: string;
 }
 
+/** Which network operation a worker is running (FEAT-018). */
+export type NetworkOperation = 'fetch' | 'push';
+
+/** Payload of `network-progress`: one step of git's own progress reporting. */
+export interface NetworkProgressEvent extends CloneProgress {
+	token: number;
+	operation: NetworkOperation;
+}
+
+/** Payload of `network-done`: the fetch or push for `token` has stopped. */
+export interface NetworkDoneEvent {
+	token: number;
+	operation: NetworkOperation;
+	ok: boolean;
+	error: string | null;
+	/**
+	 * git's last words on success — "Everything up-to-date", a ref update
+	 * summary — so a fetch that brought nothing down can say so.
+	 */
+	summary: string | null;
+}
+
 /** One tag, peeled to the commit it names (FEAT-051). */
 export interface Tag {
 	/** Short name — `v1.0.0`, not `refs/tags/v1.0.0`. */
@@ -839,6 +861,13 @@ export interface Settings {
 	signCommits: boolean;
 	confirmHistoryRewrite: boolean;
 	showGitCommands: boolean;
+	/**
+	 * Delete remote-tracking refs the remote no longer has, when fetching.
+	 *
+	 * Off by default: pruning deletes refs, and a branch vanishing from the
+	 * graph because a fetch quietly pruned it is a surprise nobody asked for.
+	 */
+	pruneOnFetch: boolean;
 }
 
 export interface Dependency {
@@ -922,3 +951,5 @@ export const REPO_CHANGED_EVENT = 'repo-changed';
 export const GIT_COMMAND_EVENT = 'git-command';
 export const REBASE_PROGRESS_EVENT = 'rebase-progress';
 export const REBASE_DONE_EVENT = 'rebase-done';
+export const NETWORK_PROGRESS_EVENT = 'network-progress';
+export const NETWORK_DONE_EVENT = 'network-done';

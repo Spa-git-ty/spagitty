@@ -187,9 +187,10 @@ pub fn stash(repo: &gix::Repository, index: usize, action: StashAction) -> Resul
     }
 }
 
-/// Fetch, pruning refs the remote no longer has.
-pub fn fetch(repo: &gix::Repository, remote: &str) -> Result<String> {
-    shell::fetch(workdir(repo)?, remote)
+/// Fetch. `prune` deletes remote-tracking refs the remote no longer has, and
+/// is the caller's choice rather than something that happens every time.
+pub fn fetch(repo: &gix::Repository, remote: &str, prune: bool) -> Result<String> {
+    shell::fetch(workdir(repo)?, remote, prune)
 }
 
 /// Pull: fetch and bring the upstream's commits into the current branch.

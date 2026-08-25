@@ -35,6 +35,7 @@ use tauri::{AppHandle, Manager, State};
 use crate::about::{About, Licenses};
 use crate::clone_worker::{self, CloneWorker};
 use crate::graph_worker::{self, GraphWorker};
+use crate::network_worker::{self, NetworkWorker};
 use crate::rebase_worker::{self, RebaseWorker};
 use crate::recents;
 use crate::search_worker::{self, SearchWorker};
@@ -80,6 +81,12 @@ pub struct AppState {
     /// the worker before unwinding the state it is reading. Dropping it waits;
     /// nothing cancels it, for the reason written out in `rebase_worker`.
     rebase: Mutex<Option<RebaseWorker>>,
+    /// The fetch or push running right now, if any (FEAT-018).
+    ///
+    /// One at a time, and refused rather than queued: two would give the screen
+    /// two sets of progress to tell apart, and git would be contending for the
+    /// same refs regardless.
+    network: Mutex<Option<NetworkWorker>>,
     /// The clone running right now, if any.
     ///
     /// One at a time: a second clone is refused rather than queued. Two is not
@@ -600,10 +607,23 @@ pub fn stash_action(state: State<'_, AppState>, index: usize, action: StashActio
     state.with_session(|session| ops::stash(&session.repo.to_thread_local(), index, action))
 }
 
-/// Fetch, pruning refs the remote no longer has. An empty remote fetches all.
+/// Fetch. Returns the token its events carry (FEAT-018).
+///
+/// An empty remote fetches all of them. `prune` deletes remote-tracking refs
+/// the remote no longer has — it used to be passed on every fetch, which meant
+/// a destructive operation happening without anybody choosing it.
+///
+/// Runs on a worker so that git's progress arrives while it runs rather than
+/// all at once at the end, and so that a slow network operation does not hold
+/// the session lock against every other screen.
 #[tauri::command]
-pub fn fetch(state: State<'_, AppState>, remote: String) -> Result<String> {
-    state.with_session(|session| ops::fetch(&session.repo.to_thread_local(), &remote))
+pub fn fetch(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    remote: String,
+    prune: bool,
+) -> Result<u64> {
+    start(app, state, network_worker::Job::Fetch { remote, prune })
 }
 
 /// Pull. Fetches and integrates in one `git pull`, so git resolves which
@@ -614,16 +634,57 @@ pub fn pull(state: State<'_, AppState>, remote: String, mode: PullMode) -> Resul
 }
 
 /// Push. `force` is `--force-with-lease`, never a plain force.
+///
+/// On a worker, for the reasons in [`fetch`].
 #[tauri::command]
 pub fn push(
+    app: AppHandle,
     state: State<'_, AppState>,
     remote: String,
     refspec: String,
     force: bool,
-) -> Result<String> {
-    state.with_session(|session| {
-        ops::push(&session.repo.to_thread_local(), &remote, &refspec, force)
-    })
+) -> Result<u64> {
+    start(
+        app,
+        state,
+        network_worker::Job::Push {
+            remote,
+            refspec,
+            force,
+        },
+    )
+}
+
+/// Start a network job, refusing a second one while the first is running.
+///
+/// Refused rather than queued: two of them would give the screen two sets of
+/// progress events to tell apart, and git would be contending for the same
+/// refs anyway.
+fn start(app: AppHandle, state: State<'_, AppState>, job: network_worker::Job) -> Result<u64> {
+    if state.network.lock().expect("network lock").is_some() {
+        return Err(Error::NotStageable(
+            "a fetch or push is already running".into(),
+        ));
+    }
+
+    let workdir = state.with_session(|session| {
+        Ok(spagitty_core::repo::workdir(&session.repo.to_thread_local())?.to_path_buf())
+    })?;
+
+    let token = state.next_token.fetch_add(1, Ordering::Relaxed);
+    let worker = network_worker::spawn(app, workdir, job, token)?;
+    *state.network.lock().expect("network lock") = Some(worker);
+
+    Ok(token)
+}
+
+/// Let go of a finished network worker, so the next one may start.
+///
+/// Called by the screen when it sees the done event. The worker cannot release
+/// itself: dropping it joins its own thread.
+#[tauri::command]
+pub fn network_release(state: State<'_, AppState>) {
+    state.network.lock().expect("network lock").take();
 }
 
 /// Start a query. Returns the token its rows will carry.

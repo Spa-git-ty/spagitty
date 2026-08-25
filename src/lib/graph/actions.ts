@@ -29,6 +29,7 @@ import { graph } from './store.svelte';
 import { repo } from '../repo.svelte';
 import { settings } from '../settings/store.svelte';
 import { deleteBody } from '$lib/branches/actions';
+import { network } from '$lib/network/store.svelte';
 import { dialog } from '../ui/dialog.svelte';
 import { notice } from '../ui/notice.svelte';
 import type { Integration, PullMode, ResetMode, StashAction } from '../types';
@@ -486,10 +487,22 @@ export async function pull(mode: PullMode = 'fastForwardOnly'): Promise<void> {
 	await perform(wording.done, 'Could not pull', () => api.pull(mode, ''));
 }
 
+/**
+ * Fetch every remote.
+ *
+ * Not through `perform`: since FEAT-018 this starts a worker and returns, so
+ * there is no outcome to report yet. The notice comes from the done event, and
+ * what happens in between is on the toolbar.
+ */
 export async function fetchAll(): Promise<void> {
-	await perform('Fetched', 'Could not fetch', () => api.fetch());
+	if (!(await network.fetch())) {
+		if (network.error) notice.failed('Could not fetch', network.error);
+	}
 }
 
+/** Push the current branch. Starts a worker, the same as `fetchAll`. */
 export async function pushCurrent(): Promise<void> {
-	await perform('Pushed', 'Could not push', () => api.push());
+	if (!(await network.push())) {
+		if (network.error) notice.failed('Could not push', network.error);
+	}
 }

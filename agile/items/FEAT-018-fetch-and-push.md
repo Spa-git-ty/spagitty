@@ -2,11 +2,12 @@
 
 # FEAT-018 — Fetch and push
 
-**Status:** Partial. The buttons are live and the plumbing is complete, but
-three of the five things this item scoped were never built — see **What
-actually shipped** below. TASK-012 read this as `Done` from the live buttons;
-TASK-013 read the code and found the rest. The problem statement below still
-describes the tree as it was before any of it existed.
+**Status:** Done on `feature/FEAT-018-finish-fetch-push`. The five things
+listed under **What actually shipped** as still owed are built: pruning is a
+choice rather than something that always happened, progress streams from a
+worker, fetch can name a remote, the Branches screen says how stale its counts
+are, and the upstream on first push was fixed in FEAT-049. The problem
+statement below describes the tree as it was before any of it existed.
 **Surface:** the toolbar's Fetch and Push buttons, and the Branches screen's
 ahead/behind counts.
 
@@ -39,7 +40,8 @@ Recorded by TASK-013, from the code rather than from the record.
 - `push --force-with-lease`, never a plain force — the parameter exists in every
   layer and no interface offers it, which is deliberate.
 
-**Not built**, and still owed by this item:
+**Not built at the time TASK-013 read the code**, and closed by this item's own
+branch unless another is named:
 
 - **Per-remote fetch.** Every layer takes a remote; the button always sends the
   empty string, which means all remotes.
@@ -48,7 +50,8 @@ Recorded by TASK-013, from the code rather than from the record.
   the sense Amendment 6 means — so it currently happens silently, which is the
   opposite of what was asked for. This is the gap worth closing first.
 - **Setting an upstream on first push.** A branch with no upstream fails with
-  git's message rather than being offered `--set-upstream`.
+  git's message rather than being offered `--set-upstream`. *Closed by
+  FEAT-049*, which needed it for the divergence bar to have anything to read.
 - **Progress.** Output arrives when the process ends; `--progress` is passed but
   nothing streams it.
 - **The Branches screen saying how stale its counts are.** It refreshes after a

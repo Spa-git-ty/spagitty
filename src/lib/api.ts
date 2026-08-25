@@ -532,9 +532,17 @@ export function stashAction(index: number, action: StashAction): Promise<void> {
 	return invoke('stash_action', { index, action });
 }
 
-/** Fetch, pruning refs the remote no longer has. An empty remote fetches all. */
-export function fetch(remote = ''): Promise<string> {
-	return invoke('fetch', { remote });
+/**
+ * Fetch. Resolves to the token its events carry, not to the outcome (FEAT-018).
+ *
+ * An empty remote fetches all of them. `prune` deletes remote-tracking refs the
+ * remote no longer has, and is the caller's choice: it used to happen on every
+ * fetch whether or not anybody wanted it.
+ *
+ * Progress arrives as `network-progress` and it ends with `network-done`.
+ */
+export function fetch(remote = '', prune = false): Promise<number> {
+	return invoke('fetch', { remote, prune });
 }
 
 /**
@@ -549,9 +557,18 @@ export function pull(mode: PullMode, remote = ''): Promise<string> {
 	return invoke('pull', { remote, mode });
 }
 
-/** Push. `force` is `--force-with-lease`, never a plain force. */
-export function push(remote = '', refspec = '', force = false): Promise<string> {
+/**
+ * Push. `force` is `--force-with-lease`, never a plain force.
+ *
+ * Resolves to the token its events carry, the same as `fetch`.
+ */
+export function push(remote = '', refspec = '', force = false): Promise<number> {
 	return invoke('push', { remote, refspec, force });
+}
+
+/** Let go of a finished fetch or push, so the next one may start. */
+export function networkRelease(): Promise<void> {
+	return invoke('network_release');
 }
 
 /**
