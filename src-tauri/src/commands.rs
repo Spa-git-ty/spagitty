@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
+use serde::Serialize;
 use spagitty_core::blame::{self, Blame};
 use spagitty_core::branches::{self, BranchRow};
 use spagitty_core::clone::{self, Plan};
@@ -17,20 +18,19 @@ use spagitty_core::graph::ROW_PITCH;
 use spagitty_core::identity::{self, Identity, Key, Scope};
 use spagitty_core::ops::{self, Integration, ResetMode, StashAction};
 use spagitty_core::rebase::{self, Edit, Preview, Todo};
-use spagitty_core::reflog;
-use spagitty_core::tags;
-use spagitty_core::remotes;
 use spagitty_core::record::{self, Executed};
+use spagitty_core::reflog;
 use spagitty_core::refs::RefIndex;
+use spagitty_core::remotes;
 use spagitty_core::repo::{self, RepoInfo, RepoSummary};
 use spagitty_core::search::Query;
 use spagitty_core::shell::PullMode;
 use spagitty_core::stash::{self, StashEntry};
 use spagitty_core::status::{self, RepoCounts, WorkingCopy};
+use spagitty_core::tags;
 use spagitty_core::work;
 use spagitty_core::{Error, Result};
-use serde::Serialize;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, Runtime, State};
 
 use crate::about::{About, Licenses};
 use crate::clone_worker::{self, CloneWorker};
@@ -45,7 +45,7 @@ use crate::watch::{self, RepoWatcher};
 /// One open repository and everything running against it.
 ///
 /// Field order matters on drop: the graph worker and the watcher both hold an
-/// `AppHandle` and must be shut down before the repository handle goes away.
+/// `AppHandle<R>` and must be shut down before the repository handle goes away.
 struct Session {
     path: PathBuf,
     repo: spagitty_core::gix::ThreadSafeRepository,
@@ -133,7 +133,11 @@ pub struct Metrics {
 /// Opening does not walk anything. The worker waits for the first
 /// [`graph_request`] before it touches history.
 #[tauri::command]
-pub fn open_repo(app: AppHandle, state: State<'_, AppState>, path: PathBuf) -> Result<OpenResult> {
+pub fn open_repo<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    path: PathBuf,
+) -> Result<OpenResult> {
     let sync = repo::open_sync(&path)?;
     let local = sync.to_thread_local();
 
@@ -191,7 +195,7 @@ pub fn graph_request(state: State<'_, AppState>, token: u64, count: usize) -> Re
 /// Restart the walk after refs moved. Produces a new token; the UI clears its
 /// rows and starts again.
 #[tauri::command]
-pub fn graph_restart(app: AppHandle, state: State<'_, AppState>) -> Result<u64> {
+pub fn graph_restart<R: Runtime>(app: AppHandle<R>, state: State<'_, AppState>) -> Result<u64> {
     let mut guard = state.session.lock().expect("session lock");
     let session = guard.as_mut().ok_or(Error::NoRepository)?;
 
@@ -208,8 +212,8 @@ pub fn graph_restart(app: AppHandle, state: State<'_, AppState>) -> Result<u64> 
 /// branches it is already showing — the backend does not need to know which of
 /// the three the user pressed, only what they want to see.
 #[tauri::command]
-pub fn graph_visibility(
-    app: AppHandle,
+pub fn graph_visibility<R: Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     refs: Vec<String>,
     pinned: Vec<String>,
@@ -452,7 +456,11 @@ pub fn rebase_preview(state: State<'_, AppState>, edits: Vec<Edit>) -> Result<Pr
 /// hundred replayed commits: the screen showing the progress could not ask for
 /// it, because the command answering would want the same lock.
 #[tauri::command]
-pub fn rebase_run(app: AppHandle, state: State<'_, AppState>, edits: Vec<Edit>) -> Result<u64> {
+pub fn rebase_run<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    edits: Vec<Edit>,
+) -> Result<u64> {
     let (upstream, todo) = {
         let guard = state.rebase_todo.lock().expect("rebase lock");
         let todo = guard
@@ -617,8 +625,8 @@ pub fn stash_action(state: State<'_, AppState>, index: usize, action: StashActio
 /// all at once at the end, and so that a slow network operation does not hold
 /// the session lock against every other screen.
 #[tauri::command]
-pub fn fetch(
-    app: AppHandle,
+pub fn fetch<R: Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     remote: String,
     prune: bool,
@@ -637,8 +645,8 @@ pub fn pull(state: State<'_, AppState>, remote: String, mode: PullMode) -> Resul
 ///
 /// On a worker, for the reasons in [`fetch`].
 #[tauri::command]
-pub fn push(
-    app: AppHandle,
+pub fn push<R: Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     remote: String,
     refspec: String,
@@ -660,7 +668,11 @@ pub fn push(
 /// Refused rather than queued: two of them would give the screen two sets of
 /// progress events to tell apart, and git would be contending for the same
 /// refs anyway.
-fn start(app: AppHandle, state: State<'_, AppState>, job: network_worker::Job) -> Result<u64> {
+fn start<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    job: network_worker::Job,
+) -> Result<u64> {
     if state.network.lock().expect("network lock").is_some() {
         return Err(Error::NotStageable(
             "a fetch or push is already running".into(),
@@ -693,7 +705,11 @@ pub fn network_release(state: State<'_, AppState>) {
 /// Starting a query cancels whichever one was running, so a store that sees
 /// rows from an older token can drop them without asking.
 #[tauri::command]
-pub fn search_start(app: AppHandle, state: State<'_, AppState>, query: Query) -> Result<u64> {
+pub fn search_start<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    query: Query,
+) -> Result<u64> {
     let path = state.with_session(|session| Ok(session.path.clone()))?;
     let token = state.next_token.fetch_add(1, Ordering::Relaxed);
 
@@ -747,7 +763,11 @@ pub fn conflict_regions(text: String) -> Vec<conflicts::Region> {
 /// The file stays conflicted afterwards. Marking it resolved is a separate
 /// command on purpose: looking at the result is the point of the screen.
 #[tauri::command]
-pub fn conflict_take(state: State<'_, AppState>, path: String, side: conflicts::Side) -> Result<()> {
+pub fn conflict_take(
+    state: State<'_, AppState>,
+    path: String,
+    side: conflicts::Side,
+) -> Result<()> {
     state.with_session(|session| conflicts::take(&session.repo.to_thread_local(), &path, side))
 }
 
@@ -785,9 +805,7 @@ pub fn conflict_write(state: State<'_, AppState>, path: String, text: String) ->
 /// Mark paths resolved: `git add`.
 #[tauri::command]
 pub fn conflict_resolve(state: State<'_, AppState>, paths: Vec<String>) -> Result<()> {
-    state.with_session(|session| {
-        conflicts::mark_resolved(&session.repo.to_thread_local(), &paths)
-    })
+    state.with_session(|session| conflicts::mark_resolved(&session.repo.to_thread_local(), &paths))
 }
 
 /// Carry on with whatever the repository is in the middle of.
@@ -895,7 +913,7 @@ pub fn remote_set_url(state: State<'_, AppState>, name: String, url: String) -> 
 /// back as a card that says so rather than being dropped — a repository that
 /// moved is something to see, not something to forget quietly.
 #[tauri::command]
-pub fn recent_repos(app: AppHandle) -> Vec<RepoSummary> {
+pub fn recent_repos<R: Runtime>(app: AppHandle<R>) -> Vec<RepoSummary> {
     recents::load(&app)
         .iter()
         .map(|path| repo::summary(path))
@@ -919,8 +937,8 @@ pub fn clone_plan(url: String, parent: PathBuf) -> Plan {
 /// a destination that filled up between the last keystroke and the button is
 /// still a destination this must refuse.
 #[tauri::command]
-pub fn clone_start(
-    app: AppHandle,
+pub fn clone_start<R: Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     url: String,
     parent: PathBuf,
@@ -959,7 +977,7 @@ pub fn clone_release(state: State<'_, AppState>) {
 
 /// Remove a repository from Spagitty's list. The directory is not touched.
 #[tauri::command]
-pub fn forget_repo(app: AppHandle, path: PathBuf) {
+pub fn forget_repo<R: Runtime>(app: AppHandle<R>, path: PathBuf) {
     recents::forget(&app, &path);
 }
 
@@ -1050,7 +1068,7 @@ pub fn set_identity(
 
 /// Spagitty's own behaviour toggles.
 #[tauri::command]
-pub fn settings(app: AppHandle) -> Settings {
+pub fn settings<R: Runtime>(app: AppHandle<R>) -> Settings {
     crate::settings::load(&app)
 }
 
@@ -1059,16 +1077,184 @@ pub fn settings(app: AppHandle) -> Settings {
 /// A failed write is reported rather than swallowed: a toggle that did not
 /// persist looks exactly like one that did, until the next restart.
 #[tauri::command]
-pub fn set_settings(app: AppHandle, settings: Settings) -> std::result::Result<(), String> {
+pub fn set_settings<R: Runtime>(
+    app: AppHandle<R>,
+    settings: Settings,
+) -> std::result::Result<(), String> {
     crate::settings::save(&app, settings)
 }
 
 /// The path the app was launched with, if any: `spagitty /path/to/repo`.
 #[tauri::command]
-pub fn launch_path(app: AppHandle) -> Option<PathBuf> {
+pub fn launch_path<R: Runtime>(app: AppHandle<R>) -> Option<PathBuf> {
     let _ = app.webview_windows();
     std::env::args()
         .nth(1)
         .map(PathBuf::from)
         .filter(|p| p.exists())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::{self, Emitted};
+    use serde_json::Value;
+    use spagitty_core::fixture::Fixture;
+    use tauri::test::MockRuntime;
+    use tauri::{App, Manager};
+
+    /// An application and the repository it is about to be given.
+    ///
+    /// Every command takes `State<'_, AppState>`, which can only be borrowed
+    /// from a built application, so the app has to outlive the calls — hence
+    /// holding it rather than returning the state.
+    fn app() -> App<MockRuntime> {
+        testing::app()
+    }
+
+    fn open(app: &App<MockRuntime>, at: &std::path::Path) -> Result<OpenResult> {
+        open_repo(
+            app.handle().clone(),
+            app.state::<AppState>(),
+            at.to_path_buf(),
+        )
+    }
+
+    #[test]
+    fn a_command_against_no_open_repository_says_so() {
+        // The first thing every screen does on a cold start. It has to be an
+        // answer rather than a panic, and the same answer whichever command
+        // asked.
+        let app = app();
+        let state = app.state::<AppState>();
+
+        assert!(matches!(snapshot(state.clone()), Err(Error::NoRepository)));
+        assert!(matches!(branches(state.clone()), Err(Error::NoRepository)));
+        assert!(matches!(stashes(state.clone()), Err(Error::NoRepository)));
+        assert!(matches!(
+            commit_detail(state.clone(), "HEAD".into()),
+            Err(Error::NoRepository)
+        ));
+        assert!(matches!(
+            graph_request(state, 0, 10),
+            Err(Error::NoRepository)
+        ));
+    }
+
+    #[test]
+    fn opening_a_repository_starts_a_walk_and_reports_what_is_there() {
+        let fixture = Fixture::woven();
+        let app = app();
+        let rows = Emitted::<Value>::on(app.handle(), crate::graph_worker::ROWS_EVENT);
+
+        let opened = open(&app, fixture.path()).expect("opening the fixture");
+
+        assert_eq!(opened.info.head.branch.as_deref(), Some("main"));
+        // Opening walks nothing. The worker waits for the first request.
+        rows.no_more_than(0);
+
+        graph_request(app.state::<AppState>(), opened.token, 3).expect("asking for rows");
+        assert_eq!(rows.at_least(1)[0]["rows"].as_array().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn opening_a_second_repository_replaces_the_first() {
+        // Replacing the session drops the previous worker and watcher, which
+        // joins both threads. If either ignored the shutdown this would hang
+        // rather than fail, so it is given a deadline.
+        let first = Fixture::woven();
+        let second = Fixture::woven();
+        let app = app();
+
+        let one = open(&app, first.path()).expect("opening the first");
+
+        let paths = (second.path().to_path_buf(), one.token);
+        let handle = app.handle().clone();
+        let state_is_replaced = std::sync::Arc::new(std::sync::Mutex::new(None));
+        let out = state_is_replaced.clone();
+
+        testing::finishes_promptly("replacing the open repository", move || {
+            let app = handle;
+            let two = open_repo(app.clone(), app.state::<AppState>(), paths.0)
+                .expect("opening the second");
+            *out.lock().expect("result") = Some(two.token);
+        });
+
+        let two = state_is_replaced.lock().expect("result").expect("a token");
+        assert_ne!(two, one.token, "a replaced walk gets a new token");
+
+        // The old repository is gone: a command reads the new one.
+        let info = snapshot(app.state::<AppState>()).expect("a snapshot");
+        assert_eq!(info.info.path, second.path().canonicalize().unwrap());
+    }
+
+    #[test]
+    fn a_request_against_a_replaced_walk_is_ignored_rather_than_refused() {
+        // The UI can send a request that raced a refresh. Rows carry the token
+        // they belong to and stale ones are dropped on arrival, so a stale
+        // request is nothing to report.
+        let fixture = Fixture::woven();
+        let app = app();
+        let rows = Emitted::<Value>::on(app.handle(), crate::graph_worker::ROWS_EVENT);
+
+        let opened = open(&app, fixture.path()).expect("opening the fixture");
+        let stale = opened.token.wrapping_add(1);
+
+        assert!(graph_request(app.state::<AppState>(), stale, 5).is_ok());
+        rows.no_more_than(0);
+
+        // And the walk that is actually running still answers.
+        graph_request(app.state::<AppState>(), opened.token, 2).expect("asking for rows");
+        assert_eq!(rows.at_least(1)[0]["token"], opened.token);
+    }
+
+    #[test]
+    fn restarting_the_walk_produces_a_new_token_and_leaves_the_old_one_stale() {
+        let fixture = Fixture::woven();
+        let app = app();
+
+        let opened = open(&app, fixture.path()).expect("opening the fixture");
+        let restarted = graph_restart(app.handle().clone(), app.state::<AppState>())
+            .expect("restarting the walk");
+
+        assert_ne!(restarted, opened.token);
+        // The old token now names nothing, which is not an error.
+        assert!(graph_request(app.state::<AppState>(), opened.token, 5).is_ok());
+    }
+
+    #[test]
+    fn closing_puts_the_session_back_to_having_no_repository() {
+        let fixture = Fixture::woven();
+        let app = app();
+
+        open(&app, fixture.path()).expect("opening the fixture");
+
+        testing::finishes_promptly("closing the repository", {
+            let handle = app.handle().clone();
+            move || close_repo(handle.state::<AppState>())
+        });
+
+        assert!(matches!(
+            snapshot(app.state::<AppState>()),
+            Err(Error::NoRepository)
+        ));
+    }
+
+    #[test]
+    fn opening_something_that_is_not_a_repository_leaves_the_session_alone() {
+        // The failure must not tear down the repository the user already had
+        // open, which is what a half-replaced session would do.
+        let fixture = Fixture::woven();
+        let empty = tempfile::tempdir().expect("a directory that is not a repository");
+        let app = app();
+
+        open(&app, fixture.path()).expect("opening the fixture");
+        assert!(open(&app, empty.path()).is_err());
+
+        let still_there = snapshot(app.state::<AppState>()).expect("the first repository");
+        assert_eq!(
+            still_there.info.path,
+            fixture.path().canonicalize().unwrap()
+        );
+    }
 }

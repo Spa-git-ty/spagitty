@@ -16,9 +16,9 @@ broken the suite for no gain.
 Sizes are the author's working estimate for someone who already knows the tree,
 and they assume the existing test conventions are followed.
 
-**Every entry under Now and Next is done.** They were worked in order, one
-commit each, between 2026-08-24 and 2026-08-25; what is left is the Later
-section, which was deliberately not started.
+**Every entry under Now and Next is done**, and the Later section is being
+worked through in the order it is written. They were worked one commit each,
+between 2026-08-24 and 2026-08-25.
 
 ## Now
 
@@ -141,8 +141,13 @@ Backlog. The detail panel shows the diff; per-file browsing does not exist.
 
 ### 14. TASK-003 — make the Tauri layer generic over `Runtime`
 
-Backlog, and the only entry that buys nothing a user can see. It buys tests
-against the command layer without a window.
+**Done**, on `task/TASK-003-runtime-generic`. The only entry that buys nothing a
+user can see; what it buys is tests against the command layer without a window.
+
+**Closed by:** `AppHandle<R>` throughout `src-tauri`, `spagitty-core`'s fixtures
+published behind a `fixture` feature so the Tauri layer walks a real repository,
+and seventeen tests over the graph worker's windowing, the watcher's debounce
+and the session. It found no bugs.
 
 ### 15. The long tail
 

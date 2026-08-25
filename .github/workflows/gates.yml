@@ -106,7 +106,7 @@ jobs:
       - name: Rust tests and coverage
         run: |
           cargo llvm-cov --workspace \
-            --ignore-filename-regex 'fixture\.rs' \
+            --ignore-filename-regex '(fixture|testing)\.rs' \
             --fail-under-lines "$COVERAGE_FLOOR" \
             --summary-only
 

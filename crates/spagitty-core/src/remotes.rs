@@ -135,8 +135,18 @@ mod tests {
     /// A repository with two remotes configured, neither of them fetched.
     fn with_remotes() -> Fixture {
         let fixture = Fixture::woven();
-        fixture.git(&["remote", "add", "origin", "https://github.com/maxmya/spagitty.git"]);
-        fixture.git(&["remote", "add", "backup", "git@gitlab.com:maxmya/spagitty.git"]);
+        fixture.git(&[
+            "remote",
+            "add",
+            "origin",
+            "https://github.com/maxmya/spagitty.git",
+        ]);
+        fixture.git(&[
+            "remote",
+            "add",
+            "backup",
+            "git@gitlab.com:maxmya/spagitty.git",
+        ]);
         fixture
     }
 
@@ -184,7 +194,9 @@ mod tests {
         // What tells "added a moment ago" from "gone stale".
         let fixture = with_remotes();
 
-        assert!(remotes(&fixture.open()).iter().all(|remote| remote.refs == 0));
+        assert!(remotes(&fixture.open())
+            .iter()
+            .all(|remote| remote.refs == 0));
     }
 
     #[test]
@@ -203,7 +215,13 @@ mod tests {
     #[test]
     fn a_push_url_is_reported_only_when_it_is_configured() {
         let fixture = with_remotes();
-        fixture.git(&["remote", "set-url", "--push", "origin", "git@github.com:maxmya/spagitty.git"]);
+        fixture.git(&[
+            "remote",
+            "set-url",
+            "--push",
+            "origin",
+            "git@github.com:maxmya/spagitty.git",
+        ]);
 
         let found = remotes(&fixture.open());
 
@@ -258,7 +276,9 @@ mod tests {
         let found = remotes(&fixture.open());
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].name, "backup");
-        assert!(fixture.git(&["for-each-ref", "refs/remotes/origin"]).is_empty());
+        assert!(fixture
+            .git(&["for-each-ref", "refs/remotes/origin"])
+            .is_empty());
     }
 
     #[test]

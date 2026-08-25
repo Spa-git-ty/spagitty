@@ -439,7 +439,11 @@ pub fn regions(text: &str) -> Vec<Region> {
             } else if line.starts_with(SPLIT) && phase != Phase::Theirs {
                 phase = Phase::Theirs;
             } else if line.starts_with(CLOSE) {
-                break if phase == Phase::Theirs { Some(i) } else { None };
+                break if phase == Phase::Theirs {
+                    Some(i)
+                } else {
+                    None
+                };
             } else {
                 match phase {
                     Phase::Ours => ours.push(line),
@@ -498,9 +502,9 @@ fn joined(lines: &[&str]) -> String {
 /// list from [`regions`] cannot be off by the length of an earlier resolution.
 pub fn resolve_region(text: &str, index: usize, side: Side) -> Result<String> {
     let regions = regions(text);
-    let region = regions
-        .get(index)
-        .ok_or_else(|| Error::NotStageable(format!("there is no conflict {} in this file", index + 1)))?;
+    let region = regions.get(index).ok_or_else(|| {
+        Error::NotStageable(format!("there is no conflict {} in this file", index + 1))
+    })?;
 
     Ok(replace(text, region, keep(region, side)))
 }
@@ -612,7 +616,8 @@ fn resumable(operation: Operation) -> Result<&'static str> {
 mod tests {
 
     /// A file with one ordinary conflict in the middle of it.
-    const ONE: &str = "before\n<<<<<<< HEAD\nours line\n=======\ntheirs line\n>>>>>>> other\nafter\n";
+    const ONE: &str =
+        "before\n<<<<<<< HEAD\nours line\n=======\ntheirs line\n>>>>>>> other\nafter\n";
 
     /// The same, written with `diff3` markers, which carry the base as well.
     const WITH_BASE: &str =
@@ -795,7 +800,12 @@ mod tests {
     fn writing_the_merged_file_puts_exactly_what_it_was_given_on_disk() {
         let fixture = Fixture::conflicted();
 
-        write_merged(&fixture.open(), "shared.txt", "one\nboth, actually\nthree\n").expect("write");
+        write_merged(
+            &fixture.open(),
+            "shared.txt",
+            "one\nboth, actually\nthree\n",
+        )
+        .expect("write");
 
         assert_eq!(fixture.read("shared.txt"), "one\nboth, actually\nthree\n");
         assert_eq!(conflicted(&fixture.open()).expect("conflicted").len(), 1);
@@ -810,9 +820,7 @@ mod tests {
 
         mark_resolved(&fixture.open(), &["shared.txt".to_string()]).expect("mark");
 
-        assert!(conflicted(&fixture.open())
-            .expect("conflicted")
-            .is_empty());
+        assert!(conflicted(&fixture.open()).expect("conflicted").is_empty());
     }
 
     #[test]
@@ -827,7 +835,11 @@ mod tests {
         // A merge commit has two parents, which is the thing that was being
         // attempted in the first place.
         let parents = fixture.git(&["rev-list", "--parents", "-n", "1", "HEAD"]);
-        assert_eq!(parents.split_whitespace().count(), 3, "unexpected: {parents}");
+        assert_eq!(
+            parents.split_whitespace().count(),
+            3,
+            "unexpected: {parents}"
+        );
     }
 
     #[test]
@@ -862,7 +874,10 @@ mod tests {
 
     #[test]
     fn an_interactive_rebase_continues_as_a_rebase() {
-        assert_eq!(resumable(Operation::RebaseInteractive).expect("rebase"), "rebase");
+        assert_eq!(
+            resumable(Operation::RebaseInteractive).expect("rebase"),
+            "rebase"
+        );
     }
     use super::*;
     use crate::fixture::Fixture;

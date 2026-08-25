@@ -36,7 +36,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 use spagitty_core::rebase::Progress;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
 pub const PROGRESS_EVENT: &str = "rebase-progress";
 pub const DONE_EVENT: &str = "rebase-done";
@@ -89,8 +89,8 @@ impl Drop for RebaseWorker {
 /// `workdir` and `git_dir` are both taken by the caller while it still holds
 /// the session lock, so this thread never needs it. Fails only if `git` could
 /// not be started; everything after that arrives on [`DONE_EVENT`].
-pub fn spawn(
-    app: AppHandle,
+pub fn spawn<R: Runtime>(
+    app: AppHandle<R>,
     workdir: PathBuf,
     git_dir: PathBuf,
     upstream: String,
@@ -137,8 +137,8 @@ pub fn spawn(
 }
 
 /// Poll the state directory until the child exits, emitting each new step.
-fn watch(
-    app: &AppHandle,
+fn watch<R: Runtime>(
+    app: &AppHandle<R>,
     git_dir: &std::path::Path,
     child: &mut std::process::Child,
     token: u64,
@@ -170,8 +170,8 @@ fn watch(
 }
 
 /// Say what happened, telling a stop apart from a failure.
-fn report(
-    app: &AppHandle,
+fn report<R: Runtime>(
+    app: &AppHandle<R>,
     git_dir: &std::path::Path,
     token: u64,
     status: std::io::Result<std::process::ExitStatus>,
@@ -185,7 +185,9 @@ fn report(
     let error = match &status {
         Ok(status) if status.success() => None,
         Ok(_) if stopped => None,
-        Ok(status) => Some(last_line(&said).unwrap_or_else(|| format!("git rebase failed ({status})"))),
+        Ok(status) => {
+            Some(last_line(&said).unwrap_or_else(|| format!("git rebase failed ({status})")))
+        }
         Err(error) => Some(error.to_string()),
     };
 

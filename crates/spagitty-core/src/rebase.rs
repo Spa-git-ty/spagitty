@@ -535,7 +535,14 @@ mod tests {
     /// A real interrupted rebase in a test is a race: it depends on git
     /// stopping where the fixture expects. The counters are a documented file
     /// format, and what is being asserted here is that they are read.
-    fn write_state(fixture: &Fixture, dir: &str, current: &str, total: &str, step: usize, end: usize) {
+    fn write_state(
+        fixture: &Fixture,
+        dir: &str,
+        current: &str,
+        total: &str,
+        step: usize,
+        end: usize,
+    ) {
         let git_dir = fixture.path().join(".git").join(dir);
         std::fs::create_dir_all(&git_dir).expect("state directory");
         std::fs::write(git_dir.join(current), format!("{step}\n")).expect("current");
@@ -594,7 +601,10 @@ mod tests {
         let fixture = Fixture::woven();
         write_state(&fixture, "rebase-merge", "msgnum", "end", 1, 2);
 
-        assert!(progress(&fixture.open()).expect("progress").branch.is_none());
+        assert!(progress(&fixture.open())
+            .expect("progress")
+            .branch
+            .is_none());
     }
 
     #[test]

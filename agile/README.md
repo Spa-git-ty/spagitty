@@ -133,7 +133,7 @@ of its own.
 | --- | --- | --- | --- |
 | [TASK-001](items/TASK-001-records-baseline.md) | Records baseline | — | Done |
 | [TASK-002](items/TASK-002-test-and-ci-baseline.md) | Test and CI baseline | — | Done |
-| [TASK-003](items/TASK-003-runtime-generic-tauri-layer.md) | Make the Tauri layer generic over `Runtime` | — | Backlog |
+| [TASK-003](items/TASK-003-runtime-generic-tauri-layer.md) | Make the Tauri layer generic over `Runtime` | — | Done |
 | [TASK-004](items/TASK-004-rename-to-spagitty.md) | Rename the project from GitLord to Spagitty | — | Done |
 | [TASK-005](items/TASK-005-branch-coverage-floor.md) | Branch coverage is below the Amendment 10 floor | — | Done |
 | [TASK-007](items/TASK-007-copy-sweep.md) | Copy sweep: drop the hand-holding and the Mac notation | all | Done |

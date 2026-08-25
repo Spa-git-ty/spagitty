@@ -83,7 +83,7 @@ cargo deny check licenses bans sources     # gate 1, needs cargo-deny
 cargo fmt --all --check                    # gate 2
 cargo clippy --workspace --all-targets -- -D warnings
 npm run check
-cargo llvm-cov --workspace --ignore-filename-regex 'fixture\.rs' --summary-only
+cargo llvm-cov --workspace --ignore-filename-regex '(fixture|testing)\.rs' --summary-only
 npm run coverage                           # gate 3
 cargo deny check advisories                # gate 4
 npm audit --audit-level=high

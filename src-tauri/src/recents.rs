@@ -12,7 +12,7 @@
 
 use std::path::{Path, PathBuf};
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 
 /// How many paths are kept. Long enough to cover everything anyone moves
 /// between in a month, short enough that the file stays readable by hand.
@@ -24,7 +24,7 @@ const FILE: &str = "repositories.json";
 ///
 /// A missing or unreadable file is an empty list rather than an error: this is
 /// a convenience, and losing it must never stop the application starting.
-pub fn load(app: &AppHandle) -> Vec<PathBuf> {
+pub fn load<R: Runtime>(app: &AppHandle<R>) -> Vec<PathBuf> {
     let Some(path) = file(app) else {
         return Vec::new();
     };
@@ -35,7 +35,7 @@ pub fn load(app: &AppHandle) -> Vec<PathBuf> {
 }
 
 /// Put `repo` at the front, removing any earlier mention of it.
-pub fn remember(app: &AppHandle, repo: &Path) {
+pub fn remember<R: Runtime>(app: &AppHandle<R>, repo: &Path) {
     save(app, &promoted(load(app), repo));
 }
 
@@ -44,7 +44,7 @@ pub fn remember(app: &AppHandle, repo: &Path) {
 /// The repository on disk is not touched. This removes a row from Spagitty's
 /// own list and nothing else — the one destructive-sounding action on the
 /// screen that is not destructive at all.
-pub fn forget(app: &AppHandle, repo: &Path) {
+pub fn forget<R: Runtime>(app: &AppHandle<R>, repo: &Path) {
     save(app, &without(load(app), repo));
 }
 
@@ -67,7 +67,7 @@ fn without(mut paths: Vec<PathBuf>, repo: &Path) -> Vec<PathBuf> {
     paths
 }
 
-fn save(app: &AppHandle, paths: &[PathBuf]) {
+fn save<R: Runtime>(app: &AppHandle<R>, paths: &[PathBuf]) {
     let Some(path) = file(app) else {
         return;
     };
@@ -80,7 +80,7 @@ fn save(app: &AppHandle, paths: &[PathBuf]) {
     }
 }
 
-fn file(app: &AppHandle) -> Option<PathBuf> {
+fn file<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
     app.path().app_config_dir().ok().map(|dir| dir.join(FILE))
 }
 

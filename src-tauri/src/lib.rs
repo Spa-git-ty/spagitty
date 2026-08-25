@@ -17,6 +17,8 @@ mod rebase_worker;
 mod recents;
 mod search_worker;
 mod settings;
+#[cfg(test)]
+mod testing;
 mod watch;
 
 pub fn run() {

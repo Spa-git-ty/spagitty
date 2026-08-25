@@ -20,7 +20,7 @@ Coverage of first-party code is measured on both sides and both must clear the
 Amendment 10 floor of 70%:
 
 ```sh
-cargo llvm-cov --workspace --ignore-filename-regex 'fixture\.rs' --summary-only
+cargo llvm-cov --workspace --ignore-filename-regex '(fixture|testing)\.rs' --summary-only
 npm run coverage
 ```
 
@@ -36,6 +36,31 @@ it by construction. `Fixture::empty()` is an initialised repository with no
 commits, `Fixture::woven()` the standard history below with a clean working
 copy, and `Fixture::dirty()` the same with work in progress. Each lives in a
 temporary directory that is removed with it.
+
+## Fixtures in the Tauri layer's tests
+
+`src-tauri` tests the graph worker, the filesystem watcher's debounce and the
+session against a real repository too. Two things make that possible.
+
+Everything in `src-tauri` that touches the application is generic over
+`R: tauri::Runtime` (TASK-003), so `tauri::test::mock_app` can supply an
+`AppHandle<MockRuntime>` where the real one supplies a Wry handle. And
+`spagitty-core`'s fixtures are `pub` behind a `fixture` feature, which
+`src-tauri` enables as a dev-dependency — one fixture builder for the workspace
+rather than two things building repositories with the `git` binary. Nothing
+enables the feature outside tests, so a release build carries neither the
+fixtures nor `tempfile`.
+
+`src-tauri/src/testing.rs` holds what an event test needs beyond that: a mock
+application managing the real `AppState`, an `Emitted<T>` collector with
+`at_least(n)` and `no_more_than(n)`, and `finishes_promptly`, which puts a
+deadline on a drop. The last one matters — dropping a worker joins its thread,
+so a worker that ignored its shutdown would hang the runner rather than fail.
+
+It also points `HOME` and the platform's other configuration variables at a
+temporary directory, once for the whole test binary. `open_repo` writes to the
+recent-repositories list, and a test run must not add rows to the list of
+repositories you have opened.
 
 ## The one test that crosses the language boundary
 

@@ -20,12 +20,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
+use serde::Serialize;
 use spagitty_core::graph::{all_tips, Flow};
 use spagitty_core::refs::RefIndex;
 use spagitty_core::repo;
 use spagitty_core::search::{self, Query, SearchRow, BATCH};
-use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
 pub const ROWS_EVENT: &str = "search-rows";
 pub const DONE_EVENT: &str = "search-done";
@@ -63,7 +63,12 @@ impl Drop for SearchWorker {
     }
 }
 
-pub fn spawn(app: AppHandle, path: PathBuf, query: Query, token: u64) -> SearchWorker {
+pub fn spawn<R: Runtime>(
+    app: AppHandle<R>,
+    path: PathBuf,
+    query: Query,
+    token: u64,
+) -> SearchWorker {
     let cancelled = Arc::new(AtomicBool::new(false));
     let flag = cancelled.clone();
 
@@ -78,7 +83,13 @@ pub fn spawn(app: AppHandle, path: PathBuf, query: Query, token: u64) -> SearchW
     }
 }
 
-fn run(app: AppHandle, path: PathBuf, query: Query, token: u64, cancelled: &AtomicBool) {
+fn run<R: Runtime>(
+    app: AppHandle<R>,
+    path: PathBuf,
+    query: Query,
+    token: u64,
+    cancelled: &AtomicBool,
+) {
     let mut total = 0usize;
     let mut batch: Vec<SearchRow> = Vec::with_capacity(BATCH);
 
@@ -127,7 +138,7 @@ fn run(app: AppHandle, path: PathBuf, query: Query, token: u64, cancelled: &Atom
     );
 }
 
-fn emit_rows(app: &AppHandle, token: u64, batch: &mut Vec<SearchRow>) {
+fn emit_rows<R: Runtime>(app: &AppHandle<R>, token: u64, batch: &mut Vec<SearchRow>) {
     if batch.is_empty() {
         return;
     }

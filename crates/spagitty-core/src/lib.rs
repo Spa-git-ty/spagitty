@@ -31,21 +31,22 @@ pub mod graph;
 pub mod identity;
 pub mod ops;
 pub mod rebase;
-pub mod reflog;
 pub mod record;
+pub mod reflog;
 pub mod refs;
 pub mod remotes;
 pub mod repo;
 pub mod search;
 pub mod shell;
 pub mod stash;
-pub mod tags;
 pub mod status;
+pub mod tags;
 pub mod work;
 
-/// Repository fixtures, shared by the tests of every module that reads one.
-#[cfg(test)]
-mod fixture;
+/// Repository fixtures, shared by the tests of every module that reads one,
+/// and by the Tauri layer's tests behind the `fixture` feature.
+#[cfg(any(test, feature = "fixture"))]
+pub mod fixture;
 
 /// Re-exported so callers can name gix types (`ThreadSafeRepository` and
 /// friends) without depending on gix themselves. There is one gix version in

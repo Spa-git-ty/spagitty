@@ -20,7 +20,7 @@ use std::time::Duration;
 use notify::event::ModifyKind;
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
 pub const CHANGED_EVENT: &str = "repo-changed";
 
@@ -63,7 +63,7 @@ impl Drop for RepoWatcher {
 /// Start watching `git_dir`. Returns `None` if the platform watcher could not
 /// be created — the app still works, it just won't notice outside changes,
 /// which is better than refusing to open the repository.
-pub fn watch(app: AppHandle, git_dir: &Path) -> Option<RepoWatcher> {
+pub fn watch<R: Runtime>(app: AppHandle<R>, git_dir: &Path) -> Option<RepoWatcher> {
     let (event_tx, event_rx) = channel::<notify::Result<notify::Event>>();
     let (stop_tx, stop_rx) = channel::<()>();
 
@@ -87,7 +87,11 @@ pub fn watch(app: AppHandle, git_dir: &Path) -> Option<RepoWatcher> {
     })
 }
 
-fn debounce(app: AppHandle, events: Receiver<notify::Result<notify::Event>>, stop: Receiver<()>) {
+fn debounce<R: Runtime>(
+    app: AppHandle<R>,
+    events: Receiver<notify::Result<notify::Event>>,
+    stop: Receiver<()>,
+) {
     loop {
         if stop.try_recv().is_ok() {
             return;
@@ -295,9 +299,114 @@ mod tests {
         assert!(classify(&event(WROTE, &[])).is_empty());
     }
 
-    // `watch` itself, the debounce loop and the graph worker all take an
-    // `AppHandle`, which is bound to the Wry runtime here. Testing them means
-    // making this crate generic over `tauri::Runtime` so `mock_app` can supply
-    // its own — a signature change across the whole Tauri layer, recorded as
-    // TASK-003 rather than smuggled into a testing item.
+    // The debounce loop takes an `AppHandle<R>` rather than a handle bound to
+    // the Wry runtime (TASK-003), so `mock_app` can supply one and the
+    // coalescing below can be tested for what it emits rather than only for
+    // what it classifies.
+
+    use crate::testing::{self, Emitted};
+    use serde_json::Value;
+    use std::sync::mpsc::Sender;
+
+    /// A debounce loop running on its own thread, with the two channels it
+    /// reads and the events it emits.
+    struct Running {
+        events: Sender<notify::Result<notify::Event>>,
+        stop: Sender<()>,
+        changed: Emitted<Value>,
+        thread: Option<std::thread::JoinHandle<()>>,
+        _app: tauri::App<tauri::test::MockRuntime>,
+    }
+
+    impl Running {
+        fn start() -> Self {
+            let app = testing::app();
+            let changed = Emitted::<Value>::on(app.handle(), CHANGED_EVENT);
+
+            let (events, event_rx) = channel();
+            let (stop, stop_rx) = channel();
+            let handle = app.handle().clone();
+            let thread = std::thread::spawn(move || debounce(handle, event_rx, stop_rx));
+
+            Running {
+                events,
+                stop,
+                changed,
+                thread: Some(thread),
+                _app: app,
+            }
+        }
+
+        fn send(&self, kind: EventKind, paths: &[&str]) {
+            self.events.send(Ok(event(kind, paths))).expect("sending");
+        }
+    }
+
+    impl Drop for Running {
+        /// Wind the loop down and wait for it, so a debounce that ignored both
+        /// ways out fails the test rather than leaking a thread.
+        fn drop(&mut self) {
+            let _ = self.stop.send(());
+            if let Some(thread) = self.thread.take() {
+                thread.join().expect("the debounce thread");
+            }
+        }
+    }
+
+    #[test]
+    fn a_burst_from_one_commit_becomes_one_refresh() {
+        // A commit rewrites the index, HEAD, a ref and the reflog within a few
+        // milliseconds. The UI should refresh once, after it settles, not four
+        // times mid-write.
+        let running = Running::start();
+
+        for path in [
+            ".git/index",
+            ".git/HEAD",
+            ".git/refs/heads/main",
+            ".git/logs/HEAD",
+        ] {
+            running.send(WROTE, &[path]);
+        }
+
+        let events = running.changed.at_least(1);
+        assert_eq!(events[0]["refs"], true);
+        assert_eq!(events[0]["worktree"], true);
+        running.changed.no_more_than(1);
+    }
+
+    #[test]
+    fn a_burst_that_changes_nothing_emits_nothing() {
+        // Reads, lock files and git's own scratch files. Emitting for these is
+        // the feedback loop `is_change` and `classify` exist to prevent, and
+        // the loop must not emit an empty payload either.
+        let running = Running::start();
+
+        running.send(
+            EventKind::Access(notify::event::AccessKind::Read),
+            &[".git/refs/heads/main"],
+        );
+        running.send(EventKind::Create(CreateKind::File), &[".git/index.lock"]);
+        running.send(WROTE, &[".git/COMMIT_EDITMSG"]);
+
+        running.changed.no_more_than(0);
+    }
+
+    #[test]
+    fn a_change_after_the_repository_settles_is_its_own_refresh() {
+        // The complement of coalescing: two operations far enough apart are two
+        // events, not one. A debounce that swallowed the second would leave the
+        // UI stale until something else happened.
+        let running = Running::start();
+
+        running.send(WROTE, &[".git/refs/heads/main"]);
+        assert_eq!(running.changed.at_least(1).len(), 1);
+
+        std::thread::sleep(QUIET_PERIOD * 3);
+
+        running.send(WROTE, &[".git/index"]);
+        let events = running.changed.at_least(2);
+        assert_eq!(events[1]["worktree"], true);
+        assert_eq!(events[1]["refs"], false);
+    }
 }

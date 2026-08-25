@@ -2,7 +2,7 @@
 
 # TASK-003 — Make the Tauri layer generic over `Runtime`
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done. Plan: [`agile/plans/TASK-003-plan.md`](../plans/TASK-003-plan.md).
 
 ## Problem
 
@@ -53,6 +53,19 @@ would have made the change hard to review and impossible to revert on its own.
   call site, so `lib.rs` is the only place that names the concrete runtime.
 - No behaviour changes. If a test written afterwards fails, that is a bug this
   item found, not a bug it caused — record it as its own `BUG-###`.
+
+## What it found
+
+Nothing. Every test written afterwards passed first time, so there is no
+`BUG-###` to point at here. The refactor itself was sixty-four lines across ten
+files and `lib.rs` did not have to change: `generate_handler!` takes a generic
+command as it stands.
+
+Two things came with it that the item did not name. `spagitty-core`'s fixtures
+are now `pub` behind a `fixture` feature, so the Tauri layer's tests walk a real
+repository rather than growing a second fixture builder; and `src-tauri/src/testing.rs`
+holds the mock application, an event collector and a deadline for the drops that
+join worker threads. Both are in the plan.
 
 ## Dependencies
 

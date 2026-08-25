@@ -12,7 +12,7 @@
 //! the emit result is discarded here exactly as it is in the workers.
 
 use spagitty_core::record::{self, Executed};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
 /// One executed command. The payload is the entry itself.
 pub const EXECUTED_EVENT: &str = "git-command";
@@ -22,7 +22,7 @@ pub const EXECUTED_EVENT: &str = "git-command";
 /// Called once from `run`'s setup. The handler runs on whichever thread spawned
 /// git — inside the operation the user is waiting for — so it does no work
 /// beyond the emit.
-pub fn forward_to(app: AppHandle) {
+pub fn forward_to<R: Runtime>(app: AppHandle<R>) {
     record::observe(Box::new(move |entry: &Executed| {
         let _ = app.emit(EXECUTED_EVENT, entry);
     }));

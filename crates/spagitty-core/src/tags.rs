@@ -146,7 +146,12 @@ pub fn create(repo: &gix::Repository, name: &str, target: &str, message: &str) -
     if name.is_empty() {
         return Err(Error::NotStageable("a tag needs a name".into()));
     }
-    crate::shell::create_tag(crate::repo::workdir(repo)?, name, target.trim(), message.trim())
+    crate::shell::create_tag(
+        crate::repo::workdir(repo)?,
+        name,
+        target.trim(),
+        message.trim(),
+    )
 }
 
 /// Delete a local tag.
@@ -309,7 +314,10 @@ mod tests {
 
         create(&fixture.open(), "older", &elsewhere, "").expect("create");
 
-        assert_eq!(find(&tags(&fixture.open()).expect("tags"), "older").target, elsewhere);
+        assert_eq!(
+            find(&tags(&fixture.open()).expect("tags"), "older").target,
+            elsewhere
+        );
     }
 
     #[test]
@@ -318,7 +326,10 @@ mod tests {
 
         let error = create(&fixture.open(), "   ", "", "").unwrap_err();
 
-        assert!(format!("{error}").contains("needs a name"), "unexpected: {error}");
+        assert!(
+            format!("{error}").contains("needs a name"),
+            "unexpected: {error}"
+        );
     }
 
     #[test]
@@ -338,7 +349,9 @@ mod tests {
         // A tag object is immutable, so this is a delete and a recreate. What
         // must not move is the commit it names.
         let fixture = Fixture::woven();
-        let before = find(&tags(&fixture.open()).expect("tags"), "v0.1.0").target.clone();
+        let before = find(&tags(&fixture.open()).expect("tags"), "v0.1.0")
+            .target
+            .clone();
 
         retag(&fixture.open(), "v0.1.0", &before, "Corrected message").expect("retag");
 
@@ -357,7 +370,10 @@ mod tests {
 
         let error = retag(&fixture.open(), "v0.1.0", "HEAD", "  ").unwrap_err();
 
-        assert!(format!("{error}").contains("needs a message"), "unexpected: {error}");
+        assert!(
+            format!("{error}").contains("needs a message"),
+            "unexpected: {error}"
+        );
         assert!(!tags(&fixture.open()).expect("tags").is_empty());
     }
 }

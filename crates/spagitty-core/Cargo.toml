@@ -19,7 +19,20 @@ gix = "0.86"
 serde = { workspace = true }
 thiserror = { workspace = true }
 
-[dev-dependencies]
+[features]
+# The repository fixtures, published for the Tauri layer's tests.
+#
+# `src-tauri` tests the graph worker and the session against a real repository,
+# and a second fixture builder there would be a second thing to keep honest.
+# Off by default, so a release build carries neither the fixtures nor tempfile.
+fixture = ["dep:tempfile"]
+
+[dependencies.tempfile]
 # Fixture repositories are built in a temporary directory and removed with it,
 # so tests never write anywhere a person keeps work.
+version = "3"
+optional = true
+
+[dev-dependencies]
+# The crate's own tests always want the fixtures.
 tempfile = "3"

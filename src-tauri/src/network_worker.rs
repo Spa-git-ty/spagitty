@@ -31,7 +31,7 @@ use std::thread::JoinHandle;
 use serde::{Deserialize, Serialize};
 use spagitty_core::clone::{self, Progress};
 use spagitty_core::shell;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
 pub const PROGRESS_EVENT: &str = "network-progress";
 pub const DONE_EVENT: &str = "network-done";
@@ -91,8 +91,15 @@ impl Drop for NetworkWorker {
 
 /// What to run. Built by the command while it holds the session lock.
 pub enum Job {
-    Fetch { remote: String, prune: bool },
-    Push { remote: String, refspec: String, force: bool },
+    Fetch {
+        remote: String,
+        prune: bool,
+    },
+    Push {
+        remote: String,
+        refspec: String,
+        force: bool,
+    },
 }
 
 impl Job {
@@ -119,8 +126,8 @@ impl Job {
 ///
 /// Fails only if `git` could not be started; everything after that arrives on
 /// [`DONE_EVENT`].
-pub fn spawn(
-    app: AppHandle,
+pub fn spawn<R: Runtime>(
+    app: AppHandle<R>,
     workdir: PathBuf,
     job: Job,
     token: u64,
@@ -170,8 +177,8 @@ pub fn spawn(
 /// The same shape as the clone worker's, and for the same reason: git ends a
 /// progress update with a carriage return rather than a newline, because it is
 /// rewriting one line on a terminal, so both count as the end of a line.
-fn report(
-    app: &AppHandle,
+fn report<R: Runtime>(
+    app: &AppHandle<R>,
     token: u64,
     operation: Operation,
     stderr: std::process::ChildStderr,

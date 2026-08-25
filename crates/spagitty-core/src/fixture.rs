@@ -231,6 +231,28 @@ impl Fixture {
         fixture
     }
 
+    /// A linear history of `count` commits, oldest last.
+    ///
+    /// For the windowing tests: everything the graph worker does in batches
+    /// needs a history longer than one batch, and the content of the commits is
+    /// beside the point. Empty commits keep it fast — the walk reads the commit
+    /// graph, not the trees.
+    pub fn linear(count: usize) -> Self {
+        let fixture = Self::empty();
+
+        for n in 0..count {
+            fixture.git(&[
+                "commit",
+                "-q",
+                "--allow-empty",
+                "-m",
+                &format!("commit {n}"),
+            ]);
+        }
+
+        fixture
+    }
+
     pub fn path(&self) -> &Path {
         self.dir.path()
     }

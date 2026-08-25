@@ -24,10 +24,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
+use serde::Serialize;
 use spagitty_core::clone::{self, Progress};
 use spagitty_core::shell;
-use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
 pub const PROGRESS_EVENT: &str = "clone-progress";
 pub const DONE_EVENT: &str = "clone-done";
@@ -87,8 +87,8 @@ impl Drop for CloneWorker {
 /// Fails only if `git` could not be started at all. Everything after that —
 /// a bad URL, a refused authentication, a network that is not there — arrives
 /// on [`DONE_EVENT`] with git's own message.
-pub fn spawn(
-    app: AppHandle,
+pub fn spawn<R: Runtime>(
+    app: AppHandle<R>,
     url: String,
     destination: PathBuf,
     remove_on_cancel: bool,
@@ -138,7 +138,11 @@ pub fn spawn(
 /// newline — it is rewriting one line on a terminal — so both count as the end
 /// of a line here. Reading a byte at a time is through a `BufReader`, so it is
 /// a buffer index rather than a syscall.
-fn report(app: &AppHandle, token: u64, stderr: std::process::ChildStderr) -> Option<String> {
+fn report<R: Runtime>(
+    app: &AppHandle<R>,
+    token: u64,
+    stderr: std::process::ChildStderr,
+) -> Option<String> {
     let mut reader = BufReader::new(stderr);
     let mut line: Vec<u8> = Vec::new();
     let mut byte = [0u8; 1];
@@ -175,8 +179,8 @@ fn report(app: &AppHandle, token: u64, stderr: std::process::ChildStderr) -> Opt
 }
 
 /// Reap the child, tidy up if it was cancelled, and say what happened.
-fn finish(
-    app: &AppHandle,
+fn finish<R: Runtime>(
+    app: &AppHandle<R>,
     token: u64,
     child: &Mutex<std::process::Child>,
     cancelled: &AtomicBool,

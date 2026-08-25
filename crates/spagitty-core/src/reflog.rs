@@ -292,7 +292,10 @@ mod tests {
     fn a_rebase_groups_under_one_operation_however_git_labels_the_step() {
         // `rebase (finish)` and `rebase (pick)` are one thing to a reader, and
         // a column that spelled out every variant would not be scannable.
-        assert_eq!(operation_of("rebase (finish): returning to refs/heads/x"), "rebase");
+        assert_eq!(
+            operation_of("rebase (finish): returning to refs/heads/x"),
+            "rebase"
+        );
         assert_eq!(operation_of("rebase (pick): a commit"), "rebase");
         assert_eq!(operation_of("reset: moving to HEAD~1"), "reset");
         assert_eq!(operation_of("checkout: moving from a to b"), "checkout");
@@ -336,7 +339,9 @@ mod tests {
         let fixture = Fixture::woven();
 
         assert_eq!(
-            reflog(&fixture.open(), &query("")).expect("reflog").reference,
+            reflog(&fixture.open(), &query(""))
+                .expect("reflog")
+                .reference,
             "HEAD"
         );
     }

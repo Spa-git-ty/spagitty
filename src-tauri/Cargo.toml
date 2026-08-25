@@ -28,3 +28,12 @@ tauri-plugin-dialog = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 notify = "8"
+
+[dev-dependencies]
+# `tauri::test::mock_app` supplies an `AppHandle<MockRuntime>`, which is the
+# whole reason this crate is generic over `Runtime` (TASK-003).
+tauri = { version = "2", features = ["test"] }
+# Real repositories to walk, rather than a second fixture builder here.
+spagitty-core = { workspace = true, features = ["fixture"] }
+# The isolated configuration directory the tests point HOME at.
+tempfile = "3"

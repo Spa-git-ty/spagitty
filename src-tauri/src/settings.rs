@@ -18,7 +18,7 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 
 const FILE: &str = "settings.json";
 
@@ -66,7 +66,7 @@ impl Default for Settings {
 }
 
 /// The stored settings, or the defaults.
-pub fn load(app: &AppHandle) -> Settings {
+pub fn load<R: Runtime>(app: &AppHandle<R>) -> Settings {
     let Some(path) = file(app) else {
         return Settings::default();
     };
@@ -81,7 +81,7 @@ pub fn load(app: &AppHandle) -> Settings {
 /// A failed write is worth saying out loud here, unlike the repository list: a
 /// toggle that silently did not persist looks exactly like one that did until
 /// the next restart.
-pub fn save(app: &AppHandle, settings: Settings) -> Result<(), String> {
+pub fn save<R: Runtime>(app: &AppHandle<R>, settings: Settings) -> Result<(), String> {
     let path =
         file(app).ok_or_else(|| "there is no configuration directory to write to".to_string())?;
 
@@ -98,7 +98,7 @@ fn parse(text: &str) -> Settings {
     serde_json::from_str(text).unwrap_or_default()
 }
 
-fn file(app: &AppHandle) -> Option<PathBuf> {
+fn file<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
     app.path().app_config_dir().ok().map(|dir| dir.join(FILE))
 }
 
