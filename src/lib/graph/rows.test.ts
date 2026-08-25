@@ -92,6 +92,34 @@ describe('CommitRows', () => {
 		view.destroy();
 	});
 
+	it('shows no edge shadow when there is nothing under it', () => {
+		// happy-dom lays nothing out, so `scrollWidth` is 0 and the table cannot
+		// overflow. That is the case worth pinning anyway: the affordance must
+		// be absent when it would be a lie.
+		const view = render(CommitRows, {});
+
+		for (const edge of view.all('.edge')) {
+			expect(edge.classList.contains('showing')).toBe(false);
+		}
+
+		view.destroy();
+	});
+
+	it('puts an edge on each side, and lets clicks through both', () => {
+		// They sit over the rows, so anything they cover has to stay reachable.
+		const view = render(CommitRows, {});
+
+		const edges = view.all('.edge');
+		expect(edges).toHaveLength(2);
+		expect(view.all('.edge.left')).toHaveLength(1);
+		expect(view.all('.edge.right')).toHaveLength(1);
+		for (const edge of edges) {
+			expect(edge.getAttribute('aria-hidden')).toBe('true');
+		}
+
+		view.destroy();
+	});
+
 	it('sizes the scroll area to the whole history, not to the rows drawn', () => {
 		control.setRows(Array.from({ length: 5000 }, (_, i) => row(i)));
 		const view = render(CommitRows, {});

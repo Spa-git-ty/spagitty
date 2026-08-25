@@ -127,18 +127,31 @@ export const LANE_SPAN = (LANE_COLUMNS_MAX - 1) * LANE_PITCH;
 /**
  * Tightest the lanes may be squeezed before compression stops helping.
  *
- * A lane is a [`LANE_STROKE`]-wide line, so two of them at a 6px pitch keep
- * 3.5px of daylight — thin, but two lines rather than a band. Below this they
- * merge into one stripe and squeezing further trades a readable overflow for an
- * unreadable one, so the last lanes clamp instead, exactly as every lane past
- * twelve used to.
+ * **This was 6, and 6 was wrong.** The reasoning was that a
+ * [`LANE_STROKE`]-wide line at a 6px pitch keeps 3.5px of daylight — "thin, but
+ * two lines rather than a band" — and that 48 tellable-apart lanes beat the
+ * twelve the old clamp gave.
  *
- * At this pitch the span holds 48 lanes. That covers `cli/cli` outright, whose
- * measured peak is what set the cap above. `git/git`'s 382 still overflows —
- * some histories defeat any width — but 48 of them stay tellable apart where
- * twelve did before.
+ * A screenshot of `git/git` disproved it. At a mean lane depth of 187 the span
+ * fills with 48 lines 3.5px apart and the column is not a graph, it is a
+ * picket fence: no lane can be followed from one row to the next, and the
+ * 3.5px of daylight that made the argument work on paper is not daylight on a
+ * real display at a real size. The arithmetic was right and the premise was
+ * not.
+ *
+ * 14 is half the design pitch, which leaves 11.5px between two strokes — a gap
+ * you can see rather than one you can calculate. The span then holds 21 lanes
+ * instead of 48.
+ *
+ * Twenty-one is fewer, and that is the trade taken deliberately: a history deep
+ * enough to need a twenty-second lane is a history where the extra lane was
+ * never going to be readable, and folding it is more honest than drawing it
+ * indistinguishably. `git/git` still overflows — 382 lanes defeat any width,
+ * and every client folds there, including the one this was compared against.
+ * The difference is that the twenty-one which *are* drawn can now be told
+ * apart.
  */
-export const LANE_PITCH_MIN = 6;
+export const LANE_PITCH_MIN = 14;
 
 /** Highest lane index the span can still draw at a distinct x. */
 export const LANE_INDEX_MAX = Math.floor(LANE_SPAN / LANE_PITCH_MIN);

@@ -159,6 +159,42 @@
 	/** How far the rows are scrolled sideways; the header follows it. */
 	let scrollLeft = $state(0);
 
+	/**
+	 * Whether there is more table off either side.
+	 *
+	 * A scrollbar is the honest answer to "can this scroll", and on every
+	 * platform Spagitty runs on it is also an overlay that is invisible until
+	 * you are already scrolling — which makes it no answer at all to somebody
+	 * deciding whether there is anything over there. The edge shadow is: it
+	 * appears exactly when content is hidden under it and goes when it is not.
+	 *
+	 * Measured rather than derived from the column widths. The table is wider
+	 * than the window only sometimes, and by an amount that depends on a
+	 * dragged width, a zoom and the window — the element already knows all
+	 * three.
+	 */
+	let scrollWidth = $state(0);
+	let scrollerWidth = $state(0);
+
+	const moreLeft = $derived(scrollLeft > 0);
+	// A pixel of slack: fractional scroll positions at non-integer zoom levels
+	// otherwise leave the shadow up forever at the far right.
+	const moreRight = $derived(scrollLeft + scrollerWidth < scrollWidth - 1);
+
+	function measure(element: HTMLElement) {
+		scrollWidth = element.scrollWidth;
+		scrollerWidth = element.clientWidth;
+	}
+
+	// Measured when the table's width changes as well as on scroll, or the
+	// right edge would stay dark until the first sideways scroll — which is
+	// exactly the moment it is no longer needed.
+	$effect(() => {
+		void tableWidth;
+		void laneWidth;
+		if (scroller) measure(scroller);
+	});
+
 
 	// --- Dimming ----------------------------------------------------------
 
@@ -508,9 +544,11 @@
 			class="scroller"
 			bind:this={scroller}
 			bind:clientHeight={viewportHeight}
+			bind:clientWidth={scrollerWidth}
 			onscroll={(event) => {
 				scrollTop = event.currentTarget.scrollTop;
 				scrollLeft = event.currentTarget.scrollLeft;
+				measure(event.currentTarget);
 			}}
 			{onkeydown}
 			role="listbox"
@@ -694,6 +732,13 @@
 				{/if}
 			{/each}
 		</div>
+
+		<!--
+			The edges. Purely an affordance: they say there is table under them
+			and take no clicks, so anything they cover stays reachable.
+		-->
+		<div class="edge left" class:showing={moreLeft} aria-hidden="true"></div>
+		<div class="edge right" class:showing={moreRight} aria-hidden="true"></div>
 	</div>
 </div>
 
@@ -721,6 +766,36 @@
 		flex: 1;
 		min-height: 0;
 		overflow: hidden;
+	}
+
+	/*
+	   A gradient rather than a hard line, and over the content rather than
+	   beside it: what it means is "this carries on underneath", and a rule
+	   would say "this stops here" — the opposite.
+	*/
+	.edge {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		width: 24px;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.12s ease;
+		z-index: 4;
+	}
+
+	.edge.showing {
+		opacity: 1;
+	}
+
+	.edge.left {
+		left: 0;
+		background: linear-gradient(to right, var(--shadow-edge), transparent);
+	}
+
+	.edge.right {
+		right: 0;
+		background: linear-gradient(to left, var(--shadow-edge), transparent);
 	}
 
 	.scroller {
@@ -830,8 +905,21 @@
 		align-items: center;
 	}
 
+	/*
+	   Chips start at the column's own left edge, so every row's first chip is at
+	   the same x and the eye reads a column.
+
+	   They used to be `flex-end`, tucked against the graph. The idea was to sit
+	   them near the lane they label, but the lane they label moves and the chips
+	   do not all have the same width — so what it produced was a ragged left
+	   edge on every row, which is what a wall of refs looks like on a busy
+	   repository. A fixed start is the thing that reads as a column.
+
+	   `+n` stays last and is what the overflow clips, which is the right one to
+	   lose: it is already the summary.
+	*/
 	.refs {
-		justify-content: flex-end;
+		justify-content: flex-start;
 		gap: 4px;
 		padding: 0 8px;
 		overflow: hidden;

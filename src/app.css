@@ -87,6 +87,16 @@
 	--window-contact: rgba(76, 79, 105, 0.18);
 	--window-cast: rgba(76, 79, 105, 0.26);
 
+	/*
+	 * The shadow a scrollable edge casts over what is hidden under it.
+	 *
+	 * Same ink family as the window's own depth and lighter than any of it: it
+	 * has to read as "this carries on" at a glance and then stop being noticed,
+	 * because unlike the window's shadow it sits on top of content somebody is
+	 * trying to read.
+	 */
+	--shadow-edge: rgba(76, 79, 105, 0.16);
+
 	--font-ui:
 		system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 	--font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
@@ -116,6 +126,9 @@
 	   shadow now covers the 4px the shrink used to take off every side, and the
 	   weight is meant to be unchanged. */
 	--window-cast: rgba(0, 0, 0, 0.48);
+	/* Dark separates by shadow density rather than contrast, as above, so the
+	   edge goes black and a little heavier to carry the same weight. */
+	--shadow-edge: rgba(0, 0, 0, 0.34);
 	--placeholder: rgba(205, 214, 244, 0.26);
 	--accent: #89b4fa;
 	--selection: rgba(137, 180, 250, 0.18);

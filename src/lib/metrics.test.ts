@@ -136,8 +136,11 @@ describe('lanePitch', () => {
 	});
 
 	it('shares the span out once there are more lanes than columns', () => {
+		// Both counts are chosen to sit above the cap and still above the floor,
+		// which is where sharing actually happens. Past the floor it clamps, and
+		// that is the test below.
 		expect(lanePitch(LANE_COLUMNS_MAX + 1)).toBeCloseTo(LANE_SPAN / LANE_COLUMNS_MAX, 10);
-		expect(lanePitch(24)).toBeCloseTo(LANE_SPAN / 23, 10);
+		expect(lanePitch(20)).toBeCloseTo(LANE_SPAN / 19, 10);
 	});
 
 	it('narrows monotonically as lanes are added', () => {
@@ -179,7 +182,9 @@ describe('laneX under compression', () => {
 	});
 
 	it('lands the last lane exactly on the span while the pitch still gives', () => {
-		for (const lanes of [13, 20, 32, LANE_INDEX_MAX + 1]) {
+		// Up to and including the deepest count the floor still allows. One more
+		// than this and the last lanes clamp instead, which is the next test.
+		for (const lanes of [13, 16, 20, LANE_INDEX_MAX + 1]) {
 			expect(laneX(lanes - 1, lanes)).toBeCloseTo(LANE_X0 + LANE_SPAN, 6);
 		}
 	});
@@ -224,7 +229,7 @@ describe('laneNodeRadius', () => {
 	 * the portraits paint over the room compression just made.
 	 */
 	it('never lets a node cover its neighbour’s lane, up to where the floor bites', () => {
-		for (let lanes = LANE_COLUMNS_MAX + 1; lanes <= 32; lanes++) {
+		for (let lanes = LANE_COLUMNS_MAX + 1; lanes <= 21; lanes++) {
 			expect(
 				laneNodeRadius(lanes) * 2,
 				`a node overlaps its neighbour at ${lanes} lanes`
@@ -233,15 +238,33 @@ describe('laneNodeRadius', () => {
 	});
 
 	/**
-	 * Past 32 lanes the `MERGE_R` floor is wider than the pitch, so nodes do
-	 * begin to overlap. That is the deliberate end of the guarantee, not a
-	 * defect: a node that kept shrinking would stop being visible, and by that
-	 * depth it is the only thing locating a commit. Asserted so the trade is
-	 * recorded rather than rediscovered.
+	 * There used to be a depth past which nodes overlapped: at a 6px pitch the
+	 * `MERGE_R` floor was wider than the lane, and the trade was recorded here
+	 * as a deliberate end to the guarantee.
+	 *
+	 * Raising the pitch floor to half the design pitch removed the trade
+	 * entirely. The narrowest lane is now wide enough for the smallest node the
+	 * graph will draw, so a node never covers its neighbour's lane at **any**
+	 * depth — 382 lanes included. The guarantee got stronger, so the test says
+	 * so rather than being deleted.
 	 */
-	it('overlaps only below the floor, and only by the floor’s own width', () => {
-		expect(laneNodeRadius(33) * 2).toBeGreaterThan(lanePitch(33));
-		expect(laneNodeRadius(382)).toBe(MERGE_R);
+	it('never lets a node cover its neighbour, at any depth at all', () => {
+		for (const lanes of [33, 48, 187, 382, 100_000]) {
+			expect(
+				laneNodeRadius(lanes) * 2,
+				`a node overlaps its neighbour at ${lanes} lanes`
+			).toBeLessThanOrEqual(lanePitch(lanes));
+		}
+	});
+
+	it('stops shrinking at the widest node the narrowest lane can hold', () => {
+		// Not `MERGE_R` any more: the pitch floor bottoms out first, and what it
+		// leaves room for is bigger than the mark of last resort. `MERGE_R` is
+		// still the hard floor underneath, it is simply never the binding one.
+		const deepest = laneNodeRadius(382);
+
+		expect(deepest).toBe(Math.floor((LANE_PITCH_MIN - LANE_STROKE) / 2));
+		expect(deepest).toBeGreaterThanOrEqual(MERGE_R);
 	});
 
 	it('shrinks as the lanes do, without stepping back up', () => {
@@ -253,10 +276,18 @@ describe('laneNodeRadius', () => {
 		}
 	});
 
-	/** A node too small to see would be worse than one that overlaps a little. */
+	/**
+	 * A node too small to see would be worse than one that overlaps a little.
+	 *
+	 * `MERGE_R` is the hard floor and no longer the binding one — the pitch
+	 * floor bottoms out above it — so this asserts the *guarantee* rather than
+	 * the particular number, which is what it was always for.
+	 */
 	it('never shrinks past the graph’s smallest meaningful mark', () => {
-		expect(laneNodeRadius(382)).toBe(MERGE_R);
-		expect(laneNodeRadius(100_000)).toBe(MERGE_R);
+		expect(laneNodeRadius(382)).toBeGreaterThanOrEqual(MERGE_R);
+		expect(laneNodeRadius(100_000)).toBeGreaterThanOrEqual(MERGE_R);
+		// And it does bottom out, rather than creeping down forever.
+		expect(laneNodeRadius(100_000)).toBe(laneNodeRadius(382));
 	});
 
 	/**

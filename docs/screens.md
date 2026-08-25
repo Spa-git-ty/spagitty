@@ -358,6 +358,26 @@ Stashing is the only write. `git stash push` succeeds quietly with nothing to
 save, which from a button reads as a stash that happened and then vanished, so
 the core refuses that case with a reason instead.
 
+### Reading at depth (FEAT-052)
+
+The lane pitch compresses past twelve columns and stops at **14px** — half the
+design pitch. It used to stop at 6, which gave forty-eight lanes a distinct x
+and gave none of them a visible gap: on `git/git`, at a mean lane depth of 187,
+the column was a picket fence. Twenty-one lanes that can be told apart beat
+forty-eight that cannot, and a history deep enough to need a twenty-second was
+never going to have it read.
+
+A consequence worth knowing: the node radius shrinks with the pitch, and at the
+old floor nodes overlapped their neighbours past 32 lanes. At 14 they no longer
+can, at any depth.
+
+Ref chips start at the column's left edge rather than tucking against the graph,
+so every row's first chip is at the same x.
+
+The table shows a gradient at whichever edge has content hidden under it — the
+columns can be dragged wider than the window, and an overlay scrollbar that only
+appears once you are scrolling is no answer to "is there anything over there".
+
 ## 1H — Pull requests
 
 **Built.** `src/routes/requests/+page.svelte`, `src/lib/requests/`, and
