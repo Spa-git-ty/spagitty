@@ -24,11 +24,17 @@ under Amendment 11.
 | 1J | All repositories | `/repos` | yes | Built | FEAT-006 |
 | 1K | Settings | `/settings` | yes | Built | FEAT-011 |
 | 1L | Clone | modal | no | Built | FEAT-012 |
+| 1M | Reflog | `/reflog` | yes | Built | FEAT-050 |
 
-**Every screen in the handoff is built.** What remains deferred is named on the
-screen that defers it — writes the Conflicts screen does not perform, the rebase
-it plans but does not run, the host the Pull requests screen cannot connect to.
-Each says so in place rather than being absent.
+**Every screen in the handoff is built**, and 1A–1L is the whole of it. 1M is
+the first screen that was not in the handoff at all: the Reflog came out of the
+GitKraken gap analysis rather than the design, and it is numbered after the
+handoff's run rather than inserted into it, so that a code still says where a
+screen came from.
+
+What remains deferred is named on the screen that defers it — the host the Pull
+requests screen cannot connect to, the accounts Settings has no client for. Each
+says so in place rather than being absent.
 
 `src/lib/ui/ScreenStub.svelte` is no longer rendered by any route. It stays
 because it is how the next unbuilt screen says what it will be rather than

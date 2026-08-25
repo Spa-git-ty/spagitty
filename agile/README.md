@@ -104,7 +104,7 @@ rather than an audit.
 | [FEAT-047](items/FEAT-047-branch-table-columns-and-divergence.md) | The branches table: resizable columns, and a divergence worth reading | 1F | Done |
 | [FEAT-048](items/FEAT-048-discard-changes.md) | Discard changes | 1C | Done |
 | [FEAT-049](items/FEAT-049-remotes-management.md) | Remotes management | settings | Done |
-| [FEAT-050](items/FEAT-050-reflog-view.md) | Reflog view | 1L | Done |
+| [FEAT-050](items/FEAT-050-reflog-view.md) | Reflog view | 1M | Done |
 
 ## Bugs
 

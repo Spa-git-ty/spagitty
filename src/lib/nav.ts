@@ -23,6 +23,11 @@ export type CountKey = keyof RepoCounts;
  *   1D  Conflicts          1J  All repositories
  *   1E  Rebase             1K  Settings
  *   1F  Branches           1L  Clone modal
+ *
+ * 1M is the Reflog (FEAT-050), the first screen that was not in the design
+ * handoff: it came out of the GitKraken gap analysis, and it is numbered after
+ * the handoff's run rather than inserted into it so that a code still says
+ * where a screen came from.
  */
 export type ScreenCode =
 	| '1A'
@@ -36,7 +41,8 @@ export type ScreenCode =
 	| '1I'
 	| '1J'
 	| '1K'
-	| '1L';
+	| '1L'
+	| '1M';
 
 export interface NavItem {
 	code: ScreenCode;
@@ -65,7 +71,7 @@ export const NAV_ITEMS: NavItem[] = [
 	{ code: '1H', label: 'Pull requests', href: '/requests', glyph: '⇄' },
 	{ code: '1E', label: 'Rebase', href: '/rebase', glyph: '↻' },
 	{ code: '1I', label: 'Log', href: '/search', glyph: '⌕' },
-	{ code: '1L', label: 'Reflog', href: '/reflog', glyph: '↺' },
+	{ code: '1M', label: 'Reflog', href: '/reflog', glyph: '↺' },
 	{ code: '1J', label: 'All repositories', href: '/repos', dividerBefore: true, glyph: '⌂' },
 	{ code: '1K', label: 'Settings', href: '/settings', glyph: '⚙' }
 ];

@@ -3,7 +3,7 @@
 # FEAT-050 — Reflog view
 
 **Status:** Done on `feature/FEAT-050-reflog`.
-**Screen:** Reflog (1L).
+**Screen:** Reflog (1M).
 **Requested by:** the gap analysis
 [`docs/analysis/gitkraken-gap.md`](../../docs/analysis/gitkraken-gap.md),
 2026-08-24: "absent entirely. After any history rewrite goes wrong, the reflog
