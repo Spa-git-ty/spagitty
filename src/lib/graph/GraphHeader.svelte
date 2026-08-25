@@ -330,8 +330,10 @@
 		right: 0;
 	}
 
+	/* A hover hint, not an announcement: the divider is a handle, and lighting
+	   it in the accent read as something breaking along the header's edge. */
 	.divider:hover::after {
-		background: var(--accent);
+		background: var(--line);
 	}
 
 

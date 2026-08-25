@@ -183,7 +183,7 @@
 		/* It appears at the pointer, so it grows from where it was asked for
 		   rather than fading in from nowhere. */
 		transform-origin: top left;
-		animation: pop-in 160ms var(--spring);
+		animation: pop-in var(--t-enter-liquid) var(--spring-liquid);
 	}
 
 	/* Rendered so it can be measured, but not shown at the wrong place first. */

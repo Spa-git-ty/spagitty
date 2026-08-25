@@ -169,7 +169,7 @@
 		border-radius: var(--r-panel);
 		box-shadow: var(--glass-rim), var(--shadow-3);
 		overflow: hidden;
-		animation: rise-in var(--t-enter) var(--spring);
+		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
 	}
 
 	/*

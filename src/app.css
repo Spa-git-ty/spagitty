@@ -294,7 +294,15 @@
 	 * back reads as physical, where one that stops dead reads as drawn.
 	 */
 	--spring: cubic-bezier(0.16, 1.1, 0.3, 1);
+	/*
+	 * The viscous curve, for the glass panes specifically. More overshoot over
+	 * more time than `--spring`: a thick liquid settles slowly and wobbles a
+	 * little on the way, and the difference between 10% and 35% overshoot is
+	 * the difference between a card dealt onto a table and a drop beading up.
+	 */
+	--spring-liquid: cubic-bezier(0.2, 1.35, 0.32, 1);
 	--t-enter: 260ms;
+	--t-enter-liquid: 380ms;
 }
 
 /*
@@ -403,44 +411,69 @@
 	 * Blur radius is what a blur costs — the kernel is applied per pixel, so a
 	 * 34px blur is not a little more expensive than an 18px one. These are as
 	 * wide as they can be while a menu still reads as frosted.
+	 *
+	 * The saturation does the "liquid" work: a frosted pane that only blurs
+	 * reads as grey plastic, while one that *pulls* the colour behind it
+	 * forward reads as something wet. The numbers are pushed well past what a
+	 * screenshot needs because the ambient field underneath is quiet — the
+	 * glass is where the colour concentrates.
 	 */
-	--blur-thin: blur(10px) saturate(140%);
-	--blur: blur(14px) saturate(150%);
-	--blur-thick: blur(18px) saturate(160%);
+	--blur-thin: blur(10px) saturate(180%);
+	--blur: blur(14px) saturate(200%);
+	--blur-thick: blur(18px) saturate(210%);
 
 	/*
-	 * The edge of a pane of glass.
+	 * The edge of a pane of glass — thick enough to bend light.
 	 *
 	 * Light catches the top and the leading side and falls away toward the
 	 * bottom, which is what tells the eye the pane has *thickness*. One flat
 	 * border all the way round reads as a drawn rectangle no matter how well it
-	 * is blurred.
+	 * is blurred. Two softer stops under the hard edges are the rest of the
+	 * trick: a faint white bloom just inside the top edge is light entering the
+	 * pane, and a faint dark one just inside the bottom is the pane's own
+	 * weight — together they read as depth through a material rather than as
+	 * shading on a surface.
 	 */
-	--glass-edge: color-mix(in srgb, #fff 42%, transparent);
-	--glass-edge-low: color-mix(in srgb, var(--umbra) 8%, transparent);
+	--glass-edge: color-mix(in srgb, #fff 52%, transparent);
+	--glass-edge-low: color-mix(in srgb, var(--umbra) 14%, transparent);
 	--glass-rim:
 		inset 0 1px 0 var(--glass-edge),
-		inset 1px 0 0 color-mix(in srgb, #fff 20%, transparent),
-		inset 0 -1px 0 var(--glass-edge-low);
+		inset 1px 0 0 color-mix(in srgb, #fff 26%, transparent),
+		inset -1px 0 0 color-mix(in srgb, #fff 10%, transparent),
+		inset 0 7px 10px -7px color-mix(in srgb, #fff 22%, transparent),
+		inset 0 -1px 0 var(--glass-edge-low),
+		inset 0 -9px 14px -11px color-mix(in srgb, var(--umbra) 16%, transparent);
 
 	/*
-	 * The specular sheen that runs across a pane. Painted as a background layer
-	 * rather than a pseudo-element so it works on elements that already have
-	 * children stacked over them.
+	 * The specular highlight that pools on a pane. Painted as a background
+	 * layer rather than a pseudo-element so it works on elements that already
+	 * have children stacked over them.
+	 *
+	 * A round pool in the corner rather than a straight band across the middle:
+	 * light gathers where a curved surface turns toward it, and an even
+	 * diagonal stripe is what a plastic case does. A second, fainter wash along
+	 * the trailing edge keeps the far corner from going dead.
 	 */
-	--glass-sheen: linear-gradient(
-		135deg,
-		color-mix(in srgb, #fff 16%, transparent) 0%,
-		transparent 38%,
-		transparent 62%,
-		color-mix(in srgb, #fff 8%, transparent) 100%
-	);
+	--glass-sheen:
+		radial-gradient(
+			130% 80% at 16% 0%,
+			color-mix(in srgb, #fff 22%, transparent) 0%,
+			color-mix(in srgb, #fff 6%, transparent) 38%,
+			transparent 62%
+		),
+		linear-gradient(
+			250deg,
+			transparent 55%,
+			color-mix(in srgb, #fff 9%, transparent) 100%
+		);
 }
 
 /*
  * Dark glass is smoked, not frosted: the tint goes toward the panel's own near
- * black and the highlight along the top edge drops to a whisper, because a 42%
+ * black and the highlight along the top edge drops to a whisper, because a 52%
  * white rim on a dark pane reads as a drawn white line rather than as light.
+ * The saturation stays high — colour through smoke is exactly what makes dark
+ * glass read as a material rather than as grey.
  */
 :root[data-theme='dark'] {
 	--glass-thin: color-mix(in srgb, var(--panel) 66%, transparent);
@@ -450,20 +483,28 @@
 	--chrome-veil: color-mix(in srgb, var(--panel) 90%, transparent);
 	--surface-veil: color-mix(in srgb, var(--surface) 92%, transparent);
 
-	--glass-edge: color-mix(in srgb, #fff 12%, transparent);
-	--glass-edge-low: color-mix(in srgb, #000 24%, transparent);
+	--glass-edge: color-mix(in srgb, #fff 16%, transparent);
+	--glass-edge-low: color-mix(in srgb, #000 34%, transparent);
 	--glass-rim:
 		inset 0 1px 0 var(--glass-edge),
-		inset 1px 0 0 color-mix(in srgb, #fff 6%, transparent),
-		inset 0 -1px 0 var(--glass-edge-low);
+		inset 1px 0 0 color-mix(in srgb, #fff 8%, transparent),
+		inset -1px 0 0 color-mix(in srgb, #fff 3%, transparent),
+		inset 0 7px 10px -7px color-mix(in srgb, #fff 7%, transparent),
+		inset 0 -1px 0 var(--glass-edge-low),
+		inset 0 -9px 14px -11px color-mix(in srgb, #000 26%, transparent);
 
-	--glass-sheen: linear-gradient(
-		135deg,
-		color-mix(in srgb, #fff 7%, transparent) 0%,
-		transparent 40%,
-		transparent 64%,
-		color-mix(in srgb, #fff 4%, transparent) 100%
-	);
+	--glass-sheen:
+		radial-gradient(
+			130% 80% at 16% 0%,
+			color-mix(in srgb, #fff 9%, transparent) 0%,
+			color-mix(in srgb, #fff 2%, transparent) 38%,
+			transparent 62%
+		),
+		linear-gradient(
+			250deg,
+			transparent 55%,
+			color-mix(in srgb, #fff 4%, transparent) 100%
+		);
 }
 
 /*
@@ -887,11 +928,12 @@ input[type='radio'] {
  * in `+layout.svelte` for why it stopped moving.
  */
 
-/* Something arriving: up, in, and settling. */
+/* Something arriving: up, in, and settling — from far enough below that the
+   spring has room to wobble on the way past. */
 @keyframes rise-in {
 	from {
 		opacity: 0;
-		transform: translateY(8px) scale(0.985);
+		transform: translateY(12px) scale(0.97);
 	}
 	to {
 		opacity: 1;
@@ -900,11 +942,11 @@ input[type='radio'] {
 }
 
 /* Something arriving *at* a point — a menu at the pointer, a dialog at the
-   middle of the window. */
+   middle of the window. A bead of liquid gathering rather than a card dealt. */
 @keyframes pop-in {
 	from {
 		opacity: 0;
-		transform: scale(0.94);
+		transform: scale(0.9);
 	}
 	to {
 		opacity: 1;

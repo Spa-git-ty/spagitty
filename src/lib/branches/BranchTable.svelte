@@ -312,8 +312,9 @@
 		right: 0;
 	}
 
+	/* Same hint the panel splitters give — a hairline, never the accent. */
 	.divider:hover::after {
-		background: var(--accent);
+		background: var(--line);
 	}
 
 	.empty {

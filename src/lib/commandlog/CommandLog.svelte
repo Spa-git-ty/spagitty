@@ -116,7 +116,7 @@
 		-webkit-backdrop-filter: var(--blur-thick);
 		border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		border-radius: var(--r-panel) var(--r-panel) 0 0;
-		animation: rise-in var(--t-enter) var(--spring);
+		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
 		/* It slides up over whatever screen is open, so it takes the floating
 		   shadow — cast upward, which is the direction it came from. */
 		box-shadow:
