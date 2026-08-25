@@ -1,0 +1,148 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# A draft release, built on demand from whatever branch it is run on.
+#
+# This is not the release lane. Gate 6 in gates.yml publishes `main` and
+# prerelease.yml publishes an alpha from `dev`; both tag, and Amendment 14
+# forbids moving a tag. This one **creates no tag at all** and leaves the
+# release as a draft — nothing is published to anyone until a person opens it
+# and presses the button. That is what makes it safe to run from a feature
+# branch.
+#
+# Two artefacts, which is the whole point:
+#
+#   Linux    a self-contained AppImage. Tauri's AppImage bundles webkit2gtk and
+#            its dependencies, so it runs on a machine that has never installed
+#            them. Built on the oldest runner we support so the glibc it links
+#            against is old enough for the distributions people actually run —
+#            an AppImage built against a newer glibc refuses to start on an
+#            older host, which is the one way this format still fails.
+#
+#   Windows  the NSIS installer .exe, plus the bare spagitty.exe for anyone who
+#            would rather not run an installer.
+#
+# macOS is not built here. It needs signing and notarisation to be worth
+# handing to anybody, and an unsigned .app that Gatekeeper refuses to open is
+# worse than no download at all.
+
+name: draft release
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: What to call the draft, e.g. 0.1.0-preview
+        required: true
+        type: string
+
+concurrency:
+  group: draft-release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            # Not `ubuntu-latest`: see the header. The AppImage's glibc floor is
+            # whatever this runner has, and it decides who can run the result.
+            os: ubuntu-22.04
+            bundles: appimage
+          - name: windows
+            os: windows-latest
+            bundles: nsis
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/linux-deps
+        if: runner.os == 'Linux'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      # The bundler runs `appimagetool`, which wants FUSE. GitHub's runners do
+      # not have it, and this variable is how AppImage tooling is told to
+      # unpack itself instead of mounting.
+      - name: Build
+        run: npm run tauri build -- --bundles ${{ matrix.bundles }}
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+
+      - name: Collect what is worth downloading
+        shell: bash
+        run: |
+          mkdir -p out
+          # Tauri has put the bundle under both paths across versions; take
+          # whichever exists rather than guessing.
+          find . -path ./node_modules -prune -o \
+                 \( -name '*.AppImage' -o -name '*-setup.exe' \) -print \
+            -exec cp {} out/ \;
+          # The bare executable, for anyone who would rather not run an
+          # installer. Named per-platform so the two runners cannot collide.
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            find . -path ./node_modules -prune -o \
+                   -name 'spagitty.exe' -path '*release*' -print -quit \
+              | xargs -r -I {} cp {} out/spagitty-windows-x86_64.exe
+          fi
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: draft-${{ matrix.name }}
+          path: out/**
+          if-no-files-found: error
+
+  draft:
+    name: open the draft
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # No tag is created. `gh release create --draft` against a name that is
+      # not a tag leaves an unpublished draft pointing at this commit, and
+      # publishing it later is a deliberate action by a person.
+      - name: Create or replace the draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NAME: ${{ inputs.name }}
+        run: |
+          set -euo pipefail
+          files=$(find artifacts -type f | tr '\n' ' ')
+          echo "attaching: $files"
+
+          # A draft of the same name from an earlier run is replaced rather
+          # than added to: two drafts called the same thing is a worse outcome
+          # than losing the previous attempt, which was never published.
+          if gh release view "draft-$NAME" >/dev/null 2>&1; then
+            gh release delete "draft-$NAME" --yes
+          fi
+
+          gh release create "draft-$NAME" \
+            --draft \
+            --target "$GITHUB_SHA" \
+            --title "Spagitty $NAME (draft)" \
+            --notes "Built from \`${GITHUB_REF_NAME}\` at \`${GITHUB_SHA}\`.
+
+          - **Linux** — the \`.AppImage\` is self-contained. \`chmod +x\` it and run it.
+          - **Windows** — \`*-setup.exe\` installs; \`spagitty-windows-x86_64.exe\` is the bare binary.
+
+          Unsigned, and a draft: nothing here is published until someone presses the button." \
+            $files
