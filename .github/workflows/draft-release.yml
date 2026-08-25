@@ -25,6 +25,16 @@
 # handing to anybody, and an unsigned .app that Gatekeeper refuses to open is
 # worse than no download at all.
 
+# Two ways in, because `workflow_dispatch` alone is not enough here. GitHub
+# only offers a dispatchable workflow that exists on the **default branch**,
+# and putting this on `main` means a push to `main`, which fires gate 6 — the
+# real, tagged, published release. So there is also a push trigger scoped to
+# `draft/**`: pushing `draft/0.1.0-preview` builds and drafts, and nothing
+# else in the repository reacts to a branch under that prefix.
+#
+# The draft's name comes from the input when dispatched and from the part of
+# the branch name after `draft/` when pushed.
+
 name: draft release
 
 on:
@@ -34,6 +44,9 @@ on:
         description: What to call the draft, e.g. 0.1.0-preview
         required: true
         type: string
+  push:
+    branches:
+      - 'draft/**'
 
 concurrency:
   group: draft-release-${{ github.ref }}
@@ -122,9 +135,11 @@ jobs:
       - name: Create or replace the draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NAME: ${{ inputs.name }}
+          # The input when dispatched; the tail of `draft/<name>` when pushed.
+          NAME: ${{ inputs.name || github.ref_name }}
         run: |
           set -euo pipefail
+          NAME=${NAME#draft/}
           files=$(find artifacts -type f | tr '\n' ' ')
           echo "attaching: $files"
 
