@@ -31,6 +31,7 @@ pub mod graph;
 pub mod identity;
 pub mod ops;
 pub mod rebase;
+pub mod reflog;
 pub mod record;
 pub mod refs;
 pub mod remotes;

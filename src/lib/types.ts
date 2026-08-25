@@ -674,6 +674,41 @@ export interface CloneDoneEvent {
 	path: string;
 }
 
+/** One move of one ref (FEAT-050). */
+export interface ReflogEntry {
+	/** Position from the newest, counting from 0 — the `n` in `HEAD@{n}`. */
+	index: number;
+	/** The revision this entry names: `HEAD@{3}`, `main@{0}`. */
+	revision: string;
+	/** Where the ref pointed before this move. */
+	before: string;
+	beforeShort: string;
+	after: string;
+	afterShort: string;
+	/** True when this entry created the ref — there is nothing before it. */
+	created: boolean;
+	authorName: string;
+	/** Unix seconds. */
+	time: number;
+	/** git's own description: `commit: subject`, `rebase (finish): …`. */
+	message: string;
+	/** The word before the colon, which is what a reader scans for. */
+	operation: string;
+}
+
+/** A ref's reflog, newest first. */
+export interface Reflog {
+	/** The ref this is the log of, as it should be shown: `HEAD`, `main`. */
+	reference: string;
+	entries: ReflogEntry[];
+	truncated: boolean;
+	/**
+	 * False when this ref has no reflog at all — reflogs turned off, or a ref
+	 * that has never moved. Different from an empty list, and said differently.
+	 */
+	exists: boolean;
+}
+
 /** One configured remote (FEAT-049). */
 export interface Remote {
 	name: string;

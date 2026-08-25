@@ -17,6 +17,7 @@ use spagitty_core::graph::ROW_PITCH;
 use spagitty_core::identity::{self, Identity, Key, Scope};
 use spagitty_core::ops::{self, Integration, ResetMode, StashAction};
 use spagitty_core::rebase::{self, Edit, Preview, Todo};
+use spagitty_core::reflog;
 use spagitty_core::remotes;
 use spagitty_core::record::{self, Executed};
 use spagitty_core::refs::RefIndex;
@@ -743,6 +744,18 @@ pub fn conflict_abort(state: State<'_, AppState>) -> Result<()> {
         let repo = session.repo.to_thread_local();
         conflicts::abort_operation(&repo, conflicts::operation(&repo))
     })
+}
+
+/// Where a ref has been (FEAT-050).
+#[tauri::command]
+pub fn reflog(state: State<'_, AppState>, query: reflog::ReflogQuery) -> Result<reflog::Reflog> {
+    state.with_session(|session| reflog::reflog(&session.repo.to_thread_local(), &query))
+}
+
+/// Every ref whose reflog is worth offering, `HEAD` first.
+#[tauri::command]
+pub fn reflog_refs(state: State<'_, AppState>) -> Result<Vec<String>> {
+    state.with_session(|session| Ok(reflog::logged_refs(&session.repo.to_thread_local())))
 }
 
 /// Every configured remote, in name order.

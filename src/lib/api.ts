@@ -33,6 +33,7 @@ import type {
 	RebasePreview,
 	RebaseProgress,
 	RebaseTodo,
+	Reflog,
 	Remote,
 	ResetMode,
 	StashAction,
@@ -266,6 +267,21 @@ export function conflictContinue(): Promise<void> {
 /** Abandon it and put the repository back. */
 export function conflictAbort(): Promise<void> {
 	return invoke('conflict_abort');
+}
+
+/**
+ * Where a ref has been (FEAT-050).
+ *
+ * An empty `reference` means `HEAD`, whose log records checkouts as well as
+ * every move of whatever was checked out.
+ */
+export function reflog(reference: string, limit: number): Promise<Reflog> {
+	return invoke('reflog', { query: { reference, limit } });
+}
+
+/** Every ref whose reflog is worth offering, `HEAD` first. */
+export function reflogRefs(): Promise<string[]> {
+	return invoke('reflog_refs');
 }
 
 /** Every configured remote, in name order. */

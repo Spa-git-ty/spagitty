@@ -65,6 +65,7 @@ export const NAV_ITEMS: NavItem[] = [
 	{ code: '1H', label: 'Pull requests', href: '/requests', glyph: '⇄' },
 	{ code: '1E', label: 'Rebase', href: '/rebase', glyph: '↻' },
 	{ code: '1I', label: 'Log', href: '/search', glyph: '⌕' },
+	{ code: '1L', label: 'Reflog', href: '/reflog', glyph: '↺' },
 	{ code: '1J', label: 'All repositories', href: '/repos', dividerBefore: true, glyph: '⌂' },
 	{ code: '1K', label: 'Settings', href: '/settings', glyph: '⚙' }
 ];

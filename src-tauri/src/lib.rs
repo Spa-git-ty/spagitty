@@ -87,6 +87,8 @@ pub fn run() {
             commands::remote_rename,
             commands::remote_remove,
             commands::remote_set_url,
+            commands::reflog,
+            commands::reflog_refs,
             commands::stashes,
             commands::stash_push,
             commands::recent_repos,

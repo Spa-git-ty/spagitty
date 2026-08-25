@@ -7,7 +7,7 @@ where it does. This is a reading of the index in [README.md](README.md) against
 the gap analysis in [../docs/analysis/gitkraken-gap.md](../docs/analysis/gitkraken-gap.md);
 the index stays the authority on what exists and what state it is in.
 
-Two entries below have no identifier yet. They came out of the gap analysis
+One entry below has no identifier yet. They came out of the gap analysis
 rather than out of a request, and an identifier is assigned when the work
 starts — the record test refuses a cited identifier that resolves to nothing,
 so naming them early would break the suite for no gain.
@@ -75,16 +75,13 @@ retargets, each through `git remote` rather than a config edit. The `-u`
 question was answered: push had no `--set-upstream`, so every new branch was
 left unmapped and FEAT-047's divergence bar had nothing to read. Fixed.
 
-### 7. Reflog view — no identifier yet
+### 7. FEAT-050 — reflog view
 
-Absent entirely. It is where recovery starts after a history rewrite goes
-wrong, which is exactly what FEAT-015 and FEAT-016 make routine. Cheap, and it
-raises the ceiling on how destructive the app is allowed to be.
+**Done**, on `feature/FEAT-050-reflog`.
 
-**Closes when:** a reflog screen lists entries with their operation, message
-and date, and can check out or reset to one.
-**Depends on:** worth doing after FEAT-015 so it has something to recover from.
-**Size:** a day.
+**Closed by:** a Reflog screen at rail entry 1L, reading HEAD or any local
+branch, with three ways out of an entry — branch here, check out here, reset
+here — offered in that order because only the first cannot cost anything.
 
 ### 8. Tags list — no identifier yet
 

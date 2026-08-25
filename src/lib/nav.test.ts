@@ -77,6 +77,10 @@ describe('NAV_ITEMS', () => {
 			'/requests',
 			'/rebase',
 			'/search',
+			// FEAT-050. After Log because they answer neighbouring questions —
+			// what is in history, and what was just done to it — and before the
+			// divider because both are about the open repository.
+			'/reflog',
 			'/repos',
 			'/settings'
 		]);
