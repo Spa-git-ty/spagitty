@@ -17,7 +17,7 @@ vi.mock('$lib/api', async (importOriginal) => ({
 	about: () => Promise.reject(new Error('not under test'))
 }));
 
-let toggles = { signCommits: false, confirmHistoryRewrite: true, showGitCommands: false };
+let toggles = { confirmHistoryRewrite: true, showGitCommands: false };
 
 import { registerCommands } from './commands';
 import { settings } from '../settings/store.svelte';

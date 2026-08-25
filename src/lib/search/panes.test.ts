@@ -91,6 +91,7 @@ beforeEach(async () => {
 		committerName: 'Ada Lovelace',
 		committerEmail: 'ada@example.com',
 		commitTime: 1_700_000_000,
+		signed: false,
 		parents: [],
 		files: []
 	});
@@ -324,6 +325,7 @@ describe('ResultDetail', () => {
 			committerName: 'Ada Lovelace',
 			committerEmail: 'ada@example.com',
 			commitTime: Math.floor(Date.now() / 1000) - 3600,
+			signed: false,
 			parents: [],
 			files: [
 				{ path: 'core.txt', status: 'modified' },

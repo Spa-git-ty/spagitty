@@ -38,6 +38,7 @@ pub mod remotes;
 pub mod repo;
 pub mod search;
 pub mod shell;
+pub mod signing;
 pub mod stash;
 pub mod status;
 pub mod tags;

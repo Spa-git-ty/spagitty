@@ -60,6 +60,7 @@ function row(index: number, id = `${index}`.padStart(40, 'a')): GraphRow {
 		time: 1_700_000_000 - index * 60,
 		lane: 0,
 		color: 0,
+		signed: false,
 		parents: [],
 		refs: [],
 		edges: []
@@ -78,6 +79,7 @@ function detail(id: string): CommitDetail {
 		committerName: 'Ada Lovelace',
 		committerEmail: 'ada@example.com',
 		commitTime: 1_700_000_000,
+		signed: false,
 		parents: [],
 		files: []
 	};

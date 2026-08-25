@@ -76,7 +76,7 @@ rather than an audit.
 | [FEAT-016](items/FEAT-016-conflict-resolution-writes.md) | Conflict resolution writes | 1D | Done |
 | [FEAT-017](items/FEAT-017-forge-integration.md) | Forge integration | 1H, 1K | Backlog |
 | [FEAT-018](items/FEAT-018-fetch-and-push.md) | Fetch and push | chrome | Done |
-| [FEAT-019](items/FEAT-019-commit-signing.md) | Commit signing | 1C, 1K | Backlog |
+| [FEAT-019](items/FEAT-019-commit-signing.md) | Commit signing | 1C, 1K | Partial |
 | [FEAT-020](items/FEAT-020-show-git-commands.md) | Show the git command behind each action | all, 1K | Done |
 | [FEAT-021](items/FEAT-021-themes.md) | Themes, and a title bar that stops lying | chrome, 1K | Done |
 | [FEAT-022](items/FEAT-022-graph-parity.md) | The graph as a launcher, not a report | 1A | Done |

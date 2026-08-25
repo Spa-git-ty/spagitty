@@ -7,6 +7,7 @@
 	import AppearanceSection from '$lib/settings/AppearanceSection.svelte';
 	import BehaviourSection from '$lib/settings/BehaviourSection.svelte';
 	import IdentitySection from '$lib/settings/IdentitySection.svelte';
+	import SigningSection from '$lib/settings/SigningSection.svelte';
 	import { SECTIONS, settings } from '$lib/settings/store.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 
@@ -60,6 +61,7 @@
 	<div class="body">
 		{#if settings.section === 'you'}
 			<IdentitySection />
+			<SigningSection />
 		{:else if settings.section === 'accounts'}
 			<AccountsSection />
 		{:else if settings.section === 'remotes'}
@@ -121,11 +123,16 @@
 		white-space: nowrap;
 	}
 
+	/* A column since **You** grew a second section: two stacked sections with no
+	   gap read as one section with a stray heading in the middle. */
 	.body {
 		flex: 1;
 		min-height: 0;
 		overflow: auto;
 		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
 	}
 
 	.foot {

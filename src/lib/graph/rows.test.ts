@@ -36,6 +36,7 @@ function row(index: number, overrides: Partial<GraphRow> = {}): GraphRow {
 		time: 1_700_000_000 - index * 86_400,
 		lane: 0,
 		color: 0,
+		signed: false,
 		parents: [],
 		refs: [],
 		edges: [],

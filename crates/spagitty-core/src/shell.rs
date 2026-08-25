@@ -296,7 +296,12 @@ pub fn remove_untracked(repo: &Path, paths: &[String]) -> Result<()> {
 /// Through `git` so that `pre-commit` and `commit-msg` hooks run and a
 /// configured signing program is used — a commit made here is the same commit
 /// the command line would have made.
-pub fn commit(repo: &Path, subject: &str, body: &str, amend: bool) -> Result<String> {
+///
+/// `sign` adds `--gpg-sign`, and only when it is true (FEAT-019). git would
+/// sign anyway when `commit.gpgsign` is set — the flag is what makes the
+/// command say so, both in the log the Settings panel shows and in the gap
+/// between what the Commit screen promised and what ran.
+pub fn commit(repo: &Path, subject: &str, body: &str, amend: bool, sign: bool) -> Result<String> {
     let mut args = vec!["commit", "-m", subject];
     if !body.trim().is_empty() {
         args.push("-m");
@@ -304,6 +309,9 @@ pub fn commit(repo: &Path, subject: &str, body: &str, amend: bool) -> Result<Str
     }
     if amend {
         args.push("--amend");
+    }
+    if sign {
+        args.push("--gpg-sign");
     }
 
     run(repo, &args)?;

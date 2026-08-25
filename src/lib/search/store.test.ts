@@ -67,6 +67,7 @@ function detail(id: string): CommitDetail {
 		committerName: 'Ada Lovelace',
 		committerEmail: 'ada@example.com',
 		commitTime: 1_700_000_000,
+		signed: false,
 		parents: [],
 		files: []
 	};

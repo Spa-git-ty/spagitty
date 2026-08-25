@@ -87,6 +87,15 @@ export interface GraphRow {
 	/** Lane this commit's node sits in. */
 	lane: number;
 	color: number;
+	/**
+	 * The commit carries a signature (FEAT-019).
+	 *
+	 * Read off the object's `gpgsig` header as the walk passes it. It says the
+	 * commit **was signed**, not that the signature is valid — verifying means a
+	 * subprocess and a keyring per row, and the screens say "signed" rather than
+	 * "verified" for exactly that reason.
+	 */
+	signed: boolean;
 	parents: string[];
 	refs: RefChip[];
 	edges: LaneEdge[];
@@ -113,6 +122,8 @@ export interface CommitDetail {
 	committerName: string;
 	committerEmail: string;
 	commitTime: number;
+	/** The commit carries a signature. Present, not verified — see `GraphRow`. */
+	signed: boolean;
 	parents: string[];
 	files: ChangedFile[];
 }
@@ -874,7 +885,6 @@ export interface Identity {
 
 /** Spagitty's own behaviour toggles, stored in its config directory. */
 export interface Settings {
-	signCommits: boolean;
 	confirmHistoryRewrite: boolean;
 	showGitCommands: boolean;
 	/**
@@ -884,6 +894,46 @@ export interface Settings {
 	 * graph because a fetch quietly pruned it is a surprise nobody asked for.
 	 */
 	pruneOnFetch: boolean;
+}
+
+/** Which signing machinery git is configured to use — `gpg.format`. */
+export type SigningFormat = 'openPgp' | 'ssh' | 'x509';
+
+/**
+ * Why a commit that is meant to be signed would not be.
+ *
+ * Both are known before the commit is attempted, which is the point: a
+ * repository with no working signer is told so at the point of commit rather
+ * than after one fails.
+ */
+export type SigningProblem =
+	| { kind: 'missingProgram'; detail: string }
+	| { kind: 'noSigningKey' };
+
+/**
+ * Commit signing, as git would resolve it here.
+ *
+ * `commit.gpgsign` is the authority — there is no separate Spagitty preference,
+ * because two switches for one behaviour disagree the moment one of them is
+ * changed outside this application.
+ */
+export interface Signing {
+	/** What a commit made now would do. */
+	enabled: boolean;
+	/** Which file `enabled` came from. `unset` means nothing sets it. */
+	origin: IdentityOrigin;
+	format: SigningFormat;
+	/** `user.signingkey`, effective. */
+	key: string | null;
+	/** The program git would run for this format. */
+	program: string;
+	/** Null when signing is off: a signer that will not be used cannot fail. */
+	problem: SigningProblem | null;
+	/** False when no repository is open. */
+	repository: boolean;
+	/** `commit.gpgsign` as each writable scope holds it. */
+	global: boolean | null;
+	local: boolean | null;
 }
 
 export interface Dependency {

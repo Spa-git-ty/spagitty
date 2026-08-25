@@ -15,7 +15,15 @@
  */
 
 import * as api from '../api';
-import type { About, Identity, IdentityKey, IdentityScope, Licenses, Settings } from '../types';
+import type {
+	About,
+	Identity,
+	IdentityKey,
+	IdentityScope,
+	Licenses,
+	Settings,
+	Signing
+} from '../types';
 
 export type Section = 'you' | 'accounts' | 'remotes' | 'behaviour' | 'appearance' | 'license';
 
@@ -37,7 +45,6 @@ export const SECTIONS: { id: Section; label: string }[] = [
  * They exist so the first frame is not blank, not as a second definition.
  */
 const DEFAULTS: Settings = {
-	signCommits: false,
 	confirmHistoryRewrite: true,
 	showGitCommands: false,
 	pruneOnFetch: false
@@ -49,6 +56,14 @@ function isSection(value: string): value is Section {
 
 let section = $state<Section>('you');
 let identity = $state<Identity | null>(null);
+/**
+ * Commit signing, read from git rather than from the preferences file.
+ *
+ * Beside the identity because it is the same kind of thing and shares the same
+ * scope chip: both are git configuration with a global value and a repository
+ * override, and choosing the scope once for both is the honest arrangement.
+ */
+let signing = $state<Signing | null>(null);
 let scope = $state<IdentityScope>('global');
 let drafts = $state<Record<IdentityKey, string>>({ name: '', email: '' });
 let stored = $state<Settings>(DEFAULTS);
@@ -85,6 +100,9 @@ export const settings = {
 	},
 	get identity(): Identity | null {
 		return identity;
+	},
+	get signing(): Signing | null {
+		return signing;
 	},
 	get scope(): IdentityScope {
 		return scope;
@@ -166,8 +184,9 @@ export const settings = {
 		}
 		busy = true;
 		try {
-			const [read, toggles, list, build] = await Promise.allSettled([
+			const [read, signs, toggles, list, build] = await Promise.allSettled([
 				api.identity(),
+				api.signing(),
 				api.settings(),
 				api.licenses(),
 				api.about()
@@ -181,6 +200,7 @@ export const settings = {
 			} else {
 				error = String(read.reason);
 			}
+			if (signs.status === 'fulfilled') signing = signs.value;
 			if (toggles.status === 'fulfilled') stored = toggles.value;
 			if (list.status === 'fulfilled') licenses = list.value;
 			if (build.status === 'fulfilled') about = build.value;
@@ -218,6 +238,41 @@ export const settings = {
 	},
 
 	/**
+	 * Turn commit signing on or off in the chosen scope.
+	 *
+	 * Not optimistic, unlike the preference toggles: this writes to git's own
+	 * configuration and the answer carries more than the flag — which file it
+	 * landed in, and whether the signer it names can actually run. Showing that
+	 * before it is known would be showing a guess.
+	 */
+	async setSigning(on: boolean): Promise<void> {
+		if (busy) return;
+		busy = true;
+		writeError = null;
+		try {
+			signing = await api.setSigning(scope, on);
+		} catch (e) {
+			writeError = String(e);
+		} finally {
+			busy = false;
+		}
+	},
+
+	/** Remove `commit.gpgsign` from the chosen scope, letting the next one decide. */
+	async clearSigning(): Promise<void> {
+		if (busy) return;
+		busy = true;
+		writeError = null;
+		try {
+			signing = await api.clearSigning(scope);
+		} catch (e) {
+			writeError = String(e);
+		} finally {
+			busy = false;
+		}
+	},
+
+	/**
 	 * Flip a toggle and store it.
 	 *
 	 * Optimistic, and put back if the write fails: a toggle that shows one state
@@ -242,6 +297,7 @@ export const settings = {
 	clearState(): void {
 		section = 'you';
 		identity = null;
+		signing = null;
 		scope = 'global';
 		drafts = { name: '', email: '' };
 		stored = DEFAULTS;

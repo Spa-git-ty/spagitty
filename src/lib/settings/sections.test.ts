@@ -10,6 +10,9 @@ vi.mock('$lib/api', () => ({
 	setIdentity: vi.fn(),
 	settings: vi.fn(),
 	setSettings: vi.fn(() => Promise.resolve()),
+	signing: vi.fn(),
+	setSigning: vi.fn(),
+	clearSigning: vi.fn(),
 	licenses: vi.fn(),
 	about: vi.fn()
 }));
@@ -66,7 +69,6 @@ beforeEach(async () => {
 	settings.clearState();
 	identity.mockResolvedValue(anIdentity());
 	settingsCall.mockResolvedValue({
-		signCommits: false,
 		confirmHistoryRewrite: true,
 		showGitCommands: false, pruneOnFetch: false
 	});
@@ -165,25 +167,25 @@ describe('BehaviourSection', () => {
 		click(mounted.all('button.chip')[0]);
 
 		expect(setSettings).toHaveBeenCalledWith({
-			signCommits: true,
-			confirmHistoryRewrite: true,
-			showGitCommands: false, pruneOnFetch: false
+			confirmHistoryRewrite: false,
+			showGitCommands: false,
+			pruneOnFetch: false
 		});
 		mounted.destroy();
 	});
 
 	it('shows the stored state of every toggle', async () => {
 		settingsCall.mockResolvedValue({
-			signCommits: true,
 			confirmHistoryRewrite: false,
-			showGitCommands: true, pruneOnFetch: false
+			showGitCommands: true,
+			pruneOnFetch: false
 		});
 		await settings.load();
 		const mounted = render(BehaviourSection, {});
 
-		// Four toggles since FEAT-018 added pruning, and the fourth is off.
+		// Three toggles: FEAT-018 added pruning and FEAT-019 took signing away,
+		// which is now `commit.gpgsign` under You rather than a preference here.
 		expect(mounted.all('button.chip').map((chip) => chip.textContent?.trim())).toEqual([
-			'on',
 			'off',
 			'on',
 			'off'

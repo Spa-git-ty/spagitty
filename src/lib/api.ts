@@ -41,6 +41,7 @@ import type {
 	RepoSummary,
 	SearchQuery,
 	Settings,
+	Signing,
 	Snapshot,
 	StashEntry,
 	WorkingCopy
@@ -403,6 +404,30 @@ export function setIdentity(
 	value: string
 ): Promise<Identity> {
 	return invoke('set_identity', { scope, key, value });
+}
+
+/**
+ * Commit signing as git would resolve it: `commit.gpgsign` and everything that
+ * decides whether it can work (FEAT-019).
+ */
+export function signing(): Promise<Signing> {
+	return invoke('signing');
+}
+
+/**
+ * Turn signing on or off in one scope, resolving to signing as it now stands.
+ *
+ * Written in both directions rather than unset when off: `commit.gpgsign =
+ * false` is a deliberate "not in this repository", and unsetting would let a
+ * global `true` through and spring the switch back on.
+ */
+export function setSigning(scope: IdentityScope, on: boolean): Promise<Signing> {
+	return invoke('set_signing', { scope, on });
+}
+
+/** Clear `commit.gpgsign` in one scope, so the next one up decides again. */
+export function clearSigning(scope: IdentityScope): Promise<Signing> {
+	return invoke('clear_signing', { scope });
 }
 
 /** Spagitty's own behaviour toggles. */

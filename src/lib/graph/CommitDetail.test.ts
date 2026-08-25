@@ -38,6 +38,7 @@ function graphRow(): GraphRow {
 		time: 1_700_000_000,
 		lane: 0,
 		color: 0,
+		signed: false,
 		parents: ['c'.repeat(40)],
 		refs: [],
 		edges: []
@@ -60,6 +61,7 @@ function detail(overrides: Partial<Detail> = {}): Detail {
 		committerName: 'Charles Babbage',
 		committerEmail: 'charles@example.com',
 		commitTime: 1_700_000_600,
+		signed: false,
 		parents: ['c'.repeat(40)],
 		files: [file('core.txt'), file('src/deep/nested/main.rs'), file('new.txt', 'added')],
 		...overrides

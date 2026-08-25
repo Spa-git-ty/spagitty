@@ -69,6 +69,9 @@ pub struct CommitDetail {
     pub committer_name: String,
     pub committer_email: String,
     pub commit_time: i64,
+    /// The commit carries a signature. See [`crate::signing`] — present, not
+    /// verified.
+    pub signed: bool,
     pub parents: Vec<String>,
     pub files: Vec<ChangedFile>,
 }
@@ -188,6 +191,7 @@ pub fn commit_detail(repo: &gix::Repository, id: &str) -> Result<CommitDetail> {
         committer_name: committer.name.to_string(),
         committer_email: committer.email.to_string(),
         commit_time: committer.time().map(|t| t.seconds).unwrap_or(0),
+        signed: crate::signing::signed(&commit),
         parents: parents.iter().map(ObjectId::to_string).collect(),
         files,
     })

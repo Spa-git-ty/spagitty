@@ -8,7 +8,14 @@
  * someone to edit a file that will not change anything.
  */
 
-import type { Dependency, IdentityOrigin, IdentityScope, IdentityValue } from '../types';
+import type {
+	Dependency,
+	IdentityOrigin,
+	IdentityScope,
+	IdentityValue,
+	SigningFormat,
+	SigningProblem
+} from '../types';
 
 /** Where the value git would use is coming from, in a sentence. */
 export function describeOrigin(origin: IdentityOrigin): string {
@@ -71,4 +78,33 @@ export function matching(dependencies: Dependency[], query: string): Dependency[
 			dependency.name.toLowerCase().includes(needle) ||
 			describeLicense(dependency).toLowerCase().includes(needle)
 	);
+}
+
+/**
+ * What a signing problem means, in a sentence a reader can act on.
+ *
+ * Beside the identity's sentences for the same reason: this is the part that
+ * can be wrong, and "signing is on but nothing can sign" is exactly the claim
+ * that has to be right before a commit is attempted rather than after one
+ * fails.
+ */
+export function describeSigningProblem(problem: SigningProblem): string {
+	switch (problem.kind) {
+		case 'missingProgram':
+			return `Signing is on, but ${problem.detail} could not be run. Commits will fail until it is installed or gpg.program points at one that is.`;
+		case 'noSigningKey':
+			return 'Signing is on and set to use an ssh key, but user.signingkey is not set. Unlike GPG, ssh has no address to find a key by, so there is nothing for it to fall back to.';
+	}
+}
+
+/** Which machinery git would sign with, named the way its config names it. */
+export function describeSigningFormat(format: SigningFormat): string {
+	switch (format) {
+		case 'openPgp':
+			return 'GPG (gpg.format is openpgp, git’s default)';
+		case 'ssh':
+			return 'an ssh key (gpg.format is ssh)';
+		case 'x509':
+			return 'S/MIME (gpg.format is x509)';
+	}
 }

@@ -37,7 +37,7 @@ let pruneOnFetch = false;
 vi.mock('$lib/settings/store.svelte', () => ({
 	settings: {
 		get settings() {
-			return { signCommits: false, confirmHistoryRewrite: true, showGitCommands: false, pruneOnFetch };
+			return { confirmHistoryRewrite: true, showGitCommands: false, pruneOnFetch };
 		}
 	}
 }));

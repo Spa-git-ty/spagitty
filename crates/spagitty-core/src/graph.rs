@@ -86,6 +86,14 @@ pub struct GraphRow {
     pub time: i64,
     pub lane: usize,
     pub color: usize,
+    /// The commit carries a signature (FEAT-019).
+    ///
+    /// Read off the object's `gpgsig` header as the walk passes it, which costs
+    /// nothing — the commit is already decoded for its author and summary. It
+    /// says the commit *was signed*, not that the signature is valid: verifying
+    /// means a subprocess and a keyring per row, and the screens are careful to
+    /// say "signed" rather than "verified".
+    pub signed: bool,
     pub parents: Vec<String>,
     pub refs: Vec<RefChip>,
     pub edges: Vec<LaneEdge>,
@@ -389,6 +397,7 @@ where
             time,
             lane,
             color,
+            signed: crate::signing::signed(&commit),
             parents: parents.iter().map(ObjectId::to_string).collect(),
             refs: refs.chips_for(&id),
             edges,

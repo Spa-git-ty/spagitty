@@ -25,6 +25,7 @@ use spagitty_core::remotes;
 use spagitty_core::repo::{self, RepoInfo, RepoSummary};
 use spagitty_core::search::Query;
 use spagitty_core::shell::PullMode;
+use spagitty_core::signing::{self, Signing};
 use spagitty_core::stash::{self, StashEntry};
 use spagitty_core::status::{self, RepoCounts, WorkingCopy};
 use spagitty_core::tags;
@@ -1067,6 +1068,64 @@ pub fn set_identity(
 }
 
 /// Spagitty's own behaviour toggles.
+/// Signing, as git would resolve it here (FEAT-019).
+///
+/// Read from the open repository's cascade when there is one, and from the
+/// global configuration when there is not — Settings does not need a repository
+/// open, and the global value is the one it can still offer.
+#[tauri::command]
+pub fn signing(state: State<'_, AppState>) -> Result<Signing> {
+    let guard = state.session.lock().expect("session lock");
+    match guard.as_ref() {
+        Some(session) => Ok(signing::read(&session.repo.to_thread_local())),
+        None => signing::read_global(),
+    }
+}
+
+/// Turn `commit.gpgsign` on or off in one scope, and report what that left.
+///
+/// The same shape as `set_identity`, because it is the same problem: a git
+/// config key with a global value and a repository override, written through
+/// `git config` so every other tool sees it.
+#[tauri::command]
+pub fn set_signing(state: State<'_, AppState>, scope: Scope, on: bool) -> Result<Signing> {
+    let open = state
+        .session
+        .lock()
+        .expect("session lock")
+        .as_ref()
+        .map(|session| session.path.clone());
+
+    let directory = match (scope, open) {
+        (_, Some(path)) => path,
+        (Scope::Local, None) => return Err(Error::NoRepository),
+        (Scope::Global, None) => std::env::current_dir()?,
+    };
+
+    signing::set(&directory, scope, on)?;
+    signing(state)
+}
+
+/// Clear `commit.gpgsign` in one scope, so the next one up decides again.
+#[tauri::command]
+pub fn clear_signing(state: State<'_, AppState>, scope: Scope) -> Result<Signing> {
+    let open = state
+        .session
+        .lock()
+        .expect("session lock")
+        .as_ref()
+        .map(|session| session.path.clone());
+
+    let directory = match (scope, open) {
+        (_, Some(path)) => path,
+        (Scope::Local, None) => return Err(Error::NoRepository),
+        (Scope::Global, None) => std::env::current_dir()?,
+    };
+
+    signing::clear(&directory, scope)?;
+    signing(state)
+}
+
 #[tauri::command]
 pub fn settings<R: Runtime>(app: AppHandle<R>) -> Settings {
     crate::settings::load(&app)

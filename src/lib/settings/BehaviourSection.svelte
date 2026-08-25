@@ -12,14 +12,14 @@
 	 * each names the work item that will make it take effect. Narrowing the
 	 * claim to the truth is the honest half of this screen: a switch that
 	 * silently does nothing is worse than one that says it is waiting.
+	 *
+	 * "Sign my commits" is no longer here. It was the one toggle nothing read,
+	 * and FEAT-019 answered it by moving the preference rather than wiring it
+	 * up: `commit.gpgsign` is the same switch in the place every other tool
+	 * looks, so it lives under **You** with the identity and is written with
+	 * `git config`.
 	 */
 	const TOGGLES: { key: keyof Settings; label: string; what: string; pending: string | null }[] = [
-		{
-			key: 'signCommits',
-			label: 'Sign my commits',
-			what: 'Pass --gpg-sign when committing, using whichever program git is configured with.',
-			pending: 'Committing does not read this yet.'
-		},
 		{
 			key: 'confirmHistoryRewrite',
 			label: 'Ask before rewriting history',

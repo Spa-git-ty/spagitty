@@ -61,6 +61,15 @@ pub enum Error {
     #[error("git {command} failed: {stderr}")]
     Git { command: String, stderr: String },
 
+    /// A commit failed *because it could not be signed* (FEAT-019).
+    ///
+    /// Told apart from an ordinary `Git` failure on purpose. "commit failed" for
+    /// a signing problem sends the reader looking at their message, their hooks
+    /// and their index; naming the program git tried to run sends them to the
+    /// one thing that is actually wrong.
+    #[error("{program} could not sign this commit: {stderr}")]
+    Signing { program: String, stderr: String },
+
     #[error("{0}")]
     Io(#[from] std::io::Error),
 }

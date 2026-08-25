@@ -131,9 +131,18 @@ currently forbids one becomes.
 
 ### 12. FEAT-019 — commit signing
 
-The "Sign my commits" toggle persists and nothing reads it. Needs GPG and SSH
-signing with passphrase prompts, which is the first thing in the app that has
-to ask for a secret.
+**Partial**, on `feature/FEAT-019-commit-signing`.
+
+**Closed by:** `spagitty-core::signing`, and an answer to the item's open
+question — `commit.gpgsign` is the authority, so the toggle left Spagitty's
+preferences file instead of being wired up, and Settings gained a Signing
+section beside the identity. `--gpg-sign` on the commit, a signing failure
+reported as one rather than as "commit failed", the two conditions that can be
+known before the commit is attempted, and `signed` on every graph row.
+
+**Still owed:** the notice on the Working copy screen and the signed marking on
+the Graph and Diff screens. Both are presentation over data that already
+reaches the frontend.
 
 ### 13. FEAT-034 — browse a stash entry file by file
 

@@ -23,6 +23,7 @@ use std::path::Path;
 use crate::diff::{self, FileStatus, Side};
 use crate::error::{Error, Result};
 use crate::shell;
+use crate::signing;
 
 /// Stage whole paths.
 pub fn stage(repo: &gix::Repository, paths: &[String]) -> Result<()> {
@@ -111,7 +112,14 @@ pub fn commit(repo: &gix::Repository, subject: &str, body: &str, amend: bool) ->
     if subject.is_empty() {
         return Err(Error::EmptyMessage);
     }
-    shell::commit(workdir(repo)?, subject, body, amend)
+
+    // Read rather than passed in: `commit.gpgsign` is the authority, and a
+    // caller that carried its own answer could disagree with the configuration
+    // between the screen reading it and the commit happening.
+    let signing = signing::read(repo);
+
+    shell::commit(workdir(repo)?, subject, body, amend, signing.enabled)
+        .map_err(|error| signing::as_signing_failure(error, &signing.program))
 }
 
 /// The message of the commit `HEAD` points at, for pre-filling an amend.

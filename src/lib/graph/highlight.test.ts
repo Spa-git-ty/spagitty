@@ -36,6 +36,7 @@ function makeRow(
 		time: 1_700_000_000 - index * 60,
 		lane: 0,
 		color: 0,
+		signed: false,
 		parents,
 		refs,
 		edges: []

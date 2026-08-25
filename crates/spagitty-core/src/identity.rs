@@ -197,7 +197,10 @@ fn value_of(config: &gix::config::File, key: Key) -> Value {
 /// A worktree's own configuration counts as local: it is inside the repository,
 /// and `git config --local` is what an ordinary repository override is. System
 /// and environment sources have no scope here — Spagitty does not write either.
-fn writable(source: gix::config::Source) -> Option<Scope> {
+///
+/// Shared with [`crate::signing`], which reads a different key out of the same
+/// cascade and must answer "where did this come from" the same way.
+pub(crate) fn writable(source: gix::config::Source) -> Option<Scope> {
     use gix::config::Source::*;
     match source {
         Local | Worktree => Some(Scope::Local),
@@ -206,7 +209,7 @@ fn writable(source: gix::config::Source) -> Option<Scope> {
     }
 }
 
-fn origin(source: gix::config::Source) -> Origin {
+pub(crate) fn origin(source: gix::config::Source) -> Origin {
     use gix::config::Source::*;
     match source {
         Local | Worktree => Origin::Local,

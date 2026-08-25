@@ -30,6 +30,7 @@ function row(index: number, lane = 0, edges: LaneEdge[] = []): GraphRow {
 		time: 1_700_000_000 - index * 60,
 		lane,
 		color: lane,
+		signed: false,
 		parents: [],
 		refs: [],
 		edges

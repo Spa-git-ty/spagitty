@@ -2,7 +2,9 @@
 
 # FEAT-019 — Commit signing
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Partial. The backend is built and the preference has moved to
+`commit.gpgsign`; two pieces of presentation are not. Plan:
+[`agile/plans/FEAT-019-plan.md`](../plans/FEAT-019-plan.md).
 **Screen:** Working copy (1C), Settings (1K).
 
 ## Problem
@@ -51,3 +53,35 @@ work.
 ## Dependencies
 
 FEAT-003 (the commit path), FEAT-011 (the toggle).
+
+## What is built, and what is not
+
+The open question above was answered: **`commit.gpgsign` is the authority**, and
+the "Sign my commits" toggle left Spagitty's preferences file rather than being
+wired up. Two switches for one behaviour disagree the moment one of them is
+changed outside this application, and setting `commit.gpgsign` in a terminal is
+how the preference is set on every machine that already signs. Settings gained a
+**Signing** section under **You**, beside the identity and sharing its scope.
+
+Built:
+
+- `spagitty_core::signing` — `commit.gpgsign`, `gpg.format`, `user.signingkey`
+  and the resolved program, read from the same cascade the identity is read
+  from, and written with `git config`.
+- `--gpg-sign` on the commit, when it is on and only then.
+- `Error::Signing`, told apart from an ordinary commit failure by reading git's
+  own stderr, so a hook refusing a commit is not relabelled.
+- The two conditions that can be known in advance — no signing program, and ssh
+  format with no key.
+- `signed` on `GraphRow` and `CommitDetail`: the `gpgsig` header, read as the
+  walk passes it. Presence, never verification.
+
+Not built:
+
+- The notice on the Working copy screen. The data reaches the store; the message
+  box does not render it. Until it does, the third scope bullet — *say what will
+  happen before it happens* — is only half met.
+- The signed marking on the Graph and Diff screens. `signed` reaches the
+  frontend and no markup reads it.
+
+`SWEEP-019-04` and `-05` cover exactly these two and are expected to fail.

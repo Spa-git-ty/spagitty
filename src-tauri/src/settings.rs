@@ -11,6 +11,14 @@
 //! is git's own configuration, every tool reads it, and it is handled by
 //! `spagitty_core::identity` through `git config`.
 //!
+//! Commit signing left this file for the same reason (FEAT-019). It was here,
+//! as `signCommits`, and nothing read it — but wiring it up would have been the
+//! defect rather than the fix: `commit.gpgsign` is the same preference in the
+//! place every other tool looks, and two switches for one behaviour disagree
+//! the moment one of them is changed outside this application. A settings file
+//! written before that still carrying the key is not a problem; unknown keys
+//! are ignored on the way in, and the next write drops it.
+//!
 //! A hand-edited file must not stop the application starting, so anything that
 //! does not parse reads as the defaults. That is the same treatment the
 //! repository list gets, for the same reason.
@@ -30,8 +38,6 @@ const FILE: &str = "settings.json";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
-    /// Sign commits with the configured GPG or SSH program.
-    pub sign_commits: bool,
     /// Ask before anything that rewrites history.
     pub confirm_history_rewrite: bool,
     /// Show the `git` command behind each action.
@@ -54,7 +60,6 @@ impl Default for Settings {
     /// user did not set should not do that.
     fn default() -> Self {
         Settings {
-            sign_commits: false,
             confirm_history_rewrite: true,
             show_git_commands: false,
             // Off, like the other two that change what the application does.
@@ -118,7 +123,6 @@ mod tests {
         // The cost of asking is a click. The cost of not asking is a rewritten
         // history, so this is the one that defaults to on.
         assert!(Settings::default().confirm_history_rewrite);
-        assert!(!Settings::default().sign_commits);
         assert!(!Settings::default().show_git_commands);
     }
 
@@ -132,9 +136,9 @@ mod tests {
 
     #[test]
     fn a_file_from_an_older_build_keeps_what_it_carries_and_defaults_the_rest() {
-        let partial = parse(r#"{"signCommits": true}"#);
+        let partial = parse(r#"{"showGitCommands": true}"#);
 
-        assert!(partial.sign_commits);
+        assert!(partial.show_git_commands);
         assert!(
             partial.confirm_history_rewrite,
             "a key the file predates arrives at its default"
@@ -144,15 +148,18 @@ mod tests {
     #[test]
     fn a_key_the_build_does_not_know_is_ignored_rather_than_fatal() {
         // Going back a version must not cost the settings that still apply.
-        let settings = parse(r#"{"signCommits": true, "somethingLater": "on"}"#);
+        // `signCommits` is one such key now: it lived here until FEAT-019 moved
+        // the preference to `commit.gpgsign`, and a file written before that
+        // still carries it.
+        let settings = parse(r#"{"signCommits": true, "showGitCommands": true, "later": "on"}"#);
 
-        assert!(settings.sign_commits);
+        assert!(settings.show_git_commands);
+        assert!(settings.confirm_history_rewrite);
     }
 
     #[test]
     fn settings_read_back_as_they_were_written() {
         let written = Settings {
-            sign_commits: true,
             confirm_history_rewrite: false,
             show_git_commands: true,
             prune_on_fetch: true,
@@ -168,9 +175,11 @@ mod tests {
         // these keys. A rename on either side has to be a deliberate one.
         let text = serde_json::to_string(&Settings::default()).expect("serialising");
 
-        assert!(text.contains("signCommits"), "{text}");
         assert!(text.contains("confirmHistoryRewrite"), "{text}");
         assert!(text.contains("showGitCommands"), "{text}");
         assert!(text.contains("pruneOnFetch"), "{text}");
+        // And the one that left: writing it again would recreate a second
+        // switch for a preference `commit.gpgsign` already holds.
+        assert!(!text.contains("signCommits"), "{text}");
     }
 }

@@ -14,7 +14,7 @@
 
 import * as api from '../api';
 import { repo } from '../repo.svelte';
-import type { DiffSide, FileDiff, StatusEntry, WorkingCopy } from '../types';
+import type { DiffSide, FileDiff, Signing, StatusEntry, WorkingCopy } from '../types';
 
 /** Which file is open, and which side of the index it is being read from. */
 export interface Selection {
@@ -37,6 +37,17 @@ let fileLoading = $state(false);
 let subject = $state('');
 let body = $state('');
 let amend = $state(false);
+
+/**
+ * Whether this commit would be signed, and whether it could be (FEAT-019).
+ *
+ * Read here rather than left to the Settings screen because the answer belongs
+ * *before* the button: a repository with signing on and no working signer must
+ * be told so at the point of commit, not by a failure afterwards. Read with the
+ * working copy, which is also what a `repo-changed` refreshes — `commit.gpgsign`
+ * can be edited from a terminal while this screen is open.
+ */
+let signing = $state<Signing | null>(null);
 
 /** Set while a write is in flight, so a button cannot be pressed twice. */
 let busy = $state(false);
@@ -74,6 +85,9 @@ export const changes = {
 	},
 	get selection(): Selection | null {
 		return selection;
+	},
+	get signing(): Signing | null {
+		return signing;
 	},
 	get file(): FileDiff | null {
 		return file;
@@ -139,8 +153,16 @@ export const changes = {
 		loading = true;
 		const seq = ++workSeq;
 		try {
-			const next = await api.workingCopy();
+			// Settled rather than awaited together: signing is a note beside the
+			// button, and failing to read it must not take the working copy with
+			// it.
+			const [walk, signs] = await Promise.allSettled([api.workingCopy(), api.signing()]);
 			if (seq !== workSeq) return;
+
+			if (signs.status === 'fulfilled') signing = signs.value;
+
+			if (walk.status === 'rejected') throw walk.reason;
+			const next = walk.value;
 
 			work = next;
 			loaded = true;
@@ -296,6 +318,7 @@ export const changes = {
 		subject = '';
 		body = '';
 		amend = false;
+		signing = null;
 		busy = false;
 		writeError = null;
 	}

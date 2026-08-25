@@ -13,7 +13,8 @@ vi.mock('$lib/api', () => ({
 	discard: vi.fn(),
 	discardHunk: vi.fn(),
 	commit: vi.fn(),
-	headMessage: vi.fn()
+	headMessage: vi.fn(),
+	signing: vi.fn()
 }));
 
 vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
@@ -23,6 +24,7 @@ import { calls as repoCalls, control as repoControl } from '../../testing/repo-s
 import { changes } from './store.svelte';
 
 const workingCopy = vi.mocked(api.workingCopy);
+const signing = vi.mocked(api.signing);
 const workingDiff = vi.mocked(api.workingDiff);
 const stage = vi.mocked(api.stage);
 const unstage = vi.mocked(api.unstage);

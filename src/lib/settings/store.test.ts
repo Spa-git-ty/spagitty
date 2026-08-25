@@ -9,6 +9,9 @@ vi.mock('$lib/api', () => ({
 	setIdentity: vi.fn(),
 	settings: vi.fn(),
 	setSettings: vi.fn(() => Promise.resolve()),
+	signing: vi.fn(),
+	setSigning: vi.fn(),
+	clearSigning: vi.fn(),
 	licenses: vi.fn(),
 	about: vi.fn()
 }));
@@ -19,6 +22,7 @@ import { settings } from './store.svelte';
 const identity = vi.mocked(api.identity);
 const setIdentity = vi.mocked(api.setIdentity);
 const settingsCall = vi.mocked(api.settings);
+const signingCall = vi.mocked(api.signing);
 const setSettings = vi.mocked(api.setSettings);
 const licenses = vi.mocked(api.licenses);
 const about = vi.mocked(api.about);
@@ -38,7 +42,6 @@ function anIdentity(overrides: Partial<Identity> = {}): Identity {
 }
 
 const STORED: Settings = {
-	signCommits: false,
 	confirmHistoryRewrite: true,
 	showGitCommands: false, pruneOnFetch: false
 };
@@ -224,10 +227,10 @@ describe('behaviour toggles', () => {
 	it('flips and stores the whole settings object', async () => {
 		await settings.load();
 
-		await settings.toggle('signCommits');
+		await settings.toggle('showGitCommands');
 
-		expect(settings.settings.signCommits).toBe(true);
-		expect(setSettings).toHaveBeenCalledWith({ ...STORED, signCommits: true });
+		expect(settings.settings.showGitCommands).toBe(true);
+		expect(setSettings).toHaveBeenCalledWith({ ...STORED, showGitCommands: true });
 	});
 
 	it('puts the switch back when the write fails, and says why', async () => {
@@ -244,7 +247,6 @@ describe('behaviour toggles', () => {
 
 	it('asking before a history rewrite is on before anything is stored', () => {
 		expect(settings.settings.confirmHistoryRewrite).toBe(true);
-		expect(settings.settings.signCommits).toBe(false);
 		expect(settings.settings.showGitCommands).toBe(false);
 	});
 });
