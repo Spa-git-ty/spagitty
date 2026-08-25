@@ -131,7 +131,7 @@ currently forbids one becomes.
 
 ### 12. FEAT-019 — commit signing
 
-**Partial**, on `feature/FEAT-019-commit-signing`.
+**Done**, on `feature/FEAT-019-commit-signing`.
 
 **Closed by:** `spagitty-core::signing`, and an answer to the item's open
 question — `commit.gpgsign` is the authority, so the toggle left Spagitty's
@@ -140,9 +140,9 @@ section beside the identity. `--gpg-sign` on the commit, a signing failure
 reported as one rather than as "commit failed", the two conditions that can be
 known before the commit is attempted, and `signed` on every graph row.
 
-**Still owed:** the notice on the Working copy screen and the signed marking on
-the Graph and Diff screens. Both are presentation over data that already
-reaches the frontend.
+Finished by the notice on the Working copy screen — said before the button, not
+after a failure — and `S` on the graph row with the full sentence in the detail
+panel. Nothing anywhere says *verified*, and a test holds that.
 
 ### 13. FEAT-034 — browse a stash entry file by file
 

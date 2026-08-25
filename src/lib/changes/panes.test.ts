@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { click, flushSync, render } from '../../testing/mount';
-import type { FileDiff, StatusEntry, WorkingCopy } from '$lib/types';
+import type { FileDiff, Signing, StatusEntry, WorkingCopy } from '$lib/types';
 
 import { vi } from 'vitest';
 vi.mock('$lib/changes/store.svelte', async () => await import('../../testing/changes-store.svelte'));
@@ -369,6 +369,80 @@ describe('MessageBox', () => {
 		const long = render(MessageBox, {});
 		expect(long.get('.count').textContent?.trim()).toBe('60');
 		long.destroy();
+	});
+
+	/**
+	 * FEAT-019. The item asked that a repository which cannot sign be told so
+	 * *at* the point of commit rather than by a failure afterwards, and this is
+	 * where that promise is kept or broken.
+	 */
+	function signing(overrides: Partial<Signing> = {}): Signing {
+		return {
+			enabled: true,
+			origin: 'global',
+			format: 'openPgp',
+			key: null,
+			program: 'gpg',
+			problem: null,
+			repository: true,
+			global: true,
+			local: null,
+			...overrides
+		};
+	}
+
+	it('says nothing about signing when signing is off', () => {
+		// The ordinary case. A note on every commit in a repository that never
+		// signs is noise on every commit, and the absence already says it.
+		control.setSigning(signing({ enabled: false, problem: null }));
+		const view = render(MessageBox, {});
+
+		expect(view.find('.signing')).toBeNull();
+		view.destroy();
+	});
+
+	it('says nothing before signing has been read', () => {
+		const view = render(MessageBox, {});
+		expect(view.find('.signing')).toBeNull();
+		view.destroy();
+	});
+
+	it('says the commit will be signed, and names the program', () => {
+		control.setSigning(signing({ program: 'gpg2' }));
+		const view = render(MessageBox, {});
+
+		const note = view.get('.signing');
+		expect(note.textContent).toContain('will be signed');
+		expect(note.textContent).toContain('gpg2');
+		// A statement, not an alarm: signing being on is ordinary for anyone
+		// who signs.
+		expect(note.classList.contains('warn')).toBe(false);
+
+		view.destroy();
+	});
+
+	it('warns before the button when the signing program is not installed', () => {
+		control.setSigning(
+			signing({ problem: { kind: 'missingProgram', detail: 'spagitty-no-such-signer' } })
+		);
+		const view = render(MessageBox, {});
+
+		const note = view.get('.signing');
+		expect(note.textContent).toContain('spagitty-no-such-signer');
+		expect(note.classList.contains('warn')).toBe(true);
+
+		view.destroy();
+	});
+
+	it('warns when ssh signing has no key, which cannot work', () => {
+		control.setSigning(signing({ format: 'ssh', problem: { kind: 'noSigningKey' } }));
+		const view = render(MessageBox, {});
+
+		const note = view.get('.signing');
+		expect(note.textContent).toContain('user.signingkey');
+		expect(note.classList.contains('warn')).toBe(true);
+
+		view.destroy();
 	});
 
 	it('toggles amending and says what it does', () => {

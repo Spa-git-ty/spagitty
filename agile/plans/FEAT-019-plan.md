@@ -4,8 +4,8 @@
 
 **Item:** [`agile/items/FEAT-019-commit-signing.md`](../items/FEAT-019-commit-signing.md)
 **Branch:** `feature/FEAT-019-commit-signing`
-**Status:** partially implemented. The backend is complete; two pieces of
-presentation are not. See *What is not built yet* below.
+**Status:** implemented, over two commits. The first landed the backend and left
+the item `Partial`; the second landed the two pieces of presentation below.
 
 **Branch point.** Cut from `feature/FEAT-034-stash-file-browsing`, continuing the
 unmerged stack.
@@ -109,19 +109,34 @@ passphrase on a terminal fails rather than hanging the application, which is the
 outcome the item insisted on. A GPG agent with a graphical pinentry still asks —
 that is the behaviour the user configured on purpose and gets everywhere else.
 
-## What is not built yet
+## The two pieces of presentation
 
-Both are presentation over data that is already there and tested:
+### The notice, before the button
 
-- **The pre-commit notice.** `changes.signing` is read with the working copy and
-  exposed on the store; `MessageBox.svelte` does not yet render it. Until it
-  does, a repository with signing on and no working signer is told by a failed
-  commit — which is the half of the item's third bullet that is still owed.
-- **The signed indicator on the Graph and Diff screens.** `signed` reaches the
-  frontend on both `GraphRow` and `CommitDetail` and is unused by the markup.
+`MessageBox.svelte` says what this commit will do about a signature. It names
+the program when signing will work, and warns when it will not — which is the
+item's third bullet, and the reason the two knowable problems are computed at
+all.
 
-Neither is blocked on anything. They are the next commit on this branch, and the
-item's status stays `Partial` until they land.
+Silent when signing is off. A note reading "this will not be signed" on every
+commit in a repository that never signs is noise on every commit, and the
+absence already says it. The warning colour is kept for on-and-cannot-work,
+which is the only case worth interrupting for.
+
+### `S`, not a tick
+
+The graph row carries a single mono `S`. Not `✔`: a RefChip already uses that
+for "the branch you are on", and one mark cannot mean two things on one screen.
+
+The commit detail panel says it in full, because there is room there for the
+caveat and for naming `git verify-commit` as the thing that would actually
+check it. The graph row has a letter and a tooltip.
+
+Only when it *is* signed, on both. Same argument as the notice: the absence is
+the answer in a repository nobody signs.
+
+Nothing in either place says **verified**, and `rows.test.ts` asserts the word
+never appears.
 
 ## Non-scope, unchanged
 

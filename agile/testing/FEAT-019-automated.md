@@ -32,16 +32,22 @@
 | `a_key_the_build_does_not_know_is_ignored_rather_than_fatal` | `src-tauri/src/settings.rs` | Extended: `signCommits` is now such a key, and a settings file written before this still carrying it must not stop the application. |
 | `the_stored_keys_are_the_camel_case_names_the_screen_uses` | `src-tauri/src/settings.rs` | Extended with the inverse: `signCommits` must **not** be written again, or the second switch comes back. |
 
+| `says nothing about signing when signing is off` | `src/lib/changes/panes.test.ts` | The ordinary case, and the reason the notice is not always on screen. |
+| `says nothing before signing has been read` | `src/lib/changes/panes.test.ts` | The first frame, before the walk resolves, is not a claim that signing is off. |
+| `says the commit will be signed, and names the program` | `src/lib/changes/panes.test.ts` | And that it is a statement rather than a warning — signing being on is ordinary for anyone who signs. |
+| `warns before the button when the signing program is not installed` | `src/lib/changes/panes.test.ts` | The item's third bullet, kept: told at the point of commit, not by a failure afterwards. |
+| `warns when ssh signing has no key, which cannot work` | `src/lib/changes/panes.test.ts` | The other knowable problem, and it names `user.signingkey`. |
+| `marks a signed commit, and only a signed one` | `src/lib/graph/rows.test.ts` | One `S` for two rows. `S` rather than a tick, because a RefChip's tick already means "the branch you are on". |
+| `does not claim a signature it has not verified` | `src/lib/graph/rows.test.ts` | The word **verified** appears nowhere, and the tooltip says outright that it is not. This is the assertion that keeps a cheap header read from becoming a claim about trust. |
+| `says a signed commit is signed, and that it is not verified` | `src/lib/graph/CommitDetail.test.ts` | The full sentence, and `git verify-commit` named as the thing that would actually check it. |
+| `says nothing at all about an unsigned commit` | `src/lib/graph/CommitDetail.test.ts` | The absence is the answer; "not signed" on every commit would be noise on every commit. |
+
 Every existing test that builds a `GraphRow` or a `CommitDetail` carries
 `signed` now. That is fixture churn rather than new coverage, and it is listed
 so the diff is not mistaken for behaviour changing.
 
 ## What is not covered
 
-- **The two pieces of presentation that are not built.** The pre-commit notice
-  and the Graph/Diff signed indicator have no tests because they have no code;
-  see the plan's *What is not built yet*. `SWEEP-019-04` and `-05` are written
-  and will fail until they exist, which is the honest state to leave them in.
 - **A real signature, made by a real signer.** Would need a key, an agent and a
   passphrase in CI. What is tested instead is every decision Spagitty makes
   around the signer, and the header it leaves behind.

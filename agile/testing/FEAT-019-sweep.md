@@ -23,10 +23,6 @@ git config user.signingkey "$SIG/signer.pub"
 printf 'one\n' > a.txt && git add -A && git commit -q -m "Unsigned"
 ```
 
-**SWEEP-019-04 and -05 are expected to fail** until the two pieces named in the
-plan's *What is not built yet* are built. They are written now so the gap is
-recorded rather than remembered.
-
 ---
 
 ### SWEEP-019-01 — The switch is git's switch
@@ -62,7 +58,7 @@ recorded rather than remembered.
 
 ### SWEEP-019-04 — Told before it fails, not after
 
-- **Priority:** P1 — **not built yet**
+- **Priority:** P1
 - **Steps:** Turn signing on, then `git config gpg.format ssh` and
   `git config --unset user.signingkey`. Open the Working copy screen.
 - **Expected:** The message box says signing is on and cannot work, and why,
@@ -71,12 +67,13 @@ recorded rather than remembered.
 
 ### SWEEP-019-05 — A signed commit looks signed
 
-- **Priority:** P2 — **not built yet**
+- **Priority:** P2
 - **Steps:** Make one signed and one unsigned commit. Look at the Graph, then
   open each in the Diff screen.
-- **Expected:** The signed one is marked on both screens and the unsigned one is
-  not. Nothing anywhere claims the signature is *verified* — hovering says so
-  plainly.
+- **Expected:** The signed one carries an `S` on its graph row and a "Signed"
+  line in the detail panel; the unsigned one carries neither. Nothing anywhere
+  claims the signature is *verified* — hovering the `S` says so plainly, and the
+  detail panel names `git verify-commit` as the thing that would.
 - **Result:**
 
 ### SWEEP-019-06 — Nothing hangs waiting for a passphrase

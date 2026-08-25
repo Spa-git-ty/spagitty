@@ -112,6 +112,29 @@ describe('a loaded commit', () => {
 		return render(CommitDetail, {});
 	}
 
+	it('says a signed commit is signed, and that it is not verified', () => {
+		// Said in full here because there is room for the caveat, where the
+		// graph row has a letter and a tooltip (FEAT-019).
+		const view = open({ signed: true });
+
+		expect(view.text()).toContain('Signed');
+		expect(view.text()).toContain('does not verify');
+		expect(view.text()).toContain('git verify-commit');
+
+		view.destroy();
+	});
+
+	it('says nothing at all about an unsigned commit', () => {
+		// "not signed" on every commit in a repository nobody signs is a line of
+		// noise on every commit; the absence already says it.
+		const view = open({ signed: false });
+
+		expect(view.text()).not.toContain('Signed');
+		expect(view.text()).not.toContain('verify');
+
+		view.destroy();
+	});
+
 	it('shows the message, both people and the parent', () => {
 		const view = open();
 

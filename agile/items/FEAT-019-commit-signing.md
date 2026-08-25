@@ -2,9 +2,7 @@
 
 # FEAT-019 — Commit signing
 
-**Status:** Partial. The backend is built and the preference has moved to
-`commit.gpgsign`; two pieces of presentation are not. Plan:
-[`agile/plans/FEAT-019-plan.md`](../plans/FEAT-019-plan.md).
+**Status:** Done. Plan: [`agile/plans/FEAT-019-plan.md`](../plans/FEAT-019-plan.md).
 **Screen:** Working copy (1C), Settings (1K).
 
 ## Problem
@@ -76,12 +74,21 @@ Built:
 - `signed` on `GraphRow` and `CommitDetail`: the `gpgsig` header, read as the
   walk passes it. Presence, never verification.
 
-Not built:
+Built in a second commit, which is why this item was `Partial` for one:
 
-- The notice on the Working copy screen. The data reaches the store; the message
-  box does not render it. Until it does, the third scope bullet — *say what will
-  happen before it happens* — is only half met.
-- The signed marking on the Graph and Diff screens. `signed` reaches the
-  frontend and no markup reads it.
+- The notice on the Working copy screen. The message box says the commit will be
+  signed and names the program, or warns — before the button — when signing is
+  on and cannot work. Silent when signing is off, which is the ordinary case.
+- The signed marking. `S` on the graph row, with a tooltip that says it is not
+  verified, and the full sentence in the commit detail panel where there is room
+  for the caveat and for `git verify-commit`.
 
-`SWEEP-019-04` and `-05` cover exactly these two and are expected to fail.
+Nothing here says *verified*, and there is a test asserting the word never
+appears.
+
+## Not in scope, and still not
+
+Key management, and verification. Spagitty does not create, import or store
+signing keys — that boundary is FEAT-017's — and it reads the signature header
+rather than checking the signature, which would mean a subprocess and a keyring
+per row.

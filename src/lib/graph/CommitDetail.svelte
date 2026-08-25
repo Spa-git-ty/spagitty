@@ -107,6 +107,21 @@
 					</div>
 				</div>
 
+				<!--
+					FEAT-019. Said in full here because there is room for the caveat,
+					where the graph row has only a letter and a tooltip.
+
+					Only when it *is* signed. "not signed" on every commit in a
+					repository nobody signs is a line of noise on every commit, and
+					the absence already says it.
+				-->
+				{#if detail.signed}
+					<div class="note" title="Read from the commit's signature header">
+						Signed. Spagitty does not verify signatures — use
+						<span class="mono">git verify-commit {detail.short}</span> for that.
+					</div>
+				{/if}
+
 				{#each detail.parents as parent (parent)}
 					<div class="mono muted">parent {parent.slice(0, 7)}</div>
 				{/each}

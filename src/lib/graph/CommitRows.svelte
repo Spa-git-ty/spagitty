@@ -598,6 +598,24 @@
 								<div class="cell lane-space" style="width: {laneWidth}px"></div>
 							{:else if column.id === 'message'}
 								<div class="cell message">
+									{#if row.signed}
+										<!--
+											FEAT-019. `S`, not a tick: the tick already means
+											"this is the branch you are on" on a RefChip, and
+											two meanings for one mark on one screen is worse
+											than a letter that has to be hovered once.
+
+											It says signed. It does not say verified — the
+											title spells that out, because the difference is
+											the whole reason this is cheap enough to show on
+											every row.
+										-->
+										<span
+											class="mono signed"
+											title="Signed. Spagitty reads the signature header; it does not verify the signature."
+											aria-label="signed">S</span
+										>
+									{/if}
 									<span class="summary" title={row.summary}>{row.summary}</span>
 									{#if time}<span class="mono muted when">{time}</span>{/if}
 								</div>

@@ -64,6 +64,34 @@ describe('CommitRows', () => {
 		view.destroy();
 	});
 
+	/**
+	 * FEAT-019. `S` rather than a tick: the tick already means "the branch you
+	 * are on" on a RefChip, and one mark cannot mean two things on one screen.
+	 */
+	it('marks a signed commit, and only a signed one', () => {
+		control.setRows([row(0, { signed: true }), row(1, { signed: false })]);
+		const view = render(CommitRows, {});
+
+		const marks = view.all('.signed');
+		expect(marks).toHaveLength(1);
+		expect(marks[0].textContent?.trim()).toBe('S');
+
+		view.destroy();
+	});
+
+	it('does not claim a signature it has not verified', () => {
+		// The whole reason this is cheap enough to put on every row: it reads a
+		// header. Saying "verified" would be a claim nothing here checked.
+		control.setRows([row(0, { signed: true })]);
+		const view = render(CommitRows, {});
+
+		const title = view.get('.signed').getAttribute('title') ?? '';
+		expect(title).toContain('does not verify');
+		expect(view.text()).not.toContain('verified');
+
+		view.destroy();
+	});
+
 	it('sizes the scroll area to the whole history, not to the rows drawn', () => {
 		control.setRows(Array.from({ length: 5000 }, (_, i) => row(i)));
 		const view = render(CommitRows, {});
