@@ -40,6 +40,10 @@ import type {
 	StashAction,
 	RepoSummary,
 	SearchQuery,
+	ForgeAccount,
+	ForgeKind,
+	ForgeRepo,
+	PullRequest,
 	Settings,
 	Signing,
 	Snapshot,
@@ -404,6 +408,46 @@ export function setIdentity(
 	value: string
 ): Promise<Identity> {
 	return invoke('set_identity', { scope, key, value });
+}
+
+/**
+ * Which repository on a hosting service the open one points at (FEAT-017).
+ *
+ * Null when no repository is open, when the remote is not a host Spagitty
+ * reads, or when there are several remotes and no `origin`. None of those is an
+ * error — plenty of repositories are not on a forge at all.
+ */
+export function forgeRepo(): Promise<ForgeRepo | null> {
+	return invoke('forge_repo');
+}
+
+/** The connected accounts. Hosts and logins; never tokens. */
+export function forgeAccounts(): Promise<ForgeAccount[]> {
+	return invoke('forge_accounts');
+}
+
+/**
+ * Connect an account by proving the token works.
+ *
+ * The token goes straight to the OS keychain and is not returned. The login
+ * comes back from the host rather than being typed, so it cannot be wrong.
+ */
+export function forgeConnect(
+	kind: ForgeKind,
+	host: string,
+	token: string
+): Promise<ForgeAccount[]> {
+	return invoke('forge_connect', { kind, host, token });
+}
+
+/** Disconnect an account and forget its token. */
+export function forgeDisconnect(host: string, user: string): Promise<ForgeAccount[]> {
+	return invoke('forge_disconnect', { host, user });
+}
+
+/** The open pull requests for the open repository. */
+export function pullRequests(): Promise<PullRequest[]> {
+	return invoke('pull_requests');
 }
 
 /**

@@ -312,6 +312,31 @@ export interface PullRequest {
 
 export type ReviewState = 'awaitingReview' | 'changesRequested' | 'approved' | 'noReviewers';
 
+/** Which hosting service a remote points at (FEAT-017). */
+export type ForgeKind = 'gitHub';
+
+/** A repository on a hosting service, identified from a git remote. */
+export interface ForgeRepo {
+	kind: ForgeKind;
+	/** The hostname, so an enterprise installation is not handed the wrong token. */
+	host: string;
+	owner: string;
+	name: string;
+}
+
+/**
+ * A connected account.
+ *
+ * **No token.** It lives in the OS keychain and never crosses this boundary —
+ * a token in a type the webview can hold is a token in a devtools inspector.
+ */
+export interface ForgeAccount {
+	kind: ForgeKind;
+	host: string;
+	/** The login the token authenticates as, read back from the host. */
+	user: string;
+}
+
 export type CheckState = 'passing' | 'failing' | 'running';
 
 // --- Interactive rebase ---------------------------------------------------

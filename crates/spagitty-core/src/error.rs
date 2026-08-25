@@ -70,6 +70,33 @@ pub enum Error {
     #[error("{program} could not sign this commit: {stderr}")]
     Signing { program: String, stderr: String },
 
+    // --- Talking to a hosting service (FEAT-017) --------------------------
+    //
+    // Four variants rather than one, because the item asks for offline and
+    // rate-limited behaviour that says *which one it is* — and a screen cannot
+    // tell them apart from a single string.
+    /// The host could not be reached at all. No status came back, so there is
+    /// nothing to interpret: this is the network, not the service.
+    #[error("could not reach {host}: {detail}")]
+    ForgeOffline { host: String, detail: String },
+
+    /// The host is refusing for now and will accept again later. Distinct from
+    /// a permission problem, which never changes on its own.
+    #[error("{host} is rate limiting — it should accept requests again {when}")]
+    ForgeRateLimited { host: String, when: String },
+
+    /// The token was refused, or does not reach this repository.
+    #[error("{host} refused the token: {detail}")]
+    ForgeUnauthorized { host: String, detail: String },
+
+    /// The host answered, and what it said was not usable.
+    #[error("{host}: {detail}")]
+    Forge { host: String, detail: String },
+
+    /// The OS keychain could not be read or written.
+    #[error("the system keychain could not be used: {0}")]
+    Keychain(String),
+
     #[error("{0}")]
     Io(#[from] std::io::Error),
 }

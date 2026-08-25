@@ -25,6 +25,18 @@ allow = [
     "Unicode-3.0",
     "Unicode-DFS-2016",
     "Zlib",
+    # The Mozilla CA certificate bundle, which `ureq` carries (FEAT-017).
+    #
+    # A data license, not a code license — CDLA-Permissive-2.0 covers the list
+    # of root certificates rather than any program. It is permissive, imposes
+    # no condition on the software that ships alongside it, and is clean to
+    # distribute inside a GPL-3 work.
+    #
+    # Spagitty uses the *platform's* certificate store through native-tls, so
+    # this bundle is linked rather than relied on. It is allowed rather than
+    # excised because removing it means giving up `ureq`, and a permissive data
+    # license is not a reason to do that.
+    "CDLA-Permissive-2.0",
     # Spagitty's own crates.
     "GPL-3.0-or-later",
 ]

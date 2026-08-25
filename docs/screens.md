@@ -360,18 +360,46 @@ the core refuses that case with a reason instead.
 
 ## 1H — Pull requests
 
-**Built, offline.** `src/routes/requests/+page.svelte`, `src/lib/requests/`.
-Connecting a host is FEAT-017.
+**Built.** `src/routes/requests/+page.svelte`, `src/lib/requests/`, and
+`crates/spagitty-core/src/forge/` behind it (FEAT-017).
 
 What is waiting on you above what is waiting on everyone else: solid rows over
 dashed ones, with the detail panel beside them — the same two-group device All
 repositories uses.
 
-**Spagitty talks to no hosting service, and cannot.** No HTTP client is linked
-into this application in either language, and there is a test that reads the
-manifests and the screen's own source to keep it that way. A screen with no way
-to make a request cannot make one, which is a stronger claim than any
-behavioural test could make.
+**This is the only screen whose data comes off the network.** Everything else
+in Spagitty reads the disk, and the promise on the All repositories screen —
+repositories are read from disk and none is uploaded — still holds: what leaves
+the machine is a request to a host the user connected themselves, carrying a
+token they issued, asking for pull requests they can already see in a browser.
+No repository contents, no paths, no commit messages, no telemetry.
+
+The old promise was that no HTTP client was linked in either language, with a
+test to keep it that way. That could not survive reading pull requests, so the
+test became a narrower one that is still worth having: **exactly one** HTTP
+client, `ureq`, declared **only** in `spagitty-core`, and reachable from exactly
+one file — `forge/http.rs`. The webview still links none, still makes no
+request, and never holds a token. `requests.test.ts` asserts all of it.
+
+One request per refresh, through GraphQL. REST would need a list call plus three
+per pull request for the line counts, the review decision and the checks —
+ninety-one requests for thirty open ones, against a budget shared with
+everything else the token does.
+
+Read-only, by decision. Nothing approves, merges, comments or closes.
+
+Failures are four different sentences, because they are four different
+decisions for the reader: could not reach the host, the host is rate limiting
+and when it will stop, the token was refused, and no account is connected for
+this host. "Could not load" is useless to somebody deciding whether to wait or
+to go and fix something.
+
+Signing in is a personal access token rather than OAuth. It is issued, scoped
+and revoked by the person without touching anything else they own, and it needs
+no redirect listener and no client secret shipped inside a GPL binary anybody
+can read. The login is read back from the host rather than typed. The token goes
+to the OS keychain and never to a configuration file; `accounts.json` holds a
+host and a login and nothing else.
 
 The empty state is the screen rather than a placeholder. "No account is
 connected", with a way to Settings → Accounts, tells the user the screen works

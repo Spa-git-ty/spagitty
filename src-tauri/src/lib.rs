@@ -7,6 +7,7 @@
 //! lives in `spagitty-core`.
 
 mod about;
+mod accounts;
 mod clone_worker;
 mod command_log;
 mod commands;
@@ -109,6 +110,11 @@ pub fn run() {
             commands::licenses,
             commands::identity,
             commands::set_identity,
+            commands::forge_repo,
+            commands::forge_accounts,
+            commands::forge_connect,
+            commands::forge_disconnect,
+            commands::pull_requests,
             commands::signing,
             commands::set_signing,
             commands::clear_signing,

@@ -74,7 +74,7 @@ rather than an audit.
 | [FEAT-014](items/FEAT-014-stash-pop-apply-drop.md) | Stash pop, apply and drop | 1G | Done |
 | [FEAT-015](items/FEAT-015-rebase-execution.md) | Rebase execution | 1E | Done |
 | [FEAT-016](items/FEAT-016-conflict-resolution-writes.md) | Conflict resolution writes | 1D | Done |
-| [FEAT-017](items/FEAT-017-forge-integration.md) | Forge integration | 1H, 1K | Backlog |
+| [FEAT-017](items/FEAT-017-forge-integration.md) | Forge integration | 1H, 1K | Done |
 | [FEAT-018](items/FEAT-018-fetch-and-push.md) | Fetch and push | chrome | Done |
 | [FEAT-019](items/FEAT-019-commit-signing.md) | Commit signing | 1C, 1K | Done |
 | [FEAT-020](items/FEAT-020-show-git-commands.md) | Show the git command behind each action | all, 1K | Done |

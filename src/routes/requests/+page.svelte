@@ -1,6 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { repo } from '$lib/repo.svelte';
 	import RequestDetail from '$lib/requests/RequestDetail.svelte';
 	import RequestRow from '$lib/requests/RequestRow.svelte';
 	import { requests } from '$lib/requests/store.svelte';
@@ -10,34 +12,72 @@
 	/**
 	 * What is waiting on you, above what is waiting on everyone else.
 	 *
-	 * **Spagitty talks to no hosting service**, and nothing here does either: no
-	 * HTTP client is linked into this application, in either language. The
-	 * layout and the empty state are real; the data is FEAT-017.
+	 * The one screen in Spagitty whose data comes off the network (FEAT-017).
+	 * Read once when the repository changes and on demand — not on a timer:
+	 * polling a host on a schedule nobody asked for spends somebody's rate
+	 * limit while they are not looking at the screen.
 	 *
-	 * The empty state is the screen rather than a placeholder. "No account is
-	 * connected" tells the user the screen works and the account does not,
-	 * which is more useful than "not built yet".
+	 * Every failure is the host's own sentence. "Could not load" is useless to
+	 * somebody deciding whether to wait or to go and fix something, and offline,
+	 * rate limited, refused and no-account are four different decisions.
 	 */
 	const needingYou = $derived(requests.needingYou);
 	const waiting = $derived(requests.waitingOnOthers);
+
+	let generation: number | null = null;
+	$effect(() => {
+		const current = repo.generation;
+		if (repo.info === null) return;
+		if (generation === current) return;
+
+		generation = current;
+		untrack(() => {
+			requests.clear();
+			requests.load();
+		});
+	});
 </script>
 
 <div class="screen">
 	<header class="head">
 		<div class="left">
 			<span class="title">Pull requests</span>
+			{#if requests.repo}
+				<span class="note mono">{requests.repo.owner}/{requests.repo.name}</span>
+			{/if}
 			{#if requests.connected && requests.all.length > 0}
 				<span class="note">
 					{needingYou.length} waiting on you · {waiting.length} on others
 				</span>
 			{/if}
 		</div>
+		<div class="right">
+			{#if requests.loading}<span class="note">Reading…</span>{/if}
+			<Btn disabled={requests.loading} onclick={() => requests.load()}>Refresh</Btn>
+		</div>
 	</header>
 
 	<div class="body">
 		<div class="lists">
 			{#if requests.error}
-				<p class="note error">{requests.error}</p>
+				<!--
+					The host's own words. Offline, rate limited, refused and
+					"no account for this host" are four different decisions for
+					the reader, and the backend already told them apart.
+				-->
+				<div class="empty">
+					<p class="note error">{requests.error}</p>
+					<Btn onclick={() => goto('/settings#accounts')}>Settings → Accounts</Btn>
+				</div>
+			{:else if requests.repo === null}
+				<div class="empty">
+					<p class="note">This repository is not on a service Spagitty can read.</p>
+					<p class="note">
+						Pull requests are read from the host the <span class="mono">origin</span>
+						remote points at. This repository's remotes do not name one — which is not a
+						problem, only nothing to show here.
+					</p>
+				</div>
 			{:else if !requests.connected}
 				<div class="empty">
 					<p class="note">No account is connected.</p>
@@ -102,6 +142,12 @@
 		padding: 10px 12px;
 		border-bottom: 1.5px solid var(--soft);
 		flex: none;
+	}
+
+	.right {
+		display: flex;
+		align-items: center;
+		gap: 8px;
 	}
 
 	.left {

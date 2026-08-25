@@ -12,6 +12,9 @@ vi.mock('$lib/api', () => ({
 	signing: vi.fn(),
 	setSigning: vi.fn(),
 	clearSigning: vi.fn(),
+	forgeAccounts: vi.fn(() => Promise.resolve([])),
+	forgeConnect: vi.fn(),
+	forgeDisconnect: vi.fn(),
 	licenses: vi.fn(),
 	about: vi.fn()
 }));

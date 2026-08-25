@@ -21,6 +21,7 @@ import type {
 	IdentityKey,
 	IdentityScope,
 	Licenses,
+	ForgeAccount,
 	Settings,
 	Signing
 } from '../types';
@@ -64,6 +65,8 @@ let identity = $state<Identity | null>(null);
  * override, and choosing the scope once for both is the honest arrangement.
  */
 let signing = $state<Signing | null>(null);
+/** Connected hosting accounts (FEAT-017). Hosts and logins; never tokens. */
+let accounts = $state<ForgeAccount[]>([]);
 let scope = $state<IdentityScope>('global');
 let drafts = $state<Record<IdentityKey, string>>({ name: '', email: '' });
 let stored = $state<Settings>(DEFAULTS);
@@ -103,6 +106,9 @@ export const settings = {
 	},
 	get signing(): Signing | null {
 		return signing;
+	},
+	get accounts(): ForgeAccount[] {
+		return accounts;
 	},
 	get scope(): IdentityScope {
 		return scope;
@@ -184,9 +190,10 @@ export const settings = {
 		}
 		busy = true;
 		try {
-			const [read, signs, toggles, list, build] = await Promise.allSettled([
+			const [read, signs, connected, toggles, list, build] = await Promise.allSettled([
 				api.identity(),
 				api.signing(),
+				api.forgeAccounts(),
 				api.settings(),
 				api.licenses(),
 				api.about()
@@ -201,6 +208,7 @@ export const settings = {
 				error = String(read.reason);
 			}
 			if (signs.status === 'fulfilled') signing = signs.value;
+			if (connected.status === 'fulfilled') accounts = connected.value;
 			if (toggles.status === 'fulfilled') stored = toggles.value;
 			if (list.status === 'fulfilled') licenses = list.value;
 			if (build.status === 'fulfilled') about = build.value;
@@ -258,6 +266,44 @@ export const settings = {
 		}
 	},
 
+	/**
+	 * Connect a hosting account (FEAT-017).
+	 *
+	 * The token is passed straight through to the backend and is never held in
+	 * this store. Resolves to whether it worked, so the field can be cleared
+	 * either way and the host reset only on success.
+	 */
+	async connectAccount(host: string, token: string): Promise<boolean> {
+		if (busy) return false;
+		busy = true;
+		writeError = null;
+		try {
+			// One host is supported; the kind is not a question to ask a person
+			// who already typed the hostname.
+			accounts = await api.forgeConnect('gitHub', host, token);
+			return true;
+		} catch (e) {
+			writeError = String(e);
+			return false;
+		} finally {
+			busy = false;
+		}
+	},
+
+	/** Disconnect an account, which also deletes its token from the keychain. */
+	async disconnectAccount(host: string, user: string): Promise<void> {
+		if (busy) return;
+		busy = true;
+		writeError = null;
+		try {
+			accounts = await api.forgeDisconnect(host, user);
+		} catch (e) {
+			writeError = String(e);
+		} finally {
+			busy = false;
+		}
+	},
+
 	/** Remove `commit.gpgsign` from the chosen scope, letting the next one decide. */
 	async clearSigning(): Promise<void> {
 		if (busy) return;
@@ -298,6 +344,7 @@ export const settings = {
 		section = 'you';
 		identity = null;
 		signing = null;
+		accounts = [];
 		scope = 'global';
 		drafts = { name: '', email: '' };
 		stored = DEFAULTS;

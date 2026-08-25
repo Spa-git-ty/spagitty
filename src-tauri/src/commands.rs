@@ -14,6 +14,7 @@ use spagitty_core::branches::{self, BranchRow};
 use spagitty_core::clone::{self, Plan};
 use spagitty_core::conflicts::{self, ConflictSides, ConflictState};
 use spagitty_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
+use spagitty_core::forge::{self, Account, Kind, PullRequest, Repo};
 use spagitty_core::graph::ROW_PITCH;
 use spagitty_core::identity::{self, Identity, Key, Scope};
 use spagitty_core::ops::{self, Integration, ResetMode, StashAction};
@@ -34,6 +35,7 @@ use spagitty_core::{Error, Result};
 use tauri::{AppHandle, Manager, Runtime, State};
 
 use crate::about::{About, Licenses};
+use crate::accounts;
 use crate::clone_worker::{self, CloneWorker};
 use crate::graph_worker::{self, GraphWorker};
 use crate::network_worker::{self, NetworkWorker};
@@ -1068,6 +1070,111 @@ pub fn set_identity(
 }
 
 /// Spagitty's own behaviour toggles.
+/// Which repository on a hosting service the open one points at (FEAT-017).
+///
+/// `None` when no repository is open, when its remote is not a host Spagitty
+/// reads, or when it has several remotes and no `origin` — none of which is an
+/// error. Plenty of repositories are not on a forge at all.
+#[tauri::command]
+pub fn forge_repo(state: State<'_, AppState>) -> Result<Option<Repo>> {
+    let guard = state.session.lock().expect("session lock");
+    match guard.as_ref() {
+        Some(session) => forge::identify_repo(&session.repo.to_thread_local()),
+        None => Ok(None),
+    }
+}
+
+/// The connected accounts. Hosts and logins; never tokens.
+#[tauri::command]
+pub fn forge_accounts<R: Runtime>(app: AppHandle<R>) -> Vec<Account> {
+    accounts::load(&app)
+}
+
+/// Connect an account by proving the token works.
+///
+/// The login is read back from the host rather than typed: it proves the token
+/// is valid *and* gets the name in one request, and a name a person typed would
+/// be a name they could get wrong in a way nothing would catch until a pull
+/// request failed to be theirs.
+///
+/// The token goes to the OS keychain and nowhere else. It is not returned, not
+/// logged, and not written to the accounts file.
+#[tauri::command]
+pub fn forge_connect<R: Runtime>(
+    app: AppHandle<R>,
+    kind: Kind,
+    host: String,
+    token: String,
+) -> Result<Vec<Account>> {
+    let host = host.trim().to_lowercase();
+    if host.is_empty() {
+        return Err(Error::Forge {
+            host: host.clone(),
+            detail: "a host is needed".into(),
+        });
+    }
+    if token.trim().is_empty() {
+        return Err(Error::Forge {
+            host,
+            detail: "a token is needed".into(),
+        });
+    }
+
+    let user = forge::whoami(kind, &host, token.trim())?;
+    forge::keychain::store(&host, &user, token.trim())?;
+
+    Ok(accounts::remember(&app, Account { kind, host, user }))
+}
+
+/// Disconnect an account, and forget its token.
+///
+/// The keychain first: a token left behind after the account is gone is a
+/// credential nothing in the interface can reach to remove.
+#[tauri::command]
+pub fn forge_disconnect<R: Runtime>(
+    app: AppHandle<R>,
+    host: String,
+    user: String,
+) -> Result<Vec<Account>> {
+    forge::keychain::forget(&host, &user)?;
+    Ok(accounts::forget(&app, &host, &user))
+}
+
+/// The open pull requests for the open repository.
+///
+/// Errors rather than an empty list when something is wrong, so the screen can
+/// say whether it is offline, rate limited, or looking at a repository nobody
+/// has connected an account for. An empty list means there are none.
+#[tauri::command]
+pub fn pull_requests<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+) -> Result<Vec<PullRequest>> {
+    let Some(repo) = forge_repo(state)? else {
+        return Err(Error::Forge {
+            host: String::new(),
+            detail: "this repository is not on a service Spagitty can read".into(),
+        });
+    };
+
+    let connected = accounts::load(&app);
+    let Some(account) = accounts::for_host(&connected, &repo.host) else {
+        return Err(Error::ForgeUnauthorized {
+            host: repo.host.clone(),
+            detail: "no account is connected for this host".into(),
+        });
+    };
+
+    let Some(token) = forge::keychain::read(&account.host, &account.user)? else {
+        return Err(Error::ForgeUnauthorized {
+            host: repo.host.clone(),
+            detail: "the token for this account is no longer in the keychain".into(),
+        });
+    };
+
+    forge::pull_requests(&repo, &token, &account.user)
+}
+
 /// Signing, as git would resolve it here (FEAT-019).
 ///
 /// Read from the open repository's cascade when there is one, and from the

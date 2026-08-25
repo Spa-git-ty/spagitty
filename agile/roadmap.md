@@ -118,16 +118,21 @@ draws nothing and still answers in its tooltip.
 
 ### 11. FEAT-017 — forge integration
 
-The largest remaining distance from GitKraken and the only entry here that
-needs a subsystem decision first: the project links no HTTP client in either
-language, and a test keeps it that way. Accounts, OAuth and token storage come
-before anything visible. Pull requests, issues, CI status on the graph and
-clone-from-host all sit behind it; only the account and PR core is scoped by
-the item, and the rest has no item yet.
+**Done**, on `feature/FEAT-019-commit-signing`, continuing the stack.
 
-**Decide first:** which language owns the HTTP client, and what the test that
-currently forbids one becomes.
-**Size:** weeks, not days.
+**Closed by:** `spagitty-core::forge` — `ureq` with native TLS reached from one
+file, one GraphQL request per refresh rather than 1 + 3N REST calls, a personal
+access token in the OS keychain with the login read back from the host, and four
+failures told apart rather than one.
+
+Both things the roadmap said to decide first were decided. The HTTP client is
+owned by the Rust core, so the webview keeps its promise of having no way to
+make a request and never holds a token. The test that forbade an HTTP client
+became a narrower one worth keeping: exactly one client, only in the core, only
+reachable from `forge/http.rs`.
+
+Read-only, and GitHub only. Issues, CI status on the graph, clone-from-host and
+GitLab were all outside the item and remain unwritten.
 
 ### 12. FEAT-019 — commit signing
 

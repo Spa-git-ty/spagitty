@@ -13,6 +13,9 @@ vi.mock('$lib/api', () => ({
 	signing: vi.fn(),
 	setSigning: vi.fn(),
 	clearSigning: vi.fn(),
+	forgeAccounts: vi.fn(() => Promise.resolve([])),
+	forgeConnect: vi.fn(),
+	forgeDisconnect: vi.fn(),
 	licenses: vi.fn(),
 	about: vi.fn()
 }));
@@ -28,6 +31,7 @@ import IdentitySection from './IdentitySection.svelte';
 import { settings } from './store.svelte';
 
 const identity = vi.mocked(api.identity);
+const forgeAccounts = vi.mocked(api.forgeAccounts);
 const setIdentity = vi.mocked(api.setIdentity);
 const settingsCall = vi.mocked(api.settings);
 const setSettings = vi.mocked(api.setSettings);
@@ -261,12 +265,67 @@ describe('AppearanceSection', () => {
 });
 
 describe('AccountsSection', () => {
-	it('says no account is connected, and what connecting one takes', () => {
+	it('says no account is connected, and offers the two fields that connect one', () => {
 		const mounted = render(AccountsSection, {});
 
 		expect(mounted.text()).toContain('No account is connected');
-		expect(mounted.text()).toContain('ssh key');
+		expect(mounted.get('#account-host')).toBeTruthy();
+		expect(mounted.get('#account-token')).toBeTruthy();
 		expect(mounted.text()).not.toMatch(/FEAT-\d/);
+
+		mounted.destroy();
+	});
+
+	it('never puts the token in a field anyone can read', () => {
+		// Shoulder-reading, and a screenshot in a bug report. It is also never
+		// read back out of the keychain into this screen at all.
+		const mounted = render(AccountsSection, {});
+
+		expect(mounted.get('#account-token').getAttribute('type')).toBe('password');
+		expect(mounted.get('#account-token').getAttribute('autocomplete')).toBe('off');
+
+		mounted.destroy();
+	});
+
+	it('will not connect with an empty token or an empty host', () => {
+		const mounted = render(AccountsSection, {});
+		const connect = mounted
+			.all('button')
+			.find((button) => button.textContent?.includes('Connect'));
+
+		// The host is prefilled and the token is not, so the button starts dead
+		// rather than sending an empty secret to a host.
+		expect((connect as HTMLButtonElement).disabled).toBe(true);
+
+		mounted.destroy();
+	});
+
+	it('lists a connected account by host and login, and offers to disconnect it', async () => {
+		forgeAccounts.mockResolvedValueOnce([
+			{ kind: 'gitHub' as const, host: 'github.com', user: 'ada' }
+		]);
+		await settings.load();
+		const mounted = render(AccountsSection, {});
+
+		expect(mounted.text()).toContain('ada');
+		expect(mounted.text()).toContain('github.com');
+		expect(mounted.text()).toContain('Connected.');
+		expect(
+			mounted.all('button').some((button) => button.textContent?.includes('Disconnect'))
+		).toBe(true);
+
+		mounted.destroy();
+	});
+
+	it('says what leaves the machine, rather than that nothing does', () => {
+		// The promise narrowed when FEAT-017 landed. A sentence that stayed
+		// absolute would be a sentence that had become false.
+		const mounted = render(AccountsSection, {});
+		const text = mounted.text();
+
+		expect(text).toContain('uploads none of them');
+		expect(text).toContain('keychain');
+		expect(text).toMatch(/never approves, merges or comments/);
 
 		mounted.destroy();
 	});

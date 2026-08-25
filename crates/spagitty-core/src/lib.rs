@@ -27,6 +27,7 @@ pub mod clone;
 pub mod conflicts;
 pub mod diff;
 pub mod error;
+pub mod forge;
 pub mod graph;
 pub mod identity;
 pub mod ops;
