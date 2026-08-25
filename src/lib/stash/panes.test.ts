@@ -107,7 +107,11 @@ describe('StashList', () => {
 
 		const lane = view.get('.lane');
 		expect(lane.querySelectorAll('circle')).toHaveLength(2);
-		expect(lane.querySelector('path')?.getAttribute('d')).toContain('C');
+		// A rounded right angle, the same shape the graph draws (FEAT-053):
+		// straight runs joined by two quarter-turn arcs.
+		const path = lane.querySelector('path')?.getAttribute('d') ?? '';
+		expect(path).toContain('A');
+		expect(path).not.toContain('C');
 
 		view.destroy();
 	});

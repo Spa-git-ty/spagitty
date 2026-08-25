@@ -14,6 +14,7 @@ vi.mock('$lib/api', () => ({
 	setSigning: vi.fn(),
 	clearSigning: vi.fn(),
 	forgeAccounts: vi.fn(() => Promise.resolve([])),
+	checkUpdate: vi.fn(),
 	forgeConnect: vi.fn(),
 	forgeDisconnect: vi.fn(),
 	licenses: vi.fn(),
@@ -27,6 +28,7 @@ import AccountsSection from './AccountsSection.svelte';
 import LicenseSection from './LicenseSection.svelte';
 import AppearanceSection from './AppearanceSection.svelte';
 import BehaviourSection from './BehaviourSection.svelte';
+import UpdateSection from './UpdateSection.svelte';
 import IdentitySection from './IdentitySection.svelte';
 import { settings } from './store.svelte';
 
@@ -73,6 +75,7 @@ beforeEach(async () => {
 	settings.clearState();
 	identity.mockResolvedValue(anIdentity());
 	settingsCall.mockResolvedValue({
+		checkForUpdates: true,
 		confirmHistoryRewrite: true,
 		showGitCommands: false, pruneOnFetch: false
 	});
@@ -171,6 +174,7 @@ describe('BehaviourSection', () => {
 		click(mounted.all('button.chip')[0]);
 
 		expect(setSettings).toHaveBeenCalledWith({
+			checkForUpdates: true,
 			confirmHistoryRewrite: false,
 			showGitCommands: false,
 			pruneOnFetch: false
@@ -180,6 +184,7 @@ describe('BehaviourSection', () => {
 
 	it('shows the stored state of every toggle', async () => {
 		settingsCall.mockResolvedValue({
+			checkForUpdates: true,
 			confirmHistoryRewrite: false,
 			showGitCommands: true,
 			pruneOnFetch: false
@@ -397,6 +402,100 @@ describe('LicenseSection', () => {
 
 		expect(mounted.text()).toContain('abc1234');
 		expect(mounted.text()).toContain('GPL-3.0-or-later');
+
+		mounted.destroy();
+	});
+});
+
+describe('UpdateSection', () => {
+	const checkUpdate = vi.mocked(api.checkUpdate);
+
+	// The store is module state and outlives a test, so what the last check
+	// found would otherwise still be on screen for the next one.
+	beforeEach(() => settings.clearState());
+
+	it('says nothing has been checked before anything has', () => {
+		const mounted = render(UpdateSection, {});
+
+		expect(mounted.text()).toContain('Not checked yet');
+		mounted.destroy();
+	});
+
+	it('says what leaves the machine, beside the switch that stops it', () => {
+		// The one preference in the application that causes a network request,
+		// so the sentence explaining it belongs where the decision is made.
+		const mounted = render(UpdateSection, {});
+		const text = mounted.text();
+
+		expect(text).toContain('No account, no identifier');
+		expect(text).toContain('Turning it off stops every request');
+
+		mounted.destroy();
+	});
+
+	it('reports a newer release with a link that can be copied', async () => {
+		checkUpdate.mockResolvedValueOnce({
+			channel: 'released',
+			current: 'v0.1.0-preview.1',
+			latest: 'v0.1.0-preview.4',
+			newer: true,
+			url: 'https://github.com/Spa-git-ty/spagitty/releases/tag/v0.1.0-preview.4'
+		});
+		await settings.checkForUpdate();
+		const mounted = render(UpdateSection, {});
+
+		expect(mounted.text()).toContain('v0.1.0-preview.4');
+		expect(mounted.text()).toContain('has been released');
+		expect(mounted.text()).toContain('https://github.com/Spa-git-ty/spagitty/releases/tag/');
+
+		mounted.destroy();
+	});
+
+	it('says a build compiled here is not out of date', async () => {
+		// It has no tag to be behind, and it is usually ahead of every release.
+		checkUpdate.mockResolvedValueOnce({
+			channel: 'development',
+			current: null,
+			latest: 'v0.1.0-preview.9',
+			newer: false,
+			url: 'https://github.com/Spa-git-ty/spagitty/releases'
+		});
+		await settings.checkForUpdate();
+		const mounted = render(UpdateSection, {});
+
+		expect(mounted.text()).toContain('development build');
+		expect(mounted.text()).toContain('v0.1.0-preview.9');
+		// No download offered: the only thing that appears for a newer release
+		// is the link and its copy button, and this is not one.
+		expect(
+			mounted.all('button').some((button) => button.textContent?.includes('Copy link'))
+		).toBe(false);
+
+		mounted.destroy();
+	});
+
+	it('says so when there is nothing newer', async () => {
+		checkUpdate.mockResolvedValueOnce({
+			channel: 'released',
+			current: 'v0.1.0-preview.4',
+			latest: 'v0.1.0-preview.4',
+			newer: false,
+			url: 'https://github.com/Spa-git-ty/spagitty/releases/tag/v0.1.0-preview.4'
+		});
+		await settings.checkForUpdate();
+		const mounted = render(UpdateSection, {});
+
+		expect(mounted.text()).toContain('Up to date');
+
+		mounted.destroy();
+	});
+
+	it('shows the failure rather than a stale answer', async () => {
+		checkUpdate.mockRejectedValueOnce('could not reach api.github.com');
+		await settings.checkForUpdate();
+		const mounted = render(UpdateSection, {});
+
+		expect(mounted.text()).toContain('could not reach');
 
 		mounted.destroy();
 	});

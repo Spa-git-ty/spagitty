@@ -30,6 +30,7 @@
 	import { settings } from '$lib/settings/store.svelte';
 	import DialogHost from '$lib/ui/DialogHost.svelte';
 	import NoticeToast from '$lib/ui/NoticeToast.svelte';
+	import { settings as settingsStore } from '$lib/settings/store.svelte';
 	import Splitter from '$lib/ui/Splitter.svelte';
 	import { theme } from '$lib/theme.svelte';
 	import { workspace } from '$lib/workspace.svelte';
@@ -60,6 +61,27 @@
 		if (!api.inTauri()) return;
 
 		let cancelled = false;
+
+		// Whether there is a newer Spagitty, asked once at startup and only if
+		// the preference says so — which means reading the preference before
+		// asking, because a setting that stops a request has to stop it before
+		// it is made.
+		//
+		// Deliberately not awaited with the rest: it is the one thing here that
+		// touches a network, and nothing on screen should wait on it. A failure
+		// is left in the Settings screen rather than raised as a notice — a
+		// toast on every launch behind a captive portal would be worse than the
+		// feature is worth.
+		(async () => {
+			try {
+				const stored = await api.settings();
+				if (cancelled || !stored.checkForUpdates) return;
+				await settingsStore.checkForUpdate();
+			} catch {
+				// Settings unreadable, or the check failed. Neither is a reason
+				// to interrupt somebody opening a repository.
+			}
+		})();
 
 		(async () => {
 			// Listeners go up before anything can emit, so the first batch of a

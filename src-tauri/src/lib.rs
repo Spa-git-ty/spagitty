@@ -115,6 +115,7 @@ pub fn run() {
             commands::forge_connect,
             commands::forge_disconnect,
             commands::pull_requests,
+            commands::check_update,
             commands::signing,
             commands::set_signing,
             commands::clear_signing,

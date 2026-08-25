@@ -32,18 +32,20 @@
 # `draft/**`: pushing `draft/0.1.0-preview` builds and drafts, and nothing
 # else in the repository reacts to a branch under that prefix.
 #
-# The draft's name comes from the input when dispatched and from the part of
-# the branch name after `draft/` when pushed.
+# The tag is **computed, never typed**. It is the version in `package.json` with
+# the next preview number after the highest one already released — so two runs
+# never collide, and nobody has to remember what the last one was. A pushed
+# build leaves a draft; a dispatch can publish outright.
 
 name: draft release
 
 on:
   workflow_dispatch:
     inputs:
-      name:
-        description: What to call the draft, e.g. 0.1.0-preview
-        required: true
-        type: string
+      publish:
+        description: Publish it, rather than leaving a draft to review
+        type: boolean
+        default: false
   push:
     branches:
       - 'draft/**'
@@ -56,8 +58,51 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # Before the build, not after it. The binary is stamped with the tag it is
+  # being cut as, and that is the only thing that tells a running Spagitty which
+  # release it is: `Cargo.toml` says 0.1.0 across every preview, so a version
+  # number cannot answer it.
+  tag:
+    name: work out the tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: next
+        run: |
+          set -euo pipefail
+          base=$(node -p "require('./package.json').version")
+
+          # The highest preview already cut for this version, or nothing.
+          # `sort -n` rather than lexical, or preview.10 would sort under
+          # preview.9 and the next release would try to reuse a tag.
+          last=$(git tag -l "v$base-preview.*" \
+            | sed "s/^v$base-preview\.//" \
+            | grep -E '^[0-9]+$' \
+            | sort -n \
+            | tail -1 || true)
+
+          next=$(( ${last:-0} + 1 ))
+          echo "tag=v$base-preview.$next" >> "$GITHUB_OUTPUT"
+          echo "Next tag: v$base-preview.$next (last was ${last:-none})"
+
+      # Amendment 14: a tag that exists is a release that happened, and moving
+      # one is forbidden. The count above should make this unreachable; if it is
+      # ever reached, something else created the tag and stopping is right.
+      - name: Refuse to move an existing tag
+        run: |
+          if git rev-parse "${{ steps.next.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::error::${{ steps.next.outputs.tag }} already exists"
+            exit 1
+          fi
+
   build:
     name: build ${{ matrix.name }}
+    needs: tag
     strategy:
       fail-fast: false
       matrix:
@@ -91,6 +136,10 @@ jobs:
         run: npm run tauri build -- --bundles ${{ matrix.bundles }}
         env:
           APPIMAGE_EXTRACT_AND_RUN: 1
+          # What the update check compares against. Absent from every build
+          # that is not this one, which is how a locally compiled Spagitty
+          # knows it has no release to be behind.
+          SPAGITTY_RELEASE: ${{ needs.tag.outputs.tag }}
 
       - name: Collect what is worth downloading
         shell: bash
@@ -117,53 +166,47 @@ jobs:
           if-no-files-found: error
 
   draft:
-    name: open the draft
-    needs: build
+    name: cut the release
+    needs: [tag, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      # Only for the notes' sake — the tag was worked out in its own job before
+      # anything was built, so nothing here counts tags.
       - uses: actions/checkout@v4
 
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      # No tag is created. `gh release create --draft` against a name that is
-      # not a tag leaves an unpublished draft pointing at this commit, and
-      # publishing it later is a deliberate action by a person.
-      - name: Create or replace the draft
+      - name: Cut it
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # The input when dispatched; the tail of `draft/<name>` when pushed.
-          NAME: ${{ inputs.name || github.ref_name }}
+          TAG: ${{ needs.tag.outputs.tag }}
+          PUBLISH: ${{ inputs.publish }}
         run: |
           set -euo pipefail
-          NAME=${NAME#draft/}
           files=$(find artifacts -type f | tr '\n' ' ')
           echo "attaching: $files"
 
-          # A draft of the same name from an earlier run is replaced rather
-          # than added to: two drafts called the same thing is a worse outcome
-          # than losing the previous attempt, which was never published.
-          #
-          # `--cleanup-tag` matters more than it looks. Without it the tag
-          # survives the delete and stays pointing at the *first* run's commit,
-          # so the next draft advertises a new commit and carries an old tag —
-          # publish that and you ship a release whose tag names code the
-          # binaries were not built from.
-          if gh release view "draft-$NAME" >/dev/null 2>&1; then
-            gh release delete "draft-$NAME" --yes --cleanup-tag
+          # A pushed build is a draft somebody looks at before it is anybody
+          # else's problem. Publishing is a deliberate dispatch.
+          draft=--draft
+          if [ "${PUBLISH:-false}" = "true" ]; then
+            draft=""
           fi
 
-          gh release create "draft-$NAME" \
-            --draft \
+          gh release create "$TAG" \
+            $draft \
             --target "$GITHUB_SHA" \
-            --title "Spagitty $NAME (draft)" \
+            --title "Spagitty $TAG" \
             --notes "Built from \`${GITHUB_REF_NAME}\` at \`${GITHUB_SHA}\`.
 
           - **Linux** — the \`.AppImage\` is self-contained. \`chmod +x\` it and run it.
           - **Windows** — \`*-setup.exe\` installs; \`spagitty-windows-x86_64.exe\` is the bare binary.
 
-          Unsigned, and a draft: nothing here is published until someone presses the button." \
+          Unsigned. Licensed GPL-3.0-or-later." \
             $files
+
+          echo "::notice::$TAG cut${draft:+ as a draft}"

@@ -30,6 +30,7 @@ use spagitty_core::signing::{self, Signing};
 use spagitty_core::stash::{self, StashEntry};
 use spagitty_core::status::{self, RepoCounts, WorkingCopy};
 use spagitty_core::tags;
+use spagitty_core::update;
 use spagitty_core::work;
 use spagitty_core::{Error, Result};
 use tauri::{AppHandle, Manager, Runtime, State};
@@ -1173,6 +1174,17 @@ pub fn pull_requests<R: Runtime>(
     };
 
     forge::pull_requests(&repo, &token, &account.user)
+}
+
+/// Is there a newer Spagitty than this one?
+///
+/// One unauthenticated request to the project's own releases endpoint. It is
+/// the caller's job to decide whether to ask — `check_for_updates` gates the
+/// one at startup — because a preference that stops a request has to stop it
+/// before it is made, not after.
+#[tauri::command]
+pub fn check_update() -> Result<update::Update> {
+    update::check()
 }
 
 /// Signing, as git would resolve it here (FEAT-019).

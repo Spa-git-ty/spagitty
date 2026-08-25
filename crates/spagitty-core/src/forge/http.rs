@@ -51,6 +51,10 @@ pub struct Response {
 
 /// `GET url` with a bearer token, as JSON.
 ///
+/// An empty `token` sends **no** `Authorization` header at all, for the one
+/// caller that has nothing to authenticate with: the update check reads a
+/// public release list and must not invent a credential to do it.
+///
 /// A non-2xx status is **not** an error here — it is a [`Response`] with a
 /// status on it, because only the caller knows whether a 404 means "no such
 /// pull request" or "this repository is private". Turning a status into a
@@ -67,12 +71,16 @@ pub fn get_json(url: &str, token: &str, host: &str) -> Result<Response> {
         });
     }
 
-    let sent = agent()
+    let mut request = agent()
         .get(url)
-        .header("Authorization", &format!("Bearer {token}"))
         .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .call();
+        .header("X-GitHub-Api-Version", "2022-11-28");
+
+    if !token.is_empty() {
+        request = request.header("Authorization", &format!("Bearer {token}"));
+    }
+
+    let sent = request.call();
 
     match sent {
         Ok(response) => Ok(read(response)),
@@ -234,6 +242,20 @@ mod tests {
         let printed = format!("{response:?}");
         assert!(!printed.contains("ghp_thisisasecret"));
         assert!(printed.contains("401"));
+    }
+
+    #[test]
+    fn an_empty_token_is_an_unauthenticated_request_rather_than_an_empty_bearer() {
+        // The update check reads a public release list. Sending
+        // `Authorization: Bearer ` would be inventing a credential, and some
+        // hosts reject a malformed one rather than ignoring it.
+        //
+        // Asserted through the only observable this module has without a
+        // server: an unreachable host still reports as offline rather than as
+        // a request that could not be built.
+        let unreachable = get_json("https://spagitty-no-such-host.invalid/x", "", "h");
+
+        assert!(matches!(unreachable, Err(Error::ForgeOffline { .. })));
     }
 
     #[test]

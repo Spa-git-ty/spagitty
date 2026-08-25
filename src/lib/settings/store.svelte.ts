@@ -23,7 +23,8 @@ import type {
 	Licenses,
 	ForgeAccount,
 	Settings,
-	Signing
+	Signing,
+	Update
 } from '../types';
 
 export type Section = 'you' | 'accounts' | 'remotes' | 'behaviour' | 'appearance' | 'license';
@@ -46,6 +47,7 @@ export const SECTIONS: { id: Section; label: string }[] = [
  * They exist so the first frame is not blank, not as a second definition.
  */
 const DEFAULTS: Settings = {
+	checkForUpdates: true,
 	confirmHistoryRewrite: true,
 	showGitCommands: false,
 	pruneOnFetch: false
@@ -67,6 +69,10 @@ let identity = $state<Identity | null>(null);
 let signing = $state<Signing | null>(null);
 /** Connected hosting accounts (FEAT-017). Hosts and logins; never tokens. */
 let accounts = $state<ForgeAccount[]>([]);
+/** What the last update check found, and what it failed with. */
+let update = $state<Update | null>(null);
+let updateError = $state<string | null>(null);
+let checking = $state(false);
 let scope = $state<IdentityScope>('global');
 let drafts = $state<Record<IdentityKey, string>>({ name: '', email: '' });
 let stored = $state<Settings>(DEFAULTS);
@@ -109,6 +115,15 @@ export const settings = {
 	},
 	get accounts(): ForgeAccount[] {
 		return accounts;
+	},
+	get update(): Update | null {
+		return update;
+	},
+	get updateError(): string | null {
+		return updateError;
+	},
+	get checking(): boolean {
+		return checking;
 	},
 	get scope(): IdentityScope {
 		return scope;
@@ -304,6 +319,30 @@ export const settings = {
 		}
 	},
 
+	/**
+	 * Ask whether there is a newer Spagitty.
+	 *
+	 * Not gated on `checkForUpdates` — that preference governs the automatic
+	 * check at startup. Pressing the button is somebody asking, and a button
+	 * that silently did nothing because of a setting elsewhere would be worse
+	 * than not having one.
+	 *
+	 * Kept out of `busy`, which gates the writes: a failed update check must
+	 * not leave the identity fields disabled.
+	 */
+	async checkForUpdate(): Promise<void> {
+		if (checking || !api.inTauri()) return;
+		checking = true;
+		updateError = null;
+		try {
+			update = await api.checkUpdate();
+		} catch (e) {
+			updateError = String(e);
+		} finally {
+			checking = false;
+		}
+	},
+
 	/** Remove `commit.gpgsign` from the chosen scope, letting the next one decide. */
 	async clearSigning(): Promise<void> {
 		if (busy) return;
@@ -345,6 +384,9 @@ export const settings = {
 		identity = null;
 		signing = null;
 		accounts = [];
+		update = null;
+		updateError = null;
+		checking = false;
 		scope = 'global';
 		drafts = { name: '', email: '' };
 		stored = DEFAULTS;

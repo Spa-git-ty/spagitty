@@ -309,21 +309,27 @@ export const STASH_ENTRIES_W = 280;
 // --- Lane elbow shape -----------------------------------------------------
 
 /**
- * A branch/merge transition is a cubic elbow spanning exactly one row. Control
- * points are expressed as fractions of ROW_PITCH so the curve keeps its shape
- * if the pitch is ever retuned.
+ * How tightly a lane turns when it changes column.
  *
- * Shortened from 0.65/0.58 with the lane pitch, then lengthened again to
- * 0.55/0.45 when the lane pitch grew for the portraits. The two numbers move
- * together for one reason: the elbow has to cross a wider gap in the same row,
- * and a control point too short for the distance turns the curve into a
- * diagonal with a visible kink at each end. At 0.55/0.45 it still leaves and
- * arrives vertically — so it meets the straight runs cleanly — while spending
- * most of the row on the crossing itself, which is the smooth sweep the
- * reference draws.
+ * A branch or merge transition is drawn as a **rounded right angle**: down its
+ * own lane, one quarter-turn, straight across, one quarter-turn, down the new
+ * lane. This is the radius of those two turns.
+ *
+ * It used to be a cubic spanning the whole row — a long S that left one lane
+ * vertically and arrived at the other vertically, spending the entire row on
+ * the crossing. That reads well with a handful of lanes and badly with many:
+ * every transition becomes a diagonal sweep, dozens of them overlap in the same
+ * band, and there is no straight run left for the eye to follow. The reference
+ * client turns square and keeps the runs straight, and the difference is most
+ * of why its graph is easier to read at depth.
+ *
+ * 6px is small enough to read as a corner rather than a curve, and large enough
+ * not to look like a mitre joint at the stroke width the lanes are drawn at. It
+ * is clamped in [`lanes`] against half the crossing and half the row, so a
+ * transition between adjacent lanes at a compressed pitch degrades to a smaller
+ * corner rather than to a bulge.
  */
-export const ELBOW_C1 = ROW_PITCH * 0.55;
-export const ELBOW_C2 = ROW_PITCH * 0.45;
+export const ELBOW_RADIUS = 6;
 
 // --- Derived --------------------------------------------------------------
 

@@ -910,6 +910,15 @@ export interface Identity {
 
 /** Spagitty's own behaviour toggles, stored in its config directory. */
 export interface Settings {
+	/**
+	 * Ask the project whether there is a newer Spagitty, at startup.
+	 *
+	 * On by default — the one preference here that changes what the application
+	 * does rather than what it checks. There is no package manager behind an
+	 * AppImage or a bare `.exe`, so this is the only way somebody finds out
+	 * their client is old. Turning it off stops every request.
+	 */
+	checkForUpdates: boolean;
 	confirmHistoryRewrite: boolean;
 	showGitCommands: boolean;
 	/**
@@ -959,6 +968,21 @@ export interface Signing {
 	/** `commit.gpgsign` as each writable scope holds it. */
 	global: boolean | null;
 	local: boolean | null;
+}
+
+/** Which kind of build is asking about updates. */
+export type UpdateChannel = 'released' | 'development';
+
+/** What an update check found. */
+export interface Update {
+	channel: UpdateChannel;
+	/** The tag this build was cut as, or null for a build somebody compiled. */
+	current: string | null;
+	/** The newest tag the project has published. */
+	latest: string;
+	/** True only when this is a released build and the latest is a different one. */
+	newer: boolean;
+	url: string;
 }
 
 export interface Dependency {

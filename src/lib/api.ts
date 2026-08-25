@@ -46,6 +46,7 @@ import type {
 	PullRequest,
 	Settings,
 	Signing,
+	Update,
 	Snapshot,
 	StashEntry,
 	WorkingCopy
@@ -472,6 +473,17 @@ export function setSigning(scope: IdentityScope, on: boolean): Promise<Signing> 
 /** Clear `commit.gpgsign` in one scope, so the next one up decides again. */
 export function clearSigning(scope: IdentityScope): Promise<Signing> {
 	return invoke('clear_signing', { scope });
+}
+
+/**
+ * Is there a newer Spagitty than this one?
+ *
+ * One unauthenticated request to the project's own releases endpoint. Whether
+ * to ask at startup is `checkForUpdates`; pressing the button in Settings asks
+ * regardless, because that is somebody asking.
+ */
+export function checkUpdate(): Promise<Update> {
+	return invoke('check_update');
 }
 
 /** Spagitty's own behaviour toggles. */

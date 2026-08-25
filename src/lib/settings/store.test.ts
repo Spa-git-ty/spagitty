@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Identity, IdentityValue, Licenses, Settings } from '$lib/types';
+import type { Identity, IdentityValue, Licenses, Settings, Update } from '$lib/types';
 
 vi.mock('$lib/api', () => ({
 	inTauri: vi.fn(() => true),
@@ -13,6 +13,7 @@ vi.mock('$lib/api', () => ({
 	setSigning: vi.fn(),
 	clearSigning: vi.fn(),
 	forgeAccounts: vi.fn(() => Promise.resolve([])),
+	checkUpdate: vi.fn(),
 	forgeConnect: vi.fn(),
 	forgeDisconnect: vi.fn(),
 	licenses: vi.fn(),
@@ -25,6 +26,7 @@ import { settings } from './store.svelte';
 const identity = vi.mocked(api.identity);
 const setIdentity = vi.mocked(api.setIdentity);
 const settingsCall = vi.mocked(api.settings);
+const checkUpdate = vi.mocked(api.checkUpdate);
 const signingCall = vi.mocked(api.signing);
 const setSettings = vi.mocked(api.setSettings);
 const licenses = vi.mocked(api.licenses);
@@ -45,6 +47,7 @@ function anIdentity(overrides: Partial<Identity> = {}): Identity {
 }
 
 const STORED: Settings = {
+	checkForUpdates: true,
 	confirmHistoryRewrite: true,
 	showGitCommands: false, pruneOnFetch: false
 };
@@ -291,5 +294,92 @@ describe('sections', () => {
 		settings.show('you');
 		settings.showFromHash('advanced');
 		expect(settings.section).toBe('license');
+	});
+});
+
+/**
+ * FEAT-054. The check is a network request, which makes the preference that
+ * governs it the interesting part rather than the result.
+ */
+describe('checking for a newer Spagitty', () => {
+	const RELEASED = {
+		channel: 'released' as const,
+		current: 'v0.1.0-preview.1',
+		latest: 'v0.1.0-preview.4',
+		newer: true,
+		url: 'https://github.com/Spa-git-ty/spagitty/releases/tag/v0.1.0-preview.4'
+	};
+
+	it('reports what the project answered', async () => {
+		checkUpdate.mockResolvedValueOnce(RELEASED);
+
+		await settings.checkForUpdate();
+
+		expect(settings.update).toEqual(RELEASED);
+		expect(settings.updateError).toBeNull();
+	});
+
+	it('asks when the button is pressed, whatever the startup preference says', async () => {
+		// The preference governs the check at startup. A button that silently
+		// did nothing because of a setting on the same screen would be worse
+		// than not having the button.
+		settingsCall.mockResolvedValue({
+			checkForUpdates: false,
+			confirmHistoryRewrite: true,
+			showGitCommands: false,
+			pruneOnFetch: false
+		});
+		await settings.load();
+		checkUpdate.mockResolvedValueOnce(RELEASED);
+
+		await settings.checkForUpdate();
+
+		expect(checkUpdate).toHaveBeenCalled();
+		expect(settings.update).toEqual(RELEASED);
+	});
+
+	it('keeps a failed check out of the way of the identity fields', async () => {
+		// `busy` gates the writes. A check that could not reach the network
+		// must not leave Save disabled.
+		checkUpdate.mockRejectedValueOnce('could not reach api.github.com');
+
+		await settings.checkForUpdate();
+
+		expect(settings.updateError).toContain('could not reach');
+		expect(settings.busy).toBe(false);
+		expect(settings.update).toBeNull();
+	});
+
+	it('refuses to ask twice at once', async () => {
+		let release: (value: Update) => void = () => {};
+		checkUpdate.mockReturnValueOnce(new Promise<Update>((resolve) => (release = resolve)));
+
+		const first = settings.checkForUpdate();
+		const second = settings.checkForUpdate();
+
+		expect(checkUpdate).toHaveBeenCalledTimes(1);
+
+		release(RELEASED);
+		await first;
+		await second;
+		expect(settings.checking).toBe(false);
+	});
+
+	it('does nothing outside the application', async () => {
+		inTauri.mockReturnValueOnce(false);
+
+		await settings.checkForUpdate();
+
+		expect(checkUpdate).not.toHaveBeenCalled();
+	});
+
+	it('forgets what it found when the screen is cleared', async () => {
+		checkUpdate.mockResolvedValueOnce(RELEASED);
+		await settings.checkForUpdate();
+
+		settings.clearState();
+
+		expect(settings.update).toBeNull();
+		expect(settings.updateError).toBeNull();
 	});
 });

@@ -109,9 +109,19 @@
 	-->
 	<p class="note">
 		Spagitty reads your repositories from disk and uploads none of them. Connecting an account adds
-		exactly one thing that leaves this machine: a request to the host you named, carrying the token
-		you issued, asking for the pull requests you can already see in a browser. It reads; it never
+		one thing that leaves this machine: a request to the host you named, carrying the token you
+		issued, asking for the pull requests you can already see in a browser. It reads; it never
 		approves, merges or comments.
+	</p>
+
+	<!--
+		Named here rather than left for somebody to find. This screen is where a
+		reader comes to ask what the application sends, and an answer that
+		listed one of the two would be the wrong kind of true.
+	-->
+	<p class="note">
+		The only other request Spagitty makes is the update check, under Behaviour, which asks this
+		project for its latest release and can be turned off.
 	</p>
 
 	<p class="note">

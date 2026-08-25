@@ -8,6 +8,7 @@
 	import BehaviourSection from '$lib/settings/BehaviourSection.svelte';
 	import IdentitySection from '$lib/settings/IdentitySection.svelte';
 	import SigningSection from '$lib/settings/SigningSection.svelte';
+	import UpdateSection from '$lib/settings/UpdateSection.svelte';
 	import { SECTIONS, settings } from '$lib/settings/store.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 
@@ -68,6 +69,7 @@
 			<RemotesSection />
 		{:else if settings.section === 'behaviour'}
 			<BehaviourSection />
+			<UpdateSection />
 		{:else if settings.section === 'appearance'}
 			<AppearanceSection />
 		{:else}

@@ -107,6 +107,8 @@ rather than an audit.
 | [FEAT-050](items/FEAT-050-reflog-view.md) | Reflog view | 1M | Done |
 | [FEAT-051](items/FEAT-051-tags-list.md) | Tags list | 1N | Done |
 | [FEAT-052](items/FEAT-052-graph-reads-at-depth.md) | The graph reads at depth | 1A | Done |
+| [FEAT-053](items/FEAT-053-square-lane-turns.md) | Lanes turn square | 1A, 1G | Done |
+| [FEAT-054](items/FEAT-054-update-check.md) | Tell people when there is a newer Spagitty | 1K | Done |
 
 ## Bugs
 

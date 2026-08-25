@@ -43,6 +43,7 @@ pub mod signing;
 pub mod stash;
 pub mod status;
 pub mod tags;
+pub mod update;
 pub mod work;
 
 /// Repository fixtures, shared by the tests of every module that reads one,

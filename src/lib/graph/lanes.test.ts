@@ -123,7 +123,7 @@ function fakeContext() {
 		beginPath: record('beginPath'),
 		moveTo: record('moveTo'),
 		lineTo: record('lineTo'),
-		bezierCurveTo: record('bezierCurveTo'),
+		arcTo: record('arcTo'),
 		arc: record('arc'),
 		fill: record('fill'),
 		stroke: record('stroke'),
@@ -139,7 +139,12 @@ function fakeContext() {
 	return { ctx, calls };
 }
 
-function draw(rows: GraphRow[], first: number, last: number) {
+function draw(
+	rows: GraphRow[],
+	first: number,
+	last: number,
+	overrides: { columns?: number } = {}
+) {
 	const { ctx, calls } = fakeContext();
 	drawLanes({
 		ctx: ctx as unknown as CanvasRenderingContext2D,
@@ -151,7 +156,8 @@ function draw(rows: GraphRow[], first: number, last: number) {
 		row: lookup(rows),
 		colors: ['red', 'green', 'blue', 'orange', 'purple'],
 		nodeRing: '#101010',
-		columns: LANE_COLUMNS_MIN
+		columns: LANE_COLUMNS_MIN,
+		...overrides
 	});
 	return { ctx, calls };
 }
@@ -173,18 +179,45 @@ describe('drawLanes', () => {
 
 		const line = calls.find((c) => c.op === 'lineTo');
 		expect(line).toBeDefined();
-		expect(calls.some((c) => c.op === 'bezierCurveTo')).toBe(false);
+		expect(calls.some((c) => c.op === 'arcTo')).toBe(false);
 		expect(line?.args).toEqual([laneX(0), rowCenterY(1)]);
 	});
 
-	it('draws a cubic elbow for a lane that changes column', () => {
+	/**
+	 * A rounded right angle, not a curve (FEAT-053): down its own lane, turn,
+	 * straight across, turn, down the new lane. The straight runs are what the
+	 * eye follows when many lanes share one band, and a full-row S leaves none.
+	 */
+	it('turns square, with two rounded corners, for a lane that changes column', () => {
 		const rows = [row(0), row(1, 0, [{ from: 0, to: 1, color: 1 }])];
 		const { calls } = draw(rows, 0, 1);
 
-		const curve = calls.find((c) => c.op === 'bezierCurveTo');
-		expect(curve).toBeDefined();
-		// It arrives vertically in the destination lane, at that row's centre.
-		expect(curve?.args.slice(-2)).toEqual([laneX(1), rowCenterY(1)]);
+		const corners = calls.filter((c) => c.op === 'arcTo');
+		expect(corners).toHaveLength(2);
+
+		const middle = (rowCenterY(0) + rowCenterY(1)) / 2;
+		// Out of the old lane and into the crossing, at the band's middle.
+		expect(corners[0]?.args.slice(0, 4)).toEqual([laneX(0), middle, laneX(1), middle]);
+		// Out of the crossing and down into the new lane.
+		expect(corners[1]?.args.slice(0, 4)).toEqual([laneX(1), middle, laneX(1), rowCenterY(1)]);
+
+		// And it finishes vertically in the destination lane, at that row's centre.
+		const line = calls.filter((c) => c.op === 'lineTo').at(-1);
+		expect(line?.args).toEqual([laneX(1), rowCenterY(1)]);
+	});
+
+	it('turns tighter rather than bulging when the lanes are close together', () => {
+		// The radius is clamped against half the crossing, so neighbouring lanes
+		// at a squeezed pitch cannot round past their own corner.
+		const rows = [row(0), row(1, 0, [{ from: 0, to: 1, color: 1 }])];
+		const { calls } = draw(rows, 0, 1, { columns: 40 });
+
+		const corners = calls.filter((c) => c.op === 'arcTo');
+		const radius = corners[0]?.args[4] as number;
+		const crossing = Math.abs(laneX(1, 40) - laneX(0, 40));
+
+		expect(radius).toBeLessThanOrEqual(crossing / 2);
+		expect(radius).toBeGreaterThan(0);
 	});
 
 	it('draws the band arriving at the first row below the fold', () => {
@@ -195,14 +228,14 @@ describe('drawLanes', () => {
 	});
 
 	it('draws nodes on top of the edges that reach them', () => {
-		// Every lane segment is a `lineTo` or a `bezierCurveTo`; a node is arcs.
+		// Every lane segment is a `lineTo` or an `arcTo`; a node is `arc`.
 		// Asserting against the path commands rather than against `stroke`
 		// keeps this true now that a node strokes its own ring.
 		const rows = [row(0), row(1, 0, [{ from: 0, to: 0, color: 0 }])];
 		const { calls } = draw(rows, 0, 1);
 
 		const ops = calls.map((c) => c.op);
-		const lastEdge = Math.max(ops.lastIndexOf('lineTo'), ops.lastIndexOf('bezierCurveTo'));
+		const lastEdge = Math.max(ops.lastIndexOf('lineTo'), ops.lastIndexOf('arcTo'));
 		expect(ops.indexOf('arc')).toBeGreaterThan(lastEdge);
 	});
 

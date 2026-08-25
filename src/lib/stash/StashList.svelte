@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { relativeTime } from '$lib/format';
-	import { LANE_PITCH, LANE_X0, NODE_R, ROW_PITCH } from '$lib/metrics';
+	import { ELBOW_RADIUS, LANE_PITCH, LANE_X0, NODE_R, ROW_PITCH } from '$lib/metrics';
 	import { stash } from '$lib/stash/store.svelte';
 	import RefChip from '$lib/ui/RefChip.svelte';
 
@@ -28,8 +28,21 @@
 	const stashY = ROW_PITCH / 2;
 	const baseY = ROW_PITCH + ROW_PITCH / 2;
 
-	/** Leaves vertically, crosses, arrives vertically — the graph's elbow. */
-	const elbow = `M ${stashX} ${stashY} C ${stashX} ${stashY + ROW_PITCH * 0.65}, ${baseX} ${baseY - ROW_PITCH * 0.58}, ${baseX} ${baseY}`;
+	/**
+	 * The graph's elbow, which is a rounded right angle rather than a curve
+	 * (FEAT-053): down, a quarter turn, across, a quarter turn, down. Drawn with
+	 * two arcs so this list and the graph draw a stash the same way.
+	 */
+	const corner = Math.min(ELBOW_RADIUS, Math.abs(baseX - stashX) / 2, ROW_PITCH / 2);
+	const middle = (stashY + baseY) / 2;
+	const elbow = [
+		`M ${stashX} ${stashY}`,
+		`L ${stashX} ${middle - corner}`,
+		`A ${corner} ${corner} 0 0 0 ${stashX - corner} ${middle}`,
+		`L ${baseX + corner} ${middle}`,
+		`A ${corner} ${corner} 0 0 1 ${baseX} ${middle + corner}`,
+		`L ${baseX} ${baseY}`
+	].join(' ');
 </script>
 
 <nav class="list" aria-label="Stash entries">

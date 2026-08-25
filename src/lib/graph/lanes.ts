@@ -12,8 +12,7 @@
  */
 
 import {
-	ELBOW_C1,
-	ELBOW_C2,
+	ELBOW_RADIUS,
 	LANE_SPAN,
 	LANE_STROKE,
 	MERGE_R,
@@ -113,9 +112,9 @@ export function drawLanes(options: LaneDrawOptions): void {
 	// A row's edges describe the band *above* it, so the range runs one past
 	// `last` — otherwise the segment arriving at the first row below the fold
 	// would be missing and lanes would appear to stop short at the bottom edge.
-	// Elbow control points are fractions of the pitch, so they follow it.
-	const c1 = (ELBOW_C1 / ROW_PITCH) * pitch;
-	const c2 = (ELBOW_C2 / ROW_PITCH) * pitch;
+	// The corner radius follows the pitch, so a squeezed row turns proportionally
+	// tighter rather than keeping a corner too big for the space.
+	const corner = (ELBOW_RADIUS / ROW_PITCH) * pitch;
 
 	for (let i = first; i <= last + 1; i++) {
 		const commit = row(i);
@@ -137,10 +136,26 @@ export function drawLanes(options: LaneDrawOptions): void {
 			if (x0 === x1) {
 				ctx.lineTo(x1, bottom);
 			} else {
-				// A cubic elbow spanning exactly one row: it leaves vertically,
-				// crosses, and arrives vertically, so it meets the straight run
-				// above and below without a visible corner.
-				ctx.bezierCurveTo(x0, top + c1, x1, bottom - c2, x1, bottom);
+				// A rounded right angle, not a curve: straight down its own lane,
+				// turn, straight across, turn, straight down the new one. The
+				// straight runs are the point — they are what the eye follows
+				// when thirty lanes share a band.
+				//
+				// The radius is clamped against half the crossing and half the
+				// row so a jump between neighbouring lanes at a squeezed pitch
+				// turns tighter instead of bulging past its own corner.
+				const middle = (top + bottom) / 2;
+				const radius = Math.min(
+					corner,
+					Math.abs(x1 - x0) / 2,
+					Math.abs(bottom - top) / 2
+				);
+
+				// `arcTo` rounds the corner between the line into the point and
+				// the line out of it, which is exactly a quarter turn here.
+				ctx.arcTo(x0, middle, x1, middle, radius);
+				ctx.arcTo(x1, middle, x1, bottom, radius);
+				ctx.lineTo(x1, bottom);
 			}
 			ctx.stroke();
 		}

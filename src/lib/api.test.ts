@@ -119,6 +119,7 @@ describe('command names and arguments', () => {
 
 	it('sends the whole settings object when storing it', async () => {
 		const settings = {
+			checkForUpdates: true,
 			confirmHistoryRewrite: false,
 			showGitCommands: true,
 			pruneOnFetch: false

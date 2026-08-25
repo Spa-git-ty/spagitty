@@ -38,6 +38,16 @@ const FILE: &str = "settings.json";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
+    /// Ask the project whether there is a newer Spagitty, at startup.
+    ///
+    /// On by default, which is the one preference here that changes what the
+    /// application *does* rather than what it checks — the others are off for
+    /// exactly that reason. It earns the exception by being the only way a
+    /// person finds out their client is old: there is no package manager
+    /// behind an AppImage or a bare `.exe`, and a security fix nobody hears
+    /// about is not a fix. It can be turned off, and turning it off stops
+    /// every request.
+    pub check_for_updates: bool,
     /// Ask before anything that rewrites history.
     pub confirm_history_rewrite: bool,
     /// Show the `git` command behind each action.
@@ -52,14 +62,16 @@ pub struct Settings {
 }
 
 impl Default for Settings {
-    /// Off, except the one that asks first.
+    /// Off, except the one that asks first and the one that looks for updates.
     ///
     /// A confirmation defaults to on because the cost of asking is a click and
-    /// the cost of not asking is a rewritten history. The other two change what
-    /// the application does rather than what it checks, and a preference the
-    /// user did not set should not do that.
+    /// the cost of not asking is a rewritten history. The update check is the
+    /// deliberate exception to "a preference the user did not set should not
+    /// change what the application does" — its reasoning is on the field.
+    /// The rest are off.
     fn default() -> Self {
         Settings {
+            check_for_updates: true,
             confirm_history_rewrite: true,
             show_git_commands: false,
             // Off, like the other two that change what the application does.
@@ -124,6 +136,8 @@ mod tests {
         // history, so this is the one that defaults to on.
         assert!(Settings::default().confirm_history_rewrite);
         assert!(!Settings::default().show_git_commands);
+        // The one other exception, and the field says why it earns it.
+        assert!(Settings::default().check_for_updates);
     }
 
     #[test]
@@ -160,6 +174,7 @@ mod tests {
     #[test]
     fn settings_read_back_as_they_were_written() {
         let written = Settings {
+            check_for_updates: false,
             confirm_history_rewrite: false,
             show_git_commands: true,
             prune_on_fetch: true,
@@ -175,6 +190,7 @@ mod tests {
         // these keys. A rename on either side has to be a deliberate one.
         let text = serde_json::to_string(&Settings::default()).expect("serialising");
 
+        assert!(text.contains("checkForUpdates"), "{text}");
         assert!(text.contains("confirmHistoryRewrite"), "{text}");
         assert!(text.contains("showGitCommands"), "{text}");
         assert!(text.contains("pruneOnFetch"), "{text}");
