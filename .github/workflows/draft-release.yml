@@ -146,8 +146,14 @@ jobs:
           # A draft of the same name from an earlier run is replaced rather
           # than added to: two drafts called the same thing is a worse outcome
           # than losing the previous attempt, which was never published.
+          #
+          # `--cleanup-tag` matters more than it looks. Without it the tag
+          # survives the delete and stays pointing at the *first* run's commit,
+          # so the next draft advertises a new commit and carries an old tag —
+          # publish that and you ship a release whose tag names code the
+          # binaries were not built from.
           if gh release view "draft-$NAME" >/dev/null 2>&1; then
-            gh release delete "draft-$NAME" --yes
+            gh release delete "draft-$NAME" --yes --cleanup-tag
           fi
 
           gh release create "draft-$NAME" \
