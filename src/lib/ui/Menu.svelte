@@ -160,17 +160,30 @@
 </div>
 
 <style>
+	/*
+	 * A menu floats over the application rather than sitting in it, so it takes
+	 * the floating surface and the deepest of the three shadows — and the
+	 * shadow is the theme's own ink rather than black, which is what stopped a
+	 * menu over Gruvbox looking like a hole cut in the window.
+	 */
 	.menu {
 		position: fixed;
 		z-index: 50;
 		min-width: 200px;
 		max-width: 340px;
 		padding: 5px;
-		background: var(--panel);
-		border: 1.5px solid var(--line);
+		background-color: var(--glass-thick);
+		background-image: var(--glass-sheen);
+		backdrop-filter: var(--blur-thick);
+		-webkit-backdrop-filter: var(--blur-thick);
+		border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		border-radius: var(--r-panel);
-		box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26);
+		box-shadow: var(--glass-rim), var(--shadow-3);
 		outline: none;
+		/* It appears at the pointer, so it grows from where it was asked for
+		   rather than fading in from nowhere. */
+		transform-origin: top left;
+		animation: pop-in 160ms var(--spring);
 	}
 
 	/* Rendered so it can be measured, but not shown at the wrong place first. */
@@ -194,8 +207,14 @@
 		font-size: var(--fs-secondary);
 	}
 
+	/* The item the keyboard is on. A stronger tint than the hover state, so the
+	   two are tellable apart at a glance. */
 	.entry.at:not(:disabled) {
 		background: var(--selection);
+	}
+
+	.entry:not(:disabled):hover {
+		background: var(--hover);
 	}
 
 	.entry:disabled {
@@ -203,8 +222,13 @@
 		cursor: default;
 	}
 
+	/* The palette's red, not the graph's third lane — see `Chip.svelte`. */
 	.entry.danger:not(:disabled) .label {
-		color: var(--lane-3);
+		color: var(--danger);
+	}
+
+	.entry.danger:not(:disabled):hover {
+		background: var(--danger-soft);
 	}
 
 	.label {

@@ -11,9 +11,14 @@
 	import Chip from '$lib/ui/Chip.svelte';
 	import Menu from '$lib/ui/Menu.svelte';
 	import type { MenuItem } from '$lib/ui/menu';
+	import Icon from '$lib/ui/Icon.svelte';
+	import { panels } from '$lib/panels.svelte';
 	import Splitter from '$lib/ui/Splitter.svelte';
 
 	const branch = $derived(repo.info?.head.branch ?? null);
+
+	/** Whether the commit detail panel is put away. */
+	const detailHidden = $derived(panels.isHidden('detail'));
 
 	/** What the chip says the walk is currently rooted at. */
 	const SCOPE: Record<Mode, { label: string; title: string }> = {
@@ -142,13 +147,27 @@
 				<Chip active={visibility.filtered} title={scope.title}>{scope.label}</Chip>
 			</div>
 			<div class="right">
+				<!--
+					The detail panel had no way to go away (FEAT-054). It is a
+					third of the window on a laptop, and reading a wide commit
+					message meant dragging it shut and dragging it back.
+				-->
+				<button
+					class="gear"
+					aria-label={detailHidden ? 'Show the detail panel' : 'Hide the detail panel'}
+					title={detailHidden ? 'Show the detail panel' : 'Hide the detail panel'}
+					aria-pressed={!detailHidden}
+					onclick={() => panels.toggleHidden('detail')}
+				>
+					<Icon name={detailHidden ? 'chevron-left' : 'chevron-right'} size="1.1em" />
+				</button>
 				<button
 					class="gear"
 					aria-label="Branch visibility"
 					title="Branch visibility"
 					onclick={openGear}
 				>
-					⚙
+					<Icon name="settings" size="1.1em" />
 				</button>
 			</div>
 		</header>
@@ -192,8 +211,12 @@
 		</footer>
 	</div>
 
-	<Splitter panel="detail" label="Resize the detail panel" />
-	<CommitDetail onopen={openDiff} />
+	<!-- Both go together: a divider with nothing on one side of it resizes
+	     nothing. -->
+	{#if !detailHidden}
+		<Splitter panel="detail" label="Resize the detail panel" />
+		<CommitDetail onopen={openDiff} />
+	{/if}
 </div>
 
 {#if gear}
@@ -228,7 +251,14 @@
 		justify-content: space-between;
 		gap: 10px;
 		padding: 10px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		background-image: var(--glass-sheen);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 		flex: none;
 	}
 
@@ -247,21 +277,31 @@
 		font-size: var(--fs-title);
 	}
 
+	/* `--r-chip` and `--dim` were never tokens — both silently resolved to
+	   nothing, so these buttons had square corners and inherited colour. */
 	.gear {
 		display: grid;
 		place-items: center;
-		width: 26px;
-		height: 26px;
-		border: 1.5px solid transparent;
-		border-radius: var(--r-chip);
+		width: 28px;
+		height: 28px;
+		border: 1px solid transparent;
+		border-radius: var(--r-button);
 		background: none;
-		color: var(--dim);
+		color: var(--muted);
 		cursor: pointer;
+		transition:
+			background var(--t-fast) var(--ease),
+			color var(--t-fast) var(--ease),
+			transform var(--t-fast) var(--spring);
 	}
 
 	.gear:hover {
-		border-color: var(--line);
-		color: var(--ink);
+		background: var(--hover);
+		color: var(--accent);
+	}
+
+	.gear:active {
+		transform: scale(0.92);
 	}
 
 	.empty {
@@ -274,7 +314,7 @@
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 
 	.dot {
@@ -288,7 +328,12 @@
 		justify-content: space-between;
 		gap: 10px;
 		padding: 8px;
-		border-top: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		background-image: var(--glass-sheen);
+		border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow: 0 -1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 		flex: none;
 	}
 </style>

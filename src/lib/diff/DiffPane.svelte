@@ -115,14 +115,14 @@
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 
 	.hunk-head {
 		color: var(--muted);
 		background: var(--panel);
-		border-top: 1.5px solid var(--soft);
-		border-bottom: 1.5px solid var(--soft);
+		border-top: 1px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		padding: 2px 8px;
 		position: sticky;
 		top: 0;
@@ -170,12 +170,12 @@
 
 	.line.added,
 	.side.added {
-		background: color-mix(in srgb, var(--lane-5) 12%, transparent);
+		background: color-mix(in srgb, var(--ok) 14%, transparent);
 	}
 
 	.line.removed,
 	.side.removed {
-		background: color-mix(in srgb, var(--lane-3) 12%, transparent);
+		background: color-mix(in srgb, var(--danger) 14%, transparent);
 	}
 
 	/* The empty half of an uneven pairing is not a line that exists. */

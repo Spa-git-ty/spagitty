@@ -159,7 +159,7 @@
 		width: var(--changes-files-w);
 		flex: none;
 		background: var(--panel);
-		border-right: 1.5px solid var(--line);
+		border-right: 1px solid var(--line);
 		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
@@ -178,7 +178,7 @@
 		justify-content: space-between;
 		gap: 6px;
 		padding: 4px 8px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 	}
 
 	.right {
@@ -199,34 +199,52 @@
 		gap: 4px;
 		margin: 2px 6px 0;
 		padding-right: 4px;
-		border: 1.5px solid transparent;
+		border: 1px solid transparent;
 		border-radius: var(--r-field);
 		min-width: 0;
+		transition:
+			background var(--t-fast) var(--ease),
+			border-color var(--t-fast) var(--ease),
+			box-shadow var(--t-fast) var(--ease);
 	}
 
-	/* Solid is settled, dashed is not — the same device the rest of the
-	   application uses. */
+	/*
+	 * Staged is settled, unstaged is not — and the difference is *depth* now
+	 * rather than a dashed border. A staged file is a card that has been picked
+	 * up: a raised surface with the light on its top edge and a shadow under
+	 * it. An unstaged one is lying flat on the page. The class is still called
+	 * `dashed` because that is what the markup and its tests call the state;
+	 * what it draws is what changed.
+	 */
 	.row.solid {
 		border-color: var(--soft);
+		background: var(--grad-surface);
+		box-shadow: var(--sheen), var(--shadow-1);
 	}
 
 	.row.dashed {
-		border-style: dashed;
 		border-color: var(--soft);
+		background: none;
 	}
 
+	/* A file git cannot merge on its own. Red, because it is the one state on
+	   this screen that is a problem rather than a step. */
 	.row.conflicted {
-		border-color: var(--accent);
+		border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+		background: linear-gradient(90deg, var(--danger-soft), transparent 70%);
 		padding: 2px 8px;
 	}
 
 	.row:hover {
-		border-color: var(--accent);
+		border-color: color-mix(in srgb, var(--accent) 55%, var(--soft));
+		box-shadow: var(--sheen), var(--shadow-1);
 	}
 
 	.row.selected {
-		background: var(--selection);
-		border-color: var(--accent);
+		background: linear-gradient(90deg, var(--accent-soft), transparent 75%),
+			var(--grad-surface);
+		border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+		box-shadow: var(--sheen), var(--shadow-1);
 	}
 
 	.open {
@@ -278,6 +296,6 @@
 	/* Red on hover only. A column of red crosses would read as a list of
 	   errors rather than as a column of available actions. */
 	.act.discard:hover:not(:disabled) {
-		color: var(--lane-3);
+		color: var(--danger);
 	}
 </style>

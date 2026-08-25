@@ -93,7 +93,7 @@
 	.detail {
 		width: var(--detail-w);
 		flex: none;
-		border-left: 1.5px solid var(--line);
+		border-left: 1px solid var(--line);
 		background: var(--panel);
 		display: flex;
 		flex-direction: column;
@@ -106,7 +106,7 @@
 		justify-content: space-between;
 		gap: 8px;
 		padding: 8px 10px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		flex: none;
 	}
 
@@ -145,6 +145,6 @@
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 </style>

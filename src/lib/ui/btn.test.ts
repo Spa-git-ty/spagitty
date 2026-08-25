@@ -47,9 +47,15 @@ describe("the primary button's fill", () => {
 		}
 	});
 
-	it('excludes the glow from the transparent fill', () => {
+	it('excludes the glow from the secondary fill', () => {
+		// A secondary button is a raised surface rather than an outline, so it
+		// *does* carry a fill — and the fill has to stay off any selector the
+		// glow also matches, which is the whole of BUG-002. The exclusion is the
+		// invariant here; which colour it fills with is a design decision.
 		expect(component).toContain('.btn:not(.glow)');
-		expect(block(component, '.btn:not(.glow)')).toContain('background: transparent');
+		// `background-color`, not `background`: a secondary button is glass, and
+		// the shorthand would wipe the sheen layer painted with it.
+		expect(block(component, '.btn:not(.glow)')).toContain('background-color:');
 	});
 
 	it('leaves the accent fill to the glow rule in app.css', () => {

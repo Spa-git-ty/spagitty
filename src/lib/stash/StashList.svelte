@@ -110,11 +110,11 @@
 		padding: 4px 12px;
 		text-align: left;
 		width: 100%;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 	}
 
 	.entry:hover {
-		background: var(--stripe);
+		background: var(--hover);
 	}
 
 	.entry.selected {

@@ -134,7 +134,7 @@
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 
 	p {

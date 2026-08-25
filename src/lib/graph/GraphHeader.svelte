@@ -244,8 +244,18 @@
 		display: flex;
 		align-items: stretch;
 		height: calc(var(--row-pitch) + 2px);
-		border-bottom: 1.5px solid var(--soft);
-		background: var(--panel);
+		border-bottom: 1px solid var(--line);
+		/* Chrome, so it is glass too — and it casts onto the rows under it,
+		   which is what keeps a column heading readable while a hundred commits
+		   scroll beneath it. */
+		background-color: var(--chrome-veil);
+		background-image: var(--glass-sheen);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 8%, transparent);
+		font-size: var(--fs-secondary);
+		font-weight: 550;
+		letter-spacing: 0.02em;
 		flex: none;
 		user-select: none;
 	}
@@ -271,7 +281,7 @@
 	}
 
 	.cell.over {
-		box-shadow: inset 2px 0 0 var(--accent);
+		box-shadow: inset 0 -2px 0 var(--accent);
 	}
 
 	.label {
@@ -309,7 +319,7 @@
 		position: absolute;
 		left: 3px;
 		top: 0;
-		width: 1.5px;
+		width: 1px;
 		height: 100%;
 		background: var(--soft);
 	}
@@ -331,7 +341,7 @@
 		font-size: var(--fs-secondary);
 		color: inherit;
 		background: var(--bg);
-		border: 1.5px solid var(--line);
+		border: 1px solid var(--line);
 		border-radius: var(--r-field);
 		padding: 1px 5px;
 		min-width: 0;

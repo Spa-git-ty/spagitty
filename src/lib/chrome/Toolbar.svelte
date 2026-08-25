@@ -7,6 +7,8 @@
 	import { fetchAll, pull, pushCurrent } from '$lib/graph/actions';
 	import { network } from '$lib/network/store.svelte';
 	import { remotes } from '$lib/remotes/store.svelte';
+	import Icon from '$lib/ui/Icon.svelte';
+	import type { IconName } from '$lib/ui/icons';
 	import Menu from '$lib/ui/Menu.svelte';
 	import type { MenuItem } from '$lib/ui/menu';
 	import { repo } from '$lib/repo.svelte';
@@ -90,7 +92,7 @@
 	const PENDING = 'Not built yet';
 
 	interface ToolItem {
-		glyph: string;
+		icon: IconName;
 		label: string;
 		/** Where it goes, for the actions that are a screen. */
 		href?: string;
@@ -179,19 +181,19 @@
 
 	const GROUPS: ToolItem[][] = [
 		[
-			{ glyph: '↺', label: 'Undo', title: PENDING },
-			{ glyph: '↻', label: 'Redo', title: PENDING }
+			{ icon: 'undo', label: 'Undo', title: PENDING },
+			{ icon: 'redo', label: 'Redo', title: PENDING }
 		],
 		[
 			{
-				glyph: '⇓',
+				icon: 'pull',
 				label: 'Pull',
 				title: 'Fetch and bring the upstream in — right-click for how',
 				act: () => pull(),
 				menu: true
 			},
 			{
-				glyph: '⇩',
+				icon: 'fetch',
 				label: 'Fetch',
 				title: settings.settings.pruneOnFetch
 					? 'Fetch every remote, pruning — right-click for one'
@@ -200,17 +202,17 @@
 				fetchMenu: true
 			},
 			{
-				glyph: '⇧',
+				icon: 'push',
 				label: 'Push',
 				title: 'Push the current branch',
 				act: () => pushCurrent()
 			},
-			{ glyph: '⎘', label: 'Clone', title: 'Bring a repository in', act: () => clone.show() }
+			{ icon: 'clone', label: 'Clone', title: 'Bring a repository in', act: () => clone.show() }
 		],
 		[
-			{ glyph: '⑃', label: 'Branch', href: '/branches' },
-			{ glyph: '▤', label: 'Stash', href: '/stash' },
-			{ glyph: '✎', label: 'Rebase', href: '/rebase' }
+			{ icon: 'branch', label: 'Branch', href: '/branches' },
+			{ icon: 'stash', label: 'Stash', href: '/stash' },
+			{ icon: 'rebase', label: 'Rebase', href: '/rebase' }
 		]
 	];
 </script>
@@ -314,7 +316,7 @@
 					}}
 					onclick={() => (action.act ? action.act() : action.href && goto(action.href))}
 				>
-					<span aria-hidden="true">{action.glyph}</span>
+					<Icon name={action.icon} size="1.25em" />
 					<span>{action.label}</span>
 				</button>
 			{/each}
@@ -364,7 +366,16 @@
 		align-items: center;
 		gap: 16px;
 		padding: 0 12px;
-		border-bottom: 1.5px solid var(--line);
+		background-color: var(--chrome-veil);
+		background-image: var(--glass-sheen);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+		/* The pane casts onto whatever screen is under it, which is what stops
+		   the toolbar and the content it sits above reading as one surface. */
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 8%, transparent);
+		position: relative;
+		z-index: 2;
 	}
 
 	/* The command log toggle rides in the third track, at its right edge. */
@@ -410,26 +421,36 @@
 	 * actions sit in the middle track and a message that widened this one would
 	 * push them off centre.
 	 */
+	/* An error on the toolbar is the palette's red, which is what the rest of
+	   the application now uses to mean "this did not work". */
 	.error {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		color: var(--accent);
+		color: var(--danger);
 	}
 
+	/* The branch and remote pickers. Wells, like every other field — they are
+	   read as "this is the current one, click to change it". */
 	.field {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 6px;
-		padding: 4px 6px;
-		border: 1.5px solid var(--line);
+		padding: 4px 7px;
+		border: 1px solid var(--line);
 		border-radius: var(--r-field);
+		background: var(--sunken);
+		box-shadow: inset 0 1px 2px color-mix(in srgb, var(--umbra) 6%, transparent);
 		min-width: 0;
+		transition:
+			border-color var(--t-fast) var(--ease),
+			background var(--t-fast) var(--ease);
 	}
 
 	.field:hover {
-		border-color: var(--accent);
+		border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+		background: color-mix(in srgb, var(--sunken) 88%, var(--accent) 6%);
 	}
 
 	.value {
@@ -444,14 +465,24 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 1px;
+		padding: 3px 6px;
+		border-radius: var(--r-button);
 		font-size: var(--fs-mono);
 		color: var(--muted);
 		min-width: 44px;
 		user-select: none;
+		transition:
+			background var(--t-fast) var(--ease),
+			color var(--t-fast) var(--ease);
 	}
 
 	.tool:hover {
 		color: var(--accent);
+		background: var(--accent-soft);
+	}
+
+	.tool:active {
+		background: var(--press);
 	}
 
 	.actions {

@@ -101,7 +101,7 @@
 		flex: none;
 		width: 20px;
 		height: 20px;
-		border: 1.5px solid var(--line);
+		border: 1px solid var(--line);
 		border-radius: var(--r-pill);
 		display: inline-flex;
 		align-items: center;

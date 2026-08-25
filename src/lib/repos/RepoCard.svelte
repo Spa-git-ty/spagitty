@@ -93,31 +93,72 @@
 </article>
 
 <style>
+	/*
+	 * A repository is a card, and now looks like one: a lifted surface with the
+	 * light on its top edge and a shadow under it, which rises under the
+	 * pointer. The wireframe drew all of this as a hairline rectangle and said
+	 * "nothing going on" by making the rectangle dashed.
+	 */
 	.card {
 		width: var(--repo-card-w);
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
-		padding: 10px;
-		border: 1.5px solid var(--soft);
-		border-radius: var(--r-field);
-		background: var(--bg);
+		padding: 11px;
+		border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		border-radius: var(--r-panel);
+		background-color: var(--surface-veil);
+		background-image: var(--glass-sheen);
+		box-shadow: var(--glass-rim), var(--shadow-1);
+		transition:
+			box-shadow var(--t-slow) var(--ease),
+			transform var(--t-slow) var(--ease),
+			border-color var(--t-fast) var(--ease);
 	}
 
-	/* Dashed for a repository with nothing going on — the same device the rest
-	   of the application uses for "not right now". */
+	.card:hover {
+		box-shadow: var(--glass-rim), var(--shadow-2);
+		transform: translateY(-2px);
+	}
+
+	/* Nothing going on here. Left flat on the page rather than dashed: no lift,
+	   no light, dimmed text — a card that has not been picked up. */
 	.card.idle {
-		border-style: dashed;
+		background: none;
+		box-shadow: none;
 		color: var(--muted);
 	}
 
-	.card.missing {
-		border-color: var(--accent);
+	.card.idle:hover {
+		background-color: var(--surface-veil);
+		box-shadow: var(--glass-rim), var(--shadow-1);
 	}
 
+	/* Gone from disk. The palette's red, which is what the rest of the
+	   application uses for a thing that is wrong — it was the accent, which is
+	   also what "this one is open" uses, so the two were indistinguishable. */
+	.card.missing {
+		border-color: color-mix(in srgb, var(--danger) 55%, var(--soft));
+		background: linear-gradient(180deg, var(--danger-soft), transparent 60%),
+			var(--grad-surface);
+	}
+
+	/* The one open right now. */
 	.card.open {
-		background: var(--selection);
-		border-color: var(--accent);
+		border-color: color-mix(in srgb, var(--accent) 55%, var(--soft));
+		background: linear-gradient(180deg, var(--accent-soft), transparent 70%),
+			var(--grad-surface);
+		box-shadow:
+			var(--sheen),
+			var(--shadow-2);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.card,
+		.card:hover {
+			transform: none;
+			transition: none;
+		}
 	}
 
 	.top {

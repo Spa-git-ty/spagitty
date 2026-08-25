@@ -73,7 +73,7 @@
 		align-items: baseline;
 		gap: 8px;
 		padding: 4px 6px;
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
 		min-width: 0;
 	}

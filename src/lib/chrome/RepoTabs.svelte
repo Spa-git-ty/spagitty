@@ -7,6 +7,7 @@
 	import { clone } from '$lib/clone/store.svelte';
 	import { graph } from '$lib/graph/store.svelte';
 	import { repo } from '$lib/repo.svelte';
+	import Icon from '$lib/ui/Icon.svelte';
 	import Menu from '$lib/ui/Menu.svelte';
 	import type { MenuItem } from '$lib/ui/menu';
 	import { notice } from '$lib/ui/notice.svelte';
@@ -139,7 +140,7 @@
 					aria-label="Close {tab.name}"
 					onclick={(event) => closeTab(event, tab.path)}
 				>
-					✕
+					<Icon name="close" size="0.8em" weight={2} />
 				</button>
 			</div>
 		{/each}
@@ -150,7 +151,7 @@
 			aria-label="Add a repository"
 			onclick={openMenu}
 		>
-			+
+			<Icon name="plus" size="1em" weight={1.9} />
 		</button>
 	</div>
 </div>
@@ -173,8 +174,9 @@
 		display: flex;
 		align-items: stretch;
 		padding: 4px 10px 0;
-		background: var(--panel);
-		border-bottom: 1.5px solid var(--line);
+		background-color: var(--chrome-veil);
+		background-image: var(--glass-sheen);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 	}
 
 	.tabs {
@@ -198,15 +200,33 @@
 		user-select: none;
 	}
 
+	.tab {
+		transition:
+			background var(--t-fast) var(--ease),
+			color var(--t-fast) var(--ease);
+	}
+
 	.tab:hover {
-		background: var(--soft);
+		background: var(--hover);
 		color: var(--ink);
 	}
 
+	/*
+	 * The open one is a card standing on the row's bottom edge: the ground
+	 * colour so it reads as continuous with the screen below, a hairline up
+	 * each side, an accent bar along the bottom, and the light catching its top
+	 * edge. Before, it was the same rectangle with an underline.
+	 */
 	.tab.active {
 		background: var(--bg);
 		color: var(--ink);
-		box-shadow: inset 0 -2px 0 var(--accent);
+		font-weight: 550;
+		border: 1px solid var(--line);
+		border-bottom: none;
+		box-shadow:
+			inset 0 -2px 0 var(--accent),
+			var(--sheen),
+			0 -1px 3px color-mix(in srgb, var(--umbra) 6%, transparent);
 	}
 
 	.label {
@@ -220,7 +240,9 @@
 	   as a row of things to dismiss rather than a row of repositories. */
 	.close {
 		flex: none;
-		font-size: 10px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		line-height: 1;
 		color: var(--muted);
 		padding: 2px;
@@ -235,21 +257,31 @@
 	}
 
 	.close:hover {
-		color: var(--ink);
-		background: var(--soft);
+		color: var(--danger);
+		background: var(--danger-soft);
 	}
 
 	.add {
 		flex: none;
-		width: 22px;
+		width: 26px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		color: var(--muted);
-		font-size: var(--fs-title);
 		line-height: 1;
 		border-radius: var(--r-field);
+		transition:
+			background var(--t-fast) var(--ease),
+			color var(--t-fast) var(--ease),
+			transform var(--t-fast) var(--spring);
+	}
+
+	.add:active {
+		transform: scale(0.9);
 	}
 
 	.add:hover {
 		color: var(--accent);
-		background: var(--soft);
+		background: var(--accent-soft);
 	}
 </style>

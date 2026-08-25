@@ -36,15 +36,25 @@
 		align-items: flex-start;
 		gap: 10px;
 		padding: 10px 12px;
-		background: var(--panel);
-		border: 1.5px solid var(--line);
-		border-left: 3px solid var(--lane-5);
+		background-color: var(--glass-thick);
+		backdrop-filter: var(--blur-thick);
+		-webkit-backdrop-filter: var(--blur-thick);
+		border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+		/* The stripe says which kind of news this is, and it is the palette's own
+		   green or red rather than a graph lane, which was cyan on Dracula. */
+		border-left: 3px solid var(--ok);
 		border-radius: var(--r-panel);
-		box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+		box-shadow: var(--glass-rim), var(--shadow-3);
+		/* It arrives from the corner it lives in. */
+		animation: rise-in var(--t-enter) var(--spring);
+		/* A tint of the same colour behind it, so the meaning is carried by more
+		   than three pixels down one edge. */
+		background-image: linear-gradient(90deg, var(--ok-soft), transparent 42%);
 	}
 
 	.notice.error {
-		border-left-color: var(--lane-3);
+		border-left-color: var(--danger);
+		background-image: linear-gradient(90deg, var(--danger-soft), transparent 42%);
 	}
 
 	.text {
@@ -70,9 +80,15 @@
 		line-height: 1;
 		font-size: var(--fs-title);
 		color: var(--muted);
+		border-radius: var(--r-field);
+		padding: 0 4px;
+		transition:
+			background var(--t-fast) var(--ease),
+			color var(--t-fast) var(--ease);
 	}
 
 	.close:hover {
 		color: var(--ink);
+		background: var(--hover);
 	}
 </style>

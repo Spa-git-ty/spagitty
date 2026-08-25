@@ -214,7 +214,14 @@
 	.head {
 		justify-content: space-between;
 		padding: 10px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		background-image: var(--glass-sheen);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	.left,
@@ -246,18 +253,18 @@
 		align-items: center;
 		gap: 10px;
 		padding: 4px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		min-height: 30px;
 	}
 
-	/* Dashed for lightweight, the same device the rest of the application uses
-	   for "less settled" — here meaning "carries nothing but a position". */
+	/* A lightweight tag carries nothing but a position, so it is dimmed rather
+	   than drawn with a dashed rule. */
 	.row.lightweight {
-		border-bottom-style: dashed;
+		color: var(--muted);
 	}
 
 	.row:hover {
-		background: var(--stripe);
+		background: var(--hover);
 	}
 
 	.what,
@@ -295,7 +302,7 @@
 
 	.create {
 		padding: 8px 12px;
-		border-top: 1.5px solid var(--soft);
+		border-top: 1px solid var(--soft);
 	}
 
 	.create .name {
@@ -317,7 +324,12 @@
 
 	.foot {
 		padding: 8px 12px;
-		border-top: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		background-image: var(--glass-sheen);
+		border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow: 0 -1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	p {

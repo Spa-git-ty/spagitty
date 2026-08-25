@@ -33,8 +33,9 @@
 		gap: 8px;
 		padding: 0 10px;
 		height: var(--strip-h);
-		border-top: 1.5px solid var(--line);
-		background: var(--panel);
+		border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+		background-color: var(--chrome-veil);
+		background-image: var(--glass-sheen);
 	}
 
 	.left {

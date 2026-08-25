@@ -7,6 +7,8 @@
 	import RequestRow from '$lib/requests/RequestRow.svelte';
 	import { requests } from '$lib/requests/store.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
+	import Icon from '$lib/ui/Icon.svelte';
+	import { panels } from '$lib/panels.svelte';
 	import Splitter from '$lib/ui/Splitter.svelte';
 
 	/**
@@ -36,6 +38,9 @@
 			requests.load();
 		});
 	});
+
+	/** Whether the request detail panel is put away (FEAT-054). */
+	const detailHidden = $derived(panels.isHidden('requestsDetail'));
 </script>
 
 <div class="screen">
@@ -54,6 +59,16 @@
 		<div class="right">
 			{#if requests.loading}<span class="note">Reading…</span>{/if}
 			<Btn disabled={requests.loading} onclick={() => requests.load()}>Refresh</Btn>
+			<!-- The same put-it-away control the graph's detail panel has. -->
+			<button
+				class="panel-toggle"
+				aria-label={detailHidden ? 'Show the request panel' : 'Hide the request panel'}
+				title={detailHidden ? 'Show the request panel' : 'Hide the request panel'}
+				aria-pressed={!detailHidden}
+				onclick={() => panels.toggleHidden('requestsDetail')}
+			>
+				<Icon name={detailHidden ? 'chevron-left' : 'chevron-right'} size="1.1em" />
+			</button>
 		</div>
 	</header>
 
@@ -118,8 +133,10 @@
 		</div>
 
 		{#if requests.connected && requests.all.length > 0}
-			<Splitter panel="requestsDetail" label="Resize the request detail panel" />
-			<RequestDetail />
+			{#if !detailHidden}
+				<Splitter panel="requestsDetail" label="Resize the request detail panel" />
+				<RequestDetail />
+			{/if}
 		{/if}
 	</div>
 
@@ -140,7 +157,14 @@
 		justify-content: space-between;
 		gap: 10px;
 		padding: 10px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		background-image: var(--glass-sheen);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 		flex: none;
 	}
 
@@ -200,4 +224,26 @@
 		max-width: 520px;
 	}
 
+
+	.panel-toggle {
+		display: grid;
+		place-items: center;
+		width: 28px;
+		height: 28px;
+		border-radius: var(--r-button);
+		color: var(--muted);
+		transition:
+			background var(--t-fast) var(--ease),
+			color var(--t-fast) var(--ease),
+			transform var(--t-fast) var(--spring);
+	}
+
+	.panel-toggle:hover {
+		background: var(--hover);
+		color: var(--accent);
+	}
+
+	.panel-toggle:active {
+		transform: scale(0.92);
+	}
 </style>

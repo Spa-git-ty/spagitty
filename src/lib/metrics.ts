@@ -405,10 +405,10 @@ export function laneColorVar(colorIndex: number): string {
  * `TYPE_BASE` has in `scale.svelte.ts` (FEAT-042).
  */
 const RADII: Record<string, number> = {
-	'r-field': 4,
-	'r-button': 10,
-	'r-row': 4,
-	'r-panel': 6
+	'r-field': 8,
+	'r-button': 11,
+	'r-row': 8,
+	'r-panel': 14
 };
 
 /**

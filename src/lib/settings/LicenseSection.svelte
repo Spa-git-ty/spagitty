@@ -179,7 +179,7 @@
 		list-style: none;
 		max-height: 260px;
 		overflow: auto;
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
 	}
 
@@ -205,7 +205,7 @@
 
 	.field {
 		background: transparent;
-		border: 1.5px solid var(--line);
+		border: 1px solid var(--line);
 		border-radius: var(--r-field);
 		color: var(--ink);
 		font-family: var(--font-ui);

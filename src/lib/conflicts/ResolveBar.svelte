@@ -135,7 +135,7 @@
 		flex-direction: column;
 		gap: 6px;
 		padding: 8px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 	}
 
 	.row {

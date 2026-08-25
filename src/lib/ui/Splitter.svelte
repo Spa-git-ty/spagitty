@@ -140,16 +140,34 @@
 		position: absolute;
 		inset-block: 0;
 		left: 50%;
-		width: 1.5px;
+		width: 2px;
+		border-radius: var(--r-pill);
 		transform: translateX(-50%);
 		background: transparent;
-		transition: background 0.12s ease;
+		transition:
+			background var(--t-fast) var(--ease),
+			box-shadow var(--t-fast) var(--ease);
 	}
 
-	.splitter:hover::after,
+	/*
+	 * Hover is a hint, not an announcement.
+	 *
+	 * This used to light up in the accent with a halo behind it the moment the
+	 * pointer came within four pixels — which is most of the time, because the
+	 * divider sits against the rail everyone's cursor crosses. A glowing blue
+	 * rule down the edge of the window reads as something being wrong with the
+	 * rail rather than as a handle. It is a plain hairline under the pointer
+	 * now, and takes the accent only while it is actually being dragged, or
+	 * when the keyboard is on it and there is no cursor to say where you are.
+	 */
+	.splitter:hover::after {
+		background: var(--line);
+	}
+
 	.splitter:focus-visible::after,
 	.splitter.dragging::after {
 		background: var(--accent);
+		box-shadow: 0 0 6px var(--accent-glow);
 	}
 
 	.splitter:focus-visible {

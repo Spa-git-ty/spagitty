@@ -198,7 +198,14 @@
 	.head {
 		justify-content: space-between;
 		padding: 10px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		background-image: var(--glass-sheen);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	.left,
@@ -212,7 +219,7 @@
 	.refs {
 		padding: 8px 12px;
 		flex-wrap: wrap;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 	}
 
 	.field {
@@ -233,12 +240,12 @@
 		align-items: center;
 		gap: 10px;
 		padding: 4px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		min-height: 30px;
 	}
 
 	.row:hover {
-		background: var(--stripe);
+		background: var(--hover);
 	}
 
 	/* The revision is the thing to copy out, so it leads the row rather than
@@ -275,7 +282,12 @@
 
 	.foot {
 		padding: 8px 12px;
-		border-top: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		background-image: var(--glass-sheen);
+		border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow: 0 -1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	p {

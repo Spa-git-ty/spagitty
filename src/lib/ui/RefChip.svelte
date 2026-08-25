@@ -145,12 +145,15 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
-		padding: 0 5px;
+		padding: 0 6px;
 		font-family: var(--font-mono);
 		font-size: var(--fs-mono);
-		background: var(--bg);
+		/* A label is a small raised object sitting on the row, so it gets the
+		   raised surface and the light along its top edge. */
+		background: var(--grad-surface);
+		box-shadow: var(--sheen);
 		white-space: nowrap;
 		max-width: 100%;
 		overflow: hidden;
@@ -211,17 +214,41 @@
 		opacity: 0.75;
 	}
 
+	/* The branch you are on: the accent, as a tint under the name rather than
+	   an outline around it, which is what makes it findable in a gutter of
+	   twenty labels. */
 	.ref.current {
-		border-color: var(--accent);
+		border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 		color: var(--accent);
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--accent) 12%, var(--surface)),
+			color-mix(in srgb, var(--accent) 20%, var(--surface))
+		);
+		box-shadow: var(--sheen), 0 1px 3px var(--accent-soft);
 	}
 
+	/* Somebody else's copy: flat on the row, dimmed, no lift. */
 	.ref.remote {
 		color: var(--muted);
+		background: none;
+		box-shadow: none;
 	}
 
+	/*
+	 * A tag keeps its right-notched shape — that is what tells it from a branch
+	 * without a word or an icon — but is tinted amber instead of dashed. The
+	 * dash was the wireframe's way of saying "a different kind of thing"; a
+	 * colour says it at a glance and reads as deliberate.
+	 */
 	.ref.tag {
-		border-radius: 3px 8px 8px 3px;
-		border-style: dashed;
+		border-radius: 3px 9px 9px 3px;
+		border-color: color-mix(in srgb, var(--warn) 50%, transparent);
+		color: var(--warn);
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--warn) 10%, var(--surface)),
+			color-mix(in srgb, var(--warn) 18%, var(--surface))
+		);
 	}
 </style>

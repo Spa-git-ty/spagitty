@@ -31,6 +31,20 @@
 	--selection: rgba(30, 102, 245, 0.14);
 	--stripe: rgba(76, 79, 105, 0.05);
 
+	/*
+	 * What a result means, said in colour.
+	 *
+	 * Before these existed, anything that had to read as "this one is not
+	 * routine" borrowed `--lane-3` — which is the graph's third lane, red in
+	 * Latte and pink in Mocha and cyan in Dracula. A delete button that turns
+	 * cyan is not a delete button. These are the palette's own red, yellow and
+	 * green, and they are checked against the background the same way the
+	 * accent is.
+	 */
+	--danger: #d20f39;
+	--warn: #bc6a00;
+	--ok: #2e7d1f;
+
 	--lane-1: #1e66f5;
 	--lane-2: #8839ef;
 	--lane-3: #d20f39;
@@ -62,20 +76,20 @@
 	 * those relationships — controls rounder than surfaces, the window rounder
 	 * than a panel — because the ratios are the scale, not the numbers.
 	 */
-	--r-field: 4px;
+	--r-field: 8px;
 	--r-pill: 999px;
-	--r-button: 10px;
+	--r-button: 11px;
 	/** A commit row's hover and selection fill. */
-	--r-row: 4px;
+	--r-row: 8px;
 	/** Panels, cards, modals — anything that is a surface rather than a control. */
-	--r-panel: 6px;
+	--r-panel: 14px;
 	/*
 	 * The window's own corner. Larger than a panel's, because it is read against
 	 * the whole screen rather than against the surface beside it — the same
 	 * radius that reads as soft on a 6px chip reads as square on a 1280px
 	 * window (FEAT-037).
 	 */
-	--r-window: 10px;
+	--r-window: 16px;
 
 	/*
 	 * The window's own depth (FEAT-037). Tuned for a light ground: the shadow
@@ -144,6 +158,9 @@
 	--selection: rgba(137, 180, 250, 0.18);
 	--stripe: rgba(205, 214, 244, 0.05);
 	--on-accent: #1e1e2e;
+	--danger: #f38ba8;
+	--warn: #f9e2af;
+	--ok: #a6e3a1;
 
 	--lane-1: #89b4fa;
 	--lane-2: #cba6f7;
@@ -167,6 +184,334 @@
 :root {
 	--graph-bg: color-mix(in srgb, var(--panel) 62%, var(--bg));
 	--graph-line: var(--line);
+}
+
+/* --- Depth -----------------------------------------------------------------
+ *
+ * Everything below is derived from the eleven palette colours rather than
+ * added to them, for the same reason `--graph-bg` is: a surface shade and a
+ * shadow tint are not choices anybody makes per theme, and eight hand-picked
+ * copies of each is eight chances for one of them to drift.
+ *
+ * Three ideas:
+ *
+ * - **Surfaces stack.** `--bg` is the ground, `--panel` is chrome, `--surface`
+ *   is a card lifted off the ground, `--surface-2` is something floating over
+ *   everything (a menu, a dialog), and `--sunken` is a well pressed into it (a
+ *   field, a code gutter). Each step moves toward white in light and toward
+ *   light ink in dark, because that is the direction "closer to the viewer"
+ *   reads in each.
+ * - **Shadows are the theme's ink, not black.** A black shadow under a warm
+ *   Gruvbox card looks like a hole; the same shadow mixed from `--ink` looks
+ *   like the card is above the page.
+ * - **Gradients are almost invisible on purpose.** A three-percent lift from
+ *   top to bottom is what stops a bar reading as a flat rectangle. Anything
+ *   stronger is a 2011 toolbar.
+ */
+:root {
+	/* Surfaces, ground upward. */
+	--surface: color-mix(in srgb, var(--panel) 34%, #fff);
+	--surface-2: color-mix(in srgb, var(--panel) 12%, #fff);
+	--sunken: color-mix(in srgb, var(--panel) 76%, var(--ink) 4%);
+
+	/* What every shadow is made of. */
+	--umbra: color-mix(in srgb, var(--ink) 72%, #000);
+
+	/*
+	 * Three elevations, and the difference between them is the *spread* of the
+	 * blur rather than its darkness. A resting card, a card under the pointer
+	 * or holding focus, and something genuinely floating.
+	 */
+	/*
+	 * Two layers each, and no radius past 24px.
+	 *
+	 * These were three layers with radii up to 64px, which is a fine shadow on
+	 * a compositor and an expensive one here: WebKitGTK paints this window in
+	 * software (see `src-tauri/src/platform.rs`), so every shadow is a Gaussian
+	 * blur run on the CPU over an area that grows with the *square* of the
+	 * radius — and a hover that changes a shadow re-runs it. Two layers still
+	 * give the contact-plus-height read that one cannot.
+	 */
+	--shadow-1:
+		0 1px 1px color-mix(in srgb, var(--umbra) 9%, transparent),
+		0 2px 5px color-mix(in srgb, var(--umbra) 9%, transparent);
+	--shadow-2:
+		0 1px 2px color-mix(in srgb, var(--umbra) 10%, transparent),
+		0 6px 14px color-mix(in srgb, var(--umbra) 12%, transparent);
+	--shadow-3:
+		0 2px 4px color-mix(in srgb, var(--umbra) 12%, transparent),
+		0 10px 24px color-mix(in srgb, var(--umbra) 20%, transparent);
+
+	/* The catch of light along the top edge of a raised surface. */
+	--sheen: inset 0 1px 0 color-mix(in srgb, #fff 62%, transparent);
+
+	/* Chrome, cards, and a filled accent control. */
+	--grad-chrome: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--panel) 80%, #fff) 0%,
+		var(--panel) 100%
+	);
+	--grad-surface: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--surface) 86%, #fff) 0%,
+		var(--surface) 100%
+	);
+	--grad-accent: linear-gradient(180deg, var(--accent-lift) 0%, var(--accent-deep) 100%);
+
+	/* The rail runs the length of the window, so its gradient falls further
+	   than a bar's: light at the top, the panel colour through the middle, a
+	   shade of the shadow at the foot. */
+	--grad-rail: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--panel) 88%, #fff) 0%,
+		var(--panel) 55%,
+		color-mix(in srgb, var(--panel) 96%, var(--umbra) 4%) 100%
+	);
+
+	/* Accent derivatives. The fill's two ends, its tints, its halo. */
+	--accent-lift: color-mix(in srgb, var(--accent) 90%, #fff);
+	--accent-deep: color-mix(in srgb, var(--accent) 88%, #000);
+	--accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+	--accent-glow: color-mix(in srgb, var(--accent) 30%, transparent);
+
+	/* Interactive states, one pair for the whole application. */
+	--hover: color-mix(in srgb, var(--ink) 7%, transparent);
+	--press: color-mix(in srgb, var(--ink) 13%, transparent);
+	--ring: color-mix(in srgb, var(--accent) 32%, transparent);
+
+	/* Tints of the semantic colours, for a fill rather than a stroke. */
+	--danger-soft: color-mix(in srgb, var(--danger) 14%, transparent);
+	--warn-soft: color-mix(in srgb, var(--warn) 16%, transparent);
+	--ok-soft: color-mix(in srgb, var(--ok) 16%, transparent);
+
+	/* One duration, so nothing in the interface moves at its own speed. */
+	--t-fast: 110ms;
+	--t-slow: 220ms;
+	--ease: cubic-bezier(0.2, 0, 0.2, 1);
+	/*
+	 * The overshoot curve. Used where something *arrives* — a menu, a toast, a
+	 * dialog — because a panel that settles slightly past its size and comes
+	 * back reads as physical, where one that stops dead reads as drawn.
+	 */
+	--spring: cubic-bezier(0.16, 1.1, 0.3, 1);
+	--t-enter: 260ms;
+}
+
+/*
+ * Dark reverses which direction "up" is.
+ *
+ * A card cannot be lifted off a near-black ground by adding white light alone —
+ * the surfaces step toward the theme's own ink instead, and the shadows go
+ * darker and deeper, because separation in the dark comes from shadow density
+ * rather than from contrast. Same reasoning the window's own depth already
+ * carries above.
+ */
+:root[data-theme='dark'] {
+	--surface: color-mix(in srgb, var(--panel) 92%, var(--ink) 10%);
+	--surface-2: color-mix(in srgb, var(--panel) 86%, var(--ink) 16%);
+	--sunken: color-mix(in srgb, var(--panel) 84%, #000);
+
+	--umbra: #000;
+
+	--shadow-1:
+		0 1px 2px color-mix(in srgb, var(--umbra) 34%, transparent),
+		0 2px 5px color-mix(in srgb, var(--umbra) 26%, transparent);
+	--shadow-2:
+		0 1px 2px color-mix(in srgb, var(--umbra) 38%, transparent),
+		0 6px 14px color-mix(in srgb, var(--umbra) 36%, transparent);
+	--shadow-3:
+		0 2px 5px color-mix(in srgb, var(--umbra) 44%, transparent),
+		0 12px 26px color-mix(in srgb, var(--umbra) 50%, transparent);
+
+	--sheen: inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent);
+
+	--grad-chrome: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--panel) 92%, var(--ink) 9%) 0%,
+		var(--panel) 100%
+	);
+	--grad-surface: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--surface) 92%, var(--ink) 7%) 0%,
+		var(--surface) 100%
+	);
+	--grad-rail: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--panel) 94%, var(--ink) 6%) 0%,
+		var(--panel) 55%,
+		color-mix(in srgb, var(--panel) 92%, #000) 100%
+	);
+
+	/* A light accent needs its gradient to *darken* downward far less, or the
+	   bottom of the button goes muddy against pale text. */
+	--accent-lift: color-mix(in srgb, var(--accent) 94%, #fff);
+	--accent-deep: color-mix(in srgb, var(--accent) 82%, #000);
+	--accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+	--accent-glow: color-mix(in srgb, var(--accent) 36%, transparent);
+
+	--hover: color-mix(in srgb, var(--ink) 9%, transparent);
+	--press: color-mix(in srgb, var(--ink) 15%, transparent);
+}
+
+/* --- Glass ----------------------------------------------------------------
+ *
+ * The chrome is a material, not a colour.
+ *
+ * Every bar, rail, menu and dialog is a pane of frosted glass laid over the
+ * application: it takes its colour from whatever is behind it, blurs it,
+ * saturates it a little so the colour survives the blur, and catches the light
+ * along its top edge. That is the whole trick — a glass pane that does not
+ * *refract* anything is just a translucent rectangle, which is why the ambient
+ * light layer below exists.
+ *
+ * Three grades:
+ *
+ * - `--glass-thin` for chrome sitting directly on the application — bars,
+ *   rails, headers. Barely tinted, so the screen shows through it.
+ * - `--glass` for cards and panes that hold content.
+ * - `--glass-thick` for things floating over everything — menus, dialogs, the
+ *   command palette. Blurred hard enough that the text under them is gone.
+ *
+ * `backdrop-filter` costs real GPU time per pane, so the grades are used
+ * sparingly and never on a list row: a hundred blurred rows is a hundred
+ * composited layers.
+ */
+:root {
+	--glass-thin: color-mix(in srgb, var(--panel) 62%, transparent);
+	--glass: color-mix(in srgb, var(--surface) 72%, transparent);
+	--glass-thick: color-mix(in srgb, var(--surface-2) 82%, transparent);
+
+	/*
+	 * The cheap half of the material, and what almost everything uses.
+	 *
+	 * `backdrop-filter` composites a separate layer and re-blurs whatever is
+	 * behind it *every frame*, so a window with fifty blurred panes — every
+	 * bar, every card, every button, every chip — spends its frame budget
+	 * blurring instead of drawing. On WebKitGTK, which is what Tauri runs on
+	 * Linux, that is the difference between a window that resizes with the
+	 * pointer and one that lags behind it.
+	 *
+	 * A veil is the same tint with no blur: translucent enough to pick up the
+	 * ambient light behind it, free to composite. Blur is kept for the five
+	 * things that actually float over content and are on screen one at a time —
+	 * the menu, the dialog, the palette, the toast and the command log.
+	 */
+	--chrome-veil: color-mix(in srgb, var(--panel) 88%, transparent);
+	--surface-veil: color-mix(in srgb, var(--surface) 90%, transparent);
+
+	/*
+	 * Blur radius is what a blur costs — the kernel is applied per pixel, so a
+	 * 34px blur is not a little more expensive than an 18px one. These are as
+	 * wide as they can be while a menu still reads as frosted.
+	 */
+	--blur-thin: blur(10px) saturate(140%);
+	--blur: blur(14px) saturate(150%);
+	--blur-thick: blur(18px) saturate(160%);
+
+	/*
+	 * The edge of a pane of glass.
+	 *
+	 * Light catches the top and the leading side and falls away toward the
+	 * bottom, which is what tells the eye the pane has *thickness*. One flat
+	 * border all the way round reads as a drawn rectangle no matter how well it
+	 * is blurred.
+	 */
+	--glass-edge: color-mix(in srgb, #fff 42%, transparent);
+	--glass-edge-low: color-mix(in srgb, var(--umbra) 8%, transparent);
+	--glass-rim:
+		inset 0 1px 0 var(--glass-edge),
+		inset 1px 0 0 color-mix(in srgb, #fff 20%, transparent),
+		inset 0 -1px 0 var(--glass-edge-low);
+
+	/*
+	 * The specular sheen that runs across a pane. Painted as a background layer
+	 * rather than a pseudo-element so it works on elements that already have
+	 * children stacked over them.
+	 */
+	--glass-sheen: linear-gradient(
+		135deg,
+		color-mix(in srgb, #fff 16%, transparent) 0%,
+		transparent 38%,
+		transparent 62%,
+		color-mix(in srgb, #fff 8%, transparent) 100%
+	);
+}
+
+/*
+ * Dark glass is smoked, not frosted: the tint goes toward the panel's own near
+ * black and the highlight along the top edge drops to a whisper, because a 42%
+ * white rim on a dark pane reads as a drawn white line rather than as light.
+ */
+:root[data-theme='dark'] {
+	--glass-thin: color-mix(in srgb, var(--panel) 66%, transparent);
+	--glass: color-mix(in srgb, var(--surface) 76%, transparent);
+	--glass-thick: color-mix(in srgb, var(--surface-2) 86%, transparent);
+
+	--chrome-veil: color-mix(in srgb, var(--panel) 90%, transparent);
+	--surface-veil: color-mix(in srgb, var(--surface) 92%, transparent);
+
+	--glass-edge: color-mix(in srgb, #fff 12%, transparent);
+	--glass-edge-low: color-mix(in srgb, #000 24%, transparent);
+	--glass-rim:
+		inset 0 1px 0 var(--glass-edge),
+		inset 1px 0 0 color-mix(in srgb, #fff 6%, transparent),
+		inset 0 -1px 0 var(--glass-edge-low);
+
+	--glass-sheen: linear-gradient(
+		135deg,
+		color-mix(in srgb, #fff 7%, transparent) 0%,
+		transparent 40%,
+		transparent 64%,
+		color-mix(in srgb, #fff 4%, transparent) 100%
+	);
+}
+
+/*
+ * The three materials, as classes.
+ *
+ * `background-image` carries the sheen and `background-color` the tint, so a
+ * component can override one without losing the other. The fallback matters:
+ * where `backdrop-filter` is unsupported the tint alone would let text show
+ * through, so `@supports not` puts an opaque surface back.
+ */
+.glass,
+.glass-thin,
+.glass-thick {
+	background-image: var(--glass-sheen);
+	box-shadow: var(--glass-rim);
+	border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+}
+
+.glass-thin {
+	background-color: var(--glass-thin);
+	backdrop-filter: var(--blur-thin);
+	-webkit-backdrop-filter: var(--blur-thin);
+}
+
+.glass {
+	background-color: var(--glass);
+	backdrop-filter: var(--blur);
+	-webkit-backdrop-filter: var(--blur);
+}
+
+.glass-thick {
+	background-color: var(--glass-thick);
+	backdrop-filter: var(--blur-thick);
+	-webkit-backdrop-filter: var(--blur-thick);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+	.glass-thin {
+		background-color: var(--panel);
+	}
+
+	.glass {
+		background-color: var(--surface);
+	}
+
+	.glass-thick {
+		background-color: var(--surface-2);
+	}
 }
 
 * {
@@ -259,28 +604,178 @@ a {
 }
 
 .hr {
-	height: 1.5px;
+	height: 1px;
 	background: var(--soft);
 	flex: none;
 }
 
 .vr {
-	width: 1.5px;
+	width: 1px;
 	background: var(--soft);
 	flex: none;
 }
 
-/* Grey bar standing in for not-yet-built content. Wireframe device; these
-   should all be gone by the time every screen is implemented. */
+/* --- Cards ----------------------------------------------------------------
+ *
+ * A card is a surface that has been *lifted*, and the lift is what says so: a
+ * shade above the ground, a catch of light along its top edge, a shadow under
+ * it, and a hairline to keep the whole thing from dissolving on a light theme.
+ *
+ * This replaces the outline-and-dashes vocabulary the wireframe used, where a
+ * container was a rectangle with a border and "not settled" was the same
+ * rectangle with the border dashed. Dashes read as unfinished because in a
+ * wireframe they *are*; depth reads as depth.
+ */
+.card {
+	background-color: var(--surface-veil);
+	background-image: var(--glass-sheen);
+	border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+	border-radius: var(--r-panel);
+	box-shadow: var(--glass-rim), var(--shadow-1);
+	transition:
+		box-shadow var(--t-slow) var(--ease),
+		transform var(--t-slow) var(--spring);
+}
+
+/* Under the pointer, or holding something being worked on: the same card,
+   further off the page. */
+.card.raised,
+.card:hover {
+	box-shadow: var(--glass-rim), var(--shadow-2);
+}
+
+/* Floating over the application rather than sitting in it — menus, dialogs,
+   toasts, the command palette. */
+.floating {
+	background-color: var(--glass-thick);
+	background-image: var(--glass-sheen);
+	backdrop-filter: var(--blur-thick);
+	-webkit-backdrop-filter: var(--blur-thick);
+	border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+	border-radius: var(--r-panel);
+	box-shadow: var(--glass-rim), var(--shadow-3);
+}
+
+/*
+ * A bar standing in for not-yet-built content. Still a wireframe device and
+ * still meant to disappear as the screens land — but a flat grey block reads
+ * as a bug, where a soft gradient reads as something loading, which is the
+ * closer of the two lies.
+ */
 .ph {
 	height: 6px;
-	border-radius: 3px;
-	background: var(--placeholder);
+	border-radius: var(--r-pill);
+	background: linear-gradient(
+		90deg,
+		color-mix(in srgb, var(--placeholder) 65%, transparent),
+		var(--placeholder),
+		color-mix(in srgb, var(--placeholder) 65%, transparent)
+	);
 }
 
 :focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 1px;
+	/* The halo is what makes a ring visible against a busy row; the ring alone
+	   disappears into any border it happens to land beside. */
+	box-shadow: 0 0 0 4px var(--ring);
+}
+
+/*
+ * Fields.
+ *
+ * Every input in the application was styled where it stood — a border here, a
+ * radius there, one focus rule per screen — so a field looked like whichever
+ * screen it was on. They are wells now: a sunken surface, an inset top edge
+ * where the light would not reach, and an accent ring on focus. Components
+ * still set their own width and font size; nothing has to restate the shape.
+ */
+input,
+textarea,
+select {
+	font: inherit;
+	color: var(--ink);
+	background: var(--sunken);
+	border: 1px solid var(--line);
+	border-radius: var(--r-field);
+	padding: 4px 8px;
+	box-shadow: inset 0 1px 2px color-mix(in srgb, var(--umbra) 6%, transparent);
+	transition:
+		border-color var(--t-fast) var(--ease),
+		box-shadow var(--t-fast) var(--ease),
+		background var(--t-fast) var(--ease);
+}
+
+input:hover:not(:disabled),
+textarea:hover:not(:disabled),
+select:hover:not(:disabled) {
+	border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+	outline: none;
+	border-color: var(--accent);
+	background: color-mix(in srgb, var(--sunken) 82%, var(--accent) 4%);
+	box-shadow: 0 0 0 3px var(--ring);
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+	opacity: 0.55;
+	cursor: default;
+}
+
+::placeholder {
+	color: var(--placeholder);
+}
+
+/* Checkboxes and radios take the accent rather than the platform's blue,
+   which is the one control that otherwise ignores the theme entirely. */
+input[type='checkbox'],
+input[type='radio'] {
+	accent-color: var(--accent);
+	box-shadow: none;
+	padding: 0;
+}
+
+/* --- Scrollbars -----------------------------------------------------------
+ *
+ * The platform's scrollbar is the loudest thing in a themed window: a white
+ * trough down the side of a Mocha panel. These are the theme's own ink, thin,
+ * troughless, and they thicken under the pointer rather than appearing from
+ * nowhere.
+ */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in srgb, var(--ink) 24%, transparent) transparent;
+}
+
+::-webkit-scrollbar {
+	width: 11px;
+	height: 11px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: color-mix(in srgb, var(--ink) 22%, transparent);
+	border: 3px solid transparent;
+	background-clip: padding-box;
+	border-radius: var(--r-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: color-mix(in srgb, var(--ink) 38%, transparent);
+	background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+	background: transparent;
 }
 
 /* --- The moving glow -----------------------------------------------------
@@ -315,15 +810,15 @@ a {
 	}
 }
 
-@keyframes glow-breathe {
-	0%,
-	100% {
-		box-shadow: 0 0 0 0 transparent;
-	}
-	50% {
-		box-shadow: 0 0 12px 1px var(--glow-halo);
-	}
-}
+/*
+ * The halo, held still.
+ *
+ * It used to breathe — `box-shadow` animated from nothing to a 12px blur and
+ * back, sixty times a second, forever, on a button that is on screen the whole
+ * session. A blurred shadow is rasterized on the CPU in this window, so that
+ * was a Gaussian blur per frame for an effect the eye reads as "it glows"
+ * either way. The travelling light still travels; the halo is now simply there.
+ */
 
 .glow {
 	/*
@@ -335,8 +830,14 @@ a {
 
 	position: relative;
 	border: 2px solid transparent;
+	/*
+	 * The fill is a gradient now rather than a flat accent — a light top edge
+	 * falling to a darker bottom, which is what makes a filled control read as
+	 * a raised object rather than a coloured rectangle. The conic ring is
+	 * unchanged and still travels over it.
+	 */
 	background:
-		linear-gradient(var(--accent), var(--accent)) padding-box,
+		var(--grad-accent) padding-box,
 		conic-gradient(
 				from var(--glow-angle),
 				var(--accent) 0turn,
@@ -345,9 +846,8 @@ a {
 				var(--accent) 1turn
 			)
 			border-box;
-	animation:
-		glow-travel 3.2s linear infinite,
-		glow-breathe 3.2s ease-in-out infinite;
+	box-shadow: 0 0 10px 1px var(--glow-halo);
+	animation: glow-travel 3.2s linear infinite;
 }
 
 /* A control that cannot be pressed is not the thing to do next. */
@@ -355,6 +855,7 @@ a {
 	animation: none;
 	background: var(--accent) padding-box;
 	border-color: var(--line);
+	box-shadow: none;
 }
 
 /*
@@ -367,7 +868,75 @@ a {
 	.glow {
 		animation: none;
 		background:
-			linear-gradient(var(--accent), var(--accent)) padding-box,
+			var(--grad-accent) padding-box,
 			linear-gradient(var(--glow-head), var(--accent)) border-box;
+	}
+}
+
+
+/* --- The light behind the glass -------------------------------------------
+ *
+ * A pane with nothing behind it is a grey rectangle, so the application sits on
+ * a field of coloured light — wide radial washes in the theme's own accent and
+ * lane colours, at an alpha low enough that on its own it reads as a very
+ * slightly uneven background.
+ *
+ * It is painted inside `.app` rather than on `body`: `body` is the transparent
+ * margin the window's shadow falls into, and anything painted there would be a
+ * coloured halo around the window on the desktop. It is static — see the note
+ * in `+layout.svelte` for why it stopped moving.
+ */
+
+/* Something arriving: up, in, and settling. */
+@keyframes rise-in {
+	from {
+		opacity: 0;
+		transform: translateY(8px) scale(0.985);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* Something arriving *at* a point — a menu at the pointer, a dialog at the
+   middle of the window. */
+@keyframes pop-in {
+	from {
+		opacity: 0;
+		transform: scale(0.94);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* A pane of glass catching the light as it appears. */
+@keyframes sheen-sweep {
+	from {
+		background-position: -140% 0;
+	}
+	to {
+		background-position: 240% 0;
+	}
+}
+
+/*
+ * Motion is a preference, and it is honoured everywhere at once rather than by
+ * each component remembering to.
+ *
+ * The ambient field stops drifting, entrances stop moving, and everything that
+ * transitions does so instantly. The interface still works and still says the
+ * same things — it just stops moving while it does.
+ */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.001ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.001ms !important;
+		scroll-behavior: auto !important;
 	}
 }

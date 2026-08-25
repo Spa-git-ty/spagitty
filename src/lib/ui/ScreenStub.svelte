@@ -58,7 +58,7 @@
 		justify-content: space-between;
 		gap: 10px;
 		padding: 10px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		flex: none;
 	}
 
@@ -73,9 +73,14 @@
 		padding: 14px 12px;
 	}
 
+	/* A card, not a dashed rectangle: shape and depth from the `.card` rules in
+	   `app.css`, size and layout here. */
 	.card {
-		border: 1.5px dashed var(--soft);
-		border-radius: var(--r-field);
+		background-color: var(--surface-veil);
+		background-image: var(--glass-sheen);
+		border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		border-radius: var(--r-panel);
+		box-shadow: var(--glass-rim), var(--shadow-1);
 		padding: 14px;
 		max-width: 560px;
 		display: flex;

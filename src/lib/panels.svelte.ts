@@ -119,6 +119,20 @@ let extra = $state<Record<string, number>>({
  */
 let railCollapsed = $state(false);
 
+/**
+ * Panels that are hidden outright (FEAT-054).
+ *
+ * Separate from the widths, and deliberately: a hidden panel keeps the width it
+ * had, so bringing it back gives you the panel you dragged rather than the one
+ * the design ships. Same reasoning as the rail's collapse.
+ *
+ * Only the right-hand detail panels are ever hidden. The rail collapses to
+ * icons instead — it is the only way between screens, and a window with no way
+ * out of the screen it is on is a worse place to be than one with a panel you
+ * did not want.
+ */
+let hidden = $state<Partial<Record<PanelKey, boolean>>>({});
+
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(Math.round(value), min), max);
 }
@@ -127,16 +141,21 @@ function publish() {
 	if (typeof document === 'undefined') return;
 	const root = document.documentElement;
 	root.style.setProperty('--rail-w', `${railCollapsed ? RAIL_COLLAPSED_W : rail}px`);
-	root.style.setProperty('--detail-w', `${detail}px`);
+	root.style.setProperty('--detail-w', `${hidden.detail ? 0 : detail}px`);
 	for (const [key, value] of Object.entries(extra)) {
 		const spec = PANELS[key as PanelKey];
-		if (spec) root.style.setProperty(`--${spec.variable}`, `${value}px`);
+		if (!spec) continue;
+		const width = hidden[key as PanelKey] ? 0 : value;
+		root.style.setProperty(`--${spec.variable}`, `${width}px`);
 	}
 }
 
 function save() {
 	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify({ rail, detail, railCollapsed, ...extra }));
+		localStorage.setItem(
+			STORAGE_KEY,
+			JSON.stringify({ rail, detail, railCollapsed, hidden, ...extra })
+		);
 	} catch {
 		// Storage unavailable; widths just won't survive a restart.
 	}
@@ -163,6 +182,24 @@ export const panels = {
 	 */
 	toggleRail() {
 		railCollapsed = !railCollapsed;
+		publish();
+		save();
+	},
+
+	/** True when this panel is hidden rather than merely narrow. */
+	isHidden(key: PanelKey): boolean {
+		return hidden[key] === true;
+	},
+
+	/**
+	 * Hide a panel, or bring it back at the width it had.
+	 *
+	 * The width is untouched, so this is a toggle rather than a resize — and
+	 * the panel's own splitter goes with it, because a divider with nothing on
+	 * one side of it is a handle that resizes nothing.
+	 */
+	toggleHidden(key: PanelKey) {
+		hidden = { ...hidden, [key]: !hidden[key] };
 		publish();
 		save();
 	},
@@ -204,6 +241,7 @@ export const panels = {
 			stashEntries: STASH_ENTRIES_W
 		};
 		railCollapsed = false;
+		hidden = {};
 		publish();
 		save();
 	},
@@ -219,6 +257,14 @@ export const panels = {
 			if (stored) {
 				const parsed = JSON.parse(stored) as Record<string, unknown>;
 				if (typeof parsed.railCollapsed === 'boolean') railCollapsed = parsed.railCollapsed;
+				if (parsed.hidden && typeof parsed.hidden === 'object') {
+					const stored = parsed.hidden as Record<string, unknown>;
+					const restored: Partial<Record<PanelKey, boolean>> = {};
+					for (const key of Object.keys(PANELS) as PanelKey[]) {
+						if (stored[key] === true) restored[key] = true;
+					}
+					hidden = restored;
+				}
 				if (typeof parsed.rail === 'number') rail = clamp(parsed.rail, RAIL_MIN, RAIL_MAX);
 				if (typeof parsed.detail === 'number') {
 					detail = clamp(parsed.detail, DETAIL_MIN, DETAIL_MAX);

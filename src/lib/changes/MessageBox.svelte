@@ -88,13 +88,29 @@
 </div>
 
 <style>
+	/*
+	 * The commit message is what this screen is for, so it is a well rather
+	 * than a strip: a sunken surface the two fields sit inside, which is what
+	 * says "type here" without a label saying it.
+	 */
 	.message {
 		flex: none;
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
+		margin: 8px;
 		padding: 8px 10px;
-		border-bottom: 1.5px solid var(--soft);
+		background: var(--sunken);
+		border: 1px solid var(--soft);
+		border-radius: var(--r-panel);
+		box-shadow: inset 0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		transition: border-color var(--t-fast) var(--ease);
+	}
+
+	/* The whole well takes the focus ring when either field inside it has
+	   focus, because the well is what a person is aiming at. */
+	.message:focus-within {
+		border-color: color-mix(in srgb, var(--accent) 55%, var(--soft));
 	}
 
 	.subject-row {
@@ -103,11 +119,15 @@
 		gap: 6px;
 	}
 
+	/* The fields themselves are invisible: the well around them is the control.
+	   `app.css` gives every input a border and a fill, so both come back off. */
 	.subject,
 	.body {
 		width: 100%;
 		background: transparent;
 		border: none;
+		box-shadow: none;
+		padding-inline: 0;
 		color: var(--ink);
 		font-family: var(--font-ui);
 		font-size: var(--fs-ui);
@@ -117,6 +137,8 @@
 	.subject:focus,
 	.body:focus {
 		outline: none;
+		background: transparent;
+		box-shadow: none;
 	}
 
 	.subject::placeholder,
@@ -146,12 +168,14 @@
 	   anyone who signs. The warning colour is kept for the case where it is on
 	   and cannot work, which is the one worth interrupting for. */
 	.signing {
-		border-left: 1.5px solid var(--line);
+		border-left: 1px solid var(--line);
 		padding-left: 6px;
 	}
 
+	/* On and unable to work. The palette's amber, which is what the rest of the
+	   application now uses for "this needs looking at but nothing is broken". */
 	.signing.warn {
-		border-left-color: var(--accent);
-		color: var(--ink);
+		border-left-color: var(--warn);
+		color: var(--warn);
 	}
 </style>

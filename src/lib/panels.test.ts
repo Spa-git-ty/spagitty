@@ -167,6 +167,8 @@ describe('reset', () => {
 			rail: RAIL_W,
 			detail: DETAIL_W,
 			railCollapsed: false,
+			// Nothing is hidden after a reset (FEAT-056).
+			hidden: {},
 			// FEAT-037's panels round-trip through the same record.
 			requestsDetail: REQUESTS_DETAIL_W,
 			changesFiles: CHANGES_FILES_W,

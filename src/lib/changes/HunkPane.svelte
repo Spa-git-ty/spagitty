@@ -101,7 +101,7 @@
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 
 	.hunk-head {
@@ -110,8 +110,8 @@
 		justify-content: space-between;
 		gap: 10px;
 		background: var(--panel);
-		border-top: 1.5px solid var(--soft);
-		border-bottom: 1.5px solid var(--soft);
+		border-top: 1px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		padding: 2px 8px;
 		position: sticky;
 		top: 0;
@@ -150,10 +150,10 @@
 	}
 
 	.line.added {
-		background: color-mix(in srgb, var(--lane-5) 12%, transparent);
+		background: color-mix(in srgb, var(--ok) 14%, transparent);
 	}
 
 	.line.removed {
-		background: color-mix(in srgb, var(--lane-3) 12%, transparent);
+		background: color-mix(in srgb, var(--danger) 14%, transparent);
 	}
 </style>

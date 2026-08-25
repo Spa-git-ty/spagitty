@@ -558,15 +558,20 @@ describe('NavRail', () => {
 		view.destroy();
 	});
 
-	it('reports the walk as loading until it is complete', () => {
+	it('says whether the walk is still running', () => {
+		// The words changed with the row — "walking…" and "commits" rather than
+		// "loading" and "all" — but the fact being reported has not: whether
+		// what the rail is counting is final.
 		graphControl.setComplete(false);
 		const loading = render(NavRail, {});
-		expect(loading.get('.head').textContent).toContain('loading');
+		expect(loading.get('.head').textContent).toContain('walking');
+		expect(loading.get('.walk').classList.contains('running')).toBe(true);
 		loading.destroy();
 
 		graphControl.setComplete(true);
 		const done = render(NavRail, {});
-		expect(done.get('.head').textContent).toContain('all');
+		expect(done.get('.head').textContent).toContain('commits');
+		expect(done.get('.walk').classList.contains('running')).toBe(false);
 		done.destroy();
 	});
 

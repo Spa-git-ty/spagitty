@@ -192,7 +192,7 @@
 	}
 
 	.head {
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		font-size: var(--fs-secondary);
 		color: var(--muted);
 		position: sticky;
@@ -228,23 +228,30 @@
 	}
 
 	.row {
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		min-height: 30px;
 	}
 
-	/* Nothing on a merged branch is only there. Dashed says "spent", the same
-	   way it says "not staged" on the Commit screen. */
+	/* Nothing on a merged branch is only there, so it reads as spent — dimmed
+	   rather than drawn with a dashed rule, which said "unfinished". */
 	.row.merged {
-		border-bottom-style: dashed;
 		color: var(--muted);
+		opacity: 0.78;
 	}
 
+	/* The branch you are on, marked the way the nav rail marks the screen you
+	   are on: an accent edge and a tint that fades out across the row. */
 	.row.current {
-		background: var(--selection);
+		background: linear-gradient(
+			90deg,
+			color-mix(in srgb, var(--accent) 18%, transparent) 0%,
+			var(--selection) 40%,
+			transparent 100%
+		);
 	}
 
 	.row:hover {
-		background: var(--stripe);
+		background: var(--hover);
 	}
 
 	.mark {

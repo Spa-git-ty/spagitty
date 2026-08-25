@@ -169,7 +169,7 @@
 
 	.field {
 		background: transparent;
-		border: 1.5px solid var(--line);
+		border: 1px solid var(--line);
 		border-radius: var(--r-field);
 		color: var(--ink);
 		font-family: var(--font-ui);

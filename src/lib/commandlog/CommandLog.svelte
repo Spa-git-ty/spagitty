@@ -110,9 +110,19 @@
 		display: flex;
 		flex-direction: column;
 		max-height: min(46vh, 420px);
-		background: var(--panel);
-		border-top: 1.5px solid var(--line);
-		box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.24);
+		background-color: var(--glass-thick);
+		background-image: var(--glass-sheen);
+		backdrop-filter: var(--blur-thick);
+		-webkit-backdrop-filter: var(--blur-thick);
+		border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+		border-radius: var(--r-panel) var(--r-panel) 0 0;
+		animation: rise-in var(--t-enter) var(--spring);
+		/* It slides up over whatever screen is open, so it takes the floating
+		   shadow — cast upward, which is the direction it came from. */
+		box-shadow:
+			var(--sheen),
+			0 -2px 6px color-mix(in srgb, var(--umbra) 14%, transparent),
+			0 -14px 32px color-mix(in srgb, var(--umbra) 22%, transparent);
 	}
 
 	.bar {
@@ -120,7 +130,8 @@
 		align-items: center;
 		gap: 8px;
 		padding: 6px 10px;
-		border-bottom: 1px solid var(--line);
+		background: color-mix(in srgb, var(--panel) 40%, transparent);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 	}
 
 	.title {
@@ -139,6 +150,8 @@
 
 	.close:hover {
 		color: var(--ink);
+		background: var(--hover);
+		border-radius: var(--r-field);
 	}
 
 	.list {
@@ -158,7 +171,7 @@
 	}
 
 	.row:hover {
-		background: var(--selection);
+		background: var(--hover);
 	}
 
 	/* The command itself is the thing to select and paste, so it never wraps
@@ -172,7 +185,7 @@
 	}
 
 	.row.failed .line {
-		color: var(--lane-3);
+		color: var(--danger);
 	}
 
 	.stderr {

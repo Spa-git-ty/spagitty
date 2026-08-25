@@ -93,7 +93,7 @@
 
 	.field input {
 		width: 150px;
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
 		padding: 3px 6px;
 		background: transparent;

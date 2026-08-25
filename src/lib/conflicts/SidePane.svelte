@@ -108,7 +108,7 @@
 	}
 
 	.editor:focus {
-		outline: 1.5px solid var(--accent);
+		outline: 1px solid var(--accent);
 		outline-offset: -1.5px;
 	}
 
@@ -118,7 +118,7 @@
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
 	}
 
@@ -135,7 +135,7 @@
 		justify-content: space-between;
 		gap: 8px;
 		padding: 6px 8px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 	}
 
 	.titles {

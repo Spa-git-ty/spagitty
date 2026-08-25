@@ -96,6 +96,24 @@ here — offered in that order because only the first cannot cost anything.
 rewriting and checkout, and annotated told apart from lightweight throughout —
 the difference decides whether a message can exist at all.
 
+### 8b. FEAT-056 — the detail panel can be put away
+
+**Done**, on `feature/FEAT-019-commit-signing`.
+
+**Closed by:** a hidden set beside the panel widths, and a toggle on the two
+screens with a right-hand panel. A hidden panel keeps the width it was dragged
+to, so bringing it back is a toggle rather than a resize.
+
+### 8c. FEAT-055 — the window paints on the path that works
+
+**Done**, on `feature/FEAT-019-commit-signing`.
+
+**Closed by:** the Linux rendering path measured on a real window — twice per
+run, because the accelerated one paints first and loses its buffer afterwards —
+and written as a pure policy function with a test per row. The software path
+stays the default because it is the one that keeps painting; the interface, now
+knowing it rasterizes on the CPU, stopped asking for fifty-four blurred layers.
+
 ### 9. FEAT-018 — finish fetch and push
 
 **Done**, on `feature/FEAT-018-finish-fetch-push`.

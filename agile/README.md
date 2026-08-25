@@ -109,6 +109,8 @@ rather than an audit.
 | [FEAT-052](items/FEAT-052-graph-reads-at-depth.md) | The graph reads at depth | 1A | Done |
 | [FEAT-053](items/FEAT-053-square-lane-turns.md) | Lanes turn square | 1A, 1G | Done |
 | [FEAT-054](items/FEAT-054-update-check.md) | Tell people when there is a newer Spagitty | 1K | Done |
+| [FEAT-056](items/FEAT-056-hide-the-detail-panel.md) | The detail panel can be put away | 1A, 1H | Done |
+| [FEAT-055](items/FEAT-055-the-window-paints-on-the-path-that-works.md) | The window paints on the path that works | — | Done |
 
 ## Bugs
 
@@ -171,4 +173,6 @@ missing documents are not listed here, and fails again if a row here is stale.
 
 | ID | Missing | Why, and what closes it |
 | --- | --- | --- |
+| FEAT-055 | plan, automated, sweep | A rendering-path decision measured on one machine and written as a policy function with a unit test per row of the table. What is missing is a second machine: the plan and sweep are worth writing when somebody with different hardware can confirm or contradict it. |
+| FEAT-056 | plan, automated, sweep | A toggle and a set beside the widths, covered incidentally by the layout round-trip in `panels.test.ts`. The plan and sweep are worth writing when the Graph and Pull requests screens get their own component tests to point at. |
 | BUG-001 | plan, automated, sweep | Fixed inside FEAT-003's change before it had a branch of its own; its item document says so. No separate work to plan. |

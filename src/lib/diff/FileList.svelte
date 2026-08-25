@@ -107,7 +107,7 @@
 		width: var(--diff-files-w);
 		flex: none;
 		background: var(--panel);
-		border-right: 1.5px solid var(--line);
+		border-right: 1px solid var(--line);
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
@@ -126,7 +126,7 @@
 	}
 
 	.file:hover {
-		background: var(--stripe);
+		background: var(--hover);
 	}
 
 	.file.selected {
@@ -164,11 +164,11 @@
 	}
 
 	.plus {
-		color: var(--lane-5);
+		color: var(--ok);
 	}
 
 	.minus {
-		color: var(--lane-3);
+		color: var(--danger);
 	}
 
 	.empty {

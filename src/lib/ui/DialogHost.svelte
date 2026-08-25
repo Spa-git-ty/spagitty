@@ -92,7 +92,10 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: color-mix(in srgb, var(--bg) 60%, transparent);
+		/* Darkened rather than tinted with the page colour: a dialog over a
+		   light theme needs the room behind it to *recede*, and 60% of the
+		   background over the background is barely a change at all. */
+		background: color-mix(in srgb, var(--umbra) 40%, transparent);
 		z-index: 60;
 	}
 
@@ -102,10 +105,14 @@
 		flex-direction: column;
 		gap: 10px;
 		padding: 16px;
-		background: var(--panel);
-		border: 1.5px solid var(--line);
+		background-color: var(--glass-thick);
+		background-image: var(--glass-sheen);
+		backdrop-filter: var(--blur-thick);
+		-webkit-backdrop-filter: var(--blur-thick);
+		border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		border-radius: var(--r-panel);
-		box-shadow: 0 18px 48px rgba(0, 0, 0, 0.3);
+		box-shadow: var(--glass-rim), var(--shadow-3);
+		animation: rise-in var(--t-enter) var(--spring);
 	}
 
 	.title {
@@ -124,19 +131,11 @@
 		gap: 4px;
 	}
 
+	/* Shape, fill and focus ring come from the field rules in `app.css`; only
+	   the size is this dialog's business. */
 	.field input {
-		font: inherit;
 		font-size: var(--fs-ui);
-		color: inherit;
-		background: var(--bg);
-		border: 1.5px solid var(--line);
-		border-radius: var(--r-field);
 		padding: 5px 8px;
-		outline: none;
-	}
-
-	.field input:focus {
-		border-color: var(--accent);
 	}
 
 	.actions {

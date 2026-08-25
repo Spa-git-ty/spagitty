@@ -904,17 +904,28 @@
 	}
 
 	.row:hover {
-		background: var(--stripe);
+		background: var(--hover);
 	}
 
+	/*
+	 * A selected row is tinted across its width rather than filled flat, so the
+	 * lanes and the chips stay legible through it and the fill reads as a
+	 * highlight rather than as a coloured block laid over the history.
+	 */
 	.row.selected {
-		background: var(--selection);
+		background: linear-gradient(
+			90deg,
+			color-mix(in srgb, var(--accent) 22%, transparent) 0%,
+			var(--selection) 45%,
+			color-mix(in srgb, var(--selection) 55%, transparent) 100%
+		);
 	}
 
 	/* The row the detail panel is showing, which is not the same as the set of
 	   rows a cherry-pick would act on. */
 	.row.focused {
-		box-shadow: inset 2px 0 0 var(--accent);
+		box-shadow:
+			inset 0 0 12px color-mix(in srgb, var(--accent) 10%, transparent);
 	}
 
 	.row.dim {
@@ -960,13 +971,14 @@
 	}
 
 	.more {
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
 		padding: 0 5px;
 		font-family: var(--font-mono);
 		font-size: var(--fs-mono);
 		color: var(--muted);
-		background: var(--bg);
+		background: var(--grad-surface);
+		box-shadow: var(--sheen);
 		flex: none;
 	}
 
@@ -974,13 +986,13 @@
 		flex: 1;
 		gap: 8px;
 		padding: 0 10px;
-		border-left: 1.5px solid var(--soft);
+		border-left: 1px solid var(--soft);
 	}
 
 	.text {
 		gap: 6px;
 		padding: 0 8px;
-		border-left: 1.5px solid var(--soft);
+		border-left: 1px solid var(--soft);
 	}
 
 	.summary,
@@ -1015,7 +1027,11 @@
 		width: 2em;
 		height: 2em;
 		border-radius: 50%;
-		box-shadow: 0 0 0 1px var(--line);
+		/* A ring in the row's own colour, and a shadow under it so the disc sits
+		   on the row rather than being printed on it. */
+		box-shadow:
+			0 0 0 1px var(--line),
+			0 1px 2px color-mix(in srgb, var(--umbra) 18%, transparent);
 	}
 
 	.wip {
@@ -1024,7 +1040,7 @@
 		gap: 8px;
 		width: 100%;
 		padding: 6px 10px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		text-align: left;
 		flex: none;
 		/* It opens the working copy, so it has to look like it does something. */
@@ -1032,7 +1048,7 @@
 	}
 
 	.wip:hover {
-		background: var(--stripe);
+		background: var(--hover);
 	}
 
 	/* Hollow, so it does not read as a commit that has happened. */

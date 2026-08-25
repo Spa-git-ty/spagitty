@@ -175,7 +175,7 @@
 		align-items: center;
 		gap: 8px;
 		padding: 6px 8px;
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
 		text-align: left;
 		min-width: 0;
@@ -193,7 +193,7 @@
 	.swatch {
 		display: flex;
 		flex: none;
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
 		overflow: hidden;
 	}

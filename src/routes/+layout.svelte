@@ -1,7 +1,9 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fly } from 'svelte/transition';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import '../app.css';
 
@@ -141,8 +143,45 @@
 
 			if (cancelled) return;
 
+			// A path on the command line wins: it is what the person just asked
+			// for, and it is more specific than what they were doing last time.
 			const launch = await api.launchPath();
-			if (launch) await repo.open(launch);
+			if (launch) {
+				await repo.open(launch);
+				return;
+			}
+
+			/*
+			 * Otherwise, carry on where the last session left off (BUG-013).
+			 *
+			 * `workspace.init()` above restores the tab strip from storage, so
+			 * the window came back with the repository's name across the top —
+			 * but nothing had told the backend to open it. The name was a label
+			 * on an empty session: no HEAD, no counts, no walk, and the only way
+			 * out was the All repositories screen. A tab that says a repository
+			 * is open has to mean it.
+			 *
+			 * The route and selection come back with it, so a restart lands on
+			 * the screen and the commit it was left on.
+			 */
+			const resume = workspace.active;
+			if (!resume || cancelled) return;
+
+			const place = workspace.placeOf(resume);
+			if (!(await repo.open(resume))) {
+				// Moved, unmounted, or deleted since the session ended. The tab
+				// stays — `repo.error` says what happened, and All repositories
+				// marks it missing — because silently dropping somebody's
+				// workspace is worse than showing them a repository they need to
+				// find again.
+				return;
+			}
+			if (cancelled) return;
+
+			if (place?.route && place.route !== page.url.pathname) await goto(place.route);
+			// After the route: the graph store holds a wanted id across a walk it
+			// cannot see the end of, the same way a tab switch does.
+			if (place?.selected) graph.want(place.selected);
 		})();
 
 		return () => {
@@ -202,6 +241,13 @@
 <svelte:window onkeydown={shortcut} />
 
 <div class="app">
+	<!--
+		The light the glass refracts. Three washes of the theme's own colours,
+		drifting; `aria-hidden` and pointer-transparent, because it is a
+		material property of the window rather than content.
+	-->
+	<div class="ambient" aria-hidden="true"></div>
+
 	<TitleBar />
 	<!-- Its own row, and absent when nothing is open (FEAT-044). -->
 	<RepoTabs />
@@ -209,7 +255,20 @@
 	<div class="main">
 		<NavRail />
 		<Splitter panel="rail" label="Resize the nav rail" />
-		{@render children()}
+		<!--
+			Screens arrive rather than appear (FEAT-053).
+
+			Keyed on the path, so every navigation remounts the screen inside a
+			short upward slide — which is what a rail click already does
+			invisibly. The motion is 140ms and 6px: enough to say "this is a
+			different screen", not enough to wait for. `prefers-reduced-motion`
+			turns it off in `app.css`, along with everything else that moves.
+		-->
+		{#key page.url.pathname}
+			<div class="screen-slot" in:fly={{ y: 6, duration: 140 }}>
+				{@render children()}
+			</div>
+		{/key}
 	</div>
 	<!--
 		The window's own bottom edge (FEAT-043). Outside `.main`, so it spans the
@@ -269,6 +328,8 @@
 		flex-direction: column;
 		overflow: hidden;
 		background: var(--bg);
+		/* The ambient field is positioned against this. */
+		position: relative;
 		border-radius: var(--r-window);
 		outline: 0.2px solid var(--window-edge);
 		outline-offset: -0.2px;
@@ -283,7 +344,7 @@
 				window exactly; the offset, blur and alpha come down together so
 				the weight of it is unchanged (FEAT-042).
 			*/
-			0 10px 28px var(--window-cast);
+			0 6px 18px var(--window-cast);
 	}
 
 	/* Square against the screen edge, and nothing to cast a shadow onto. */
@@ -297,5 +358,87 @@
 		min-height: 0;
 		display: flex;
 		overflow: hidden;
+		/* Above the ambient field, below the chrome. */
+		position: relative;
+		z-index: 1;
+	}
+
+	/*
+	 * The ambient field (see `app.css`).
+	 *
+	 * Three radial washes rather than one: a single gradient reads as a
+	 * spotlight, where three overlapping at different sizes read as light in a
+	 * room. They are the theme's accent and two of its lane colours, so a
+	 * Gruvbox window glows amber and a Tokyo Night one glows blue without a
+	 * single colour being written here.
+	 *
+	 * `will-change` is deliberate: this is one large, slowly animated layer, and
+	 * promoting it once is cheaper than repainting the window behind every pane
+	 * of glass on every frame.
+	 */
+	/*
+	 * The box a screen is transitioned inside. It has to be a flex container of
+	 * its own: every screen is `flex: 1` against `.main`, and wrapping one in a
+	 * plain div would leave it sized by its content instead of by the window.
+	 */
+	.screen-slot {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		overflow: hidden;
+	}
+
+	.ambient {
+		position: absolute;
+		inset: -12%;
+		z-index: 0;
+		pointer-events: none;
+		background:
+			radial-gradient(
+				46% 40% at 14% 8%,
+				color-mix(in srgb, var(--accent) 55%, transparent) 0%,
+				transparent 68%
+			),
+			radial-gradient(
+				40% 46% at 88% 16%,
+				color-mix(in srgb, var(--lane-2) 46%, transparent) 0%,
+				transparent 70%
+			),
+			radial-gradient(
+				54% 48% at 72% 96%,
+				color-mix(in srgb, var(--lane-4) 40%, transparent) 0%,
+				transparent 72%
+			),
+			radial-gradient(
+				44% 40% at 26% 78%,
+				color-mix(in srgb, var(--lane-5) 34%, transparent) 0%,
+				transparent 70%
+			);
+		/*
+		 * Light rooms take *less* of this, not more.
+		 *
+		 * A wash that reads as a faint glow on a near-black ground reads as
+		 * coloured paper on a near-white one — the first light build had a
+		 * green corner and a pink one, which is a beach towel rather than a
+		 * window. Dark gets more of it, below.
+		 */
+		opacity: 0.3;
+		/*
+		 * Deliberately **not** blurred and **not** animated.
+		 *
+		 * Both were, and together they cost the window its frame rate: a
+		 * `filter: blur(40px)` over a 3440×1440 surface is re-blurred whenever
+		 * anything above it repaints, and animating its transform meant *every
+		 * frame*. Radial gradients are already soft — the blur was adding
+		 * nothing a wider gradient stop does not, and the drift was a slow
+		 * change nobody watching the screen could see happening.
+		 */
+		transform: translateZ(0);
+	}
+
+	/* Dark rooms take less light: the same washes at a lower alpha, or the
+	   whole window reads as tinted rather than lit. */
+	:global(:root[data-theme='dark']) .ambient {
+		opacity: 0.55;
 	}
 </style>

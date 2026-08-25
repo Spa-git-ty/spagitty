@@ -138,7 +138,7 @@
 	.modal {
 		width: min(620px, calc(100vw - 40px));
 		background: var(--panel);
-		border: 1.5px solid var(--line);
+		border: 1px solid var(--line);
 		border-radius: var(--r-field);
 		display: flex;
 		flex-direction: column;
@@ -151,7 +151,7 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 10px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 	}
 
 	.title {
@@ -199,7 +199,7 @@
 		flex: 1;
 		min-width: 0;
 		background: transparent;
-		border: 1.5px solid var(--line);
+		border: 1px solid var(--line);
 		border-radius: var(--r-field);
 		color: var(--ink);
 		font-family: var(--font-ui);
@@ -240,7 +240,7 @@
 		align-items: center;
 		gap: 8px;
 		padding: 8px 12px;
-		border-top: 1.5px solid var(--soft);
+		border-top: 1px solid var(--soft);
 	}
 
 	.spacer {
@@ -248,7 +248,7 @@
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 
 	p {

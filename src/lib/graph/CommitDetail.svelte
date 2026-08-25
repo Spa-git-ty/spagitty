@@ -192,11 +192,16 @@
 </aside>
 
 <style>
+	/* The detail pane sits over the rows rather than beside them: chrome
+	   colour, a hairline, and a shadow cast leftward onto the history. */
 	.detail {
 		width: var(--detail-w);
 		flex: none;
 		background: var(--panel);
-		border-left: 1.5px solid var(--line);
+		border-left: 1px solid var(--line);
+		box-shadow: -1px 0 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
@@ -208,7 +213,7 @@
 		justify-content: space-between;
 		gap: 8px;
 		padding: 8px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		flex: none;
 	}
 
@@ -229,7 +234,7 @@
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 
 	.column {
@@ -240,10 +245,14 @@
 		min-height: 0;
 	}
 
+	/* The commit message is the one thing on this pane worth reading as a
+	   document, so it is a card rather than a bordered box. */
 	.message {
-		border: 1.5px solid var(--line);
-		border-radius: var(--r-field);
-		padding: 8px;
+		border: 1px solid var(--soft);
+		border-radius: var(--r-panel);
+		background: var(--grad-surface);
+		box-shadow: var(--sheen), var(--shadow-1);
+		padding: 9px;
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
@@ -268,7 +277,7 @@
 		width: 20px;
 		height: 20px;
 		border-radius: 50%;
-		border: 1.5px solid var(--line);
+		border: 1px solid var(--line);
 		background: var(--bg);
 		flex: none;
 	}

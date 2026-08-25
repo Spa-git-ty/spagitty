@@ -171,7 +171,7 @@
 		flex-direction: column;
 		gap: 2px;
 		padding: 8px 10px;
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-panel);
 	}
 
