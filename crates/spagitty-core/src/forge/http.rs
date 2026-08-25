@@ -139,6 +139,19 @@ fn agent() -> ureq::Agent {
         // with it.
         .max_redirects(0)
         .user_agent(user_agent())
+        // **Chosen, not inherited.** `TlsProvider` defaults to Rustls whichever
+        // feature is compiled in, so building with `native-tls` alone leaves an
+        // agent that panics on the first `https` URL — "provider is Rustls but
+        // feature is not enabled". It is a panic rather than an error, and it
+        // takes the process with it.
+        //
+        // Naming the provider is the whole fix. It also makes the choice
+        // visible here rather than implied by a line in `Cargo.toml`.
+        .tls_config(
+            ureq::tls::TlsConfig::builder()
+                .provider(ureq::tls::TlsProvider::NativeTls)
+                .build(),
+        )
         .build()
         .new_agent()
 }
@@ -201,6 +214,25 @@ mod tests {
             Err(Error::Forge { detail, .. }) => assert!(detail.contains("unencrypted")),
             other => panic!("expected a refusal, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn the_agent_is_built_with_a_tls_provider_that_is_actually_compiled_in() {
+        // The regression this exists for took the whole process down on the
+        // first request. `TlsProvider` defaults to Rustls whichever feature is
+        // enabled, so an agent that does not name one panics on any `https`
+        // URL — and the update check makes one at startup, so the application
+        // did not open at all.
+        //
+        // Asserted by building the agent and reading back what it settled on,
+        // which is the thing that was wrong. Making a request would prove it
+        // too and would need a network.
+        let agent = agent();
+
+        assert_eq!(
+            agent.config().tls_config().provider(),
+            ureq::tls::TlsProvider::NativeTls
+        );
     }
 
     #[test]

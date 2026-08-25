@@ -872,6 +872,30 @@
 		overflow: hidden;
 	}
 
+	/*
+	   The seam where the lanes end and the messages begin.
+
+	   The lane column clips its canvas, so on a history deeper than the column
+	   is wide the lanes stop at a hard vertical edge — which reads as "the
+	   graph ends here" when what is true is "there is more of it than fits".
+	   A short shadow at the edge says the second thing: the lanes pass under
+	   the messages rather than stopping against them.
+
+	   Always on, unlike the scroll edges either side of the table, because
+	   what it marks is always true — this is a boundary between two columns,
+	   not a scroll position.
+	*/
+	.lane-slot::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		right: 0;
+		width: 14px;
+		pointer-events: none;
+		background: linear-gradient(to left, var(--shadow-edge), transparent);
+	}
+
 	.lane-space {
 		background: var(--graph-bg);
 		box-shadow:

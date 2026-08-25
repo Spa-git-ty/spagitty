@@ -1101,7 +1101,7 @@ pub fn forge_accounts<R: Runtime>(app: AppHandle<R>) -> Vec<Account> {
 /// The token goes to the OS keychain and nowhere else. It is not returned, not
 /// logged, and not written to the accounts file.
 #[tauri::command]
-pub fn forge_connect<R: Runtime>(
+pub async fn forge_connect<R: Runtime>(
     app: AppHandle<R>,
     kind: Kind,
     host: String,
@@ -1121,10 +1121,24 @@ pub fn forge_connect<R: Runtime>(
         });
     }
 
-    let user = forge::whoami(kind, &host, token.trim())?;
-    forge::keychain::store(&host, &user, token.trim())?;
+    // Proving the token is a network round trip, so it goes off the main
+    // thread like every other one.
+    let asked = {
+        let host = host.clone();
+        let token = token.trim().to_string();
+        off_thread(move || forge::whoami(kind, &host, &token)).await?
+    };
 
-    Ok(accounts::remember(&app, Account { kind, host, user }))
+    forge::keychain::store(&host, &asked, token.trim())?;
+
+    Ok(accounts::remember(
+        &app,
+        Account {
+            kind,
+            host,
+            user: asked,
+        },
+    ))
 }
 
 /// Disconnect an account, and forget its token.
@@ -1147,10 +1161,13 @@ pub fn forge_disconnect<R: Runtime>(
 /// say whether it is offline, rate limited, or looking at a repository nobody
 /// has connected an account for. An empty list means there are none.
 #[tauri::command]
-pub fn pull_requests<R: Runtime>(
+pub async fn pull_requests<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, AppState>,
 ) -> Result<Vec<PullRequest>> {
+    // Everything local first — the session, the account file, the keychain —
+    // and only then the network, on a thread of its own. Reading the session
+    // takes a lock, and a lock must never be held across an await.
     let Some(repo) = forge_repo(state)? else {
         return Err(Error::Forge {
             host: String::new(),
@@ -1173,7 +1190,8 @@ pub fn pull_requests<R: Runtime>(
         });
     };
 
-    forge::pull_requests(&repo, &token, &account.user)
+    let user = account.user.clone();
+    off_thread(move || forge::pull_requests(&repo, &token, &user)).await
 }
 
 /// Is there a newer Spagitty than this one?
@@ -1182,9 +1200,34 @@ pub fn pull_requests<R: Runtime>(
 /// the caller's job to decide whether to ask — `check_for_updates` gates the
 /// one at startup — because a preference that stops a request has to stop it
 /// before it is made, not after.
+///
+/// **`async`, and the work goes to a blocking thread.** Tauri runs a
+/// synchronous command on the main thread, so a request with a thirty-second
+/// timeout freezes the window until it answers — which on a machine with no
+/// route out is the whole thirty seconds, at startup, before anything is on
+/// screen. Every command here that touches the network is shaped this way for
+/// that reason.
 #[tauri::command]
-pub fn check_update() -> Result<update::Update> {
-    update::check()
+pub async fn check_update() -> Result<update::Update> {
+    off_thread(update::check).await
+}
+
+/// Run blocking work off the main thread, keeping the error type.
+///
+/// A panic inside is reported rather than swallowed: it means a bug, and a
+/// command that quietly returned nothing would hide it.
+async fn off_thread<T, F>(work: F) -> Result<T>
+where
+    F: FnOnce() -> Result<T> + Send + 'static,
+    T: Send + 'static,
+{
+    match tauri::async_runtime::spawn_blocking(work).await {
+        Ok(result) => result,
+        Err(error) => Err(Error::Forge {
+            host: String::new(),
+            detail: format!("the request could not be run: {error}"),
+        }),
+    }
 }
 
 /// Signing, as git would resolve it here (FEAT-019).

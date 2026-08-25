@@ -126,9 +126,19 @@
 	   shadow now covers the 4px the shrink used to take off every side, and the
 	   weight is meant to be unchanged. */
 	--window-cast: rgba(0, 0, 0, 0.48);
-	/* Dark separates by shadow density rather than contrast, as above, so the
-	   edge goes black and a little heavier to carry the same weight. */
-	--shadow-edge: rgba(0, 0, 0, 0.34);
+	/*
+	 * Not black.
+	 *
+	 * The window's own depth above reverses in dark for a reason spelled out
+	 * there — an edge has to be *lighter* than the surface to read at all — and
+	 * this edge forgot it. Black at any alpha over a near-black panel is
+	 * invisible, which is what a screenshot of it showed: the seam was drawn,
+	 * measured, tested, and could not be seen.
+	 *
+	 * A pale wash instead, at a low alpha so it marks the boundary without
+	 * becoming a rule.
+	 */
+	--shadow-edge: rgba(205, 214, 244, 0.11);
 	--placeholder: rgba(205, 214, 244, 0.26);
 	--accent: #89b4fa;
 	--selection: rgba(137, 180, 250, 0.18);
