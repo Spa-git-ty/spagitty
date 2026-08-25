@@ -16,7 +16,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { click, flushSync, press, render } from '../../testing/mount';
-import Dialog from './Dialog.svelte';
+import DialogHost from './DialogHost.svelte';
 import { dialog } from './dialog.svelte';
 
 /** No test may leave a question open: the store is a module-level singleton. */
@@ -186,15 +186,15 @@ describe('dialog store — one question at a time', () => {
 	});
 });
 
-describe('Dialog component', () => {
+describe('DialogHost component', () => {
 	it('renders nothing until something is asked', () => {
-		const view = render(Dialog, {});
+		const view = render(DialogHost, {});
 		expect(view.find('.panel')).toBeNull();
 		view.destroy();
 	});
 
 	it('shows a confirmation without a field', () => {
-		const view = render(Dialog, {});
+		const view = render(DialogHost, {});
 		dialog.confirm(confirmation);
 		flushSync();
 
@@ -206,7 +206,7 @@ describe('Dialog component', () => {
 	});
 
 	it('shows a prompt with its field, label and placeholder', () => {
-		const view = render(Dialog, {});
+		const view = render(DialogHost, {});
 		dialog.prompt({ ...naming, value: 'main', placeholder: 'branch name' });
 		flushSync();
 
@@ -219,7 +219,7 @@ describe('Dialog component', () => {
 	});
 
 	it('sends typing back to the store', () => {
-		const view = render(Dialog, {});
+		const view = render(DialogHost, {});
 		dialog.prompt(naming);
 		flushSync();
 
@@ -233,7 +233,7 @@ describe('Dialog component', () => {
 	});
 
 	it('accepts on Enter and dismisses on Escape', async () => {
-		const view = render(Dialog, {});
+		const view = render(DialogHost, {});
 
 		const accepted = dialog.confirm(confirmation);
 		flushSync();
@@ -249,7 +249,7 @@ describe('Dialog component', () => {
 	});
 
 	it('dismisses on a backdrop click, but not on a click inside the panel', async () => {
-		const view = render(Dialog, {});
+		const view = render(DialogHost, {});
 
 		const ignored = dialog.confirm(confirmation);
 		flushSync();
@@ -263,7 +263,7 @@ describe('Dialog component', () => {
 	});
 
 	it('wires Cancel and the affirmative button', async () => {
-		const view = render(Dialog, {});
+		const view = render(DialogHost, {});
 
 		const cancelled = dialog.confirm(confirmation);
 		flushSync();
@@ -282,7 +282,7 @@ describe('Dialog component', () => {
 	});
 
 	it('disables the affirmative button while a prompt is empty', () => {
-		const view = render(Dialog, {});
+		const view = render(DialogHost, {});
 		dialog.prompt(naming);
 		flushSync();
 
@@ -302,7 +302,7 @@ describe('Dialog component', () => {
 	 * above it is.
 	 */
 	it('takes the glow off a dangerous action', () => {
-		const view = render(Dialog, {});
+		const view = render(DialogHost, {});
 
 		dialog.confirm(confirmation);
 		flushSync();

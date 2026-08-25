@@ -121,6 +121,7 @@ rather than an audit.
 | [BUG-008](items/BUG-008-menu-arrow-up-from-nothing.md) | ArrowUp into a fresh menu lands in the middle | all | Fixed |
 | [BUG-009](items/BUG-009-message-column-has-no-handle.md) | The commit message column cannot be resized | 1A | Fixed |
 | [BUG-009b](items/BUG-009b-graph-divider-resizes-message.md) | The boundary people reach for carries a dead divider | 1A | Fixed |
+| [BUG-010](items/BUG-010-case-insensitive-shadowing.md) | A component and its store differ only by case | — | Fixed |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
 report, reopened on a corrected diagnosis, and BUG-009's own document keeps the

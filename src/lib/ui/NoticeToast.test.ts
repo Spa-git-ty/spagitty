@@ -14,7 +14,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { click, flushSync, render } from '../../testing/mount';
-import Notice from './Notice.svelte';
+import NoticeToast from './NoticeToast.svelte';
 import { describe as explain, notice } from './notice.svelte';
 
 /** How long a success stays up, mirroring `LINGER` in the store. */
@@ -122,15 +122,15 @@ describe('describe()', () => {
 	});
 });
 
-describe('Notice component', () => {
+describe('NoticeToast component', () => {
 	it('renders nothing when there is nothing to say', () => {
-		const view = render(Notice, {});
+		const view = render(NoticeToast, {});
 		expect(view.find('.notice')).toBeNull();
 		view.destroy();
 	});
 
 	it('shows the title, and the detail when there is one', () => {
-		const view = render(Notice, {});
+		const view = render(NoticeToast, {});
 
 		notice.ok('Fetched origin');
 		flushSync();
@@ -145,7 +145,7 @@ describe('Notice component', () => {
 	});
 
 	it('marks a failure so it does not read as an acknowledgement', () => {
-		const view = render(Notice, {});
+		const view = render(NoticeToast, {});
 
 		notice.ok('Fetched origin');
 		flushSync();
@@ -159,7 +159,7 @@ describe('Notice component', () => {
 	});
 
 	it('dismisses from the close button', () => {
-		const view = render(Notice, {});
+		const view = render(NoticeToast, {});
 		notice.failed('Push failed', 'rejected');
 		flushSync();
 
@@ -173,7 +173,7 @@ describe('Notice component', () => {
 	});
 
 	it('is announced without stealing focus', () => {
-		const view = render(Notice, {});
+		const view = render(NoticeToast, {});
 		notice.ok('Fetched origin');
 		flushSync();
 

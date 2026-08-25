@@ -28,8 +28,8 @@
 	import { repo } from '$lib/repo.svelte';
 	import { scale } from '$lib/scale.svelte';
 	import { settings } from '$lib/settings/store.svelte';
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import Notice from '$lib/ui/Notice.svelte';
+	import DialogHost from '$lib/ui/DialogHost.svelte';
+	import NoticeToast from '$lib/ui/NoticeToast.svelte';
 	import Splitter from '$lib/ui/Splitter.svelte';
 	import { theme } from '$lib/theme.svelte';
 	import { workspace } from '$lib/workspace.svelte';
@@ -210,8 +210,8 @@
 	action started on the graph can finish after the user has navigated away —
 	a dialog owned by a screen would take the question with it.
 -->
-<Dialog />
-<Notice />
+<DialogHost />
+<NoticeToast />
 
 <!--
 	The record of what Spagitty ran. Mounted by the shell for the same reason as

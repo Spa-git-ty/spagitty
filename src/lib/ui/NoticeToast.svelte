@@ -2,7 +2,16 @@
 <script lang="ts">
 	import { notice } from '$lib/ui/notice.svelte';
 
-	/** The result of the last operation, bottom-right, mounted by the shell. */
+	/**
+	 * The result of the last operation, bottom-right, mounted by the shell.
+	 *
+	 * Named `NoticeToast` rather than `Notice` because of BUG-010: the store it
+	 * reads is `notice.svelte.ts`, and on a case-insensitive filesystem —
+	 * Windows, and macOS by default — `$lib/ui/notice.svelte` resolved to
+	 * `Notice.svelte` instead. The component imported itself and the Windows
+	 * build failed where the Linux one had always passed. A component and a
+	 * rune store in one directory must not differ only by case.
+	 */
 	const current = $derived(notice.current);
 </script>
 

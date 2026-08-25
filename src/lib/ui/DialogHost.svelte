@@ -1,5 +1,11 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
+	/*
+	 * Named `DialogHost` rather than `Dialog` because of BUG-010: the store it
+	 * reads is `dialog.svelte.ts`, and on a case-insensitive filesystem
+	 * `$lib/ui/dialog.svelte` resolved to this file instead. `tools/case.test.ts`
+	 * refuses the shape now.
+	 */
 	import Btn from '$lib/ui/Btn.svelte';
 	import { dialog } from '$lib/ui/dialog.svelte';
 
