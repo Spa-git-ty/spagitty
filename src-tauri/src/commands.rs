@@ -18,6 +18,7 @@ use spagitty_core::identity::{self, Identity, Key, Scope};
 use spagitty_core::ops::{self, Integration, ResetMode, StashAction};
 use spagitty_core::rebase::{self, Edit, Preview, Todo};
 use spagitty_core::reflog;
+use spagitty_core::tags;
 use spagitty_core::remotes;
 use spagitty_core::record::{self, Executed};
 use spagitty_core::refs::RefIndex;
@@ -743,6 +744,44 @@ pub fn conflict_abort(state: State<'_, AppState>) -> Result<()> {
     state.with_session(|session| {
         let repo = session.repo.to_thread_local();
         conflicts::abort_operation(&repo, conflicts::operation(&repo))
+    })
+}
+
+/// Every tag, newest first (FEAT-051).
+#[tauri::command]
+pub fn tags(state: State<'_, AppState>) -> Result<Vec<tags::Tag>> {
+    state.with_session(|session| tags::tags(&session.repo.to_thread_local()))
+}
+
+/// Create a tag. A non-empty message makes it annotated.
+#[tauri::command]
+pub fn tag_create(
+    state: State<'_, AppState>,
+    name: String,
+    target: String,
+    message: String,
+) -> Result<()> {
+    state.with_session(|session| {
+        tags::create(&session.repo.to_thread_local(), &name, &target, &message)
+    })
+}
+
+/// Delete a local tag.
+#[tauri::command]
+pub fn tag_delete(state: State<'_, AppState>, name: String) -> Result<()> {
+    state.with_session(|session| tags::delete(&session.repo.to_thread_local(), &name))
+}
+
+/// Rewrite an annotated tag's message, keeping it on the same commit.
+#[tauri::command]
+pub fn tag_retag(
+    state: State<'_, AppState>,
+    name: String,
+    target: String,
+    message: String,
+) -> Result<()> {
+    state.with_session(|session| {
+        tags::retag(&session.repo.to_thread_local(), &name, &target, &message)
     })
 }
 

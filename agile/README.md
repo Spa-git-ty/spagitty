@@ -105,6 +105,7 @@ rather than an audit.
 | [FEAT-048](items/FEAT-048-discard-changes.md) | Discard changes | 1C | Done |
 | [FEAT-049](items/FEAT-049-remotes-management.md) | Remotes management | settings | Done |
 | [FEAT-050](items/FEAT-050-reflog-view.md) | Reflog view | 1M | Done |
+| [FEAT-051](items/FEAT-051-tags-list.md) | Tags list | 1N | Done |
 
 ## Bugs
 

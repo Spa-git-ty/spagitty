@@ -674,6 +674,30 @@ export interface CloneDoneEvent {
 	path: string;
 }
 
+/** One tag, peeled to the commit it names (FEAT-051). */
+export interface Tag {
+	/** Short name — `v1.0.0`, not `refs/tags/v1.0.0`. */
+	name: string;
+	/** The commit it points at, after peeling an annotated tag. */
+	target: string;
+	targetShort: string;
+	/**
+	 * True when this is a tag object rather than a ref pointing at a commit.
+	 * Only an annotated tag can carry a message or a tagger.
+	 */
+	annotated: boolean;
+	/** The tag's own message. Empty for a lightweight tag, which has none. */
+	message: string;
+	taggerName: string;
+	/**
+	 * Unix seconds: the tagger's time for an annotated tag, the commit's own
+	 * for a lightweight one, which is the only date it has.
+	 */
+	time: number;
+	/** First line of the tagged commit's message. */
+	summary: string;
+}
+
 /** One move of one ref (FEAT-050). */
 export interface ReflogEntry {
 	/** Position from the newest, counting from 0 — the `n` in `HEAD@{n}`. */

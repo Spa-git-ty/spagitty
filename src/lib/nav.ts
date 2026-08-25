@@ -24,10 +24,10 @@ export type CountKey = keyof RepoCounts;
  *   1E  Rebase             1K  Settings
  *   1F  Branches           1L  Clone modal
  *
- * 1M is the Reflog (FEAT-050), the first screen that was not in the design
- * handoff: it came out of the GitKraken gap analysis, and it is numbered after
- * the handoff's run rather than inserted into it so that a code still says
- * where a screen came from.
+ * 1M is the Reflog (FEAT-050) and 1N is Tags (FEAT-051): the first screens that
+ * were not in the design handoff. Both came out of the GitKraken gap analysis,
+ * and they are numbered after the handoff's run rather than inserted into it so
+ * that a code still says where a screen came from.
  */
 export type ScreenCode =
 	| '1A'
@@ -42,7 +42,8 @@ export type ScreenCode =
 	| '1J'
 	| '1K'
 	| '1L'
-	| '1M';
+	| '1M'
+	| '1N';
 
 export interface NavItem {
 	code: ScreenCode;
@@ -67,6 +68,7 @@ export const NAV_ITEMS: NavItem[] = [
 	{ code: '1C', label: 'Working copy', href: '/changes', count: 'working', glyph: '✎' },
 	{ code: '1D', label: 'Conflicts', href: '/conflicts', count: 'conflicts', glyph: '⚔' },
 	{ code: '1F', label: 'Branches', href: '/branches', count: 'branches', glyph: '⑂' },
+	{ code: '1N', label: 'Tags', href: '/tags', count: 'tags', glyph: '⌗' },
 	{ code: '1G', label: 'Stash', href: '/stash', count: 'stashes', glyph: '▤' },
 	{ code: '1H', label: 'Pull requests', href: '/requests', glyph: '⇄' },
 	{ code: '1E', label: 'Rebase', href: '/rebase', glyph: '↻' },

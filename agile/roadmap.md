@@ -7,10 +7,11 @@ where it does. This is a reading of the index in [README.md](README.md) against
 the gap analysis in [../docs/analysis/gitkraken-gap.md](../docs/analysis/gitkraken-gap.md);
 the index stays the authority on what exists and what state it is in.
 
-One entry below has no identifier yet. They came out of the gap analysis
-rather than out of a request, and an identifier is assigned when the work
-starts — the record test refuses a cited identifier that resolves to nothing,
-so naming them early would break the suite for no gain.
+Every entry below now has an identifier. The four that came out of the gap
+analysis rather than out of a request were named as they were started —
+FEAT-048, FEAT-049, FEAT-050 and FEAT-051 — because the record test refuses a
+cited identifier that resolves to nothing, so naming them earlier would have
+broken the suite for no gain.
 
 Sizes are the author's working estimate for someone who already knows the tree,
 and they assume the existing test conventions are followed.
@@ -83,13 +84,13 @@ left unmapped and FEAT-047's divergence bar had nothing to read. Fixed.
 branch, with three ways out of an entry — branch here, check out here, reset
 here — offered in that order because only the first cannot cost anything.
 
-### 8. Tags list — no identifier yet
+### 8. FEAT-051 — tags list
 
-Create and delete exist, but only through the graph's context menu. There is no
-gathered view, no annotated-tag message editing, no checkout-from-tag.
+**Done**, on `feature/FEAT-051-tags`.
 
-**Closes when:** a tags list exists with create, delete, annotate and checkout.
-**Size:** half a day to a day.
+**Closed by:** a Tags screen at rail entry 1N with create, delete, message
+rewriting and checkout, and annotated told apart from lightweight throughout —
+the difference decides whether a message can exist at all.
 
 ### 9. FEAT-018 — finish fetch and push
 

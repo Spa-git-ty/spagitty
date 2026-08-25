@@ -34,6 +34,7 @@ import type {
 	RebaseProgress,
 	RebaseTodo,
 	Reflog,
+	Tag,
 	Remote,
 	ResetMode,
 	StashAction,
@@ -267,6 +268,35 @@ export function conflictContinue(): Promise<void> {
 /** Abandon it and put the repository back. */
 export function conflictAbort(): Promise<void> {
 	return invoke('conflict_abort');
+}
+
+/** Every tag, newest first (FEAT-051). */
+export function tags(): Promise<Tag[]> {
+	return invoke('tags');
+}
+
+/**
+ * Create a tag. A non-empty message makes it annotated.
+ *
+ * An empty `target` means HEAD, which is what `git tag` itself does.
+ */
+export function tagCreate(name: string, target: string, message: string): Promise<void> {
+	return invoke('tag_create', { name, target, message });
+}
+
+/** Delete a local tag. */
+export function tagDelete(name: string): Promise<void> {
+	return invoke('tag_delete', { name });
+}
+
+/**
+ * Rewrite an annotated tag's message, keeping it on the same commit.
+ *
+ * A tag object is immutable, so this deletes and recreates it — the date and
+ * tagger become today's.
+ */
+export function tagRetag(name: string, target: string, message: string): Promise<void> {
+	return invoke('tag_retag', { name, target, message });
 }
 
 /**

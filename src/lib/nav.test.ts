@@ -73,6 +73,10 @@ describe('NAV_ITEMS', () => {
 			'/changes',
 			'/conflicts',
 			'/branches',
+			// FEAT-051. Beside Branches because they are the same kind of
+			// thing — named positions in history — and the rail already
+			// counted tags with nowhere to send anyone.
+			'/tags',
 			'/stash',
 			'/requests',
 			'/rebase',

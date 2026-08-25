@@ -25,12 +25,13 @@ under Amendment 11.
 | 1K | Settings | `/settings` | yes | Built | FEAT-011 |
 | 1L | Clone | modal | no | Built | FEAT-012 |
 | 1M | Reflog | `/reflog` | yes | Built | FEAT-050 |
+| 1N | Tags | `/tags` | yes | Built | FEAT-051 |
 
-**Every screen in the handoff is built**, and 1A–1L is the whole of it. 1M is
-the first screen that was not in the handoff at all: the Reflog came out of the
-GitKraken gap analysis rather than the design, and it is numbered after the
-handoff's run rather than inserted into it, so that a code still says where a
-screen came from.
+**Every screen in the handoff is built**, and 1A–1L is the whole of it. 1M and
+1N were not in the handoff at all: the Reflog and Tags came out of the GitKraken
+gap analysis rather than the design, and they are numbered after the handoff's
+run rather than inserted into it, so that a code still says where a screen came
+from.
 
 What remains deferred is named on the screen that defers it — the host the Pull
 requests screen cannot connect to, the accounts Settings has no client for. Each

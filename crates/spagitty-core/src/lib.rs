@@ -39,6 +39,7 @@ pub mod repo;
 pub mod search;
 pub mod shell;
 pub mod stash;
+pub mod tags;
 pub mod status;
 pub mod work;
 
