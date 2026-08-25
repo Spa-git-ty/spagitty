@@ -184,10 +184,16 @@ one-name rule asks for, and it was made deliberately.
    never `git-lumiere`: git treats any `git-foo` on `PATH` as a subcommand.
    `spagitty` does not begin with `git-`, so the hazard is gone and the note
    would have renamed into nonsense.
-3. *The workspace `repository` URL now points at `github.com/spagitty/spagitty`,
-   which does not exist yet.* The git remote is unchanged
-   (`github.com/GitLumiere/gitlumiere`), per the out-of-scope note above.
-   The manifest field and the remote disagree until the GitHub side moves.
+3. *Resolved.* The workspace `repository` URL points at
+   `github.com/Spa-git-ty/spagitty`, which is where the project lives and where
+   its releases are published. It named `github.com/spagitty/spagitty` — nobody's
+   — from the rename until the first public release, when it was made true.
+
+   The original note read: *"The workspace `repository` URL now points at
+   `github.com/spagitty/spagitty`, which does not exist yet. The git remote is
+   unchanged (`github.com/GitLumiere/gitlumiere`), per the out-of-scope note
+   above. The manifest field and the remote disagree until the GitHub side
+   moves."* The GitHub side has now moved, and they agree.
 
 **The icon was redrawn, not just renamed.** `tools/make-icons.py` previously
 drew a commit lane with a branch elbow — a mark that said nothing about the new
