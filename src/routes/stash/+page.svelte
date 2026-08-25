@@ -1,6 +1,9 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
+	import DiffPane from '$lib/diff/DiffPane.svelte';
+	import FileList from '$lib/diff/FileList.svelte';
+	import { diff } from '$lib/diff/store.svelte';
 	import { repo } from '$lib/repo.svelte';
 	import StashDetail from '$lib/stash/StashDetail.svelte';
 	import StashList from '$lib/stash/StashList.svelte';
@@ -10,12 +13,27 @@
 	import Splitter from '$lib/ui/Splitter.svelte';
 
 	/**
-	 * Stash entries, each hanging off the commit it was made on.
+	 * Stash entries, each hanging off the commit it was made on, and what is in
+	 * the selected one — file by file (FEAT-034).
+	 *
+	 * The files and the pane are the Diff screen's own components. A stash *is*
+	 * a commit whose first parent is the commit the work was made on, so
+	 * `commitDiff` and `fileDiff` on the entry's id answer both questions
+	 * already; there was nothing here to read that FEAT-002 had not read.
+	 *
+	 * The unified/split choice is the Diff screen's too, and deliberately the
+	 * same setting rather than a second one: it is a preference about reading
+	 * diffs, not about a screen.
 	 *
 	 * Stashing is the only write here. Pop, apply and drop are FEAT-014 — the
 	 * first two write to the working copy and can conflict, and the third
 	 * destroys an entry whose only other reference is a reflog that expires.
 	 */
+
+	/** Which hunk `j` / `k` last moved to, as on the Diff screen. */
+	let focus = $state(0);
+
+	onMount(() => diff.init());
 
 	let generation: number | null = null;
 	$effect(() => {
@@ -30,10 +48,46 @@
 		});
 	});
 
+	// A new file starts at its first hunk rather than wherever the last one was.
+	let lastPath: string | null = null;
+	$effect(() => {
+		if (stash.path !== lastPath) {
+			lastPath = stash.path;
+			focus = 0;
+		}
+	});
+
 	const count = $derived(
 		stash.entries.length === 1 ? '1 entry' : `${stash.entries.length} entries`
 	);
+
+	const hunkCount = $derived(stash.file?.hunks.length ?? 0);
+
+	/**
+	 * `j` and `k` move through the hunks of the open file.
+	 *
+	 * On the window rather than the pane, matching the Diff screen — and it
+	 * steps aside for anything being typed into, because this screen has a
+	 * message field along the bottom.
+	 */
+	function onkeydown(event: KeyboardEvent) {
+		const target = event.target as HTMLElement | null;
+		if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) {
+			return;
+		}
+		if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+		if (event.key === 'j') {
+			event.preventDefault();
+			if (hunkCount > 0) focus = Math.min(focus + 1, hunkCount - 1);
+		} else if (event.key === 'k') {
+			event.preventDefault();
+			focus = Math.max(focus - 1, 0);
+		}
+	}
 </script>
+
+<svelte:window {onkeydown} />
 
 <div class="screen">
 	<header class="head">
@@ -43,6 +97,10 @@
 		</div>
 		<div class="right">
 			{#if stash.loading}<span class="note">Reading…</span>{/if}
+			<Chip active={diff.view === 'unified'} onclick={() => diff.setView('unified')}>
+				unified
+			</Chip>
+			<Chip active={diff.view === 'split'} onclick={() => diff.setView('split')}>split</Chip>
 			<Btn disabled={stash.busy} onclick={() => stash.load()}>Refresh</Btn>
 		</div>
 	</header>
@@ -56,6 +114,24 @@
 	{:else}
 		<div class="body">
 			<StashList />
+			<Splitter panel="stashEntries" label="Resize the stash entries list" />
+			<FileList
+				files={stash.contents?.files ?? []}
+				selected={stash.path}
+				onselect={(path) => stash.selectFile(path)}
+				onstep={(delta) => stash.stepFile(delta)}
+				label="Files in this stash entry"
+				empty="This entry changed nothing."
+			/>
+			<Splitter panel="diffFiles" label="Resize the file list" />
+			<DiffPane
+				file={stash.file}
+				path={stash.path}
+				error={stash.fileError}
+				loading={stash.fileLoading}
+				view={diff.view}
+				{focus}
+			/>
 			<Splitter panel="detail" label="Resize the stash detail panel" />
 			<StashDetail />
 		</div>

@@ -313,8 +313,16 @@ lives in config.
 
 **Built.** `src/routes/stash/+page.svelte`, `src/lib/stash/`.
 
-Stash entries drawn hanging off the commit each was made on, with a detail
-panel showing what is in the selected one.
+Stash entries drawn hanging off the commit each was made on, then the files in
+the selected entry, then the selected file's diff, then a detail panel for
+everything about the entry that is not a file.
+
+The middle two columns are the **Diff screen's own components** (FEAT-034), given
+their files and their file rather than reading a store — a stash is a commit, so
+the two lists are the same list and there is no second diff renderer to keep in
+step. `↑` and `↓` walk the files; `j` and `k` jump between hunks, as on 1B. The
+unified/split choice is shared with 1B on purpose: it is a preference about
+reading diffs, not about a screen.
 
 Pop, apply and drop are wired (FEAT-014). Each goes through
 `stash.restore(action)`, which hands the confirmation and the write to
@@ -328,12 +336,19 @@ A **conflicted apply** is not yet handled as its own state: `git stash pop` onto
 a conflict leaves the entry in place and the working copy conflicted, and today
 that surfaces as git's own message in a notice. Honest, but not the designed
 recovery FEAT-014's notes asked for — it needs a conflict write path and belongs
-with FEAT-016. Browsing an entry file by file is FEAT-034.
+with FEAT-016.
 
 There is no stash-diff code, and there does not need to be: a stash *is* a
-commit whose first parent is the commit the work was made on, so the detail
-panel asks `commit_diff` about the entry's id like any other commit, and
-`refs/stash`'s reflog is the list — `stash@{n}` is literally the nth entry.
+commit whose first parent is the commit the work was made on, so the screen asks
+`commit_diff` about the entry's id like any other commit and `file_diff` for one
+of its files, and `refs/stash`'s reflog is the list — `stash@{n}` is literally
+the nth entry.
+
+The open file survives a re-read of the same entry — after an apply, or after
+the watcher reports a change — rather than snapping back to the first file every
+time the screen refreshes. It is dropped when the *entry* changes, along with
+the hunks cached for it: those belong to one entry, and the same path in another
+is a different file.
 
 The lane is drawn with the graph's metrics but not its canvas. The canvas exists
 to keep scrolling flat across a hundred thousand rows; a stash list is a dozen,

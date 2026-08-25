@@ -1,32 +1,37 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { clockTime, statusGlyph } from '$lib/format';
+	import { clockTime } from '$lib/format';
 	import { stash } from '$lib/stash/store.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 
 	/**
-	 * What is in the selected entry, and what could be done with it.
+	 * What the selected entry is, and what could be done with it.
 	 *
 	 * Pop, Apply and Drop each hand off to `stash.restore`, which puts the
 	 * confirmation up through `graph/actions.ts` and re-reads the list. What
 	 * each one does is said in that confirmation rather than here, so the Stash
 	 * screen and the graph's own stash menu cannot describe the same operation
 	 * two different ways.
+	 *
+	 * The files themselves left this panel in FEAT-034: they are a column of
+	 * their own now, beside the pane that shows one of them. What stays here is
+	 * everything about the entry that is not a file.
 	 */
 
 	const entry = $derived(stash.selected);
 	const contents = $derived(stash.contents);
-
-	/** See FileList.svelte: keeps `.gitignore` from rendering as `gitignore.`. */
-	const LRM = '‎';
 
 	const counts = $derived.by(() => {
 		if (contents === null) return '';
 		const files = contents.files.length === 1 ? '1 file' : `${contents.files.length} files`;
 		return `${files} · +${contents.added} −${contents.removed}`;
 	});
+
+	const position = $derived(
+		stash.fileCount === 0 ? '' : `file ${stash.fileIndex + 1} of ${stash.fileCount}`
+	);
 </script>
 
 <aside class="detail">
@@ -58,20 +63,8 @@
 					<span class="note">{counts}</span>
 					<Btn onclick={() => goto(`/diff?commit=${entry.id}`)}>Open full diff →</Btn>
 				</div>
-
-				<div class="files">
-					{#each contents.files as file (file.path)}
-						<div class="file" title={file.path}>
-							<span class="mono glyph" class:added={file.status === 'added'}>
-								{statusGlyph(file.status)}
-							</span>
-							<span class="path">{LRM + file.path}</span>
-						</div>
-					{/each}
-					{#if contents.files.length === 0}
-						<span class="note">This entry changed nothing.</span>
-					{/if}
-				</div>
+				{#if position}<span class="note">{position}</span>{/if}
+				<span class="note">↑ / ↓ walks the files · j / k jumps between hunks</span>
 			{/if}
 
 			<div class="hr"></div>
@@ -137,39 +130,6 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 8px;
-	}
-
-	.files {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.file {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		padding: 1px 0;
-		min-width: 0;
-	}
-
-	.glyph {
-		color: var(--muted);
-		flex: none;
-		width: 8px;
-	}
-
-	.glyph.added {
-		color: var(--accent);
-	}
-
-	/* The tail of a path identifies the file, so the head gets the ellipsis. */
-	.path {
-		font-size: var(--fs-secondary);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		direction: rtl;
-		text-align: left;
 	}
 
 	.actions {

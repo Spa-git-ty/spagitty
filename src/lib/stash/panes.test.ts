@@ -10,7 +10,8 @@ vi.mock('$app/navigation', () => ({ goto: (path: string) => goto(path) }));
 vi.mock('$lib/api', () => ({
 	stashes: vi.fn(),
 	stashPush: vi.fn(() => Promise.resolve()),
-	commitDiff: vi.fn()
+	commitDiff: vi.fn(),
+	fileDiff: vi.fn()
 }));
 
 vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
@@ -22,6 +23,7 @@ import StashList from './StashList.svelte';
 
 const stashes = vi.mocked(api.stashes);
 const commitDiff = vi.mocked(api.commitDiff);
+const fileDiff = vi.mocked(api.fileDiff);
 
 function entry(index: number, overrides: Partial<StashEntry> = {}): StashEntry {
 	const id = `${index}`.padStart(40, 'a');
@@ -52,9 +54,21 @@ async function show(entries: StashEntry[]) {
 	await settle();
 }
 
+const change = {
+	path: '.gitignore',
+	status: 'modified' as const,
+	binary: false,
+	tooLarge: false,
+	added: 1,
+	removed: 0
+};
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	stash.clear();
+	fileDiff.mockImplementation((_id: string, path: string) =>
+		Promise.resolve({ ...change, path, hunks: [] })
+	);
 	commitDiff.mockImplementation((id: string) =>
 		Promise.resolve(
 			diff(id, [
@@ -145,7 +159,9 @@ describe('StashDetail', () => {
 		expect(view.text()).toContain('Ada Lovelace');
 		expect(view.text()).toContain('made on bbbbbbb');
 		expect(view.text()).toContain('1 file');
-		expect(view.get('.path').textContent).toBe('‎.gitignore');
+		// The files themselves are a column of their own since FEAT-034; what
+		// this panel keeps is the count and where in it you are.
+		expect(view.text()).toContain('file 1 of 1');
 
 		view.destroy();
 	});
@@ -208,12 +224,14 @@ describe('StashDetail', () => {
 		view.destroy();
 	});
 
-	it('says an entry that changed nothing changed nothing', async () => {
+	it('counts an entry that changed nothing as no files', async () => {
+		// The sentence naming it lives on the file column, which is given it as
+		// its empty state; this panel only ever counted.
 		commitDiff.mockImplementation((id: string) => Promise.resolve(diff(id, [])));
 		await show([entry(0)]);
 		const view = render(StashDetail, {});
 
-		expect(view.text()).toContain('changed nothing');
+		expect(view.text()).toContain('0 files');
 		view.destroy();
 	});
 

@@ -88,7 +88,7 @@ rather than an audit.
 | [FEAT-029](items/FEAT-029-graph-and-type-presentation.md) | Bigger faces, and a type scale the rail follows | 1A, chrome | Done |
 | [FEAT-030](items/FEAT-030-rail-open-repository.md) | The rail's open-repository slot | chrome | Done |
 | [FEAT-033](items/FEAT-033-branch-divergence-on-the-chip.md) | Branch divergence on the chip | 1A | Done |
-| [FEAT-034](items/FEAT-034-stash-entry-file-browsing.md) | Browse a stash entry file by file | 1G | Backlog |
+| [FEAT-034](items/FEAT-034-stash-entry-file-browsing.md) | Browse a stash entry file by file | 1G | Done |
 | [FEAT-035](items/FEAT-035-lane-overflow-compression.md) | Lanes past the cap compress instead of stacking | 1A | Done |
 | [FEAT-036](items/FEAT-036-one-chip-per-branch.md) | One chip per branch, local and remote as icons | 1A | Done |
 | [FEAT-037](items/FEAT-037-window-depth-and-resizable-panels.md) | The window has depth, and every panel resizes | chrome | Done |

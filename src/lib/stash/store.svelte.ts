@@ -6,12 +6,18 @@
  * The list is one call. What an entry contains is `commitDiff` on the entry's
  * own id — a stash is a commit, so the Diff screen's machinery answers the
  * question without a second implementation.
+ *
+ * One file of an entry is `fileDiff` on the same id (FEAT-034), loaded as that
+ * file is selected and kept, exactly as the Diff screen does it. Walking back
+ * and forth through an entry's files then costs one fetch each rather than one
+ * per view, and the cache is thrown away when the entry changes — a
+ * within-entry convenience, not a history of everything ever opened.
  */
 
 import * as api from '../api';
 import * as act from '../graph/actions';
 import { repo } from '../repo.svelte';
-import type { CommitDiff, StashAction, StashEntry } from '../types';
+import type { CommitDiff, FileDiff, StashAction, StashEntry } from '../types';
 
 let entries = $state<StashEntry[]>([]);
 let loaded = $state(false);
@@ -23,6 +29,15 @@ let contents = $state<CommitDiff | null>(null);
 let contentsError = $state<string | null>(null);
 let contentsLoading = $state(false);
 
+/** The file open in the pane, and its hunks. */
+let path = $state<string | null>(null);
+let file = $state<FileDiff | null>(null);
+let fileError = $state<string | null>(null);
+let fileLoading = $state(false);
+
+/** Hunks already fetched for the open entry. */
+let cache = new Map<string, FileDiff>();
+
 /** The message a new stash would carry, and whether to take untracked files. */
 let message = $state('');
 let includeUntracked = $state(false);
@@ -32,6 +47,17 @@ let writeError = $state<string | null>(null);
 
 let listSeq = 0;
 let contentsSeq = 0;
+let fileSeq = 0;
+
+/** Forget the open file. Called whenever the entry under it changes. */
+function forgetFile() {
+	fileSeq += 1;
+	path = null;
+	file = null;
+	fileError = null;
+	fileLoading = false;
+	cache = new Map();
+}
 
 export const stash = {
 	get entries(): StashEntry[] {
@@ -57,6 +83,28 @@ export const stash = {
 	},
 	get contentsLoading(): boolean {
 		return contentsLoading;
+	},
+	get path(): string | null {
+		return path;
+	},
+	get file(): FileDiff | null {
+		return file;
+	},
+	get fileError(): string | null {
+		return fileError;
+	},
+	get fileLoading(): boolean {
+		return fileLoading;
+	},
+
+	/** Position of the selected file, 0-based. -1 when nothing is selected. */
+	get fileIndex(): number {
+		if (contents === null || path === null) return -1;
+		return contents.files.findIndex((f) => f.path === path);
+	},
+
+	get fileCount(): number {
+		return contents?.files.length ?? 0;
 	},
 	get message(): string {
 		return message;
@@ -109,10 +157,16 @@ export const stash = {
 	select(id: string, force = false): void {
 		if (!force && selected === id) return;
 
+		// A forced re-select is the same entry read again — after an apply, or
+		// after a `repo-changed`. Keep the file that is open across it, or the
+		// list would jump back to the first file every time the screen refreshed.
+		const keepPath = force ? path : null;
+
 		selected = id;
 		contents = null;
 		contentsError = null;
 		contentsLoading = true;
+		forgetFile();
 
 		const seq = ++contentsSeq;
 		api
@@ -121,6 +175,11 @@ export const stash = {
 				if (seq !== contentsSeq) return;
 				contents = result;
 				contentsLoading = false;
+				// An entry always opens on its first file: an empty pane beside
+				// a list of files is a click the screen can make for you.
+				const survived = result.files.find((f) => f.path === keepPath);
+				if (survived) this.selectFile(survived.path);
+				else if (result.files.length > 0) this.selectFile(result.files[0].path);
 			})
 			.catch((e) => {
 				if (seq !== contentsSeq) return;
@@ -135,6 +194,51 @@ export const stash = {
 		contents = null;
 		contentsError = null;
 		contentsLoading = false;
+		forgetFile();
+	},
+
+	/** Open one file of the selected entry, from the cache where possible. */
+	selectFile(next: string): void {
+		const id = selected;
+		if (id === null) return;
+
+		path = next;
+		fileError = null;
+
+		const cached = cache.get(next);
+		if (cached) {
+			file = cached;
+			fileLoading = false;
+			return;
+		}
+
+		file = null;
+		fileLoading = true;
+
+		const seq = ++fileSeq;
+		api
+			.fileDiff(id, next)
+			.then((result) => {
+				cache.set(next, result);
+				if (seq !== fileSeq) return;
+				file = result;
+				fileLoading = false;
+			})
+			.catch((e) => {
+				if (seq !== fileSeq) return;
+				fileError = String(e);
+				fileLoading = false;
+			});
+	},
+
+	/** Move `delta` files through the entry. Stops at either end. */
+	stepFile(delta: number): void {
+		const files = contents?.files ?? [];
+		if (files.length === 0) return;
+
+		const at = this.fileIndex;
+		const next = Math.min(Math.max(at + delta, 0), files.length - 1);
+		if (next !== at) this.selectFile(files[next].path);
 	},
 
 	/** Stash the working copy, then re-read the list and the rail. */
@@ -190,6 +294,7 @@ export const stash = {
 	clear(): void {
 		listSeq += 1;
 		contentsSeq += 1;
+		forgetFile();
 		entries = [];
 		loaded = false;
 		loading = false;

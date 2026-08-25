@@ -13,7 +13,14 @@
  * drag.
  */
 
-import { CHANGES_FILES_W, DETAIL_W, DIFF_FILES_W, RAIL_W, REQUESTS_DETAIL_W } from './metrics';
+import {
+	CHANGES_FILES_W,
+	DETAIL_W,
+	DIFF_FILES_W,
+	RAIL_W,
+	REQUESTS_DETAIL_W,
+	STASH_ENTRIES_W
+} from './metrics';
 
 const STORAGE_KEY = 'spagitty.panels';
 
@@ -72,6 +79,13 @@ export const PANELS = {
 		initial: DIFF_FILES_W,
 		min: 140,
 		max: 440
+	},
+	stashEntries: {
+		variable: 'stash-entries-w',
+		side: 'left',
+		initial: STASH_ENTRIES_W,
+		min: 200,
+		max: 520
 	}
 } as const satisfies Record<string, PanelSpec>;
 
@@ -92,7 +106,8 @@ let detail = $state(DETAIL_W);
 let extra = $state<Record<string, number>>({
 	requestsDetail: REQUESTS_DETAIL_W,
 	changesFiles: CHANGES_FILES_W,
-	diffFiles: DIFF_FILES_W
+	diffFiles: DIFF_FILES_W,
+	stashEntries: STASH_ENTRIES_W
 });
 /**
  * Collapsed to icons.
@@ -185,7 +200,8 @@ export const panels = {
 		extra = {
 			requestsDetail: REQUESTS_DETAIL_W,
 			changesFiles: CHANGES_FILES_W,
-			diffFiles: DIFF_FILES_W
+			diffFiles: DIFF_FILES_W,
+			stashEntries: STASH_ENTRIES_W
 		};
 		railCollapsed = false;
 		publish();

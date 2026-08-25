@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CommitDiff, StashEntry } from '$lib/types';
+import type { CommitDiff, FileDiff, StashEntry } from '$lib/types';
 
 vi.mock('$lib/api', () => ({
 	stashes: vi.fn(),
 	stashPush: vi.fn(),
-	commitDiff: vi.fn()
+	commitDiff: vi.fn(),
+	fileDiff: vi.fn()
 }));
 
 vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
@@ -23,6 +24,7 @@ import { stash } from './store.svelte';
 const stashes = vi.mocked(api.stashes);
 const stashPush = vi.mocked(api.stashPush);
 const commitDiff = vi.mocked(api.commitDiff);
+const fileDiff = vi.mocked(api.fileDiff);
 
 function entry(index: number, overrides: Partial<StashEntry> = {}): StashEntry {
 	const id = `${index}`.padStart(40, 'a');
@@ -41,24 +43,30 @@ function entry(index: number, overrides: Partial<StashEntry> = {}): StashEntry {
 	};
 }
 
-function diff(id: string): CommitDiff {
+function change(path: string) {
+	return {
+		path,
+		status: 'modified' as const,
+		binary: false,
+		tooLarge: false,
+		added: 1,
+		removed: 0
+	};
+}
+
+function diff(id: string, paths: string[] = ['notes.md']): CommitDiff {
 	return {
 		id,
 		short: id.slice(0, 7),
 		summary: 'a stash',
-		files: [
-			{
-				path: 'notes.md',
-				status: 'modified',
-				binary: false,
-				tooLarge: false,
-				added: 1,
-				removed: 0
-			}
-		],
-		added: 1,
+		files: paths.map(change),
+		added: paths.length,
 		removed: 0
 	};
+}
+
+function fileOf(path: string): FileDiff {
+	return { ...change(path), hunks: [] };
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -75,6 +83,7 @@ beforeEach(() => {
 	repoControl.reset();
 	stashes.mockResolvedValue([entry(0), entry(1)]);
 	commitDiff.mockImplementation((id: string) => Promise.resolve(diff(id)));
+	fileDiff.mockImplementation((_id: string, path: string) => Promise.resolve(fileOf(path)));
 	stashPush.mockResolvedValue(undefined);
 });
 
@@ -365,5 +374,182 @@ describe('restore', () => {
 
 		await expect(stash.restore('pop')).rejects.toThrow('boom');
 		expect(stash.busy).toBe(false);
+	});
+});
+
+/**
+ * FEAT-034. A stash is a commit, so one of its files is `fileDiff` on the
+ * entry's id — the same read the Diff screen makes, against the same command.
+ */
+describe('browsing an entry file by file', () => {
+	const threeFiles = ['a.txt', 'b.txt', 'c.txt'];
+
+	async function withThreeFiles() {
+		commitDiff.mockImplementation((id: string) => Promise.resolve(diff(id, threeFiles)));
+		await stash.load();
+		await settle();
+	}
+
+	it('opens an entry on its first file rather than on an empty pane', async () => {
+		await withThreeFiles();
+
+		expect(stash.path).toBe('a.txt');
+		expect(stash.file?.path).toBe('a.txt');
+		expect(fileDiff).toHaveBeenCalledWith(entry(0).id, 'a.txt');
+	});
+
+	it('reads a file against the entry it belongs to', async () => {
+		await withThreeFiles();
+		stash.selectFile('b.txt');
+		await settle();
+
+		expect(fileDiff).toHaveBeenLastCalledWith(entry(0).id, 'b.txt');
+		expect(stash.file?.path).toBe('b.txt');
+	});
+
+	it('says where in the entry the open file is', async () => {
+		await withThreeFiles();
+		expect(stash.fileIndex).toBe(0);
+		expect(stash.fileCount).toBe(3);
+
+		stash.selectFile('c.txt');
+		await settle();
+
+		expect(stash.fileIndex).toBe(2);
+	});
+
+	it('walks the files and stops at either end', async () => {
+		await withThreeFiles();
+
+		stash.stepFile(1);
+		await settle();
+		expect(stash.path).toBe('b.txt');
+
+		stash.stepFile(-1);
+		await settle();
+		expect(stash.path).toBe('a.txt');
+
+		// Past the start is the start, not an error and not a wrap.
+		stash.stepFile(-1);
+		await settle();
+		expect(stash.path).toBe('a.txt');
+
+		stash.stepFile(99);
+		await settle();
+		expect(stash.path).toBe('c.txt');
+
+		stash.stepFile(99);
+		await settle();
+		expect(stash.path).toBe('c.txt');
+	});
+
+	it('re-reads nothing when a file is opened twice', async () => {
+		await withThreeFiles();
+		stash.selectFile('b.txt');
+		await settle();
+		fileDiff.mockClear();
+
+		stash.selectFile('a.txt');
+		await settle();
+		stash.selectFile('b.txt');
+		await settle();
+
+		expect(fileDiff).not.toHaveBeenCalled();
+		expect(stash.file?.path).toBe('b.txt');
+	});
+
+	it('throws the cache away when a different entry is opened', async () => {
+		await withThreeFiles();
+		fileDiff.mockClear();
+
+		stash.select(entry(1).id);
+		await settle();
+
+		// The path is the same string; the file it names belongs to another
+		// entry, so it is read again rather than served from the last one.
+		expect(fileDiff).toHaveBeenCalledWith(entry(1).id, 'a.txt');
+	});
+
+	it('keeps the open file when the same entry is read again', async () => {
+		// A re-read happens after an apply and after `repo-changed`. Jumping
+		// back to the first file every time would lose the reader's place.
+		await withThreeFiles();
+		stash.selectFile('c.txt');
+		await settle();
+
+		await stash.load();
+		await settle();
+
+		expect(stash.path).toBe('c.txt');
+	});
+
+	it('opens the first file when the one that was open is gone', async () => {
+		await withThreeFiles();
+		stash.selectFile('c.txt');
+		await settle();
+
+		commitDiff.mockImplementation((id: string) => Promise.resolve(diff(id, ['a.txt', 'b.txt'])));
+		await stash.load();
+		await settle();
+
+		expect(stash.path).toBe('a.txt');
+	});
+
+	it('selects nothing at all for an entry that changed nothing', async () => {
+		commitDiff.mockImplementation((id: string) => Promise.resolve(diff(id, [])));
+		await stash.load();
+		await settle();
+
+		expect(stash.path).toBeNull();
+		expect(stash.fileIndex).toBe(-1);
+		expect(stash.fileCount).toBe(0);
+		expect(fileDiff).not.toHaveBeenCalled();
+
+		// And stepping through nothing is a no-op rather than a crash.
+		stash.stepFile(1);
+		expect(stash.path).toBeNull();
+	});
+
+	it('surfaces a failed file read without losing the file list', async () => {
+		await withThreeFiles();
+		fileDiff.mockRejectedValueOnce('no file b.txt in that commit');
+
+		stash.selectFile('b.txt');
+		await settle();
+
+		expect(stash.fileError).toBe('no file b.txt in that commit');
+		expect(stash.file).toBeNull();
+		expect(stash.contents?.files).toHaveLength(3);
+	});
+
+	it('ignores a slow read that lost the race to a newer one', async () => {
+		await withThreeFiles();
+		const slow = deferred<FileDiff>();
+		fileDiff.mockReturnValueOnce(slow.promise);
+
+		stash.selectFile('b.txt');
+		stash.selectFile('c.txt');
+		await settle();
+
+		slow.resolve(fileOf('b.txt'));
+		await settle();
+
+		expect(stash.path).toBe('c.txt');
+		expect(stash.file?.path).toBe('c.txt');
+	});
+
+	it('forgets the open file when the screen is cleared', async () => {
+		await withThreeFiles();
+		stash.clear();
+
+		expect(stash.path).toBeNull();
+		expect(stash.file).toBeNull();
+		expect(stash.fileCount).toBe(0);
+	});
+
+	it('does nothing when a file is selected with no entry open', () => {
+		stash.selectFile('a.txt');
+		expect(fileDiff).not.toHaveBeenCalled();
+		expect(stash.path).toBeNull();
 	});
 });

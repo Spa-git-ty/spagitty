@@ -130,9 +130,21 @@
 		<div class="empty"><span class="note">Reading the commit…</span></div>
 	{:else}
 		<div class="body">
-			<FileList />
+			<FileList
+				files={diff.commit.files}
+				selected={diff.path}
+				onselect={(path) => diff.select(path)}
+				onstep={(delta) => diff.step(delta)}
+			/>
 			<Splitter panel="diffFiles" label="Resize the file list" />
-			<DiffPane {focus} />
+			<DiffPane
+				file={diff.file}
+				path={diff.path}
+				error={diff.fileError}
+				loading={diff.fileLoading}
+				view={diff.view}
+				{focus}
+			/>
 		</div>
 	{/if}
 

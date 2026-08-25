@@ -78,8 +78,12 @@
 </nav>
 
 <style>
+	/* A fixed column since FEAT-034 put a diff pane beside it: two flexible
+	   columns next to each other leave the divider between them with nothing
+	   to mean. */
 	.list {
-		flex: 1;
+		width: var(--stash-entries-w);
+		flex: none;
 		min-width: 0;
 		overflow-y: auto;
 		display: flex;

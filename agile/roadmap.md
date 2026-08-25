@@ -137,7 +137,12 @@ to ask for a secret.
 
 ### 13. FEAT-034 — browse a stash entry file by file
 
-Backlog. The detail panel shows the diff; per-file browsing does not exist.
+**Done**, on `feature/FEAT-034-stash-file-browsing`.
+
+**Closed by:** the Diff screen's own `FileList` and `DiffPane`, made to take
+what they render so both screens use one renderer, and a Stash screen of four
+columns — entries, files, diff, detail. No new backend read: a stash is a
+commit, and `file_diff` on its id was already there.
 
 ### 14. TASK-003 — make the Tauri layer generic over `Runtime`
 

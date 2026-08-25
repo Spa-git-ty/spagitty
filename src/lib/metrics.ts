@@ -281,6 +281,18 @@ export const SEARCH_SIDE_W = 280;
 /** The detail panel on the Pull requests screen. */
 export const REQUESTS_DETAIL_W = 300;
 
+// --- Stash screen columns -------------------------------------------------
+
+/**
+ * The entries column on the Stash screen (FEAT-034).
+ *
+ * Wider than a plain list because each entry draws its own two-row lane and
+ * then its message beside it. It became a fixed column when the diff pane
+ * arrived: two flexible columns beside each other have no divider that means
+ * anything.
+ */
+export const STASH_ENTRIES_W = 280;
+
 // --- Lane elbow shape -----------------------------------------------------
 
 /**
@@ -411,6 +423,7 @@ export function applyMetrics(
 		'repo-card-w': REPO_CARD_W,
 		'search-side-w': SEARCH_SIDE_W,
 		'requests-detail-w': REQUESTS_DETAIL_W,
+		'stash-entries-w': STASH_ENTRIES_W,
 		...RADII
 	};
 	for (const [name, value] of Object.entries(px)) {

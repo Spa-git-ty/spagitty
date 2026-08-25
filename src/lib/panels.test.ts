@@ -11,7 +11,14 @@ import {
 	RAIL_MAX,
 	RAIL_MIN
 } from './panels.svelte';
-import { CHANGES_FILES_W, DETAIL_W, DIFF_FILES_W, RAIL_W, REQUESTS_DETAIL_W } from './metrics';
+import {
+	CHANGES_FILES_W,
+	DETAIL_W,
+	DIFF_FILES_W,
+	RAIL_W,
+	REQUESTS_DETAIL_W,
+	STASH_ENTRIES_W
+} from './metrics';
 
 const KEY = 'spagitty.panels';
 
@@ -163,7 +170,8 @@ describe('reset', () => {
 			// FEAT-037's panels round-trip through the same record.
 			requestsDetail: REQUESTS_DETAIL_W,
 			changesFiles: CHANGES_FILES_W,
-			diffFiles: DIFF_FILES_W
+			diffFiles: DIFF_FILES_W,
+			stashEntries: STASH_ENTRIES_W
 		});
 	});
 });
