@@ -151,6 +151,7 @@ of its own.
 | [TASK-011](items/TASK-011-secret-scanning-never-ran.md) | Secret scanning has never run | — | Done |
 | [TASK-012](items/TASK-012-record-drift.md) | The working record has drifted from the tree | — | Done |
 | [TASK-013](items/TASK-013-backfill-document-sets.md) | Backfill the missing plan and testing documents | — | Done |
+| [TASK-019](items/TASK-019-resume-session.md) | The launch sequence lives where no test can reach it | — | Done |
 
 ## Skipped identifiers
 
