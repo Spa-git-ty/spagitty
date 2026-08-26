@@ -39,10 +39,8 @@ The two gates most likely to be red have never been exercised at all:
 ## Why this is its own item
 
 The pipeline cannot run until there is a pull request, and there cannot be a
-pull request until the flow is repaired. That is a different problem with
-different decisions in it, and it is recorded separately — on a branch of its
-own, so its identifier is written in here when the branches meet rather than
-cited into a tree that cannot resolve it.
+pull request until the flow is repaired. That is TASK-017: a different problem
+with different decisions in it, recorded separately and landing first.
 
 This item is what happens *after*: the first run is the work, not a formality.
 `docs/ci.md` says as much — "treat the initial run as part of the work" — and a

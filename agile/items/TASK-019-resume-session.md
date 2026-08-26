@@ -4,10 +4,9 @@
 
 **Status:** Done on `task/TASK-019-resume-session`.
 **Surface:** `src/lib/session.ts`, `src/routes/+layout.svelte`.
-**Recorded by:** the bug that restored a tab strip without opening what it
-named, whose testing document declared this refactor out of its own scope and
-its own item. That identifier is written in here when the branches meet, rather
-than cited into a tree that cannot resolve it.
+**Recorded by:** BUG-013, the bug that restored a tab strip without opening
+what it named. Its testing document declared this refactor out of its own scope
+and its own item.
 
 ## Problem
 
@@ -66,5 +65,5 @@ Nothing about that sequence was hard. It was unreachable:
 
 ## Dependencies
 
-The bug above, which this is recorded against. It is fixed and shipped; this
-item does not change its behaviour, only where the behaviour is written.
+BUG-013, which this is recorded against. It is fixed and shipped; this item
+does not change its behaviour, only where the behaviour is written.

@@ -42,6 +42,10 @@ That is a small refactor and it is deliberately **not** done inside this
 document. It changes shipped behaviour's structure to serve a test, which is its
 own item under Amendment 13, not a rider on a backfilled record.
 
+**It is TASK-019**, and it is done. `resumeSession` in `src/lib/session.ts` now
+holds the order this bug was a missing call in, and `src/lib/session.test.ts`
+asserts it over exactly the table above.
+
 ## Until then
 
 The sweep is the test, and its first ticket is the command-line path, because

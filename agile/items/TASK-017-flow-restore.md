@@ -77,17 +77,22 @@ them. All four were answered in the session that opened this item.
 
 ## Non-scope
 
-The gates' first run, and whatever it turns up. That is its own item; this one
-ends when there is a path for it to run on.
+The gates' first run, and whatever it turns up. That is TASK-018; this one ends
+when there is a path for it to run on.
 
 ## Dependencies
 
-The dead-remote task, which left one remote pointing at a repository that
-exists, and the task that mapped where each item on the stack landed — worth
-having before anyone tries to review 71 commits. Both are recorded on branches
-of their own, so their identifiers are written into this item when the branches
-meet rather than cited into a tree that cannot resolve them.
+TASK-014, which left one remote pointing at a repository that exists, and
+TASK-016, which mapped where each item on the stack landed — worth having before
+anyone tries to review 71 commits.
 
-This branch is also where they meet: it is the integration branch, because
-merging the stack together **is** this item's work. Every other item's branch is
-merged into it, and the single pull request is opened from it.
+Both were written on branches of their own, which is why this item described
+them in prose until now: `tools/record.test.ts` fails on an identifier that
+resolves to nothing, and neither document existed in a tree cut from the common
+ancestor.
+
+This branch is where they meet. It is the integration branch, because merging
+the stack together **is** this item's work: every other item's branch is merged
+into it, and the single pull request is opened from it. The merged tree carries
+BUG-013, BUG-014, BUG-015, FEAT-057, TASK-014, TASK-015, TASK-016, TASK-018 and
+TASK-019, so every identifier above resolves here.
