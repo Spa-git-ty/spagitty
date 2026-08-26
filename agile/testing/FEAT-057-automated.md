@@ -1,0 +1,96 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+
+# FEAT-057 — Automated tests
+
+**Item:** [`agile/items/FEAT-057-liquid-glass.md`](../items/FEAT-057-liquid-glass.md)
+**Files:** `src/lib/ui/liquidGlassMaps.test.ts`, `src/lib/ui/liquidGlass.test.ts`.
+
+## Why there are two files
+
+The effect splits cleanly into arithmetic and behaviour, and they fail
+differently. The arithmetic fails silently and visually — a ring in the wrong
+place, a band too wide, a tint over the whole window — and none of it throws.
+The behaviour fails loudly and structurally: a filter left on an empty screen, a
+pane moved out of a test's DOM, a menu that bends itself.
+
+## `liquidGlassMaps.test.ts` — 25 assertions, unit
+
+Pure functions, no document.
+
+| Group | What it holds | Why it can be wrong without anyone noticing |
+| --- | --- | --- |
+| `bandDepth` | the shoulder, clamped to a quarter of the pane on each axis, floor of 2px | a band wider than the pane reads as a smear, not an edge |
+| `svgDataUri` | the contents pre-multiplied by `devicePixelRatio`; width, height and `viewBox` left in CSS pixels | WebKit rasterises the source in user units into a device-resolution surface; without the transform the ring lands up and to the left of its pane on every scaled desktop |
+| `svgDataUri` | the URI carries no raw `#` | `#` starts a fragment, so an unescaped colour truncates the document and the filter renders nothing |
+| `axisMap` | a `#808080` field everywhere, red ramped on x and green on y, gradients running along their own axis | the displacement map reads x from R and y from G; an axis writing the other channel pushes sideways when it meant up |
+| `axisMap` | one band at each rim, at `x` and at `x + w - depth`, clipped per pane, blurred by a third of the band | a hard-edged band displaces in a step, and the step is a visible seam |
+| `shapeMask` | one white rounded footprint per pane, nothing when none are open | the mask is what clips the frost; a stray shape frosts empty screen |
+| `thickest` | the strongest pane sets the material, ties to the first | otherwise a menu opening over a dialog restyles the dialog under it |
+| `filterMarkup` | `k4="-0.5"` on the axis sum, three passes at `strength ± aberration`, the frost composited `in` the mask and merged over the refraction | any other `k4` tints the whole window rather than leaving it neutral |
+| `DEFAULTS` | the aberration stays well under the strength | the blue pass runs at `strength - aberration`; at or past it the rim inverts |
+
+## `liquidGlass.test.ts` — 16 assertions, DOM
+
+happy-dom, with `getBoundingClientRect` stubbed per element because happy-dom
+has no layout, and a `ResizeObserver` stub because it ships none.
+
+Each test imports the module through `vi.resetModules()` and a dynamic import.
+One filter for the window means module state, and a test inheriting the previous
+test's registry would pass for the wrong reason.
+
+- **Outside the application it does nothing.** No `.lens`, no filter, no stage,
+  no move, and an empty action handle. This is the one that protects the other
+  73 test files in this repository: every component test mounts a component with
+  no shell around it, and an action that reached for a filter target that is not
+  there would change the DOM those tests assert against.
+- **The filter goes on the window, not the pane.** `.lens` gets
+  `url(#liquid-glass-lens)`; the pane gets nothing, and loses its own
+  `backdrop-filter` in both spellings.
+- **A pane inside the lens is moved to the stage**, gets its pointer events back,
+  and the stage is a child of the body. A pane already outside the lens —
+  `DialogHost` — is left exactly where it is.
+- **Two panes share one filter**, each gets a clip of its own (`c0`, `c1`), and
+  the thickest sets the scale.
+- **It lets go.** The last pane closing removes the filter and the host; a second
+  pane still open keeps both. `update` rebuilds at the new strength, and
+  `destroy` unhooks the window listener.
+- **A zero-sized window builds nothing** rather than a filter over no pixels.
+
+## Recorded run
+
+```
+$ npx vitest run
+Test Files  74 passed (74)
+     Tests  1785 passed (1785)
+```
+
+1744 before this item, 1785 after: 41 new assertions, no test changed to
+accommodate the feature.
+
+## Coverage — Amendment 10
+
+Measured over `src/lib/**`, the frontend scope:
+
+| | Before | After |
+| --- | --- | --- |
+| Statements | 84.56% | 85.95% |
+| Branches | 73.12% | 74.41% |
+| Functions | 81.37% | 82.18% |
+| Lines | 83.80% | 85.66% |
+
+`liquidGlass.ts` moved from 0% to 98.64% of statements and 100% of lines.
+`liquidGlassMaps.ts` is fully covered.
+
+The "before" column is the honest one to read: the module existed, uncommitted
+and unwired, at zero coverage. It did not breach the 70% floor — branches had
+3.12 points of headroom — but it was 400 lines of `src/lib` that no test had an
+opinion about, and the floor is a floor rather than a target.
+
+## What is not tested here, and why
+
+That any of it *looks* right. There is no pixel to read: happy-dom does not
+rasterize, and WebKitGTK's `feImage` behaviour is the thing being worked around
+rather than something a test environment can stand in for. The maps are asserted
+as the documents they are, and whether the glass reads as glass is the sweep's
+question — and Amendment 4's, which is why no test in this repository opens a
+window.

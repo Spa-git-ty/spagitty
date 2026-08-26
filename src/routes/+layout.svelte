@@ -242,43 +242,56 @@
 
 <div class="app">
 	<!--
-		The ground the window paints on: flat `--bg`, `aria-hidden` and
-		pointer-transparent, because it is a material property of the window
-		rather than content. It carried the ambient washes until those were
-		taken out, and it stays because FEAT-055 needs it — with the DMABuf
-		renderer off, WebKitGTK keeps painting reliably only on a layer it was
-		given at startup, and without this one the content area stops painting
-		and the desktop shows through the window.
-	-->
-	<div class="ground" aria-hidden="true"></div>
+		Everything a pane of glass can bend (FEAT-057).
 
-	<TitleBar />
-	<!-- Its own row, and absent when nothing is open (FEAT-044). -->
-	<RepoTabs />
-	<Toolbar />
-	<div class="main">
-		<NavRail />
-		<Splitter panel="rail" label="Resize the nav rail" />
+		`.app` carries the window's outline and its cast shadow, both drawn
+		*outside* its border box. A filter clips to that box, so filtering `.app`
+		would cut the window's own edge off for as long as a menu was open.
+		`.lens` is inset inside it and casts nothing, so the filter region can be
+		exactly its box and nothing visible is clipped. `liquidGlass.ts` looks
+		this element up by class.
+	-->
+	<div class="lens">
 		<!--
-			Screens arrive rather than appear (FEAT-053).
-
-			Keyed on the path, so every navigation remounts the screen inside a
-			short upward slide — which is what a rail click already does
-			invisibly. The motion is 140ms and 6px: enough to say "this is a
-			different screen", not enough to wait for. `prefers-reduced-motion`
-			turns it off in `app.css`, along with everything else that moves.
+			The ground the window paints on: flat `--bg`, `aria-hidden` and
+			pointer-transparent, because it is a material property of the window
+			rather than content. It carried the ambient washes until those were
+			taken out, and it stays because FEAT-055 needs it — with the DMABuf
+			renderer off, WebKitGTK keeps painting reliably only on a layer it
+			was given at startup, and without this one the content area stops
+			painting and the desktop shows through the window.
 		-->
-		{#key page.url.pathname}
-			<div class="screen-slot" in:fly={{ y: 6, duration: 140 }}>
-				{@render children()}
-			</div>
-		{/key}
+		<div class="ground" aria-hidden="true"></div>
+
+		<TitleBar />
+		<!-- Its own row, and absent when nothing is open (FEAT-044). -->
+		<RepoTabs />
+		<Toolbar />
+		<div class="main">
+			<NavRail />
+			<Splitter panel="rail" label="Resize the nav rail" />
+			<!--
+				Screens arrive rather than appear (FEAT-053).
+
+				Keyed on the path, so every navigation remounts the screen inside
+				a short upward slide — which is what a rail click already does
+				invisibly. The motion is 140ms and 6px: enough to say "this is a
+				different screen", not enough to wait for. `prefers-reduced-motion`
+				turns it off in `app.css`, along with everything else that moves.
+			-->
+			{#key page.url.pathname}
+				<div class="screen-slot" in:fly={{ y: 6, duration: 140 }}>
+					{@render children()}
+				</div>
+			{/key}
+		</div>
+		<!--
+			The window's own bottom edge (FEAT-043). Outside `.main`, so it spans
+			the rail as well as the screen, and after it, so nothing scrolls over
+			it.
+		-->
+		<StatusStrip />
 	</div>
-	<!--
-		The window's own bottom edge (FEAT-043). Outside `.main`, so it spans the
-		rail as well as the screen, and after it, so nothing scrolls over it.
-	-->
-	<StatusStrip />
 </div>
 
 <!--
@@ -332,7 +345,7 @@
 		flex-direction: column;
 		overflow: hidden;
 		background: var(--bg);
-		/* The ground layer is positioned against this. */
+		/* The lens is positioned against this. */
 		position: relative;
 		border-radius: var(--r-window);
 		outline: 0.2px solid var(--window-edge);
@@ -349,6 +362,30 @@
 				the weight of it is unchanged (FEAT-042).
 			*/
 			0 6px 18px var(--window-cast);
+	}
+
+	/*
+	 * What the glass bends (FEAT-057).
+	 *
+	 * It fills `.app` exactly and draws nothing of its own — no outline, no
+	 * shadow, no background of its own to double the one underneath. That is
+	 * what lets `liquidGlass.ts` put a filter on it: a filter clips to the
+	 * border box, and this box has nothing outside it to lose.
+	 *
+	 * It inherits the window's radius so that a corner stays a corner while the
+	 * filter is on, and it carries the column layout `.app` used to, because a
+	 * filtered element becomes the containing block for its fixed descendants
+	 * and the chrome has to be laid out inside the thing being filtered rather
+	 * than beside it.
+	 */
+	.lens {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		position: relative;
+		border-radius: inherit;
 	}
 
 	/* Square against the screen edge, and nothing to cast a shadow onto. */

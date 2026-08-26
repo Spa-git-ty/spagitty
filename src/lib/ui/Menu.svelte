@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { isEntry, type MenuItem } from '$lib/ui/menu';
+	import { liquidGlass } from '$lib/ui/liquidGlass';
 
 	/**
 	 * A floating menu, positioned at a point.
@@ -127,6 +128,7 @@
 	bind:this={element}
 	class="menu"
 	class:measuring={placed === null}
+	use:liquidGlass
 	style="left: {placed?.left ?? x}px; top: {placed?.top ?? y}px"
 	role="menu"
 	aria-label={label}
