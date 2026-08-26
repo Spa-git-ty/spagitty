@@ -25,11 +25,15 @@ That the removal took nothing with it:
 ```
 $ npx vitest run
 Test Files  72 passed (72)
-     Tests  1744 passed (1744)
+     Tests  1748 passed (1748)
 
 $ npm run check
 1033 FILES 0 ERRORS 0 WARNINGS
 ```
+
+1744 of those are the tree before this item; the other four come from
+`tools/record.test.ts`, which builds a case per document in `agile/` and gained
+one for each of this item's four.
 
 The type check is the useful half: `escapeHatch` and `.foot` were removed along
 with their only reader, and an orphan of either would have been reported.
