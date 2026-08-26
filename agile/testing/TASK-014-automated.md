@@ -64,10 +64,13 @@ No output — no local branch had an upstream, so nothing was left dangling.
 The record test is the one automated check this item can actually fail:
 `tools/record.test.ts` reads `agile/README.md` against the tree and fails on a
 missing row, a row with no document, or a status that disagrees with its item.
-Adding TASK-014 to the index without its four documents fails the suite.
+Adding TASK-014 to the index without its four documents fails the suite. Those
+four documents are also why the count moved: `tools/record.test.ts` builds a
+case per document in `agile/`, so the tree that was 1744 tests before this item
+is 1748 with it.
 
 ```
-npx vitest run    72 files, 1744 tests, all passing
+npx vitest run    72 files, 1748 tests, all passing
 ```
 
 ## Coverage
