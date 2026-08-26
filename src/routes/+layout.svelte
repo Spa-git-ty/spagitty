@@ -35,6 +35,7 @@
 	import { settings as settingsStore } from '$lib/settings/store.svelte';
 	import Splitter from '$lib/ui/Splitter.svelte';
 	import { theme } from '$lib/theme.svelte';
+	import { resumeSession } from '$lib/session';
 	import { workspace } from '$lib/workspace.svelte';
 	import { REPO_CHANGED_EVENT, type RepoChangedEvent } from '$lib/types';
 
@@ -141,47 +142,26 @@
 				// Older backend without the command; not fatal.
 			}
 
-			if (cancelled) return;
-
-			// A path on the command line wins: it is what the person just asked
-			// for, and it is more specific than what they were doing last time.
-			const launch = await api.launchPath();
-			if (launch) {
-				await repo.open(launch);
-				return;
-			}
-
 			/*
-			 * Otherwise, carry on where the last session left off (BUG-013).
+			 * What this launch opens: the path on the command line, or else the
+			 * tab the last session was on, with its route and its selection
+			 * (BUG-013).
 			 *
-			 * `workspace.init()` above restores the tab strip from storage, so
-			 * the window came back with the repository's name across the top —
-			 * but nothing had told the backend to open it. The name was a label
-			 * on an empty session: no HEAD, no counts, no walk, and the only way
-			 * out was the All repositories screen. A tab that says a repository
-			 * is open has to mean it.
-			 *
-			 * The route and selection come back with it, so a restart lands on
-			 * the screen and the commit it was left on.
+			 * The order lives in `$lib/session` rather than here, because a
+			 * missing call in it is exactly the bug that got through, and
+			 * `src/routes/**` is outside the coverage scope — nothing written in
+			 * this file can be asserted on (TASK-019).
 			 */
-			const resume = workspace.active;
-			if (!resume || cancelled) return;
-
-			const place = workspace.placeOf(resume);
-			if (!(await repo.open(resume))) {
-				// Moved, unmounted, or deleted since the session ended. The tab
-				// stays — `repo.error` says what happened, and All repositories
-				// marks it missing — because silently dropping somebody's
-				// workspace is worse than showing them a repository they need to
-				// find again.
-				return;
-			}
-			if (cancelled) return;
-
-			if (place?.route && place.route !== page.url.pathname) await goto(place.route);
-			// After the route: the graph store holds a wanted id across a walk it
-			// cannot see the end of, the same way a tab switch does.
-			if (place?.selected) graph.want(place.selected);
+			await resumeSession({
+				launchPath: api.launchPath,
+				open: (path) => repo.open(path),
+				active: () => workspace.active,
+				placeOf: (path) => workspace.placeOf(path),
+				route: () => page.url.pathname,
+				goto,
+				want: (id) => graph.want(id),
+				cancelled: () => cancelled
+			});
 		})();
 
 		return () => {
