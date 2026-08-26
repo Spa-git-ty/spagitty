@@ -94,7 +94,6 @@
 		border: 1px solid var(--soft);
 		border-radius: var(--r-panel);
 		background-color: var(--surface-veil);
-		background-image: var(--glass-sheen);
 		box-shadow: var(--glass-rim), var(--shadow-1);
 		min-width: 0;
 	}

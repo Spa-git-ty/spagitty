@@ -87,7 +87,6 @@
 	.btn:not(.glow) {
 		border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
 		background-color: var(--surface-veil);
-		background-image: var(--glass-sheen);
 		box-shadow: var(--glass-rim), var(--shadow-1);
 		transition-property: border-color, box-shadow, color, transform, background;
 	}
@@ -131,7 +130,7 @@
 	}
 
 	.btn.primary:not(.glow) {
-		background: var(--grad-accent);
+		background: var(--accent);
 		border-color: color-mix(in srgb, var(--accent-deep) 80%, transparent);
 	}
 
@@ -163,21 +162,13 @@
 	.btn.danger:not(.glow) {
 		color: var(--danger);
 		border-color: color-mix(in srgb, var(--danger) 55%, transparent);
-		background: linear-gradient(
-			180deg,
-			color-mix(in srgb, var(--danger) 10%, var(--surface)),
-			color-mix(in srgb, var(--danger) 16%, var(--surface))
-		);
+		background-color: color-mix(in srgb, var(--danger) 13%, var(--surface));
 	}
 
 	.btn.danger:not(.glow):hover:not(:disabled) {
 		color: var(--danger);
 		border-color: var(--danger);
-		background: linear-gradient(
-			180deg,
-			color-mix(in srgb, var(--danger) 18%, var(--surface)),
-			color-mix(in srgb, var(--danger) 26%, var(--surface))
-		);
+		background-color: color-mix(in srgb, var(--danger) 22%, var(--surface));
 		box-shadow:
 			var(--sheen),
 			0 1px 2px color-mix(in srgb, var(--umbra) 12%, transparent),

@@ -44,7 +44,7 @@
 		   green or red rather than a graph lane, which was cyan on Dracula. */
 		border-left: 3px solid var(--ok);
 		border-radius: var(--r-panel);
-		box-shadow: var(--glass-rim), var(--shadow-3);
+		box-shadow: var(--glass-rim-thick), var(--shadow-3);
 		/* It arrives from the corner it lives in. */
 		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
 		/* A tint of the same colour behind it, so the meaning is carried by more

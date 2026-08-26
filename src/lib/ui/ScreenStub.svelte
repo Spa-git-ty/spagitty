@@ -77,7 +77,6 @@
 	   `app.css`, size and layout here. */
 	.card {
 		background-color: var(--surface-veil);
-		background-image: var(--glass-sheen);
 		border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
 		border-radius: var(--r-panel);
 		box-shadow: var(--glass-rim), var(--shadow-1);

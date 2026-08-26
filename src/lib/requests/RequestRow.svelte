@@ -50,7 +50,6 @@
 	.row {
 		list-style: none;
 		background-color: var(--surface-veil);
-		background-image: var(--glass-sheen);
 		border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
 		border-radius: var(--r-panel);
 		box-shadow: var(--glass-rim), var(--shadow-1);
@@ -85,7 +84,7 @@
 	   full accent border, which on a list reads as an error. */
 	.row.open {
 		background: linear-gradient(90deg, var(--accent-soft), transparent 60%),
-			var(--grad-surface);
+			var(--surface);
 		border-color: color-mix(in srgb, var(--accent) 45%, var(--soft));
 		box-shadow: var(--sheen), var(--shadow-1);
 	}

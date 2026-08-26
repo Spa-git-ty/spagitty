@@ -111,6 +111,7 @@ rather than an audit.
 | [FEAT-054](items/FEAT-054-update-check.md) | Tell people when there is a newer Spagitty | 1K | Done |
 | [FEAT-056](items/FEAT-056-hide-the-detail-panel.md) | The detail panel can be put away | 1A, 1H | Done |
 | [FEAT-055](items/FEAT-055-the-window-paints-on-the-path-that-works.md) | The window paints on the path that works | — | Done |
+| [FEAT-057](items/FEAT-057-liquid-glass.md) | Liquid glass: the pane that bends what is behind it | all | Done |
 
 ## Bugs
 

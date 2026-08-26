@@ -977,7 +977,7 @@
 		font-family: var(--font-mono);
 		font-size: var(--fs-mono);
 		color: var(--muted);
-		background: var(--grad-surface);
+		background: var(--surface);
 		box-shadow: var(--sheen);
 		flex: none;
 	}

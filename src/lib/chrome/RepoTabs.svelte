@@ -175,7 +175,6 @@
 		align-items: stretch;
 		padding: 4px 10px 0;
 		background-color: var(--chrome-veil);
-		background-image: var(--glass-sheen);
 		border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 	}
 

@@ -89,6 +89,29 @@ Maximizing drops all of it, because a floating card with a gap around it is a
 window that does not fit its own screen. CSS cannot ask Tauri its state, so
 `appWindow.watchMaximized()` publishes it as `data-window` on the root element.
 
+**The chrome is glass, and thick glass bends light** (FEAT-057). Every bar,
+rail, menu and dialog is a frosted pane; the panes that float — menus and
+dialogs — also refract, so the application behind them is pushed outward toward
+each rim and the colour splits a little where the bend is sharpest.
+
+It is not done the way the web does it. `backdrop-filter: url(#filter)` is what
+every published recreation of this effect uses, and **WebKitGTK renders nothing
+for it**: the declaration parses, `CSS.supports` answers yes, and the pane comes
+out identical to one with no filter. So the filter goes on the other side of the
+glass — an ordinary `filter` on the application underneath, displacing it in a
+ring the exact shape of each pane. What bends around a menu is the actual commit
+list, actually displaced.
+
+Two things follow from that, and they are visible in the markup. The filtered
+element is `.lens`, a wrapper inside `.app`: `.app` carries the window's outline
+and cast shadow, both drawn outside its border box, and a filter clips to that
+box — filtering `.app` would cut the window's own edge off for as long as a menu
+was open. And a pane cannot be inside what it bends, so a menu raised deep in a
+screen is moved to a window-sized stage of its own. The arithmetic is in
+`src/lib/ui/liquidGlassMaps.ts`, tested without a window; the measuring and the
+registry are in `src/lib/ui/liquidGlass.ts`, which does nothing at all when
+there is no `.lens` to filter — which is every component test.
+
 **Every panel resizes.** `PANELS` in `src/lib/panels.svelte.ts` is the registry —
 each panel names its CSS variable, the edge it is anchored to, and its range —
 and `Splitter` takes any key. The anchored edge is what decides the drag

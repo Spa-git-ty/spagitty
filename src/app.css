@@ -245,30 +245,7 @@
 	/* The catch of light along the top edge of a raised surface. */
 	--sheen: inset 0 1px 0 color-mix(in srgb, #fff 62%, transparent);
 
-	/* Chrome, cards, and a filled accent control. */
-	--grad-chrome: linear-gradient(
-		180deg,
-		color-mix(in srgb, var(--panel) 80%, #fff) 0%,
-		var(--panel) 100%
-	);
-	--grad-surface: linear-gradient(
-		180deg,
-		color-mix(in srgb, var(--surface) 86%, #fff) 0%,
-		var(--surface) 100%
-	);
-	--grad-accent: linear-gradient(180deg, var(--accent-lift) 0%, var(--accent-deep) 100%);
-
-	/* The rail runs the length of the window, so its gradient falls further
-	   than a bar's: light at the top, the panel colour through the middle, a
-	   shade of the shadow at the foot. */
-	--grad-rail: linear-gradient(
-		180deg,
-		color-mix(in srgb, var(--panel) 88%, #fff) 0%,
-		var(--panel) 55%,
-		color-mix(in srgb, var(--panel) 96%, var(--umbra) 4%) 100%
-	);
-
-	/* Accent derivatives. The fill's two ends, its tints, its halo. */
+	/* Accent derivatives. Its tints and its halo. */
 	--accent-lift: color-mix(in srgb, var(--accent) 90%, #fff);
 	--accent-deep: color-mix(in srgb, var(--accent) 88%, #000);
 	--accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -333,25 +310,8 @@
 
 	--sheen: inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent);
 
-	--grad-chrome: linear-gradient(
-		180deg,
-		color-mix(in srgb, var(--panel) 92%, var(--ink) 9%) 0%,
-		var(--panel) 100%
-	);
-	--grad-surface: linear-gradient(
-		180deg,
-		color-mix(in srgb, var(--surface) 92%, var(--ink) 7%) 0%,
-		var(--surface) 100%
-	);
-	--grad-rail: linear-gradient(
-		180deg,
-		color-mix(in srgb, var(--panel) 94%, var(--ink) 6%) 0%,
-		var(--panel) 55%,
-		color-mix(in srgb, var(--panel) 92%, #000) 100%
-	);
-
-	/* A light accent needs its gradient to *darken* downward far less, or the
-	   bottom of the button goes muddy against pale text. */
+	/* A light accent needs its border to *darken* far less, or the bottom edge
+	   goes muddy against pale text. */
 	--accent-lift: color-mix(in srgb, var(--accent) 94%, #fff);
 	--accent-deep: color-mix(in srgb, var(--accent) 82%, #000);
 	--accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
@@ -368,9 +328,9 @@
  * Every bar, rail, menu and dialog is a pane of frosted glass laid over the
  * application: it takes its colour from whatever is behind it, blurs it,
  * saturates it a little so the colour survives the blur, and catches the light
- * along its top edge. That is the whole trick — a glass pane that does not
- * *refract* anything is just a translucent rectangle, which is why the ambient
- * light layer below exists.
+ * along its top edge. The thick grades go further and *bend* what is behind
+ * them at the rim — see `liquidGlass.ts` — because a pane that refracts nothing
+ * is a translucent rectangle no matter how well it is tinted.
  *
  * Three grades:
  *
@@ -399,28 +359,30 @@
 	 * Linux, that is the difference between a window that resizes with the
 	 * pointer and one that lags behind it.
 	 *
-	 * A veil is the same tint with no blur: translucent enough to pick up the
-	 * ambient light behind it, free to composite. Blur is kept for the five
-	 * things that actually float over content and are on screen one at a time —
-	 * the menu, the dialog, the palette, the toast and the command log.
+	 * A veil is the same tint with no blur: translucent enough that the screen
+	 * behind it still shows through, and free to composite. Blur is kept for
+	 * the five things that actually float over content and are on screen one at
+	 * a time — the menu, the dialog, the palette, the toast and the command
+	 * log.
 	 */
 	--chrome-veil: color-mix(in srgb, var(--panel) 88%, transparent);
 	--surface-veil: color-mix(in srgb, var(--surface) 90%, transparent);
 
 	/*
 	 * Blur radius is what a blur costs — the kernel is applied per pixel, so a
-	 * 34px blur is not a little more expensive than an 18px one. These are as
-	 * wide as they can be while a menu still reads as frosted.
+	 * 34px blur is not a little more expensive than an 18px one. They are wide,
+	 * because thin glass is the one thing that reads as cheap: a menu you can
+	 * still read the commit list through is a tinted rectangle, not a pane. The
+	 * budget is spent on there being *few* blurred panes rather than on each of
+	 * them being timid.
 	 *
 	 * The saturation does the "liquid" work: a frosted pane that only blurs
 	 * reads as grey plastic, while one that *pulls* the colour behind it
-	 * forward reads as something wet. The numbers are pushed well past what a
-	 * screenshot needs because the ambient field underneath is quiet — the
-	 * glass is where the colour concentrates.
+	 * forward reads as something wet.
 	 */
-	--blur-thin: blur(10px) saturate(180%);
-	--blur: blur(14px) saturate(200%);
-	--blur-thick: blur(18px) saturate(210%);
+	--blur-thin: blur(16px) saturate(180%);
+	--blur: blur(24px) saturate(200%);
+	--blur-thick: blur(32px) saturate(210%);
 
 	/*
 	 * The edge of a pane of glass — thick enough to bend light.
@@ -445,27 +407,47 @@
 		inset 0 -9px 14px -11px color-mix(in srgb, var(--umbra) 16%, transparent);
 
 	/*
-	 * The specular highlight that pools on a pane. Painted as a background
-	 * layer rather than a pseudo-element so it works on elements that already
-	 * have children stacked over them.
+	 * The same edge, for glass that is actually thick — the menu, the dialog,
+	 * the palette, the toast, the command log.
 	 *
-	 * A round pool in the corner rather than a straight band across the middle:
-	 * light gathers where a curved surface turns toward it, and an even
-	 * diagonal stripe is what a plastic case does. A second, fainter wash along
-	 * the trailing edge keeps the far corner from going dead.
+	 * Real thick glass refracts: what is behind it is displaced outward toward
+	 * the rim, hardest in the band where the shoulder curves away. WebKitGTK
+	 * cannot do that — it parses `backdrop-filter: url(#filter)` and renders
+	 * nothing for it, so an SVG displacement map is not on the table, and the
+	 * WebGL approach the reference implementations take would mean
+	 * re-rasterising the DOM every frame for a window that also draws a commit
+	 * graph.
+	 *
+	 * So the shoulder is drawn instead of computed, as a deeper, wider version
+	 * of the rim above: light entering across the top of the band, the pane's
+	 * own weight pooling under the bottom of it, and a soft return up each
+	 * side. Insets follow `border-radius`, which is why this is box-shadow and
+	 * not a background gradient — a gradient goes straight across a rounded
+	 * corner and the illusion dies there.
 	 */
-	--glass-sheen:
-		radial-gradient(
-			130% 80% at 16% 0%,
-			color-mix(in srgb, #fff 22%, transparent) 0%,
-			color-mix(in srgb, #fff 6%, transparent) 38%,
-			transparent 62%
-		),
-		linear-gradient(
-			250deg,
-			transparent 55%,
-			color-mix(in srgb, #fff 9%, transparent) 100%
-		);
+	--glass-rim-thick:
+		inset 0 1px 0 color-mix(in srgb, #fff 70%, transparent),
+		inset 0 0 0 1px color-mix(in srgb, #fff 16%, transparent),
+		inset 0 10px 18px -12px color-mix(in srgb, #fff 46%, transparent),
+		inset 7px 0 16px -14px color-mix(in srgb, #fff 34%, transparent),
+		inset -7px 0 16px -14px color-mix(in srgb, #fff 22%, transparent),
+		inset 0 -1px 0 var(--glass-edge-low),
+		inset 0 -13px 20px -14px color-mix(in srgb, var(--umbra) 26%, transparent);
+
+	/*
+	 * The light that bends *through* a pane, not off it.
+	 *
+	 * Kept as a token because the rim treatments are built from it, but no
+	 * surface paints it as a wash any more: corner pools and diagonal stripes
+	 * are gloss, which is the tell of a plastic case rather than a material.
+	 * One very quiet lift toward the upper edge, gone by a third of the way
+	 * down, is all the pane gets.
+	 */
+	--glass-sheen: linear-gradient(
+		172deg,
+		color-mix(in srgb, #fff 7%, transparent) 0%,
+		transparent 34%
+	);
 }
 
 /*
@@ -493,18 +475,20 @@
 		inset 0 -1px 0 var(--glass-edge-low),
 		inset 0 -9px 14px -11px color-mix(in srgb, #000 26%, transparent);
 
-	--glass-sheen:
-		radial-gradient(
-			130% 80% at 16% 0%,
-			color-mix(in srgb, #fff 9%, transparent) 0%,
-			color-mix(in srgb, #fff 2%, transparent) 38%,
-			transparent 62%
-		),
-		linear-gradient(
-			250deg,
-			transparent 55%,
-			color-mix(in srgb, #fff 4%, transparent) 100%
-		);
+	--glass-rim-thick:
+		inset 0 1px 0 color-mix(in srgb, #fff 24%, transparent),
+		inset 0 0 0 1px color-mix(in srgb, #fff 6%, transparent),
+		inset 0 10px 18px -12px color-mix(in srgb, #fff 16%, transparent),
+		inset 7px 0 16px -14px color-mix(in srgb, #fff 12%, transparent),
+		inset -7px 0 16px -14px color-mix(in srgb, #fff 7%, transparent),
+		inset 0 -1px 0 var(--glass-edge-low),
+		inset 0 -13px 20px -14px color-mix(in srgb, #000 40%, transparent);
+
+	--glass-sheen: linear-gradient(
+		172deg,
+		color-mix(in srgb, #fff 4%, transparent) 0%,
+		transparent 32%
+	);
 }
 
 /*
@@ -518,7 +502,6 @@
 .glass,
 .glass-thin,
 .glass-thick {
-	background-image: var(--glass-sheen);
 	box-shadow: var(--glass-rim);
 	border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 }
@@ -669,7 +652,6 @@ a {
  */
 .card {
 	background-color: var(--surface-veil);
-	background-image: var(--glass-sheen);
 	border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
 	border-radius: var(--r-panel);
 	box-shadow: var(--glass-rim), var(--shadow-1);
@@ -689,7 +671,6 @@ a {
    toasts, the command palette. */
 .floating {
 	background-color: var(--glass-thick);
-	background-image: var(--glass-sheen);
 	backdrop-filter: var(--blur-thick);
 	-webkit-backdrop-filter: var(--blur-thick);
 	border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
@@ -819,12 +800,12 @@ input[type='radio'] {
 	background: transparent;
 }
 
-/* --- The moving glow -----------------------------------------------------
+/* --- The travelling glow -------------------------------------------------
  *
  * A light that travels around the edge of a primary action, plus a halo that
- * breathes. It marks the one control on a screen that is the thing to do next,
- * and it is applied by `.glow` rather than by a component's own stylesheet so
- * that "important" stays a single decision made in one place.
+ * sits still behind it. It marks the one control on a screen that is the thing
+ * to do next, and it is applied by `.glow` rather than by a component's own
+ * stylesheet so that "important" stays a single decision made in one place.
  *
  * The travelling part is a conic gradient painted into the border ring:
  * `border-box` for the gradient, `padding-box` for the fill, and a transparent
@@ -832,11 +813,18 @@ input[type='radio'] {
  * a parent not having made a stacking context — which is the failure mode of
  * every `::before { z-index: -1 }` version of this effect.
  *
+ * The shape of the gradient is what decides whether it reads as light or as a
+ * radar sweep. A bright head followed by a long ramp back down to the accent
+ * gives the head a hard leading edge and a tail behind it, which is a sweeping
+ * pointer. The stops here are symmetric instead: the ring eases up to the head
+ * over a third of a turn and eases back down over the same distance, so there
+ * is no edge anywhere on it — one soft bright patch drifting round the border.
+ *
  * `@property` is what makes an angle animatable at all; without the
  * registration the browser treats `--glow-angle` as an unanimatable string and
  * the gradient simply sits still. That is the intended degradation: a browser
- * without `@property` gets a static accent ring and the breathing halo, not a
- * broken button.
+ * without `@property` gets a static accent ring and the halo, not a broken
+ * button.
  */
 
 @property --glow-angle {
@@ -851,44 +839,49 @@ input[type='radio'] {
 	}
 }
 
-/*
- * The halo, held still.
- *
- * It used to breathe — `box-shadow` animated from nothing to a 12px blur and
- * back, sixty times a second, forever, on a button that is on screen the whole
- * session. A blurred shadow is rasterized on the CPU in this window, so that
- * was a Gaussian blur per frame for an effect the eye reads as "it glows"
- * either way. The travelling light still travels; the halo is now simply there.
- */
-
 .glow {
 	/*
-	 * The bright head of the travelling light. Derived from the accent rather
-	 * than being its own colour, so every theme gets a glow that belongs to it.
+	 * The bright head of the travelling light, and the halo behind it. Derived
+	 * from the accent rather than being their own colours, so every theme gets
+	 * a glow that belongs to it.
 	 */
-	--glow-halo: color-mix(in srgb, var(--accent) 45%, transparent);
-	--glow-head: color-mix(in srgb, var(--accent) 30%, white);
+	--glow-halo: color-mix(in srgb, var(--accent) 40%, transparent);
+	--glow-head: color-mix(in srgb, var(--accent) 45%, white);
 
 	position: relative;
 	border: 2px solid transparent;
 	/*
-	 * The fill is a gradient now rather than a flat accent — a light top edge
-	 * falling to a darker bottom, which is what makes a filled control read as
-	 * a raised object rather than a coloured rectangle. The conic ring is
-	 * unchanged and still travels over it.
+	 * The fill is a flat accent — the ring is the effect, and a shaded fill
+	 * under it reads as gloss. The colour has to be the *last* layer:
+	 * `background` only accepts a colour in the final layer, and an accent in
+	 * the first one invalidates the whole declaration — no fill, and
+	 * `--on-accent` text straight onto the page.
 	 */
 	background:
-		var(--grad-accent) padding-box,
 		conic-gradient(
 				from var(--glow-angle),
 				var(--accent) 0turn,
-				var(--glow-head) 0.12turn,
-				var(--accent) 0.3turn,
+				var(--accent) 0.18turn,
+				var(--glow-head) 0.5turn,
+				var(--accent) 0.82turn,
 				var(--accent) 1turn
 			)
-			border-box;
+			border-box,
+		var(--accent) padding-box;
+	/*
+	 * The halo is held still. It used to breathe — `box-shadow` animated from
+	 * nothing to a 12px blur and back, sixty times a second, forever, on a
+	 * button that is on screen the whole session. A blurred shadow is
+	 * rasterized on the CPU in this window, so that was a Gaussian blur per
+	 * frame for an effect the eye reads as "it glows" either way.
+	 */
 	box-shadow: 0 0 10px 1px var(--glow-halo);
-	animation: glow-travel 3.2s linear infinite;
+	/*
+	 * Slow enough that the head drifts rather than sweeps. At the old 3.2s a
+	 * lap the eye tracked it as a moving object and kept being pulled back;
+	 * at this speed it is a change in the light on the button.
+	 */
+	animation: glow-travel 7s linear infinite;
 }
 
 /* A control that cannot be pressed is not the thing to do next. */
@@ -900,32 +893,30 @@ input[type='radio'] {
 }
 
 /*
- * Respected without exception. A pulsing, rotating light in the corner of the
- * eye is exactly what this setting exists to stop, and the button is still
- * clearly the primary one without it — it keeps the accent fill and a static
- * ring.
+ * Respected without exception. A light moving in the corner of the eye is
+ * exactly what this setting exists to stop, and the button is still clearly the
+ * primary one without it — it keeps the accent fill and a static ring.
  */
 @media (prefers-reduced-motion: reduce) {
 	.glow {
 		animation: none;
 		background:
-			var(--grad-accent) padding-box,
-			linear-gradient(var(--glow-head), var(--accent)) border-box;
+			linear-gradient(var(--glow-head), var(--accent)) border-box,
+			var(--accent) padding-box;
 	}
 }
 
 
-/* --- The light behind the glass -------------------------------------------
+/* --- What is behind the glass ---------------------------------------------
  *
- * A pane with nothing behind it is a grey rectangle, so the application sits on
- * a field of coloured light — wide radial washes in the theme's own accent and
- * lane colours, at an alpha low enough that on its own it reads as a very
- * slightly uneven background.
+ * The flat theme background, and the application's own content. There was a
+ * field of coloured washes here — the glass was given something to be a lens
+ * *of* — and it was removed: on a working window it read as a stain under the
+ * chrome rather than as light in a room, and a git client is looked at all day.
  *
- * It is painted inside `.app` rather than on `body`: `body` is the transparent
- * margin the window's shadow falls into, and anything painted there would be a
- * coloured halo around the window on the desktop. It is static — see the note
- * in `+layout.svelte` for why it stopped moving.
+ * What is left is `.ground` in `+layout.svelte`: one flat, promoted layer of
+ * `--bg`. It is not decoration — see FEAT-055 for why the window needs a layer
+ * that always paints.
  */
 
 /* Something arriving: up, in, and settling — from far enough below that the
@@ -968,8 +959,7 @@ input[type='radio'] {
  * Motion is a preference, and it is honoured everywhere at once rather than by
  * each component remembering to.
  *
- * The ambient field stops drifting, entrances stop moving, and everything that
- * transitions does so instantly. The interface still works and still says the
+ * Entrances stop moving and everything that transitions does so instantly. The interface still works and still says the
  * same things — it just stops moving while it does.
  */
 @media (prefers-reduced-motion: reduce) {

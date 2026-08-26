@@ -8,6 +8,7 @@
 	 */
 	import Btn from '$lib/ui/Btn.svelte';
 	import { dialog } from '$lib/ui/dialog.svelte';
+	import { liquidGlass } from '$lib/ui/liquidGlass';
 
 	/**
 	 * The one confirmation and prompt dialog, mounted by the shell.
@@ -46,6 +47,7 @@
 	>
 		<div
 			class="panel"
+			use:liquidGlass
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="dialog-title"
@@ -106,12 +108,11 @@
 		gap: 10px;
 		padding: 16px;
 		background-color: var(--glass-thick);
-		background-image: var(--glass-sheen);
 		backdrop-filter: var(--blur-thick);
 		-webkit-backdrop-filter: var(--blur-thick);
 		border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		border-radius: var(--r-panel);
-		box-shadow: var(--glass-rim), var(--shadow-3);
+		box-shadow: var(--glass-rim-thick), var(--shadow-3);
 		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
 	}
 

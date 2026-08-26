@@ -108,7 +108,6 @@
 		border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
 		border-radius: var(--r-panel);
 		background-color: var(--surface-veil);
-		background-image: var(--glass-sheen);
 		box-shadow: var(--glass-rim), var(--shadow-1);
 		transition:
 			box-shadow var(--t-slow) var(--ease),
@@ -139,15 +138,13 @@
 	   also what "this one is open" uses, so the two were indistinguishable. */
 	.card.missing {
 		border-color: color-mix(in srgb, var(--danger) 55%, var(--soft));
-		background: linear-gradient(180deg, var(--danger-soft), transparent 60%),
-			var(--grad-surface);
+		background-color: color-mix(in srgb, var(--danger) 7%, var(--surface));
 	}
 
 	/* The one open right now. */
 	.card.open {
 		border-color: color-mix(in srgb, var(--accent) 55%, var(--soft));
-		background: linear-gradient(180deg, var(--accent-soft), transparent 70%),
-			var(--grad-surface);
+		background-color: color-mix(in srgb, var(--accent) 7%, var(--surface));
 		box-shadow:
 			var(--sheen),
 			var(--shadow-2);

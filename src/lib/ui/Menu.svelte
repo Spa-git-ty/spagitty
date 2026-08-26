@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { isEntry, type MenuItem } from '$lib/ui/menu';
+	import { liquidGlass } from '$lib/ui/liquidGlass';
 
 	/**
 	 * A floating menu, positioned at a point.
@@ -127,6 +128,7 @@
 	bind:this={element}
 	class="menu"
 	class:measuring={placed === null}
+	use:liquidGlass
 	style="left: {placed?.left ?? x}px; top: {placed?.top ?? y}px"
 	role="menu"
 	aria-label={label}
@@ -173,12 +175,11 @@
 		max-width: 340px;
 		padding: 5px;
 		background-color: var(--glass-thick);
-		background-image: var(--glass-sheen);
 		backdrop-filter: var(--blur-thick);
 		-webkit-backdrop-filter: var(--blur-thick);
 		border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		border-radius: var(--r-panel);
-		box-shadow: var(--glass-rim), var(--shadow-3);
+		box-shadow: var(--glass-rim-thick), var(--shadow-3);
 		outline: none;
 		/* It appears at the pointer, so it grows from where it was asked for
 		   rather than fading in from nowhere. */
