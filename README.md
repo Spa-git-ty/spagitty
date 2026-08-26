@@ -8,10 +8,15 @@ pick/squash/reword/drop, ours/theirs — with no invented vocabulary.
 
 ## Status
 
-Early. The application chrome and the Graph, Diff, Working copy, Conflicts,
-Branches, Stash, Log search, Interactive rebase, Pull requests and All
-repositories screens are implemented; the remaining screens are placeholders
-being built one at a time. Nothing in Spagitty talks to a network.
+Early, but no longer partial: every screen in the design handoff is built, and
+so are the Reflog and Tags screens that came out of the gap analysis afterwards.
+[docs/screens.md](docs/screens.md) is the authority on each one.
+
+**One screen reaches a network, and only one.** Pull requests reads from a host
+the user connected themselves, with a token they issued, through the Rust core
+— the webview links no HTTP client and never holds the token. Everything else
+in Spagitty reads the disk. No repository contents, no paths, no commit
+messages and no telemetry leave the machine.
 
 ## Stack
 

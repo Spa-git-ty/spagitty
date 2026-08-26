@@ -151,6 +151,7 @@ of its own.
 | [TASK-011](items/TASK-011-secret-scanning-never-ran.md) | Secret scanning has never run | — | Done |
 | [TASK-012](items/TASK-012-record-drift.md) | The working record has drifted from the tree | — | Done |
 | [TASK-013](items/TASK-013-backfill-document-sets.md) | Backfill the missing plan and testing documents | — | Done |
+| [TASK-015](items/TASK-015-document-drift.md) | The documents describe a Spagitty that no longer exists | — | Done |
 
 ## Skipped identifiers
 
