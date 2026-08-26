@@ -20,6 +20,12 @@
 	 * Continue is offered only when the list is empty. git refuses it otherwise
 	 * and says so clearly, but a button that is live for the whole time it
 	 * cannot work reads as broken rather than as guarded.
+	 *
+	 * There is no footer (BUG-014). It carried one sentence — that the screen
+	 * only reads and resolving was not built — which stopped being true when
+	 * FEAT-016 landed, and an escape-hatch command that Abort in the header now
+	 * runs. Both were duplicated by the header, and a footer that repeats the
+	 * header is what TASK-008 took off Branches.
 	 */
 
 	onMount(() => {
@@ -27,11 +33,6 @@
 	});
 
 	const kind = $derived(conflicts.sides?.kind ?? 'bothModified');
-
-	/** What the user would type to get out, named after the real operation. */
-	const escapeHatch = $derived(
-		conflicts.operation === 'none' ? null : `git ${conflicts.operationLabel} --abort`
-	);
 </script>
 
 <div class="screen">
@@ -143,14 +144,6 @@
 			</details>
 		{/if}
 	</div>
-
-	<footer class="foot">
-		<span class="note">
-			This screen only reads; resolving is not built yet.{#if escapeHatch}
-				Today, <span class="mono">{escapeHatch}</span> is what undoes the operation.
-			{/if}
-		</span>
-	</footer>
 </div>
 
 <style>
@@ -243,16 +236,5 @@
 		flex-direction: column;
 		gap: 8px;
 		max-width: 520px;
-	}
-
-	.foot {
-		flex: none;
-		padding: 8px 12px;
-		background-color: var(--chrome-veil);
-		background-image: var(--glass-sheen);
-		border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
-		box-shadow: 0 -1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
-		position: relative;
-		z-index: 1;
 	}
 </style>

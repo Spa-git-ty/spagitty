@@ -129,6 +129,7 @@ rather than an audit.
 | [BUG-010](items/BUG-010-case-insensitive-shadowing.md) | A component and its store differ only by case | — | Fixed |
 | [BUG-011](items/BUG-011-tls-provider-never-selected.md) | The first HTTPS request kills the process | 1H, 1K | Fixed |
 | [BUG-012](items/BUG-012-network-freezes-the-window.md) | A network request freezes the window | 1H, 1K | Fixed |
+| [BUG-014](items/BUG-014-conflicts-footer-says-resolving-is-not-built.md) | The Conflicts screen says resolving is not built | 1D | Fixed |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
 report, reopened on a corrected diagnosis, and BUG-009's own document keeps the

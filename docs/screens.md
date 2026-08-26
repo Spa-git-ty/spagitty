@@ -225,7 +225,7 @@ not built.
 ## 1D — Conflicts
 
 **Built.** `src/routes/conflicts/+page.svelte`, `src/lib/conflicts/`.
-Resolution writes are deferred to FEAT-016.
+It resolves as well as reads, since FEAT-016.
 
 Ours, the merged result and theirs, side by side, with the common ancestor
 behind a disclosure. The three come from the index: when git cannot merge two
@@ -243,10 +243,17 @@ inferred from the presence of conflicts. Merge, rebase, cherry-pick and revert
 all leave conflicts behind, and naming the wrong one sends someone to the wrong
 command to get out.
 
-Nothing on this screen writes — not the module, not the commands, not the
-markup. There is a test that reads the index's modification time either side of
-visiting every conflicted file. Mark resolved and Abort render disabled with
-FEAT-016 named on each.
+**Reading still never writes**, and that is held by a test: `conflicts.rs`
+takes the index's modification time either side of visiting every conflicted
+file, and fails if a status walk rewrote it or left a lock behind. Resolving is
+the only thing that writes, and it is always something the user asked for.
+
+Three ways out of a file — take a whole side, take one marker region, or type
+into the merged pane — each followed by an explicit `git add`, so the index says
+what the screen says. Two ways out of the operation, both in the header:
+Continue, live only once nothing is conflicted, and Abort, whose confirmation
+names what comes back for the operation being abandoned rather than pointing
+vaguely at the reflog.
 
 ## 1E — Interactive rebase
 
