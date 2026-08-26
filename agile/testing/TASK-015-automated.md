@@ -14,7 +14,7 @@ cited identifier that resolves to nothing.
 ```
 $ npx vitest run tools/record.test.ts
 Test Files  1 passed (1)
-     Tests  320 passed (320)
+     Tests  324 passed (324)
 ```
 
 That is the check that caught the drift this item's predecessors fixed
@@ -48,8 +48,12 @@ Run to prove a documentation change touched nothing else:
 ```
 $ npx vitest run
 Test Files  72 passed (72)
-     Tests  1740 passed (1740)
+     Tests  1748 passed (1748)
 ```
+
+Both counts move with this item rather than despite it: `tools/record.test.ts`
+builds a case per document in `agile/`, so its own total went from 320 to 324
+and the suite's from 1744 to 1748 when this item's four documents landed.
 
 ## Coverage
 
