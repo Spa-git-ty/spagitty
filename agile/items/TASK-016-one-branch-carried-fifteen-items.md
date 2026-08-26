@@ -83,16 +83,19 @@ destructive git operations by intent, and this would be one.
 **It records where everything landed**, above, so the join between an item and
 its code survives the branch name being wrong.
 
-**It sets the rule going forward, and today already follows it.** Six items were
-worked in the session that wrote this document — two tasks, three bugs and one
-feature — and each has its own branch, cut from `356142f`, carrying one or two
-commits and nothing else:
+**It sets the rule going forward, and today already follows it.** Nine items
+were worked in the session that wrote this document — five tasks, three bugs and
+one feature — and each has its own branch, cut from `356142f`, carrying one or
+two commits and nothing else:
 
 ```sh
 git branch --list --no-merged 356142f
 ```
 
-None of them stacks on another. Each can be reviewed, merged or dropped alone,
+That listing also shows one `archive/` branch, which is not an item: it holds a
+commit that a removed remote was the only reference to.
+
+None of the nine stacks on another. Each can be reviewed, merged or dropped alone,
 which is the whole point of the amendment. Their identifiers are not printed
 here: each lives on a branch of its own, and a document that cited them would
 resolve only after all six had merged.
