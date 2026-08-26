@@ -2,13 +2,13 @@
 
 # TASK-017 — Seventy-one commits with no path back to `main`
 
-**Status:** Backlog.
+**Status:** Open on `task/TASK-017-flow-restore`.
 **Raised by:** a review of the repository against Amendment 14.
 
-Backlog items carry an item document only; the plan and testing documents are
-written when the work begins, because a plan written before the work is a guess
-rather than a record. What follows is the shape of the work and the questions
-that have to be answered before it starts — not the plan.
+This was Backlog, with an item document and nothing else, because four of its
+decisions were the author's and none of them had been made. They have been
+answered now, so the plan and the testing documents are written and the work is
+under way. The answers are recorded below in place of the questions.
 
 ## Problem
 
@@ -56,22 +56,24 @@ conflicts, and the whole history is a fast-forward away from being integrated.
    `release/` branch if stabilisation is needed.
 5. `main` is tagged, and the tag carries release notes.
 
-## What the author has to decide before any of it starts
+## What the author decided
 
-These are the reason this is Backlog rather than Open. Each is Amendment 8's
-author-owned kind: nothing in the code answers them.
+Each of these was Amendment 8's author-owned kind: nothing in the code answered
+them. All four were answered in the session that opened this item.
 
-1. **Does the whole stack go in as one pull request, or in pieces?** One is
-   honest about how the work was done and is unreviewable. Pieces mean
-   reconstructing an order that was never separated — see the item that maps the stack on why that
-   is not free.
-2. **What is the first version?** The manifests say `0.1.0`. A first tag on
-   `main` is a claim about readiness that only the author can make.
-3. **Do the four unrecorded release-plumbing commits get items first**, or does
-   the merge carry them and the record follow? They are named in the item that
-   maps the stack.
-4. **Branch protection**: who may merge, and does the author want the agent able
-   to open pull requests at all, given Amendment 14 says it never merges its own.
+1. **The whole stack goes in as one pull request.** Not in pieces. It is honest
+   about how the work was done, and reconstructing an order that was never
+   separated would cost more than the review gains.
+2. **Numbering restarts at `0.1.0`** and climbs from there. Every manifest
+   already says `0.1.0`, so nothing is bumped for this; the first tag on `main`
+   is the author's to make.
+3. **The old release plumbing gets no items.** The draft branch and the two
+   preview tags on the remote were a one-off ask and are ignored rather than
+   recorded. They are left exactly where they are — Amendment 14 forbids moving
+   a tag, and neither collides with `v0.1.0`.
+4. **Branch protection.** The agent may open pull requests and merge into any
+   branch **except `main`**. `main` is the author's alone: no push, no pull
+   request, no merge and no tag there without them.
 
 ## Non-scope
 
@@ -85,3 +87,7 @@ exists, and the task that mapped where each item on the stack landed — worth
 having before anyone tries to review 71 commits. Both are recorded on branches
 of their own, so their identifiers are written into this item when the branches
 meet rather than cited into a tree that cannot resolve them.
+
+This branch is also where they meet: it is the integration branch, because
+merging the stack together **is** this item's work. Every other item's branch is
+merged into it, and the single pull request is opened from it.

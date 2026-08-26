@@ -151,7 +151,7 @@ of its own.
 | [TASK-011](items/TASK-011-secret-scanning-never-ran.md) | Secret scanning has never run | — | Done |
 | [TASK-012](items/TASK-012-record-drift.md) | The working record has drifted from the tree | — | Done |
 | [TASK-013](items/TASK-013-backfill-document-sets.md) | Backfill the missing plan and testing documents | — | Done |
-| [TASK-017](items/TASK-017-the-flow-has-no-path-back-to-main.md) | Seventy-one commits with no path back to `main` | — | Backlog |
+| [TASK-017](items/TASK-017-flow-restore.md) | Seventy-one commits with no path back to `main` | — | Open |
 
 ## Skipped identifiers
 
