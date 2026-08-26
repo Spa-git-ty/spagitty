@@ -130,6 +130,7 @@ rather than an audit.
 | [BUG-011](items/BUG-011-tls-provider-never-selected.md) | The first HTTPS request kills the process | 1H, 1K | Fixed |
 | [BUG-012](items/BUG-012-network-freezes-the-window.md) | A network request freezes the window | 1H, 1K | Fixed |
 | [BUG-013](items/BUG-013-tab-strip-with-no-repository.md) | The window comes back with a tab strip and no repository | chrome | Fixed |
+| [BUG-015](items/BUG-015-backend-list-disarms-the-safe-renderer.md) | A backend preference list disarms the safe renderer | — | Fixed |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
 report, reopened on a corrected diagnosis, and BUG-009's own document keeps the
