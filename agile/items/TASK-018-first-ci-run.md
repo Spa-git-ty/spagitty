@@ -2,7 +2,7 @@
 
 # TASK-018 — Four gates that have never seen this code
 
-**Status:** Open on `task/TASK-018-first-ci-run`.
+**Status:** Done on `task/TASK-018-first-ci-run`.
 **Raised by:** a review of the repository against Amendment 16.
 
 This was Backlog while there was no pull request for a gate to run on. The flow

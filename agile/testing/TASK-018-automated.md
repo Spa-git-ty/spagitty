@@ -110,25 +110,45 @@ attempt failed on the action's licence check rather than on anything it read.
 
 ## The real run — recorded result
 
-Filled in from the pull request, per gate, with the run's own identifier so it
-can be found again.
+**Run 32999076513**, on pull request #1 into `dev`, 2026-08-26 18:19–18:29 UTC.
+Nine minutes and twenty-nine seconds, and the first time
+`.github/workflows/gates.yml` has ever executed.
 
-| Gate | Result | What it found |
-| --- | --- | --- |
-| 1 licenses | | |
-| 2 code quality | | |
-| 3 tests and coverage | | |
-| 4 security | | |
-| 5 build | not reached — `main` only | |
-| 6 release | not reached — `main` only | |
+| Gate | Result | Time | What it found |
+| --- | --- | --- | --- |
+| 1 licenses | pass | 48s | Nothing. Both dependency trees are within the allow-lists. |
+| 2 code quality | pass | 2m38s | Nothing. `cargo fmt --check`, workspace clippy under `-D warnings`, and `svelte-check` over 1039 files all clean. |
+| 3 tests and coverage | pass | 4m45s | Nothing. Frontend 1838 tests in 75 files, 85.98% statements; Rust 82.92% lines against the 70% floor. |
+| 4 security | pass | 1m4s | Three low npm advisories, under a `high` threshold. `gitleaks` walked 115 commits and found nothing. |
+| 5 build | skipped | — | `main` only, and this is a pull request into `dev`. Correct. |
+| 6 release | skipped | — | `main` only. Correct. |
+
+`https://github.com/spa-git-ty/spagitty/actions/runs/32999076513`
+
+**The first run was green.** The item said not to expect that, and the honest
+reading is that it says less than it appears to: the gates were written with the
+code they gate, and the checks they wrap have been run per-crate and per-package
+throughout. What had never been exercised is the workspace-wide form of them,
+the Rust coverage measurement, and the secret scan — the same three that had to
+be installed before they could be run locally at all. They are green now, and
+they are green for the first time.
+
+**Where the runner and this machine disagreed.** One place, and it is benign:
+`gitleaks` scanned **115** commits on the runner and **125** locally.
+`actions/checkout` builds the pull request's merge ref, which is a different
+graph from the branch tip this machine holds. Both scanned every commit they
+were given, and both found nothing. It is recorded here so that the next person
+to compare the two numbers does not have to work it out again.
 
 ## What each red produced
 
-One row per failure, naming the item and branch it was fixed on. A red with no
-row here is a red that was bypassed, which Amendment 16 forbids.
+No gate went red, so this table is empty — which is the only honest reason for
+it to be. A red with no row here would be a red that had been bypassed, and
+Amendment 16 forbids that.
 
 | Gate | Failure | Fixed by |
 | --- | --- | --- |
+| — | none | — |
 
 ## Coverage — Amendment 10
 

@@ -6,11 +6,20 @@ The pipeline is a sequence of gates in a fixed order. A gate that fails stops
 the pipeline; nothing downstream runs. Definitions live in
 `.github/workflows/`.
 
-**Not yet running.** The repository has no remote, so none of this has executed.
-It landed with the code it gates rather than being reconstructed later. The
-first push to a forge is also the first real run, and the first opportunity for
-these files to be wrong — treat the initial run as part of the work, not as a
-formality.
+**First run: 2026-08-26.** Gates 1 to 4 ran for the first time on pull request
+#1 into `dev` — run `32999076513`, nine and a half minutes, all four green. The
+workflows landed with the code they gate and then waited six months for a remote
+to run on; that wait is over, and they turned out to be right.
+
+Gates 5 and 6 have still never run. Both are `main`-only, and `main` has not
+moved since before the rename, so the macOS and Windows builds remain the part
+of this pipeline that nothing has proved. Treat the first merge into `main` the
+way the first pull request was treated: as part of the work, not as a formality.
+
+**One difference worth knowing** between a local run and the runner: `gitleaks`
+walks the pull request's merge ref on CI and the branch tip locally, so the
+commit counts differ — 115 against 125 on the first run. Both scan everything
+they are given.
 
 ## The gates
 
