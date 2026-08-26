@@ -2,11 +2,13 @@
 
 # TASK-018 — Four gates that have never seen this code
 
-**Status:** Backlog.
+**Status:** Open on `task/TASK-018-first-ci-run`.
 **Raised by:** a review of the repository against Amendment 16.
 
-Backlog items carry an item document only. The plan and testing documents are
-written when the work begins.
+This was Backlog while there was no pull request for a gate to run on. The flow
+is being repaired now — the branches are pushed, the stack is merged and one
+pull request is open — so the first run is imminent and this item carries its
+plan and testing documents.
 
 ## Problem
 
@@ -38,7 +40,9 @@ The two gates most likely to be red have never been exercised at all:
 
 The pipeline cannot run until there is a pull request, and there cannot be a
 pull request until the flow is repaired. That is a different problem with
-different decisions in it, and it is recorded separately.
+different decisions in it, and it is recorded separately — on a branch of its
+own, so its identifier is written in here when the branches meet rather than
+cited into a tree that cannot resolve it.
 
 This item is what happens *after*: the first run is the work, not a formality.
 `docs/ci.md` says as much — "treat the initial run as part of the work" — and a
