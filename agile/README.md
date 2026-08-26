@@ -155,6 +155,7 @@ of its own.
 | [TASK-011](items/TASK-011-secret-scanning-never-ran.md) | Secret scanning has never run | — | Done |
 | [TASK-012](items/TASK-012-record-drift.md) | The working record has drifted from the tree | — | Done |
 | [TASK-013](items/TASK-013-backfill-document-sets.md) | Backfill the missing plan and testing documents | — | Done |
+| [TASK-014](items/TASK-014-dead-remote.md) | The repository still points at a remote that no longer exists | — | Done |
 | [TASK-017](items/TASK-017-flow-restore.md) | Seventy-one commits with no path back to `main` | — | Open |
 | [TASK-019](items/TASK-019-resume-session.md) | The launch sequence lives where no test can reach it | — | Done |
 
