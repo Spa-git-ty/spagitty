@@ -2,7 +2,7 @@
 
 # TASK-017 — Seventy-one commits with no path back to `main`
 
-**Status:** Open on `task/TASK-017-flow-restore`.
+**Status:** Done on `task/TASK-017-flow-restore`, merged into `dev` by pull request #1.
 **Raised by:** a review of the repository against Amendment 14.
 
 This was Backlog, with an item document and nothing else, because four of its

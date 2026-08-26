@@ -36,20 +36,36 @@ $ cargo test --workspace
 
 ## Recorded run
 
-Filled in when the merge is done, on the merged tree rather than on any single
-branch.
+On the merged tree, `task/TASK-017-flow-restore`, after nine branches were
+merged into it and before the pull request was opened.
 
 ```
 $ npx vitest run
-Test Files
-     Tests
+Test Files  75 passed (75)
+     Tests  1838 passed (1838)
 
 $ npm run check
+1039 FILES 0 ERRORS 0 WARNINGS 0 FILES_WITH_PROBLEMS
 
 $ cargo test --workspace
+test result: ok. 68 passed; 0 failed
+test result: ok. 445 passed; 0 failed
 
 $ npm run coverage
+Statements   : 85.98% ( 6211/7223 )
+Branches     : 74.58% ( 2031/2723 )
+Functions    : 82.19% ( 1620/1971 )
+Lines        : 85.70% ( 4370/5099 )
 ```
+
+The numbers are the point of the exercise rather than decoration. Each branch
+was verified alone and each was lower: 1748 tests on the documents-only
+branches, 1789 on the glass, 1757 on the resume refactor. 1838 is the
+combination, and it is the first time the nine have ever been in one tree.
+
+The same run on the runner, on the pull request, agreed exactly — 1838 tests,
+85.98% statements — which is the useful thing to know about a merge nobody had
+tried before.
 
 ## Coverage — Amendment 10
 

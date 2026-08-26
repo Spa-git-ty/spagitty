@@ -158,7 +158,7 @@ of its own.
 | [TASK-014](items/TASK-014-dead-remote.md) | The repository still points at a remote that no longer exists | — | Done |
 | [TASK-015](items/TASK-015-document-drift.md) | The documents describe a Spagitty that no longer exists | — | Done |
 | [TASK-016](items/TASK-016-one-branch-carried-fifteen-items.md) | One branch carried twenty-eight items | — | Done |
-| [TASK-017](items/TASK-017-flow-restore.md) | Seventy-one commits with no path back to `main` | — | Open |
+| [TASK-017](items/TASK-017-flow-restore.md) | Seventy-one commits with no path back to `main` | — | Done |
 | [TASK-018](items/TASK-018-first-ci-run.md) | Four gates that have never seen this code | — | Done |
 | [TASK-019](items/TASK-019-resume-session.md) | The launch sequence lives where no test can reach it | — | Done |
 

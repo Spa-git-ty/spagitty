@@ -125,6 +125,11 @@ Nine minutes and twenty-nine seconds, and the first time
 
 `https://github.com/spa-git-ty/spagitty/actions/runs/32999076513`
 
+A second run, `33000174327`, fired when this record and the `docs/ci.md` rewrite
+were pushed to the same branch. Green again, and faster on a warm cache: 55s,
+1m6s, 2m17s, 58s. It is named here because merging on the strength of an earlier
+commit's gates would be a claim rather than a check.
+
 **The first run was green.** The item said not to expect that, and the honest
 reading is that it says less than it appears to: the gates were written with the
 code they gate, and the checks they wrap have been run per-crate and per-package
