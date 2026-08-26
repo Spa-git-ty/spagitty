@@ -27,6 +27,13 @@
 //! for XWayland. Every variable here is left alone when the environment already
 //! has an opinion, in either direction. A host that has just changed its
 //! driver is exactly the case worth retrying.
+//!
+//! An *opinion* is narrower than a value being present (BUG-015). `GDK_BACKEND`
+//! takes a preference list, and several distributions export one by default —
+//! `wayland,x11,*` means "try these in order", not "use XWayland". Reading any
+//! value as a deliberate request disarmed the safe renderer for every user of
+//! those distributions, and the window died with `Error 71` before its first
+//! frame. Only a bare `x11` is a decision.
 
 /// One environment variable Spagitty wants set, and the value it wants.
 type Setting = (&'static str, &'static str);
@@ -59,9 +66,14 @@ fn settings(
         return out;
     }
 
-    // An explicit backend is somebody's decision. Leave it, and leave the
-    // renderer to whatever they said about it too.
-    if backend.is_some() {
+    // An explicit backend is somebody's decision — but only a decision about
+    // *which* path counts as one. A bare `x11` is a deliberate request for
+    // XWayland, and takes the renderer decision with it. A preference list
+    // like `wayland,x11,*` — what several distributions export by default —
+    // is not a choice anyone made; treating it as one silently disarmed the
+    // safe renderer below and the window died with `Error 71` before its
+    // first frame.
+    if backend == Some("x11") {
         return out;
     }
 
@@ -141,6 +153,21 @@ mod tests {
 
         assert_eq!(value(&set, "GDK_BACKEND"), None);
         assert_eq!(value(&set, "WEBKIT_DISABLE_DMABUF_RENDERER"), None);
+    }
+
+    /// A distribution's default backend *list* is not a decision. It must
+    /// leave the safe renderer in place, or the window dies before it paints.
+    #[test]
+    fn a_backend_preference_list_still_takes_the_safe_renderer() {
+        for chosen in ["wayland,x11,*", "wayland", "x11,wayland"] {
+            let set = settings(true, Some(chosen), None, None);
+
+            assert_eq!(
+                value(&set, "WEBKIT_DISABLE_DMABUF_RENDERER"),
+                Some("1"),
+                "with GDK_BACKEND={chosen:?}"
+            );
+        }
     }
 
     /// An X11 session never had the bug, and gets nothing done to it.
