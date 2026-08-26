@@ -249,7 +249,6 @@
 		   which is what keeps a column heading readable while a hundred commits
 		   scroll beneath it. */
 		background-color: var(--chrome-veil);
-		background-image: var(--glass-sheen);
 		box-shadow:
 			var(--glass-rim),
 			0 1px 3px color-mix(in srgb, var(--umbra) 8%, transparent);

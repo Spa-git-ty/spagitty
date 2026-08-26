@@ -250,7 +250,7 @@
 	.message {
 		border: 1px solid var(--soft);
 		border-radius: var(--r-panel);
-		background: var(--grad-surface);
+		background: var(--surface);
 		box-shadow: var(--sheen), var(--shadow-1);
 		padding: 9px;
 		display: flex;

@@ -158,7 +158,6 @@
 		gap: 10px;
 		padding: 10px 12px;
 		background-color: var(--chrome-veil);
-		background-image: var(--glass-sheen);
 		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
 		box-shadow:
 			var(--glass-rim),

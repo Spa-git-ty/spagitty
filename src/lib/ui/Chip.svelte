@@ -58,7 +58,6 @@
 		align-items: center;
 		gap: 4px;
 		background-color: var(--surface-veil);
-		background-image: var(--glass-sheen);
 		box-shadow: var(--glass-rim);
 		transition:
 			background var(--t-fast) var(--ease),
@@ -86,22 +85,14 @@
 	.chip.active {
 		border-color: color-mix(in srgb, var(--accent) 62%, transparent);
 		color: var(--accent);
-		background: linear-gradient(
-			180deg,
-			color-mix(in srgb, var(--accent) 10%, var(--surface)),
-			color-mix(in srgb, var(--accent) 18%, var(--surface))
-		);
+		background-color: color-mix(in srgb, var(--accent) 14%, var(--surface));
 		box-shadow: var(--sheen), 0 1px 3px var(--accent-soft);
 	}
 
 	button.chip:hover:not(:disabled) {
 		border-color: color-mix(in srgb, var(--accent) 62%, transparent);
 		color: var(--accent);
-		background: linear-gradient(
-			180deg,
-			color-mix(in srgb, var(--accent) 8%, var(--surface)),
-			color-mix(in srgb, var(--accent) 14%, var(--surface))
-		);
+		background-color: color-mix(in srgb, var(--accent) 11%, var(--surface));
 		box-shadow: var(--sheen), var(--shadow-1);
 	}
 
@@ -119,11 +110,7 @@
 	button.chip.danger:hover:not(:disabled) {
 		border-color: var(--danger);
 		color: var(--danger);
-		background: linear-gradient(
-			180deg,
-			color-mix(in srgb, var(--danger) 10%, var(--surface)),
-			color-mix(in srgb, var(--danger) 18%, var(--surface))
-		);
+		background-color: color-mix(in srgb, var(--danger) 14%, var(--surface));
 		box-shadow: var(--sheen), 0 1px 3px var(--danger-soft);
 	}
 </style>

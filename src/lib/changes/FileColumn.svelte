@@ -218,7 +218,7 @@
 	 */
 	.row.solid {
 		border-color: var(--soft);
-		background: var(--grad-surface);
+		background: var(--surface);
 		box-shadow: var(--sheen), var(--shadow-1);
 	}
 
@@ -242,7 +242,7 @@
 
 	.row.selected {
 		background: linear-gradient(90deg, var(--accent-soft), transparent 75%),
-			var(--grad-surface);
+			var(--surface);
 		border-color: color-mix(in srgb, var(--accent) 60%, transparent);
 		box-shadow: var(--sheen), var(--shadow-1);
 	}

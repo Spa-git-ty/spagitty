@@ -128,7 +128,6 @@
 		display: flex;
 		flex-direction: column;
 		background-color: var(--chrome-veil);
-		background-image: var(--glass-sheen), var(--grad-rail);
 		border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		box-shadow:
 			var(--glass-rim),

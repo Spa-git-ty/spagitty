@@ -242,11 +242,15 @@
 
 <div class="app">
 	<!--
-		The light the glass refracts. Three washes of the theme's own colours,
-		drifting; `aria-hidden` and pointer-transparent, because it is a
-		material property of the window rather than content.
+		The ground the window paints on: flat `--bg`, `aria-hidden` and
+		pointer-transparent, because it is a material property of the window
+		rather than content. It carried the ambient washes until those were
+		taken out, and it stays because FEAT-055 needs it — with the DMABuf
+		renderer off, WebKitGTK keeps painting reliably only on a layer it was
+		given at startup, and without this one the content area stops painting
+		and the desktop shows through the window.
 	-->
-	<div class="ambient" aria-hidden="true"></div>
+	<div class="ground" aria-hidden="true"></div>
 
 	<TitleBar />
 	<!-- Its own row, and absent when nothing is open (FEAT-044). -->
@@ -328,7 +332,7 @@
 		flex-direction: column;
 		overflow: hidden;
 		background: var(--bg);
-		/* The ambient field is positioned against this. */
+		/* The ground layer is positioned against this. */
 		position: relative;
 		border-radius: var(--r-window);
 		outline: 0.2px solid var(--window-edge);
@@ -358,24 +362,29 @@
 		min-height: 0;
 		display: flex;
 		overflow: hidden;
-		/* Above the ambient field, below the chrome. */
+		/* Above the ground layer, below the chrome. */
 		position: relative;
 		z-index: 1;
 	}
 
 	/*
-	 * The ambient field (see `app.css`).
+	 * The ground (see the note in the markup). One flat promoted layer that
+	 * never animates and never repaints for content — content paints above it,
+	 * and it exists so the window always has a surface that does paint.
 	 *
-	 * Three radial washes rather than one: a single gradient reads as a
-	 * spotlight, where three overlapping at different sizes read as light in a
-	 * room. They are the theme's accent and two of its lane colours, so a
-	 * Gruvbox window glows amber and a Tokyo Night one glows blue without a
-	 * single colour being written here.
-	 *
-	 * `will-change` is deliberate: this is one large, slowly animated layer, and
-	 * promoting it once is cheaper than repainting the window behind every pane
-	 * of glass on every frame.
+	 * `z-index: -1` rather than `0`: it has to sit under the chrome bars, none
+	 * of which carry a stacking index of their own, while still painting over
+	 * `.app`'s own background.
 	 */
+	.ground {
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		pointer-events: none;
+		background: var(--bg);
+		transform: translateZ(0);
+	}
+
 	/*
 	 * The box a screen is transitioned inside. It has to be a flex container of
 	 * its own: every screen is `flex: 1` against `.main`, and wrapping one in a
@@ -388,57 +397,4 @@
 		overflow: hidden;
 	}
 
-	.ambient {
-		position: absolute;
-		inset: -12%;
-		z-index: 0;
-		pointer-events: none;
-		background:
-			radial-gradient(
-				46% 40% at 14% 8%,
-				color-mix(in srgb, var(--accent) 55%, transparent) 0%,
-				transparent 68%
-			),
-			radial-gradient(
-				40% 46% at 88% 16%,
-				color-mix(in srgb, var(--lane-2) 46%, transparent) 0%,
-				transparent 70%
-			),
-			radial-gradient(
-				54% 48% at 72% 96%,
-				color-mix(in srgb, var(--lane-4) 40%, transparent) 0%,
-				transparent 72%
-			),
-			radial-gradient(
-				44% 40% at 26% 78%,
-				color-mix(in srgb, var(--lane-5) 34%, transparent) 0%,
-				transparent 70%
-			);
-		/*
-		 * Light rooms take *less* of this, not more.
-		 *
-		 * A wash that reads as a faint glow on a near-black ground reads as
-		 * coloured paper on a near-white one — the first light build had a
-		 * green corner and a pink one, which is a beach towel rather than a
-		 * window. Dark gets more of it, below.
-		 */
-		opacity: 0.3;
-		/*
-		 * Deliberately **not** blurred and **not** animated.
-		 *
-		 * Both were, and together they cost the window its frame rate: a
-		 * `filter: blur(40px)` over a 3440×1440 surface is re-blurred whenever
-		 * anything above it repaints, and animating its transform meant *every
-		 * frame*. Radial gradients are already soft — the blur was adding
-		 * nothing a wider gradient stop does not, and the drift was a slow
-		 * change nobody watching the screen could see happening.
-		 */
-		transform: translateZ(0);
-	}
-
-	/* Dark rooms take less light: the same washes at a lower alpha, or the
-	   whole window reads as tinted rather than lit. */
-	:global(:root[data-theme='dark']) .ambient {
-		opacity: 0.55;
-	}
 </style>

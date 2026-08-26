@@ -98,7 +98,6 @@
 		 * cut out of it.
 		 */
 		background-color: var(--chrome-veil);
-		background-image: var(--glass-sheen);
 		border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		box-shadow: var(--glass-rim);
 		font-size: 12px;

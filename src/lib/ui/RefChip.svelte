@@ -152,7 +152,7 @@
 		font-size: var(--fs-mono);
 		/* A label is a small raised object sitting on the row, so it gets the
 		   raised surface and the light along its top edge. */
-		background: var(--grad-surface);
+		background: var(--surface);
 		box-shadow: var(--sheen);
 		white-space: nowrap;
 		max-width: 100%;

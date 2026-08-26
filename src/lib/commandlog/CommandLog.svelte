@@ -111,7 +111,6 @@
 		flex-direction: column;
 		max-height: min(46vh, 420px);
 		background-color: var(--glass-thick);
-		background-image: var(--glass-sheen);
 		backdrop-filter: var(--blur-thick);
 		-webkit-backdrop-filter: var(--blur-thick);
 		border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
@@ -120,7 +119,7 @@
 		/* It slides up over whatever screen is open, so it takes the floating
 		   shadow — cast upward, which is the direction it came from. */
 		box-shadow:
-			var(--sheen),
+			var(--glass-rim-thick),
 			0 -2px 6px color-mix(in srgb, var(--umbra) 14%, transparent),
 			0 -14px 32px color-mix(in srgb, var(--umbra) 22%, transparent);
 	}

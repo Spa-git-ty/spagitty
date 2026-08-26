@@ -367,7 +367,6 @@
 		gap: 16px;
 		padding: 0 12px;
 		background-color: var(--chrome-veil);
-		background-image: var(--glass-sheen);
 		border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		/* The pane casts onto whatever screen is under it, which is what stops
 		   the toolbar and the content it sits above reading as one surface. */
