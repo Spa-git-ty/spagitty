@@ -39,9 +39,30 @@ compiles and is tested without a GUI, and its examples
 | `status.rs` | The working-copy status walk, and the counts the nav rail shows |
 | `work.rs` | Changing the working copy: stage, unstage, commit |
 | `identity.rs` | `user.name` and `user.email` per scope — read with `gix`, written with `git config` |
+| `signing.rs` | Whether git will sign this commit and whether it can — `commit.gpgsign` is the authority, never a preference of Spagitty's |
 | `clone.rs` | Where a clone will land, what is wrong with that, and what git's progress output means |
+| `remotes.rs` | The remotes a repository knows about: add, rename, remove, retarget, each through `git remote` rather than a config edit |
+| `reflog.rs` | Where a ref has been, and the three ways back to a point in it |
+| `tags.rs` | Tags in one place: annotated and lightweight told apart, because the difference decides whether a message can exist |
+| `record.rs` | What Spagitty actually ran — the buffer behind "Show the git command behind each action", written by `shell.rs` |
+| `update.rs` | Whether there is a newer Spagitty than this one |
+| `forge/` | The only part of the workspace that reaches a network. See below |
 | `error.rs` | `Error`, whose `Display` text is user-facing |
-| `shell.rs` | The only module that spawns a process |
+| `fixture.rs` | Real repositories for tests, published behind the `fixture` feature so the Tauri layer can walk one too (TASK-003). Excluded from coverage |
+
+**`forge/` is the network boundary, and it is as narrow as `shell.rs`'s.**
+Reading pull requests could not survive the older promise that no HTTP client
+was linked in either language, so the promise became a narrower one that is
+still worth having and is still tested: exactly one client, `ureq`, declared
+only in this crate, and reachable from exactly one file.
+
+| File | Holds |
+| --- | --- |
+| `forge/http.rs` | The only file that may construct or use the HTTP client |
+| `forge/github.rs` | One GraphQL request per refresh — REST would need 1 + 3N calls for the same rows |
+| `forge/keychain.rs` | The personal access token, in the OS keychain and never in a configuration file |
+
+The webview links no HTTP client, makes no request, and never holds a token.
 
 Types crossing to the frontend derive `Serialize` with
 `#[serde(rename_all = "camelCase")]`, and are mirrored by hand in

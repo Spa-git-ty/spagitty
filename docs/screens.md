@@ -19,7 +19,7 @@ under Amendment 11.
 | 1E | Interactive rebase | `/rebase` | yes | Built | FEAT-009 |
 | 1F | Branches | `/branches` | yes | Built | FEAT-004 |
 | 1G | Stash | `/stash` | yes | Built | FEAT-005 |
-| 1H | Pull requests | `/requests` | yes | Built (offline) | FEAT-010 |
+| 1H | Pull requests | `/requests` | yes | Built | FEAT-010, FEAT-017 |
 | 1I | Log search | `/search` | yes | Built | FEAT-007 |
 | 1J | All repositories | `/repos` | yes | Built | FEAT-006 |
 | 1K | Settings | `/settings` | yes | Built | FEAT-011 |
@@ -33,9 +33,10 @@ gap analysis rather than the design, and they are numbered after the handoff's
 run rather than inserted into it, so that a code still says where a screen came
 from.
 
-What remains deferred is named on the screen that defers it — the host the Pull
-requests screen cannot connect to, the accounts Settings has no client for. Each
-says so in place rather than being absent.
+What remains deferred is named on the screen that defers it, in place rather
+than being absent — a conflicted stash apply, and the forges Spagitty has no
+client for. The two that used to be listed here, the host Pull requests could
+not reach and the accounts Settings had no client for, were closed by FEAT-017.
 
 `src/lib/ui/ScreenStub.svelte` is no longer rendered by any route. It stays
 because it is how the next unbuilt screen says what it will be rather than
@@ -241,9 +242,11 @@ Its status walk is what made the rail's Working copy and Conflicts counts real.
 The toolbar's Commit button counts `staged` rather than `working`: a working
 copy with ten changed files and one staged must not offer to commit ten.
 
-Nothing here can discard work. Stage, unstage and commit only move changes
-forward; a mistake costs an unstage. Discarding is a separate decision and is
-not built.
+**Discarding is built, and only on the unstaged side** (FEAT-048): file, hunk,
+or everything, each behind a confirmation whose wording says whether the file is
+reverted or deleted. The staged side is deliberately untouched — unstage first,
+which costs nothing, and then discard. Stage, unstage and commit still only move
+changes forward, so the one action that can lose work is the one that asks.
 
 ## 1D — Conflicts
 
@@ -281,7 +284,7 @@ vaguely at the reflog.
 ## 1E — Interactive rebase
 
 **Built.** `src/routes/rebase/+page.svelte`, `src/lib/rebase/`.
-Execution is deferred to FEAT-015.
+It runs the rebase as well as planning it, since FEAT-015.
 
 Plan a history rewrite and see the result before anything runs. Interactive
 rebase is feared because the todo list is edited blind — you choose squash and
@@ -318,7 +321,8 @@ progress, HEAD where it was, working copy clean.
 ## 1F — Branches
 
 **Built.** `src/routes/branches/+page.svelte`, `src/lib/branches/`.
-Delete and rename are deferred to FEAT-013.
+Delete and rename landed with FEAT-013, resizable columns and the divergence bar
+with FEAT-047.
 
 Every branch, how far it has drifted, and what is safe to forget: branch,
 ahead/behind, last change, actions. Merged branches render dashed — nothing on
@@ -326,8 +330,9 @@ them is only there — though the current branch never does, since saying
 "merged" about the branch you are on reads as "safe to delete".
 
 Ahead and behind are counted against the remote-tracking ref on disk, so they
-are as old as the last fetch. The footer says so; nothing on this screen talks
-to a network.
+are as old as the last fetch. The header says how old (FEAT-018), and nothing on
+this screen reaches a network to make them fresher — fetching is the toolbar's
+job, and the numbers change when it finishes.
 
 Checking out goes through `git switch`, which only ever changes branch — unlike
 `git checkout`, which guesses between a branch, a revision and a path. A
@@ -456,12 +461,13 @@ connected", with a way to Settings → Accounts, tells the user the screen works
 and the account does not — which is the difference between this and the
 `ScreenStub` it replaces.
 
-`PullRequest` in `src/lib/types.ts` is FEAT-017's contract, written now so that
-connecting a host is a matter of filling it in rather than redesigning the
-screen around whatever one host's API happens to return. The vocabulary is
-host-agnostic throughout, and a test asserts no host's name appears anywhere in
-the screen — the kind of thing that rots the moment somebody adds "Open on
-<host>" without thinking.
+`PullRequest` in `src/lib/types.ts` is the contract the screen was designed
+against before any host could be reached, and FEAT-017 filled it in rather than
+redesigning the screen around what one host's API happens to return — which is
+what it was written for. The vocabulary stays host-agnostic, and a test asserts
+no host's name appears anywhere in the screen: the kind of thing that rots the
+moment somebody adds "Open on <host>" without thinking. GitHub is the only host
+implemented, and it is implemented behind that contract.
 
 ## 1I — Log search
 
