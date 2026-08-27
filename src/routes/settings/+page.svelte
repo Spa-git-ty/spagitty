@@ -5,6 +5,8 @@
 	import RemotesSection from '$lib/settings/RemotesSection.svelte';
 	import LicenseSection from '$lib/settings/LicenseSection.svelte';
 	import AppearanceSection from '$lib/settings/AppearanceSection.svelte';
+	// TEMPORARY: chore/glass-knobs-gpu. Never merged.
+	import GlassKnobsSection from '$lib/settings/GlassKnobsSection.svelte';
 	import BehaviourSection from '$lib/settings/BehaviourSection.svelte';
 	import IdentitySection from '$lib/settings/IdentitySection.svelte';
 	import SigningSection from '$lib/settings/SigningSection.svelte';
@@ -72,6 +74,8 @@
 			<UpdateSection />
 		{:else if settings.section === 'appearance'}
 			<AppearanceSection />
+			<!-- TEMPORARY tuning harness — comes out with its branch. -->
+			<GlassKnobsSection />
 		{:else}
 			<LicenseSection />
 		{/if}
