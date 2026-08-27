@@ -41,6 +41,43 @@
 
 	let { children } = $props();
 
+	// TEMPORARY glass-registry readout — goes with the scratch branch.
+	function watchTheGlass(): void {
+		const panel = document.createElement('div');
+		panel.style.cssText =
+			'position:fixed;right:6px;top:6px;z-index:99999;background:#000;color:#0f0;' +
+			'font:14px monospace;padding:6px 9px;white-space:pre;pointer-events:none;' +
+			'border:2px solid #0f0';
+		document.body.appendChild(panel);
+
+		let peakPanes = 0;
+
+		setInterval(() => {
+			const lens = document.querySelector<HTMLElement>('.lens');
+			const filter = lens ? getComputedStyle(lens).filter : '-';
+			const host = document.querySelector('#liquid-glass-lens');
+
+			// How many panes the filter itself believes in: the shape mask draws
+			// one white rect per registered pane.
+			let painted = -1;
+			const shape = host?.querySelectorAll('feImage')[2]?.getAttribute('href');
+			if (shape) {
+				const svg = decodeURIComponent(shape.replace('data:image/svg+xml;utf8,', ''));
+				painted = (svg.match(/<rect/g) ?? []).length;
+			}
+			if (painted > peakPanes) peakPanes = painted;
+
+			panel.textContent = [
+				`.menu in DOM     ${document.querySelectorAll('.menu').length}`,
+				`stage children   ${document.querySelectorAll('.liquid-glass-stage > *').length}`,
+				`lens filter      ${filter === 'none' ? 'none' : 'ON'}`,
+				`panes painted    ${painted < 0 ? '-' : painted}   (peak ${peakPanes})`,
+				``,
+				`close a menu: all four should go to 0 / none`
+			].join('\n');
+		}, 250);
+	}
+
 	/** Re-walk when a ref moves, but not on every keystroke into a rebase. */
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -57,6 +94,8 @@
 		// The tab strip, before anything can open a repository into it.
 		workspace.init();
 		registerCommands();
+		// TEMPORARY glass-registry readout — goes with the scratch branch.
+		watchTheGlass();
 		// The window's own corner and shadow come off when it is maximized, and
 		// CSS cannot ask Tauri whether it is (FEAT-037).
 		appWindow.watchMaximized().then((off) => cleanups.push(off));
