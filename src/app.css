@@ -81,8 +81,17 @@
 	--r-button: 11px;
 	/** A commit row's hover and selection fill. */
 	--r-row: 8px;
-	/** Panels, cards, modals — anything that is a surface rather than a control. */
-	--r-panel: 14px;
+	/**
+	 * Panels, cards, modals — anything that is a surface rather than a control.
+	 *
+	 * Settled at the window alongside the glass material (TASK-020). At 14px a
+	 * menu read as a rounded card sitting on the application; at 8px it reads as
+	 * a pane cut from it, which is the same corner a field already has and is
+	 * what the quieter glass wanted. The lens follows this without being told —
+	 * `geometry()` measures the pane's computed radius, so the refraction ring
+	 * changes shape with the corner.
+	 */
+	--r-panel: 8px;
 	/*
 	 * The window's own corner. Larger than a panel's, because it is read against
 	 * the whole screen rather than against the surface beside it — the same

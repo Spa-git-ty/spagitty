@@ -42,12 +42,29 @@ export interface PaneRect {
 	depth: number;
 }
 
+/**
+ * The material, settled by the author at the window (TASK-020).
+ *
+ * Every number here was chosen by eye against the running application, on
+ * sliders wired to this object, rather than reasoned about — which is the only
+ * way to choose them. They are recorded exactly as they were left.
+ *
+ * The shape of the choice is worth keeping, because it is not what the effect
+ * was built expecting. It is much quieter glass: a third of the shoulder, less
+ * than half the push, no colour split at the rim at all, and a frost that
+ * suggests rather than obscures. `saturate: 0` drains the colour from what is
+ * behind the pane entirely, so the frost reads as grey light rather than as a
+ * tint of the commit list underneath it.
+ *
+ * Taken together that is glass as a material the interface is made of, not as
+ * an effect the interface performs.
+ */
 export const DEFAULTS: GlassOptions = {
-	depth: 18,
-	strength: 14,
-	chromaticAberration: 2,
-	blur: 28,
-	saturate: 2
+	depth: 7,
+	strength: 6,
+	chromaticAberration: 0,
+	blur: 10,
+	saturate: 0
 };
 
 export const FILTER_ID = 'liquid-glass-lens';
