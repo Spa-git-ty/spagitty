@@ -104,6 +104,31 @@
 		cursor = entries.indexOf(usable[next]);
 	}
 
+	/**
+	 * Close when the focus is no longer in the menu.
+	 *
+	 * The menu takes focus as soon as it is placed, so "focus is somewhere
+	 * else" is the same statement as "the user is doing something else" — and
+	 * unlike a mousedown, it is true however the focus left: a click, a Tab, a
+	 * touch, another window taking over. `focusout` bubbles, so this catches
+	 * focus leaving any entry inside as well as the container itself.
+	 *
+	 * Two moves are not leaving. Focus travelling between entries stays inside
+	 * `element`, and focus landing on the control that opened the menu belongs
+	 * to that control's own toggle — closing here would let its click reopen
+	 * what this just closed, which is the whole of BUG-018.
+	 *
+	 * A null `relatedTarget` means the focus went nowhere in particular, which
+	 * is what clicking any ordinary part of the application does. That is a
+	 * close.
+	 */
+	function leftTheMenu(event: FocusEvent) {
+		const next = event.relatedTarget as Node | null;
+		if (next && element?.contains(next)) return;
+		if (next && anchor?.contains(next)) return;
+		onclose();
+	}
+
 	function onkeydown(event: KeyboardEvent) {
 		switch (event.key) {
 			case 'Escape':
@@ -149,6 +174,7 @@
 	aria-label={label}
 	tabindex="-1"
 	{onkeydown}
+	onfocusout={leftTheMenu}
 >
 	{#each items as item, index (index)}
 		{#if 'separator' in item}

@@ -355,6 +355,59 @@ describe('dismissal', () => {
 		view.destroy();
 	});
 
+	it('closes when the focus lands nowhere, which is what clicking the app does', () => {
+		// BUG-018. Focus is the signal that survives whatever the pointer did:
+		// the menu takes focus when it is placed, so focus being elsewhere means
+		// the user is elsewhere.
+		const { view, onclose } = open([entry('One')]);
+
+		view
+			.get('.menu')
+			.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+		flushSync();
+
+		expect(onclose).toHaveBeenCalledTimes(1);
+		view.destroy();
+	});
+
+	it('stays open while the focus moves between its own entries', () => {
+		const { view, onclose } = open([entry('One'), entry('Two')]);
+
+		const entries = view.all('.entry');
+		view
+			.get('.menu')
+			.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: entries[1] }));
+		flushSync();
+
+		expect(onclose).not.toHaveBeenCalled();
+		view.destroy();
+	});
+
+	it('stays open when the focus lands on the control that opened it', () => {
+		// Otherwise this closes the menu and the control's own click reopens it,
+		// which is the defect this whole pair exists to prevent.
+		const button = document.createElement('button');
+		document.body.appendChild(button);
+		const onclose = vi.fn();
+		const view = render(Menu, {
+			x: 40,
+			y: 60,
+			items: [entry('One')],
+			label: 'Commit actions',
+			anchor: button,
+			onclose
+		});
+
+		view
+			.get('.menu')
+			.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: button }));
+		flushSync();
+
+		expect(onclose).not.toHaveBeenCalled();
+		view.destroy();
+		button.remove();
+	});
+
 	it('leaves a mousedown on its anchor alone, so the control can toggle it', () => {
 		// BUG-018: a pointer sends `mousedown` then `click`. Closing on the
 		// mousedown and reopening on the click meant the control that opened a
