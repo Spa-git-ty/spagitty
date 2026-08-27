@@ -29,11 +29,17 @@ exists. Their assertions are unchanged.
 | authors the maps at the filtered element's size, in CSS pixels | The first map decodes to `viewBox="0 0 800 600"` against an 800x600 `.lens`, and carries no scale transform. The maps are still measured; only the region is not. |
 | takes a portaled pane back off the stage when it is torn down | After `destroy()` the stage holds no children. |
 
-That last one is the gap that let the ghosting go unexamined. The action moves a
-pane out of `.lens` into a stage of its own, and the file asserted the move but
-never that what was moved could still be removed — so "a menu that never
-disappears, with the next one drawn over it" had no test either way. It passes
-today, which is itself the finding: the DOM was never leaking.
+**Correction, added after this item was called fixed.** That last test was
+written to close the gap and did not: it called `node.remove()` itself between
+`destroy()` and the assertion, so the stage was empty because the test emptied
+it. It passed, and it was reported here as evidence that the DOM was not
+leaking. The DOM was leaking. The action never took a pane off its stage, which
+is BUG-018; the line was removed there and the test then failed against the code
+as it stood on this branch.
+
+Nothing else in this document is affected — the region fix is sound and was
+verified against measured pixels — but a passing test was cited here as proof of
+something it did not test, and that is worth more than the line it cost.
 
 ## Recorded run
 
