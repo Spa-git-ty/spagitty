@@ -14,6 +14,7 @@
  * that silently runs the wrong action when it is wrong.
  */
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { click, fire, flushSync, press, render } from '../../testing/mount';
 import Menu from './Menu.svelte';
@@ -483,5 +484,11 @@ describe('placement', () => {
 		expect(Number.parseFloat(style.top)).toBeLessThan(window.innerHeight);
 
 		view.destroy();
+	});
+
+	it('restricts height and scrolls when items overflow', () => {
+		const source = readFileSync('src/lib/ui/Menu.svelte', 'utf8');
+		expect(source).toContain('max-height:');
+		expect(source).toContain('overflow-y: auto');
 	});
 });
