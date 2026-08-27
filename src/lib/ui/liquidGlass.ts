@@ -52,9 +52,16 @@ import {
  *
  * 2. **The pane must not be inside what it filters.** A menu is mounted by
  *    whichever component raised it, which is usually deep inside `.main`, so
- *    the action moves it out. Svelte 5 detaches with `node.remove()` rather
- *    than `parent.removeChild(node)`, so a node that has been moved is still
- *    torn down correctly.
+ *    the action moves it out — and moves it back off again when the pane is
+ *    torn down, because whatever moves a node owns putting it away.
+ *
+ *    That last clause was learned the hard way. It used to say that Svelte 5
+ *    detaches with `node.remove()` and therefore does not care which parent a
+ *    node ended up in, so a moved node was still torn down correctly. It was
+ *    not: the pane stayed on the stage after its component was gone. Because
+ *    the registry emptied correctly, the *lens* came off and the *menu* did
+ *    not, which reads as a menu that cannot be dismissed with the next one
+ *    drawn over it — and reads as anything but a bug in this file (BUG-018).
  *
  *    It moves into a host of its own and **not** straight into `document.body`:
  *    `body > div { height: 100% }` in `app.css` sizes the shell, and a menu
@@ -184,7 +191,13 @@ export const liquidGlass: Action<HTMLElement, Partial<GlassOptions> | undefined>
 
 	// Out of the subtree it is about to bend, and into a host that takes the
 	// `body > div` sizing rule so the pane does not. See note 2 at the top.
+	//
+	// Whether the move happened is remembered, because it is what decides who
+	// takes the node away again. A pane mounted outside `.lens` — `DialogHost`
+	// is — was never moved and is not this action's to remove.
+	let portaled = false;
 	if (target.contains(node)) {
+		portaled = true;
 		if (!stage) {
 			stage = document.createElement('div');
 			stage.className = 'liquid-glass-stage';
@@ -224,6 +237,26 @@ export const liquidGlass: Action<HTMLElement, Partial<GlassOptions> | undefined>
 			resize.disconnect();
 			moved.disconnect();
 			window.removeEventListener('resize', schedule);
+
+			// What moves the node out is what takes it away again (BUG-018).
+			//
+			// This used to be left to Svelte, on the reasoning that Svelte 5
+			// detaches with `node.remove()` and so does not care which parent a
+			// node ended up in. Whatever the mechanism, it did not hold: the
+			// pane stayed on the stage after the component was gone, and since
+			// the registry *was* emptied correctly, the lens came off and the
+			// menu did not — a menu that could not be dismissed, with the next
+			// one drawn over the top of it.
+			//
+			// Removing it here is idempotent: if Svelte has already taken the
+			// node, this is a no-op, and if it has not, the node goes now.
+			if (portaled) node.remove();
+			// The stage is this module's, and an empty one is litter.
+			if (stage && stage.childElementCount === 0) {
+				stage.remove();
+				stage = null;
+			}
+
 			panes.delete(pane);
 			schedule();
 		}

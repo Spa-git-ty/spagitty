@@ -36,11 +36,14 @@ WebKitGTK consumes them as **device** pixels. On any display whose ratio is not
 everything outside the region is never painted — leaving `.app`'s own
 background showing through, which is the flat slab in the report.
 
-The second symptom follows from the first. The DOM was never at fault: across
-sixteen open-and-close cycles the portal stage held exactly one node while a
-menu was open and none afterwards. What the author saw was stale pixels — a menu
-drawn into a composited layer that was the wrong size, left behind because the
-area it occupied was outside the region the layer ever repainted.
+**Correction, added after this item was called fixed.** The paragraph here used
+to claim the second symptom followed from the first, on the evidence that the
+portal stage held one node while a menu was open and none afterwards across
+sixteen open-and-close cycles. That was wrong twice over: the cycles were driven
+by a timer rather than a pointer, and the count was taken from a probe that
+removed the node itself. The menus were a separate defect in the same module —
+the portal never took a pane off its stage — and it is recorded as BUG-018. Only
+the wipe belongs to this item.
 
 ## Reproduction
 
@@ -86,8 +89,11 @@ scale 1, `devicePixelRatio` 1.3636.
 
 - With a menu open, the window paints to its edges at any device pixel ratio.
 - The frost lands on the pane's own footprint, not a scaled copy of it.
-- Closing a menu leaves nothing drawn where it was, and a second menu does not
-  appear over the first.
+- ~~Closing a menu leaves nothing drawn where it was, and a second menu does not
+  appear over the first.~~ **Not this item's, and not met by this change.**
+  Struck after the fact: it was claimed on the evidence corrected above, and the
+  behaviour was still broken when this item was called fixed. It belongs to
+  BUG-018 and is met there.
 - No pixel length appears in the filter region, and no `feImage` carries a
   subregion — both covered by tests, so the fault cannot return quietly.
 

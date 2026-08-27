@@ -24,10 +24,22 @@
 		items: MenuItem[];
 		/** Named for screen readers, since the menu has no visible title. */
 		label: string;
+		/**
+		 * The control this menu was opened from, when it was opened by a click
+		 * rather than at the pointer.
+		 *
+		 * A pointer sends `mousedown` and then `click`. Without this, the
+		 * mousedown on the control landed outside the menu and closed it, and
+		 * the click that followed opened it again — so the one gesture everybody
+		 * tries first, clicking the control a second time, could not dismiss it
+		 * (BUG-018). Mousedowns on the anchor are left alone, and the control
+		 * decides on the click whether it is opening or closing.
+		 */
+		anchor?: HTMLElement | null;
 		onclose: () => void;
 	}
 
-	let { x, y, items, label, onclose }: Props = $props();
+	let { x, y, items, label, anchor = null, onclose }: Props = $props();
 
 	let element = $state<HTMLDivElement | null>(null);
 	let placed = $state<{ left: number; top: number } | null>(null);
@@ -92,6 +104,31 @@
 		cursor = entries.indexOf(usable[next]);
 	}
 
+	/**
+	 * Close when the focus is no longer in the menu.
+	 *
+	 * The menu takes focus as soon as it is placed, so "focus is somewhere
+	 * else" is the same statement as "the user is doing something else" — and
+	 * unlike a mousedown, it is true however the focus left: a click, a Tab, a
+	 * touch, another window taking over. `focusout` bubbles, so this catches
+	 * focus leaving any entry inside as well as the container itself.
+	 *
+	 * Two moves are not leaving. Focus travelling between entries stays inside
+	 * `element`, and focus landing on the control that opened the menu belongs
+	 * to that control's own toggle — closing here would let its click reopen
+	 * what this just closed, which is the whole of BUG-018.
+	 *
+	 * A null `relatedTarget` means the focus went nowhere in particular, which
+	 * is what clicking any ordinary part of the application does. That is a
+	 * close.
+	 */
+	function leftTheMenu(event: FocusEvent) {
+		const next = event.relatedTarget as Node | null;
+		if (next && element?.contains(next)) return;
+		if (next && anchor?.contains(next)) return;
+		onclose();
+	}
+
 	function onkeydown(event: KeyboardEvent) {
 		switch (event.key) {
 			case 'Escape':
@@ -119,7 +156,10 @@
 
 <svelte:window
 	onmousedown={(event) => {
-		if (element && !element.contains(event.target as Node)) onclose();
+		const target = event.target as Node;
+		// The control that opened it gets to be the control that closes it.
+		if (anchor?.contains(target)) return;
+		if (element && !element.contains(target)) onclose();
 	}}
 	onresize={onclose}
 />
@@ -134,6 +174,7 @@
 	aria-label={label}
 	tabindex="-1"
 	{onkeydown}
+	onfocusout={leftTheMenu}
 >
 	{#each items as item, index (index)}
 		{#if 'separator' in item}
