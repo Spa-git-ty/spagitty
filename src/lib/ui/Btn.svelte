@@ -99,34 +99,25 @@
 	.btn:not(.glow):hover:not(:disabled) {
 		border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
 		color: var(--accent);
-		box-shadow: var(--glass-rim), var(--shadow-2), 0 0 14px var(--accent-soft);
+		box-shadow: none;
 		transform: translateY(-1px);
 	}
 
-	/* Pressed, the key goes down and the light comes off it. */
+	/* Pressed, the key goes down. */
 	.btn:not(.glow):active:not(:disabled) {
 		background-color: var(--press);
-		box-shadow: inset 0 1px 3px color-mix(in srgb, var(--umbra) 20%, transparent);
+		box-shadow: none;
 		transform: translateY(1px) scale(0.985);
 	}
 
 	/*
 	 * `:not(.glow)` on the fill, not on the colour.
 	 *
-	 * The glow paints its own background — an accent fill through `padding-box`
-	 * with the conic gradient in the ring — and this rule is scoped, so without
-	 * the exclusion it would win on specificity and flatten the effect back to
-	 * a plain accent block. The text colour is shared, because it is the same
-	 * either way.
+	 * The text colour is shared, because it is the same either way.
 	 */
 	.btn.primary {
 		color: var(--on-accent);
-		/* The accent's own halo under the button, which is what makes a filled
-		   control sit above the page rather than on it. */
-		box-shadow:
-			var(--sheen),
-			0 1px 2px color-mix(in srgb, var(--umbra) 14%, transparent),
-			0 4px 12px var(--accent-soft);
+		box-shadow: none;
 	}
 
 	.btn.primary:not(.glow) {

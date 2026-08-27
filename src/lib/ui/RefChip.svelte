@@ -221,7 +221,7 @@
 		border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 		color: var(--accent);
 		background: color-mix(in srgb, var(--accent) 15%, var(--surface));
-		box-shadow: var(--sheen), 0 1px 3px var(--accent-soft);
+		box-shadow: none;
 	}
 
 	/* Somebody else's copy: flat on the row, dimmed, no lift. */

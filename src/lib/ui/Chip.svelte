@@ -86,14 +86,14 @@
 		border-color: color-mix(in srgb, var(--accent) 62%, transparent);
 		color: var(--accent);
 		background-color: color-mix(in srgb, var(--accent) 14%, var(--surface));
-		box-shadow: var(--sheen), 0 1px 3px var(--accent-soft);
+		box-shadow: none;
 	}
 
 	button.chip:hover:not(:disabled) {
 		border-color: color-mix(in srgb, var(--accent) 62%, transparent);
 		color: var(--accent);
 		background-color: color-mix(in srgb, var(--accent) 11%, var(--surface));
-		box-shadow: var(--sheen), var(--shadow-1);
+		box-shadow: none;
 	}
 
 	button.chip:active:not(:disabled) {
@@ -102,15 +102,12 @@
 	}
 
 	/*
-	 * Destructive. `--danger` is the palette's own red — it used to be
-	 * `--lane-3`, which is the graph's third lane and is red only in Latte: in
-	 * Mocha it is pink and in Dracula it is cyan, so a delete chip turned cyan
-	 * on a theme somebody actually uses.
+	 * Destructive.
 	 */
 	button.chip.danger:hover:not(:disabled) {
 		border-color: var(--danger);
 		color: var(--danger);
 		background-color: color-mix(in srgb, var(--danger) 14%, var(--surface));
-		box-shadow: var(--sheen), 0 1px 3px var(--danger-soft);
+		box-shadow: none;
 	}
 </style>

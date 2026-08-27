@@ -241,18 +241,12 @@
 	 * radius — and a hover that changes a shadow re-runs it. Two layers still
 	 * give the contact-plus-height read that one cannot.
 	 */
-	--shadow-1:
-		0 1px 1px color-mix(in srgb, var(--umbra) 9%, transparent),
-		0 2px 5px color-mix(in srgb, var(--umbra) 9%, transparent);
-	--shadow-2:
-		0 1px 2px color-mix(in srgb, var(--umbra) 10%, transparent),
-		0 6px 14px color-mix(in srgb, var(--umbra) 12%, transparent);
-	--shadow-3:
-		0 2px 4px color-mix(in srgb, var(--umbra) 12%, transparent),
-		0 10px 24px color-mix(in srgb, var(--umbra) 20%, transparent);
+	--shadow-1: none;
+	--shadow-2: none;
+	--shadow-3: none;
 
 	/* The catch of light along the top edge of a raised surface. */
-	--sheen: inset 0 1px 0 color-mix(in srgb, #fff 62%, transparent);
+	--sheen: none;
 
 	/* Accent derivatives. Its tints and its halo. */
 	--accent-lift: color-mix(in srgb, var(--accent) 90%, #fff);
@@ -417,65 +411,8 @@
 	 */
 	--glass-edge: color-mix(in srgb, #fff 52%, transparent);
 	--glass-edge-low: color-mix(in srgb, var(--umbra) 14%, transparent);
-	--glass-rim:
-		inset 0 1px 0 var(--glass-edge),
-		inset 1px 0 0 color-mix(in srgb, #fff 26%, transparent),
-		inset -1px 0 0 color-mix(in srgb, #fff 10%, transparent),
-		inset 0 7px 10px -7px color-mix(in srgb, #fff 22%, transparent),
-		inset 0 -1px 0 var(--glass-edge-low),
-		inset 0 -9px 14px -11px color-mix(in srgb, var(--umbra) 16%, transparent);
-
-	/*
-	 * The same edge, for glass that is actually thick — the menu, the dialog,
-	 * the palette, the toast, the command log.
-	 *
-	 * **Nothing wears this any more.** It was a stand-in: the note below says
-	 * the shoulder is drawn because WebKitGTK cannot refract, and FEAT-057 then
-	 * made refraction real. Every pane was wearing both, and the drawn one was
-	 * the louder — five white gradients bleeding in from the edges, at fixed
-	 * alphas that no glass setting could turn down. Turning the real material
-	 * down to `strength 6` and `saturate 0` left the painted edge exactly as
-	 * bright as it had always been, which is how it was noticed.
-	 *
-	 * The panes now carry their tint, their cast shadow, and the refracted ring
-	 * the lens actually computes. The token is kept, unused, because the note
-	 * under it is the record of why the drawn shoulder existed and because
-	 * putting it back is one declaration if the real ring turns out not to
-	 * carry an edge on its own.
-	 *
-	 * Real thick glass refracts: what is behind it is displaced outward toward
-	 * the rim, hardest in the band where the shoulder curves away. WebKitGTK
-	 * cannot do that — it parses `backdrop-filter: url(#filter)` and renders
-	 * nothing for it, so an SVG displacement map is not on the table, and the
-	 * WebGL approach the reference implementations take would mean
-	 * re-rasterising the DOM every frame for a window that also draws a commit
-	 * graph.
-	 *
-	 * So the shoulder is drawn instead of computed, as a deeper, wider version
-	 * of the rim above: light entering across the top of the band, the pane's
-	 * own weight pooling under the bottom of it, and a soft return up each
-	 * side. Insets follow `border-radius`, which is why this is box-shadow and
-	 * not a background gradient — a gradient goes straight across a rounded
-	 * corner and the illusion dies there.
-	 */
-	--glass-rim-thick:
-		inset 0 1px 0 color-mix(in srgb, #fff 70%, transparent),
-		inset 0 0 0 1px color-mix(in srgb, #fff 16%, transparent),
-		inset 0 10px 18px -12px color-mix(in srgb, #fff 46%, transparent),
-		inset 7px 0 16px -14px color-mix(in srgb, #fff 34%, transparent),
-		inset -7px 0 16px -14px color-mix(in srgb, #fff 22%, transparent),
-		inset 0 -1px 0 var(--glass-edge-low),
-		inset 0 -13px 20px -14px color-mix(in srgb, var(--umbra) 26%, transparent);
-
-	/*
-	 * The light that bends *through* a pane, not off it.
-	 *
-	 * Kept as a token because the rim treatments are built from it, but no
-	 * surface paints it as a wash any more: corner pools and diagonal stripes
-	 * are gloss, which is the tell of a plastic case rather than a material.
-	 * One very quiet lift toward the upper edge, gone by a third of the way
-	 * down, is all the pane gets.
-	 */
+	--glass-rim: none;
+	--glass-rim-thick: none;
 	--glass-sheen: none;
 }
 
@@ -496,24 +433,10 @@
 
 	--glass-edge: color-mix(in srgb, #fff 16%, transparent);
 	--glass-edge-low: color-mix(in srgb, #000 34%, transparent);
-	--glass-rim:
-		inset 0 1px 0 var(--glass-edge),
-		inset 1px 0 0 color-mix(in srgb, #fff 8%, transparent),
-		inset -1px 0 0 color-mix(in srgb, #fff 3%, transparent),
-		inset 0 7px 10px -7px color-mix(in srgb, #fff 7%, transparent),
-		inset 0 -1px 0 var(--glass-edge-low),
-		inset 0 -9px 14px -11px color-mix(in srgb, #000 26%, transparent);
-
-	--glass-rim-thick:
-		inset 0 1px 0 color-mix(in srgb, #fff 24%, transparent),
-		inset 0 0 0 1px color-mix(in srgb, #fff 6%, transparent),
-		inset 0 10px 18px -12px color-mix(in srgb, #fff 16%, transparent),
-		inset 7px 0 16px -14px color-mix(in srgb, #fff 12%, transparent),
-		inset -7px 0 16px -14px color-mix(in srgb, #fff 7%, transparent),
-		inset 0 -1px 0 var(--glass-edge-low),
-		inset 0 -13px 20px -14px color-mix(in srgb, #000 40%, transparent);
-
+	--glass-rim: none;
+	--glass-rim-thick: none;
 	--glass-sheen: none;
+}
 }
 
 /*
@@ -741,10 +664,9 @@ select {
 	border: 1px solid var(--line);
 	border-radius: var(--r-field);
 	padding: 4px 8px;
-	box-shadow: inset 0 1px 2px color-mix(in srgb, var(--umbra) 6%, transparent);
+	box-shadow: none;
 	transition:
 		border-color var(--t-fast) var(--ease),
-		box-shadow var(--t-fast) var(--ease),
 		background var(--t-fast) var(--ease);
 }
 

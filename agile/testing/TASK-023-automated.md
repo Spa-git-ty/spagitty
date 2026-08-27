@@ -10,8 +10,11 @@
    - Verified `.glow` primary button rule in `src/app.css` paints solid `var(--accent)`.
    - Verified secondary buttons and disabled states maintain correct background rules.
 
-2. **Full test suite execution:**
-   - Vitest suite executed across 73 test files (1,841 unit and component tests passing).
+2. **Agile index self-check (`tools/record.test.ts`):**
+   - Verified TASK-023 row join in `agile/README.md` maps 1:1 to item, plan, automated, and sweep docs.
+
+3. **Full test suite execution:**
+   - Vitest suite executed across 73 test files (1,845 unit and component tests passing).
    - Type check and svelte syntax verification (`npm run check`) with 0 errors and 0 warnings.
 
 ## Recorded run
@@ -22,7 +25,7 @@ svelte-check found 0 errors and 0 warnings
 
 npm run test
  Test Files  73 passed (73)
-      Tests  1841 passed (1841)
+      Tests  1845 passed (1845)
 ```
 
 ## Coverage
