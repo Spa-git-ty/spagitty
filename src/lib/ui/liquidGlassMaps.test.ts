@@ -251,9 +251,32 @@ describe('filterMarkup', () => {
 	});
 
 	it('reads x from red and y from green on every pass', () => {
-		const passes = filterMarkup(sources).match(/xChannelSelector="R" yChannelSelector="G"/g);
+		const split = filterMarkup({ ...sources, material: { ...DEFAULTS, chromaticAberration: 2 } });
+		const passes = split.match(/xChannelSelector="R" yChannelSelector="G"/g);
 
 		expect(passes).toHaveLength(3);
+	});
+
+	it('collapses the three passes to one when there is no colour split', () => {
+		// TASK-022. The three run at `strength + ca`, `strength` and
+		// `strength - ca`, each keeping one channel, screened back together. At
+		// ca = 0 the three scales are equal and the screen of their R, G and B
+		// is the image a single pass produces — for three times the work plus
+		// two blends, every one of which rasterises the whole window.
+		const flat = filterMarkup({ ...sources, material: { ...DEFAULTS, chromaticAberration: 0 } });
+
+		expect(flat.match(/<feDisplacementMap/g)).toHaveLength(1);
+		expect(flat).not.toContain('feBlend');
+		expect(flat).toContain(
+			`scale="${DEFAULTS.strength}" xChannelSelector="R" yChannelSelector="G" result="refracted"`
+		);
+	});
+
+	it('still splits the colour when asked to', () => {
+		const split = filterMarkup({ ...sources, material: { ...DEFAULTS, chromaticAberration: 2 } });
+
+		expect(split.match(/<feDisplacementMap/g)).toHaveLength(3);
+		expect(split.match(/<feBlend/g)).toHaveLength(2);
 	});
 
 	it('clips the frost to the panes and leaves the refraction over everything', () => {

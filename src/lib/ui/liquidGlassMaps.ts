@@ -256,11 +256,25 @@ export function filterMarkup({
 		// 0.5 + 0.5 - 0.5 is 0.5, so anywhere both maps are neutral stays
 		// neutral, and a full push on one axis survives at full strength.
 		`<feComposite in="mapX" in2="mapY" operator="arithmetic" k1="0" k2="1" k3="1" k4="-0.5" result="map"/>` +
-		displace(strength + ca, 'Rr', 'R') +
-		displace(strength, 'Gg', 'G') +
-		displace(strength - ca, 'Bb', 'B') +
-		`<feBlend in="Rr" in2="Gg" mode="screen" result="RG"/>` +
-		`<feBlend in="RG" in2="Bb" mode="screen" result="refracted"/>` +
+		/*
+		 * With no colour split there is nothing to split, and three passes at
+		 * one scale are one pass (TASK-022).
+		 *
+		 * The three below run at `strength + ca`, `strength` and
+		 * `strength - ca`, each keeping a single channel, and are screened back
+		 * together. At `ca = 0` all three scales are equal, so the screen of
+		 * their R, G and B is pixel for pixel the undisplaced-channel sum — the
+		 * same image one `feDisplacementMap` produces, for three times the work
+		 * plus two blends. Every primitive here rasterises the whole window on
+		 * the CPU, so this is not a micro-optimisation.
+		 */
+		(ca === 0
+			? `<feDisplacementMap in="SourceGraphic" in2="map" scale="${strength}" xChannelSelector="R" yChannelSelector="G" result="refracted"/>`
+			: displace(strength + ca, 'Rr', 'R') +
+				displace(strength, 'Gg', 'G') +
+				displace(strength - ca, 'Bb', 'B') +
+				`<feBlend in="Rr" in2="Gg" mode="screen" result="RG"/>` +
+				`<feBlend in="RG" in2="Bb" mode="screen" result="refracted"/>`) +
 		// The frost the pane can no longer do for itself, clipped to the pane.
 		`<feGaussianBlur in="refracted" stdDeviation="${blur}" result="frosted"/>` +
 		`<feColorMatrix in="frosted" type="saturate" values="${saturate}" result="rich"/>` +
