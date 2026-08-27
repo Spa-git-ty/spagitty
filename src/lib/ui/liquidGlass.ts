@@ -90,6 +90,12 @@ interface Pane {
  *
  * `.lens` is inset inside `.app` and carries no shadow of its own, so the
  * region can be exactly its box and nothing is clipped that anyone can see.
+ *
+ * "Exactly its box" is now written as a fraction of that box rather than as the
+ * measured pixel size, because WebKitGTK read the pixel size in the wrong unit
+ * and clipped the window to `1 / devicePixelRatio` of itself (BUG-017). The
+ * measurement below still exists — the maps are authored against it — but the
+ * region no longer depends on it. See the note on `filterMarkup`.
  */
 const TARGET = '.lens';
 
@@ -139,7 +145,6 @@ function build() {
 
 	const list = [...panes];
 	const rects = list.map((pane) => geometry(pane, origin));
-	const dpr = window.devicePixelRatio || 1;
 	const material = thickest(list.map((pane) => pane.options));
 
 	if (!host) {
@@ -153,11 +158,9 @@ function build() {
 	}
 
 	host.innerHTML = filterMarkup({
-		width,
-		height,
-		mapX: axisMap('x', width, height, rects, dpr),
-		mapY: axisMap('y', width, height, rects, dpr),
-		shape: shapeMask(width, height, rects, dpr),
+		mapX: axisMap('x', width, height, rects),
+		mapY: axisMap('y', width, height, rects),
+		shape: shapeMask(width, height, rects),
 		material
 	});
 
@@ -209,10 +212,6 @@ export const liquidGlass: Action<HTMLElement, Partial<GlassOptions> | undefined>
 	const moved = new MutationObserver(schedule);
 	moved.observe(node, { attributes: true, attributeFilter: ['style'] });
 	window.addEventListener('resize', schedule);
-	// Moving the window to a display at a different scale changes the ratio the
-	// maps are authored against, and fires no resize.
-	const resolution = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-	resolution.addEventListener('change', schedule);
 
 	schedule();
 
@@ -225,7 +224,6 @@ export const liquidGlass: Action<HTMLElement, Partial<GlassOptions> | undefined>
 			resize.disconnect();
 			moved.disconnect();
 			window.removeEventListener('resize', schedule);
-			resolution.removeEventListener('change', schedule);
 			panes.delete(pane);
 			schedule();
 		}

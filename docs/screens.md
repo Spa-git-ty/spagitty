@@ -113,6 +113,22 @@ screen is moved to a window-sized stage of its own. The arithmetic is in
 registry are in `src/lib/ui/liquidGlass.ts`, which does nothing at all when
 there is no `.lens` to filter — which is every component test.
 
+**The region is a fraction of the box, never a measurement of it.** The filter
+covers `0 0 1 1` in `objectBoundingBox` units, and the map sources carry no
+subregion so each one defaults to that. It used to be the element's measured
+width and height in `userSpaceOnUse` units — CSS pixels, which WebKitGTK
+consumes as device pixels, so on any display whose ratio is not 1 the region
+covered `1 / devicePixelRatio` of the window and the rest of it simply stopped
+painting for as long as a menu was open (BUG-017). A fraction cannot be read in
+the wrong unit, and with one set of numbers describing the geometry instead of two there
+is nothing left for the ratio to be wrong about — the maps are authored in CSS
+pixels and stretched onto the region, and nothing in either file refers to a
+device pixel.
+
+Worth knowing before diagnosing anything here: the compositor's monitor scale is
+not the webview's ratio. Hyprland reports `scale: 1` on the display where
+WebKitGTK reports 1.3636.
+
 **Every panel resizes.** `PANELS` in `src/lib/panels.svelte.ts` is the registry —
 each panel names its CSS variable, the edge it is anchored to, and its range —
 and `Splitter` takes any key. The anchored edge is what decides the drag

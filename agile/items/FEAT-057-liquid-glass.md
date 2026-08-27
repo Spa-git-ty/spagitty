@@ -89,3 +89,12 @@ actually displaced.
 
 FEAT-055, whose measurement decides how much this may cost. FEAT-037 and
 FEAT-042, which drew the window this sits inside.
+
+## What it shipped with
+
+The filter region was written as the filtered element's measured width and
+height in `userSpaceOnUse` units. WebKitGTK reads those user units as device
+pixels, so on any display whose ratio is not 1 the lens clipped the window to
+`1 / devicePixelRatio` of itself for as long as a pane was open. The
+device-ratio pre-multiplication inside the maps was a compensation for the same
+confusion one level down. Both are gone; see BUG-017.
