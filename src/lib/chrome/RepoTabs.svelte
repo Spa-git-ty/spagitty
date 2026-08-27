@@ -58,7 +58,19 @@
 		if (wasActive && repo.info?.path === path) workspace.remember(path, here());
 
 		const next = workspace.close(path);
-		if (wasActive && next) void switchTo(next);
+		if (!wasActive) return;
+
+		// The tab that was showing has gone. Either something else takes its
+		// place, or there is nothing left and the repository itself closes
+		// (BUG-019).
+		//
+		// This used to be `if (wasActive && next)` with no other branch, so
+		// closing the last tab took the strip away and left the repository open
+		// behind it: the toolbar still naming it, the rail still counting its
+		// branches, the graph still full of its commits, and no tab anywhere to
+		// close a second time.
+		if (next) void switchTo(next);
+		else void repo.close();
 	}
 
 	async function openMenu(event: MouseEvent): Promise<void> {

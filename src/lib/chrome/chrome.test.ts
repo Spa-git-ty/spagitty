@@ -46,10 +46,14 @@ import Toolbar from './Toolbar.svelte';
 import { version } from '$lib/version';
 import { workspace } from '$lib/workspace.svelte';
 
-function info(branch: string | null = 'main', detached = false): RepoInfo {
+function info(
+	branch: string | null = 'main',
+	detached = false,
+	path = '/repos/fixture'
+): RepoInfo {
 	return {
-		path: '/repos/fixture',
-		name: 'fixture',
+		path,
+		name: path.split('/').pop() ?? 'fixture',
 		bare: false,
 		lastFetched: null,
 		head: { branch, detached, id: 'a'.repeat(40), short: 'aaaaaaa' }
@@ -235,6 +239,47 @@ describe('RepoTabs', () => {
 		expect(view.all('.tabrow').length).toBe(0);
 		expect(view.all('.tab').length).toBe(0);
 
+		view.destroy();
+	});
+
+	it('closes the repository when the last tab is closed', async () => {
+		// BUG-019: `workspace.close` returns the tab to show next, and null when
+		// there is none. The caller switched to `next` and did nothing at all
+		// when it was null, so closing the last tab took the strip away and left
+		// the repository open behind it — the toolbar still naming it, the rail
+		// still counting it, the graph still full of its commits.
+		workspace.clear();
+		workspace.opened('/repos/fixture');
+		repoControl.setInfo(info('main', false, '/repos/fixture'));
+		repoCalls.closed = 0;
+
+		const view = render(RepoTabs, {});
+		view.get('.tab .close').click();
+		await Promise.resolve();
+		flushSync();
+
+		expect(repoCalls.closed).toBe(1);
+
+		workspace.clear();
+		view.destroy();
+	});
+
+	it('does not close the repository while another tab is left', async () => {
+		// Closing one of several is a switch, not a close.
+		workspace.clear();
+		workspace.opened('/repos/fixture');
+		workspace.opened('/repos/other');
+		repoControl.setInfo(info('main', false, '/repos/other'));
+		repoCalls.closed = 0;
+
+		const view = render(RepoTabs, {});
+		view.all('.tab .close')[1].click();
+		await Promise.resolve();
+		flushSync();
+
+		expect(repoCalls.closed).toBe(0);
+
+		workspace.clear();
 		view.destroy();
 	});
 
