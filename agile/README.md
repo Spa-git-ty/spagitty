@@ -133,6 +133,7 @@ rather than an audit.
 | [BUG-013](items/BUG-013-tab-strip-with-no-repository.md) | The window comes back with a tab strip and no repository | chrome | Fixed |
 | [BUG-014](items/BUG-014-conflicts-footer-says-resolving-is-not-built.md) | The Conflicts screen says resolving is not built | 1D | Fixed |
 | [BUG-015](items/BUG-015-backend-list-disarms-the-safe-renderer.md) | A backend preference list disarms the safe renderer | — | Fixed |
+| [BUG-017](items/BUG-017-the-lens-wipes-the-window.md) | The lens wipes the right column and the bottom of the window | all | Fixed |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
 report, reopened on a corrected diagnosis, and BUG-009's own document keeps the
