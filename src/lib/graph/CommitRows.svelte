@@ -540,6 +540,41 @@
 	{/if}
 
 	<div class="rows">
+		<!--
+			The bed the columns stand on (BUG-016).
+
+			The graph's band and the two rules either side of it used to be
+			painted by `.lane-space`, which is a cell inside a row — so on a
+			repository with fewer commits than the window is tall, the columns
+			stopped where the commits stopped and the table read as though it had
+			been cut off halfway down.
+
+			This layer is the same column arithmetic as a row and as the canvas
+			above it, laid out once at the full height of the scroller. It is
+			built from `columns.shown`, like the other two, so a resize, a
+			reorder or a hidden column moves all three together or none of them.
+
+			It paints only where a row does not cover it, which is exactly the
+			empty space under the last commit.
+		-->
+		<div
+			class="bed"
+			style="transform: translateX({-scrollLeft}px); {tableWidth === null
+				? ''
+				: `width: ${tableWidth}px`}"
+			aria-hidden="true"
+		>
+			{#each shown as column (column.id)}
+				{#if column.id === 'graph'}
+					<div class="bed-slot lane-band" style="width: {laneWidth}px"></div>
+				{:else if column.fills}
+					<div class="bed-slot fill"></div>
+				{:else}
+					<div class="bed-slot" style="width: {column.width}px"></div>
+				{/if}
+			{/each}
+		</div>
+
 		<div
 			class="scroller"
 			bind:this={scroller}
@@ -633,7 +668,7 @@
 								</div>
 							{:else if column.id === 'graph'}
 								<!-- Reserves the lane column; the canvas overlays exactly this. -->
-								<div class="cell lane-space" style="width: {laneWidth}px"></div>
+								<div class="cell lane-space lane-band" style="width: {laneWidth}px"></div>
 							{:else if column.id === 'message'}
 								<div class="cell message">
 									{#if row.signed}
@@ -769,6 +804,28 @@
 	}
 
 	/*
+	 * Three layers over the same columns, stacked explicitly rather than by
+	 * document order: the bed underneath, the commits over it, the lane canvas
+	 * over both. `.edge` is above all three at 4.
+	 */
+	.bed {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		pointer-events: none;
+		z-index: 0;
+	}
+
+	.bed-slot {
+		flex: none;
+	}
+
+	.bed-slot.fill {
+		flex: 1;
+		min-width: 0;
+	}
+
+	/*
 	   A gradient rather than a hard line, and over the content rather than
 	   beside it: what it means is "this carries on underneath", and a rule
 	   would say "this stops here" — the opposite.
@@ -799,6 +856,8 @@
 	}
 
 	.scroller {
+		position: relative;
+		z-index: 1;
 		height: 100%;
 		overflow-y: auto;
 		/*
@@ -854,6 +913,7 @@
 		bottom: 0;
 		display: flex;
 		pointer-events: none;
+		z-index: 2;
 	}
 
 	.lane-gap {
@@ -896,7 +956,14 @@
 		background: linear-gradient(to left, var(--shadow-edge), transparent);
 	}
 
-	.lane-space {
+	/*
+	 * The graph's surface and the rule down each side of it.
+	 *
+	 * One declaration, worn by both the per-row cell and the bed beneath it, so
+	 * the band cannot come out one colour where there are commits and another
+	 * where there are none.
+	 */
+	.lane-band {
 		background: var(--graph-bg);
 		box-shadow:
 			inset 1px 0 0 var(--graph-line),

@@ -200,8 +200,17 @@ than one person's work, and putting the merge author's portrait on it would
 claim they wrote the branch it swallowed.
 
 The lane column is a **surface of its own** — `--graph-bg`, a mix of `--panel`
-and `--bg` so every palette gets one — bounded by a hairline, painted per row so
-it scrolls with the rows rather than a frame behind them.
+and `--bg` so every palette gets one — bounded by a hairline. It is painted
+twice, from one declaration: by each row, so it scrolls with the rows, and by a
+**bed** laid out once at the full height of the table underneath them.
+
+The bed is what a repository shorter than the window needs. With the paint
+living only on the rows, the column ended at the last commit and left a blank
+slab down to the status strip, under a header that still showed three columns
+(BUG-016). The bed iterates `columns.shown`, exactly as the row and the lane
+canvas do, so all three move together when a column is resized, reordered or
+hidden — the arrangement BUG-003 established and for the same reason. Their
+order is set explicitly: bed, then rows, then canvas, then the scroll edges.
 
 Geometry moved with the faces: node radius 11, lane pitch 26, stroke 2.5, elbow
 control points 0.55/0.45. A five-lane column is 149px where it was 96px. FEAT-022

@@ -50,6 +50,10 @@ function chip(name: string, kind: RefChip['kind'] = 'branch', current = false): 
 
 beforeEach(() => {
 	control.reset();
+	// The column store is a module singleton: a width or an order set by one
+	// test is still set in the next one. Every test here that touches a column
+	// used to have to be the first to do so.
+	columns.reset();
 	control.setRows([row(0), row(1), row(2)]);
 	vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} });
 });
@@ -390,6 +394,96 @@ describe('CommitRows', () => {
 
 		view.destroy();
 		vi.useRealTimers();
+	});
+});
+
+describe('the column bed', () => {
+	// BUG-016: the graph's band and its two rules were painted by a cell inside
+	// a row, so on a repository shorter than the window they stopped at the last
+	// commit and the table looked cut off. The bed paints them for the whole
+	// height, under the rows.
+
+	it('gives every shown column a slot, in the same order as a row', () => {
+		control.setRows([row(0), row(1), row(2)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		const slots = [...view.get('.bed').children];
+
+		expect(slots).toHaveLength(columns.shown.length);
+		// Default order is refs, graph, message.
+		expect((slots[0] as HTMLElement).style.width).toBe(`${columns.shown[0].width}px`);
+		expect((slots[1] as HTMLElement).classList.contains('lane-band')).toBe(true);
+		expect((slots[2] as HTMLElement).classList.contains('fill')).toBe(true);
+
+		view.destroy();
+	});
+
+	it('paints the band with the class the row graph cell also wears', () => {
+		// One declaration for both, so the band cannot come out one colour where
+		// there are commits and another where there are none.
+		control.setRows([row(0)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		expect(view.get('.lane-space').classList.contains('lane-band')).toBe(true);
+		expect(view.get('.bed .lane-band')).toBeTruthy();
+
+		view.destroy();
+	});
+
+	it('follows a column being resized, exactly as the rows do', () => {
+		control.setRows([row(0), row(1), row(2)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		columns.resize('refs', 120);
+		flushSync();
+
+		expect((view.get('.bed').children[0] as HTMLElement).style.width).toBe('120px');
+
+		view.destroy();
+	});
+
+	it('follows a reorder, so the band never lands on the wrong column', () => {
+		control.setRows([row(0), row(1), row(2)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		columns.reorder(1, 0);
+		flushSync();
+
+		const slots = [...view.get('.bed').children];
+		expect((slots[0] as HTMLElement).classList.contains('lane-band')).toBe(true);
+
+		view.destroy();
+	});
+
+	it('is there when the repository has no commits at all', () => {
+		// The empty case is the whole point: nothing draws the columns but this.
+		control.setRows([]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		expect(view.get('.bed').children).toHaveLength(columns.shown.length);
+		expect(view.all('.lane-space')).toHaveLength(0);
+
+		view.destroy();
+	});
+
+	it('is sized by the scroller rather than by the rows', () => {
+		// `.sizer` is `rows x pitch` tall; the bed must not be, or it would stop
+		// at the last commit again by another route.
+		control.setRows([row(0)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		const bed = view.get('.bed');
+		expect(bed.parentElement?.classList.contains('rows')).toBe(true);
+		expect(bed.closest('.sizer')).toBeNull();
+		expect(bed.closest('.scroller')).toBeNull();
+
+		view.destroy();
 	});
 });
 

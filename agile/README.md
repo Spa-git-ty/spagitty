@@ -133,6 +133,7 @@ rather than an audit.
 | [BUG-013](items/BUG-013-tab-strip-with-no-repository.md) | The window comes back with a tab strip and no repository | chrome | Fixed |
 | [BUG-014](items/BUG-014-conflicts-footer-says-resolving-is-not-built.md) | The Conflicts screen says resolving is not built | 1D | Fixed |
 | [BUG-015](items/BUG-015-backend-list-disarms-the-safe-renderer.md) | A backend preference list disarms the safe renderer | — | Fixed |
+| [BUG-016](items/BUG-016-graph-columns-stop-at-the-last-row.md) | The graph's columns stop at the last commit row | 1A | Fixed |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
 report, reopened on a corrected diagnosis, and BUG-009's own document keeps the
