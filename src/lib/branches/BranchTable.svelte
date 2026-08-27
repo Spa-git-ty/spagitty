@@ -239,15 +239,9 @@
 		opacity: 0.78;
 	}
 
-	/* The branch you are on, marked the way the nav rail marks the screen you
-	   are on: an accent edge and a tint that fades out across the row. */
+	/* The branch you are on: marked with flat selection surface. */
 	.row.current {
-		background: linear-gradient(
-			90deg,
-			color-mix(in srgb, var(--accent) 18%, transparent) 0%,
-			var(--selection) 40%,
-			transparent 100%
-		);
+		background: var(--selection);
 	}
 
 	.row:hover {

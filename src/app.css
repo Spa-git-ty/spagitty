@@ -476,11 +476,7 @@
 	 * One very quiet lift toward the upper edge, gone by a third of the way
 	 * down, is all the pane gets.
 	 */
-	--glass-sheen: linear-gradient(
-		172deg,
-		color-mix(in srgb, #fff 7%, transparent) 0%,
-		transparent 34%
-	);
+	--glass-sheen: none;
 }
 
 /*
@@ -517,11 +513,7 @@
 		inset 0 -1px 0 var(--glass-edge-low),
 		inset 0 -13px 20px -14px color-mix(in srgb, #000 40%, transparent);
 
-	--glass-sheen: linear-gradient(
-		172deg,
-		color-mix(in srgb, #fff 4%, transparent) 0%,
-		transparent 32%
-	);
+	--glass-sheen: none;
 }
 
 /*
@@ -720,12 +712,7 @@ a {
 .ph {
 	height: 6px;
 	border-radius: var(--r-pill);
-	background: linear-gradient(
-		90deg,
-		color-mix(in srgb, var(--placeholder) 65%, transparent),
-		var(--placeholder),
-		color-mix(in srgb, var(--placeholder) 65%, transparent)
-	);
+	background: var(--placeholder);
 }
 
 :focus-visible {
@@ -882,60 +869,24 @@ input[type='radio'] {
 	--glow-head: color-mix(in srgb, var(--accent) 45%, white);
 
 	position: relative;
-	border: 2px solid transparent;
-	/*
-	 * The fill is a flat accent — the ring is the effect, and a shaded fill
-	 * under it reads as gloss. The colour has to be the *last* layer:
-	 * `background` only accepts a colour in the final layer, and an accent in
-	 * the first one invalidates the whole declaration — no fill, and
-	 * `--on-accent` text straight onto the page.
-	 */
-	background:
-		conic-gradient(
-				from var(--glow-angle),
-				var(--accent) 0turn,
-				var(--accent) 0.18turn,
-				var(--glow-head) 0.5turn,
-				var(--accent) 0.82turn,
-				var(--accent) 1turn
-			)
-			border-box,
-		var(--accent) padding-box;
-	/*
-	 * The halo is held still. It used to breathe — `box-shadow` animated from
-	 * nothing to a 12px blur and back, sixty times a second, forever, on a
-	 * button that is on screen the whole session. A blurred shadow is
-	 * rasterized on the CPU in this window, so that was a Gaussian blur per
-	 * frame for an effect the eye reads as "it glows" either way.
-	 */
-	box-shadow: 0 0 10px 1px var(--glow-halo);
-	/*
-	 * Slow enough that the head drifts rather than sweeps. At the old 3.2s a
-	 * lap the eye tracked it as a moving object and kept being pulled back;
-	 * at this speed it is a change in the light on the button.
-	 */
-	animation: glow-travel 7s linear infinite;
+	border: 1px solid color-mix(in srgb, var(--accent-deep) 80%, transparent);
+	background: var(--accent);
+	box-shadow: none;
+	animation: none;
 }
 
 /* A control that cannot be pressed is not the thing to do next. */
 .glow:disabled {
 	animation: none;
-	background: var(--accent) padding-box;
+	background: var(--accent);
 	border-color: var(--line);
 	box-shadow: none;
 }
 
-/*
- * Respected without exception. A light moving in the corner of the eye is
- * exactly what this setting exists to stop, and the button is still clearly the
- * primary one without it — it keeps the accent fill and a static ring.
- */
 @media (prefers-reduced-motion: reduce) {
 	.glow {
 		animation: none;
-		background:
-			linear-gradient(var(--glow-head), var(--accent)) border-box,
-			var(--accent) padding-box;
+		background: var(--accent);
 	}
 }
 
