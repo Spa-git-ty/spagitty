@@ -40,6 +40,15 @@
 	tabindex="-1"
 	aria-label="Window"
 >
+	<!--
+		The empty side that makes the middle the middle (TASK-021). The bar is a
+		three-column grid whose outer columns are equal, so the name sits in the
+		centre of the *window* rather than in the centre of whatever the window
+		controls left over. Without this the name would be centred in a space
+		that is short by the width of three buttons, and land visibly left.
+	-->
+	<span class="side" aria-hidden="true"></span>
+
 	<span class="name">Spagitty</span>
 
 	<!--
@@ -49,8 +58,6 @@
 		rather than staying as a button that read like a tab which is always
 		open. It is screen 1J on the rail, which is where the way back belongs.
 	-->
-
-	<span class="spacer"></span>
 
 	<!--
 		What the title bar says is what it knows: which repository, and the ones
@@ -87,7 +94,22 @@
 	.titlebar {
 		height: var(--titlebar-h);
 		flex: none;
-		display: flex;
+		/*
+		 * Three columns, outer two equal: empty, name, controls (TASK-021).
+		 *
+		 * `minmax(0, 1fr)` rather than `1fr` so the outer columns may shrink
+		 * below their content on a narrow window — with a bare `1fr` the
+		 * controls set a floor for both sides and the name is pushed off centre
+		 * exactly when there is least room to lose.
+		 *
+		 * A grid rather than absolute positioning: an absolutely placed name
+		 * would sit over the drag region and have to opt out of the pointer to
+		 * let the window be dragged by its middle, and would need a stacking
+		 * index to stay under the controls. Neither is needed if the layout
+		 * simply says where the middle is.
+		 */
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 		align-items: center;
 		gap: 8px;
 		padding: 0 10px;
@@ -103,7 +125,9 @@
 		font-size: 12px;
 	}
 
+	/* Hard against the right edge, whatever its column has been given. */
 	.controls {
+		justify-self: end;
 		display: flex;
 		align-items: center;
 		gap: 2px;
@@ -159,8 +183,8 @@
 		text-overflow: ellipsis;
 	}
 
-	.spacer {
-		flex: 1;
+	.side {
+		min-width: 0;
 	}
 
 	.muted {
