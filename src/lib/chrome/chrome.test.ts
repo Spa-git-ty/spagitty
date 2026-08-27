@@ -284,6 +284,25 @@ describe('StatusStrip', () => {
 	});
 });
 
+describe('TitleBar', () => {
+	it('puts the name in the middle of the window, not the middle of the gap', () => {
+		// TASK-021: three columns with equal outer ones. Centring the name in
+		// the space the window controls leave over would land it visibly left.
+		const view = render(TitleBar, {});
+		const bar = view.get('.titlebar');
+		const children = [...bar.children];
+
+		expect(children).toHaveLength(3);
+		expect(children[1].classList.contains('name')).toBe(true);
+		expect(children[1].textContent).toBe('Spagitty');
+		// The leading column is empty and says nothing to a screen reader.
+		expect(children[0].textContent).toBe('');
+		expect(children[0].getAttribute('aria-hidden')).toBe('true');
+
+		view.destroy();
+	});
+});
+
 describe('Toolbar', () => {
 	it('says there is no repository, and offers no control that cannot work', () => {
 		// FEAT-045: an empty dropdown is worse than an absent one.
