@@ -419,6 +419,20 @@
 	 * The same edge, for glass that is actually thick — the menu, the dialog,
 	 * the palette, the toast, the command log.
 	 *
+	 * **Nothing wears this any more.** It was a stand-in: the note below says
+	 * the shoulder is drawn because WebKitGTK cannot refract, and FEAT-057 then
+	 * made refraction real. Every pane was wearing both, and the drawn one was
+	 * the louder — five white gradients bleeding in from the edges, at fixed
+	 * alphas that no glass setting could turn down. Turning the real material
+	 * down to `strength 6` and `saturate 0` left the painted edge exactly as
+	 * bright as it had always been, which is how it was noticed.
+	 *
+	 * The panes now carry their tint, their cast shadow, and the refracted ring
+	 * the lens actually computes. The token is kept, unused, because the note
+	 * under it is the record of why the drawn shoulder existed and because
+	 * putting it back is one declaration if the real ring turns out not to
+	 * carry an edge on its own.
+	 *
 	 * Real thick glass refracts: what is behind it is displaced outward toward
 	 * the rim, hardest in the band where the shoulder curves away. WebKitGTK
 	 * cannot do that — it parses `backdrop-filter: url(#filter)` and renders

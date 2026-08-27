@@ -218,9 +218,8 @@
 		background-color: var(--glass-thick);
 		backdrop-filter: var(--blur-thick);
 		-webkit-backdrop-filter: var(--blur-thick);
-		border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		border-radius: var(--r-panel);
-		box-shadow: var(--glass-rim-thick), var(--shadow-3);
+		box-shadow: var(--shadow-3);
 		outline: none;
 		/* It appears at the pointer, so it grows from where it was asked for
 		   rather than fading in from nowhere. */
