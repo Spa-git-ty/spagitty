@@ -1,4 +1,8 @@
 node_modules/
+# ...and a bare `node_modules`, which a git worktree is often given as a
+# symlink to the main checkout. The trailing slash above does not match one,
+# and an absolute symlink is worthless to anyone else who clones this.
+node_modules
 /build
 /.svelte-kit
 /dist
