@@ -1,20 +1,27 @@
-# GitLord
+# Spagitty
 
 A cross-platform desktop Git client. The commit graph is the center of gravity;
 every other view is one focused task.
 
-GitLord uses standard git terminology — fetch, push, stage, hunk, `stash@{n}`,
+Spagitty uses standard git terminology — fetch, push, stage, hunk, `stash@{n}`,
 pick/squash/reword/drop, ours/theirs — with no invented vocabulary.
 
 ## Status
 
-Early. The application chrome and the Graph screen are implemented; the
-remaining screens are placeholders being built one at a time.
+Early, but no longer partial: every screen in the design handoff is built, and
+so are the Reflog and Tags screens that came out of the gap analysis afterwards.
+[docs/screens.md](docs/screens.md) is the authority on each one.
+
+**One screen reaches a network, and only one.** Pull requests reads from a host
+the user connected themselves, with a token they issued, through the Rust core
+— the webview links no HTTP client and never holds the token. Everything else
+in Spagitty reads the disk. No repository contents, no paths, no commit
+messages and no telemetry leave the machine.
 
 ## Stack
 
 - **Tauri 2** — desktop shell
-- **Rust core** (`crates/gitlord-core`) — all git operations
+- **Rust core** (`crates/spagitty-core`) — all git operations
 - **[gix](https://github.com/GitoxideLabs/gitoxide)** — log walking, refs, diffing, blame
 - **SvelteKit / TypeScript** — frontend, SPA mode (no SSR)
 
@@ -23,7 +30,7 @@ remaining screens are placeholders being built one at a time.
 Some git operations are not reimplemented in Rust. Interactive rebase execution,
 hooks, LFS, submodule recursion and credential helpers shell out to the `git`
 binary instead. That boundary lives in exactly one module —
-`crates/gitlord-core/src/shell.rs` — and nothing else in the core spawns a
+`crates/spagitty-core/src/shell.rs` — and nothing else in the core spawns a
 process. See the header of that file for the reasoning.
 
 ## Building
@@ -37,15 +44,20 @@ npm run tauri dev      # development
 npm run tauri build    # release bundle
 ```
 
-## Naming
+## Documentation
 
-The CLI binary is `gitlord`, never `git-lord`: git treats any `git-foo`
-executable on `PATH` as a subcommand, so `git lord` would start working by
-accident.
+- [docs/architecture.md](docs/architecture.md) — the three layers, the
+  `gix`/`git` boundary, and how a repository is opened
+- [docs/screens.md](docs/screens.md) — every screen, its route, and whether it
+  is built
+- [docs/testing.md](docs/testing.md) — headless checks, the fixture repository,
+  and how to run the app for a visual sweep
+- [docs/ci.md](docs/ci.md) — the six pipeline gates and what each one proves
+- [agile/](agile/) — work items, plans and test plans
 
 ## License
 
-GitLord is free software: you can redistribute it and/or modify it under the
+Spagitty is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software
 Foundation, either version 3 of the License, or (at your option) any later
 version. See [LICENSE](LICENSE) for the full text, and [NOTICE](NOTICE) for
@@ -56,8 +68,8 @@ Contributions are accepted under GPL-3.0-or-later with a DCO sign-off. See
 
 ## Trademark
 
-> GitLord is not affiliated with, endorsed by, or sponsored by the Git project
+> Spagitty is not affiliated with, endorsed by, or sponsored by the Git project
 > or the Software Freedom Conservancy. Git and the Git logo are trademarks of
 > the Software Freedom Conservancy.
 
-The Git logo is never used as GitLord's icon or in its icon set.
+The Git logo is never used as Spagitty's icon or in its icon set.

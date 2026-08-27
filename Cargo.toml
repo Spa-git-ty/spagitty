@@ -2,18 +2,18 @@
 
 [workspace]
 resolver = "2"
-members = ["crates/gitlord-core", "src-tauri"]
+members = ["crates/spagitty-core", "src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.77"
 license = "GPL-3.0-or-later"
-repository = "https://github.com/gitlord/gitlord"
-authors = ["GitLord contributors"]
+repository = "https://github.com/Spa-git-ty/spagitty"
+authors = ["Spagitty contributors"]
 
 [workspace.dependencies]
-gitlord-core = { path = "crates/gitlord-core" }
+spagitty-core = { path = "crates/spagitty-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

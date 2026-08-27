@@ -1,55 +1,136 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Theme switching. Light/dark is CSS custom properties only — no component
- * re-render, no stylesheet swap. The flip is a single attribute on <html>.
+ * Which palette is on: a family, and light or dark within it.
+ *
+ * Switching is custom properties only — no component re-render, no stylesheet
+ * swap. The chosen palette is written onto `<html>` as inline custom
+ * properties, which beat anything in the stylesheet, so `src/app.css` can carry
+ * the default family as its boot values and the first paint is already right.
+ *
+ * The palettes themselves are data in `./themes`. Nothing here knows a colour.
+ *
+ * This is stored in `localStorage` rather than with the other settings, and
+ * deliberately: the theme has to be applied before anything has been read from
+ * disk, and the boot path cannot wait on a Tauri command to find out what
+ * colour the window is.
  */
 
-export type Theme = 'light' | 'dark';
+import {
+	DEFAULT_FAMILY,
+	isFamily,
+	paletteOf,
+	properties,
+	variantOf,
+	type FamilyId,
+	type Mode,
+	type Variant
+} from './themes';
 
-const STORAGE_KEY = 'gitlord.theme';
+/** Kept from before the family existed, so an upgrade keeps its light/dark. */
+const MODE_KEY = 'spagitty.theme';
+const FAMILY_KEY = 'spagitty.theme.family';
 
-let current = $state<Theme>('light');
+let mode = $state<Mode>('light');
+let family = $state<FamilyId>(DEFAULT_FAMILY);
 
-function commit(next: Theme) {
-	current = next;
-	if (typeof document !== 'undefined') {
-		document.documentElement.setAttribute('data-theme', next);
-	}
+/** Read a key, treating an unreadable store as an unset one. */
+function stored(key: string): string | null {
 	try {
-		localStorage.setItem(STORAGE_KEY, next);
+		return localStorage.getItem(key);
 	} catch {
-		// Private mode or a locked-down webview; the theme just won't persist.
+		// Private mode or a locked-down webview.
+		return null;
 	}
 }
 
+function remember(key: string, value: string): void {
+	try {
+		localStorage.setItem(key, value);
+	} catch {
+		// The theme just won't persist. It is not worth failing a paint over.
+	}
+}
+
+/** Put the current palette on the document. */
+function apply(): void {
+	if (typeof document === 'undefined') return;
+	const root = document.documentElement;
+
+	// Still set, because `app.css` keys its two boot blocks off it and because
+	// it is what any future stylesheet rule would need.
+	root.setAttribute('data-theme', mode);
+
+	for (const [name, value] of Object.entries(properties(paletteOf(family, mode)))) {
+		root.style.setProperty(name, value);
+	}
+}
+
+function commit(nextFamily: FamilyId, nextMode: Mode): void {
+	family = nextFamily;
+	mode = nextMode;
+	apply();
+	remember(FAMILY_KEY, nextFamily);
+	remember(MODE_KEY, nextMode);
+}
+
 export const theme = {
-	get value(): Theme {
-		return current;
+	get mode(): Mode {
+		return mode;
+	},
+	get family(): FamilyId {
+		return family;
 	},
 	get isDark(): boolean {
-		return current === 'dark';
+		return mode === 'dark';
 	},
-	set(next: Theme) {
-		commit(next);
+
+	/**
+	 * What is on, as one string: `"catppuccin-dark"`.
+	 *
+	 * Read by the lane canvas to know when to repaint. A boolean could not say
+	 * that the family changed while the mode did not, which is a repaint too.
+	 */
+	get id(): string {
+		return `${family}-${mode}`;
 	},
-	toggle() {
-		commit(current === 'dark' ? 'light' : 'dark');
+
+	/** The current variant, so a screen can say "Mocha" rather than "dark". */
+	get variant(): Variant {
+		return variantOf(family, mode);
 	},
-	/** Restore the stored choice, falling back to the OS preference. */
-	init() {
-		let stored: string | null = null;
-		try {
-			stored = localStorage.getItem(STORAGE_KEY);
-		} catch {
-			stored = null;
-		}
-		if (stored === 'light' || stored === 'dark') {
-			commit(stored);
+
+	setMode(next: Mode): void {
+		commit(family, next);
+	},
+
+	setFamily(next: FamilyId): void {
+		commit(next, mode);
+	},
+
+	toggle(): void {
+		commit(family, mode === 'dark' ? 'light' : 'dark');
+	},
+
+	/**
+	 * Restore what was chosen last, falling back to the OS preference.
+	 *
+	 * The OS is consulted for light or dark only, and only when nothing has been
+	 * stored. It has no opinion about which family, and a machine preference
+	 * that overrode an explicit choice would not be a preference.
+	 */
+	init(): void {
+		const storedFamily = stored(FAMILY_KEY);
+		const nextFamily = storedFamily && isFamily(storedFamily) ? storedFamily : DEFAULT_FAMILY;
+
+		const storedMode = stored(MODE_KEY);
+		if (storedMode === 'light' || storedMode === 'dark') {
+			commit(nextFamily, storedMode);
 			return;
 		}
+
 		const prefersDark =
 			typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches;
-		commit(prefersDark ? 'dark' : 'light');
+		commit(nextFamily, prefersDark ? 'dark' : 'light');
 	}
 };

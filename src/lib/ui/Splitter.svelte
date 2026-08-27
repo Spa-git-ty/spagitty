@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
-	import { panels } from '$lib/panels.svelte';
+	import { panels, PANELS, type PanelKey } from '$lib/panels.svelte';
 
 	/**
 	 * A draggable divider between two panels.
@@ -12,7 +12,7 @@
 
 	interface Props {
 		/** Which panel this divider resizes. */
-		panel: 'rail' | 'detail';
+		panel: PanelKey;
 		label: string;
 	}
 
@@ -20,24 +20,38 @@
 
 	let dragging = $state(false);
 
-	const width = $derived(panel === 'rail' ? panels.rail : panels.detail);
+	/**
+	 * A collapsed rail is not resizable: dragging a strip of icons wider would
+	 * produce a rail that is neither collapsed nor expanded, and the width it
+	 * would be dragging is the one being held for when it expands again.
+	 */
+	const locked = $derived(panel === 'rail' && panels.railCollapsed);
 
+	const width = $derived(panels.size(panel));
+
+	/**
+	 * Resize from the panel's own edge, not the window's.
+	 *
+	 * The panel being sized is always the splitter's immediate neighbour — the
+	 * element before it for a left-anchored panel, after it for a right-anchored
+	 * one — so its own box is the reference. Measuring from the window instead
+	 * would work for the rail and break for anything nested inside a screen,
+	 * where the rail's width sits between the window edge and the panel.
+	 */
 	function apply(clientX: number, element: HTMLElement) {
-		const app = element.closest('.app') as HTMLElement | null;
-		const bounds = app?.getBoundingClientRect();
-		if (!bounds) return;
+		const left = PANELS[panel].side === 'left';
+		const neighbour = (left ? element.previousElementSibling : element.nextElementSibling) as
+			| HTMLElement
+			| null;
 
-		if (panel === 'rail') {
-			// The rail is on the left: wider as the pointer moves right.
-			panels.setRail(clientX - bounds.left);
-		} else {
-			// The detail panel is on the right: wider as the pointer moves left.
-			panels.setDetail(bounds.right - clientX);
-		}
+		const box = neighbour?.getBoundingClientRect();
+		if (!box) return;
+
+		panels.set(panel, left ? clientX - box.left : box.right - clientX);
 	}
 
 	function onpointerdown(event: PointerEvent) {
-		if (event.button !== 0) return;
+		if (event.button !== 0 || locked) return;
 		event.preventDefault();
 		dragging = true;
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
@@ -57,6 +71,7 @@
 
 	/** Keyboard resizing, so this is not a mouse-only control. */
 	function onkeydown(event: KeyboardEvent) {
+		if (locked) return;
 		const step = event.shiftKey ? 32 : 8;
 		let delta = 0;
 		if (event.key === 'ArrowLeft') delta = -step;
@@ -84,6 +99,7 @@
 <div
 	class="splitter {panel}"
 	class:dragging
+	class:locked
 	role="separator"
 	aria-orientation="vertical"
 	aria-label={label}
@@ -96,10 +112,16 @@
 	ondblclick={() => {
 		panels.reset();
 	}}
-	title="Drag to resize · double-click to reset"
+	title={locked
+		? 'The sidebar is collapsed — expand it to resize'
+		: 'Drag to resize · double-click to reset'}
 ></div>
 
 <style>
+	.splitter.locked {
+		cursor: default;
+	}
+
 	.splitter {
 		flex: none;
 		width: 7px;
@@ -118,16 +140,34 @@
 		position: absolute;
 		inset-block: 0;
 		left: 50%;
-		width: 1.5px;
+		width: 2px;
+		border-radius: var(--r-pill);
 		transform: translateX(-50%);
 		background: transparent;
-		transition: background 0.12s ease;
+		transition:
+			background var(--t-fast) var(--ease),
+			box-shadow var(--t-fast) var(--ease);
 	}
 
-	.splitter:hover::after,
+	/*
+	 * Hover is a hint, not an announcement.
+	 *
+	 * This used to light up in the accent with a halo behind it the moment the
+	 * pointer came within four pixels — which is most of the time, because the
+	 * divider sits against the rail everyone's cursor crosses. A glowing blue
+	 * rule down the edge of the window reads as something being wrong with the
+	 * rail rather than as a handle. It is a plain hairline under the pointer
+	 * now, and takes the accent only while it is actually being dragged, or
+	 * when the keyboard is on it and there is no cursor to say where you are.
+	 */
+	.splitter:hover::after {
+		background: var(--line);
+	}
+
 	.splitter:focus-visible::after,
 	.splitter.dragging::after {
 		background: var(--accent);
+		box-shadow: 0 0 6px var(--accent-glow);
 	}
 
 	.splitter:focus-visible {

@@ -39,6 +39,13 @@ let version = $state(0);
 let count = $state(0);
 let requested = $state(0);
 let complete = $state(false);
+/**
+ * When the walk last finished, in unix seconds — not when the process started,
+ * and not when the last row arrived (FEAT-040). The graph's footer says how old
+ * what is on screen is, and a walk still running has refreshed nothing yet, so
+ * this moves only on completion.
+ */
+let refreshedAt = $state<number | null>(null);
 let error = $state<string | null>(null);
 let selectedIndex = $state<number | null>(null);
 let detail = $state<CommitDetail | null>(null);
@@ -66,6 +73,7 @@ function reset() {
 	count = 0;
 	requested = 0;
 	complete = false;
+	refreshedAt = null;
 	error = null;
 	selectedIndex = null;
 	selectedId = null;
@@ -87,6 +95,10 @@ export const graph = {
 	/** True once the walk reached the end of history. */
 	get complete(): boolean {
 		return complete;
+	},
+	/** Unix seconds when the walk last completed, or null before it has. */
+	get refreshedAt(): number | null {
+		return refreshedAt;
 	},
 	get error(): string | null {
 		return error;
@@ -157,6 +169,7 @@ export const graph = {
 				}
 
 				complete = payload.complete;
+				if (payload.complete) refreshedAt = Math.floor(Date.now() / 1000);
 				if (payload.error) error = payload.error;
 
 				// The selected commit never reappeared: history was rewritten
@@ -197,19 +210,32 @@ export const graph = {
 	 */
 	async reload(): Promise<void> {
 		try {
-			const token = await api.graphRestart();
-			// Hold the current rows until the new walk delivers; only then do
-			// they get replaced. Clearing first is what makes a refresh flash.
-			pendingReset = true;
-			selectionUnverified = selectedId !== null;
-			requested = FIRST_WINDOW;
-			error = null;
-			repo.setToken(token);
-			await api.graphRequest(token, FIRST_WINDOW);
+			await this.adopt(await api.graphRestart());
 		} catch (e) {
 			pendingReset = false;
 			error = String(e);
 		}
+	},
+
+	/**
+	 * Take over a walk that was started elsewhere, by its token.
+	 *
+	 * `reload` starts one and adopts it; changing which branches are shown
+	 * starts one as a side effect of setting the visibility, and adopts the
+	 * token that came back. Both need the same handover, and it is the handover
+	 * that is easy to get wrong — the old token's events must stop being
+	 * accepted at the same moment the rows they would have appended stop being
+	 * wanted.
+	 */
+	async adopt(token: number): Promise<void> {
+		// Hold the current rows until the new walk delivers; only then do they
+		// get replaced. Clearing first is what makes a refresh flash.
+		pendingReset = true;
+		selectionUnverified = selectedId !== null;
+		requested = FIRST_WINDOW;
+		error = null;
+		repo.setToken(token);
+		await api.graphRequest(token, FIRST_WINDOW);
 	},
 
 	/**
@@ -225,6 +251,28 @@ export const graph = {
 		api.graphRequest(token, NEXT_WINDOW).catch((e) => {
 			error = String(e);
 		});
+	},
+
+	/** The selected commit's id, which survives a walk the row index does not. */
+	get selectedId(): string | null {
+		return selectedId;
+	},
+
+	/**
+	 * Ask for a commit to be selected once the walk reaches it.
+	 *
+	 * Used when a repository is reopened from its tab: the row index a selection
+	 * had last time means nothing after a fresh walk, but the id does. The same
+	 * machinery a ref-move already uses — `selectionUnverified` — carries it
+	 * until the row arrives, and gives up honestly if the walk completes without
+	 * it, which is what a rewritten history looks like.
+	 */
+	want(id: string): void {
+		selectedId = id;
+		selectionUnverified = true;
+		selectedIndex = null;
+		detail = null;
+		detailError = null;
 	},
 
 	/** Select a row and load its detail panel. */

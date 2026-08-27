@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&display=swap" rel="stylesheet"><style>
+body{margin:0;background:#e8e6e1;font-family:'Architects Daughter',cursive;display:flex;justify-content:center;padding:28px}
+a{color:#2a78d6}a:hover{color:#1b5aa8}
+.app{--bg:#fff;--pnl:#faf9f7;--ink:#1a1a1a;--mut:rgba(0,0,0,.5);--line:rgba(0,0,0,.22);--soft:rgba(0,0,0,.1);--ph:rgba(0,0,0,.16);--acc:#2a78d6;--sel:rgba(42,120,214,.1);--st:rgba(0,0,0,.035)}
+.app[data-theme="dark"]{--bg:#1b1e24;--pnl:#20242b;--ink:#e9e8e4;--mut:rgba(255,255,255,.52);--line:rgba(255,255,255,.2);--soft:rgba(255,255,255,.09);--ph:rgba(255,255,255,.2);--acc:#5ba4ee;--sel:rgba(91,164,238,.14);--st:rgba(255,255,255,.035)}
+.app{width:1280px;height:800px;background:var(--bg);color:var(--ink);border:1.5px solid var(--line);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;font-size:13px;line-height:1.35;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.row{display:flex}.col{display:flex;flex-direction:column}.ac{align-items:center}.jb{justify-content:space-between}.f1{flex:1;min-width:0}
+.g3{gap:3px}.g4{gap:4px}.g6{gap:6px}.g8{gap:8px}.g10{gap:10px}.g14{gap:14px}
+.p6{padding:6px}.p8{padding:8px}.p10{padding:10px}.p14{padding:14px}
+.tt{height:30px;display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--pnl);border-bottom:1.5px solid var(--line);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--line);flex:none}
+.tb{height:50px;display:flex;align-items:center;gap:16px;padding:0 12px;border-bottom:1.5px solid var(--line)}
+.tbi{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:10px;color:var(--mut);min-width:44px;cursor:pointer;user-select:none}
+.tbi:hover{color:var(--acc)}
+.bx{border:1.5px solid var(--line);border-radius:3px}
+.dsh{border:1.5px dashed var(--soft);border-radius:3px}
+.hr{height:1.5px;background:var(--soft)}
+.vr{width:1.5px;background:var(--soft)}
+.ph{height:6px;border-radius:3px;background:var(--ph)}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:10px}
+.mut{color:var(--mut)}
+.note{font-size:11px;color:var(--mut)}
+.btn{border:1.5px solid var(--line);border-radius:12px;padding:3px 10px;font-size:11px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer;background:transparent;color:inherit}
+.btn:hover{border-color:var(--acc);color:var(--acc)}
+.btn.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+.btn.pri:hover{color:#fff;opacity:.9}
+.chip{border:1.5px solid var(--soft);border-radius:9px;padding:1px 8px;font-size:10px;white-space:nowrap;cursor:pointer}
+.chip.b{border-color:var(--acc);color:var(--acc)}
+.nd{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--line);background:var(--bg);flex:none}
+.nd.fill{background:var(--acc);border-color:var(--acc)}
+.rail{width:186px;border-right:1.5px solid var(--line);background:var(--pnl);flex:none;overflow:hidden}
+.ri{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 10px;font-size:12px;cursor:pointer;border-left:3px solid transparent}
+.ri:hover{background:var(--st)}
+.ri[data-active="true"]{background:var(--sel);border-left-color:var(--acc);color:var(--acc)}
+.gr{height:26px;display:flex;align-items:center;gap:6px;padding:0 8px;box-sizing:border-box;cursor:pointer}
+.gr:hover{background:var(--st)}
+.gr[data-active="true"]{background:var(--sel)}
+.st{background:var(--st)}
+.ref{display:inline-flex;align-items:center;gap:4px;border:1.5px solid var(--soft);border-radius:3px;padding:0 5px;font-size:10px;font-family:ui-monospace,Menlo,monospace;background:var(--bg);white-space:nowrap}
+.ref.cur{border-color:var(--acc);color:var(--acc)}
+.ref.tag{border-radius:3px 8px 8px 3px;border-style:dashed}
+.detail{width:270px;border-left:1.5px solid var(--line);flex:none;background:var(--pnl);overflow:hidden}
+.scr{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-bottom:1.5px solid var(--soft)}
+.tl{font-size:16px}
+.sc{padding:0 12px 12px;overflow:hidden;flex:1;display:flex;flex-direction:column;gap:10px}
+.scr.row,.sc.row{flex-direction:row}
+.sc.row{align-items:stretch}
+.sc.row>.vr,.scr.row>.vr{align-self:stretch}
+.mask{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center}
+.mdl{width:480px;background:var(--bg);border:1.5px solid var(--line);border-radius:6px;overflow:hidden}
+.sw{width:32px;height:16px;border:1.5px solid var(--line);border-radius:9px;position:relative;flex:none}
+.sw i{position:absolute;top:2px;width:11px;height:11px;border-radius:50%;background:var(--acc)}
+.sw[data-on="true"] i{right:2px}.sw[data-on="false"] i{left:2px;background:var(--soft)}
+</style></helmet>
+
+<div class="app" data-theme="{{ theme }}" style="position:relative">
+<div class="tt"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:6px">GitLord</span><span class="mut">·</span><span class="mut">electron</span><span class="ref cur">✔ master</span><span class="f1"></span><span class="chip" onClick="{{ toggleTheme }}">{{ themeLabel }}</span><span class="chip" onClick="{{ nav.search }}">⌘K</span><span class="note">GPL-3.0 · v0.1</span></div>
+
+<div class="tb">
+<div class="row ac g10" style="width:280px">
+<div class="col g3 f1"><span class="note">repository</span><div class="bx row ac jb p6" onClick="{{ nav.repos }}"><div class="ph" style="width:52px"></div><span class="mono mut">▾</span></div></div>
+<div class="col g3 f1"><span class="note">branch</span><div class="bx row ac jb p6" onClick="{{ nav.branches }}"><div class="ph" style="width:44px"></div><span class="mono mut">▾</span></div></div>
+</div>
+<span class="vr" style="height:26px"></span>
+<div class="tbi">↺<span>Undo</span></div><div class="tbi">↻<span>Redo</span></div>
+<span class="vr" style="height:26px"></span>
+<div class="tbi">⇩<span>Fetch</span></div><div class="tbi">⇧<span>Push 2</span></div>
+<div class="tbi" onClick="{{ nav.branches }}">⑃<span>Branch</span></div>
+<div class="tbi" onClick="{{ nav.stash }}">▤<span>Stash</span></div>
+<div class="tbi" onClick="{{ nav.rebase }}">✎<span>Rebase</span></div>
+<span class="f1"></span>
+<div class="btn pri" onClick="{{ nav.changes }}">Commit 2 files</div>
+</div>
+
+<div class="row f1" style="min-height:0">
+<div class="rail col">
+<div class="row ac jb p8" style="border-bottom:1.5px solid var(--soft)"><span class="mono mut">◂ 1181 / 1181</span><span class="note">show all</span></div>
+<div class="p8"><div class="dsh row ac jb p6" onClick="{{ nav.search }}"><span class="mono mut">filter commits</span><span class="mono mut">⌘F</span></div></div>
+<div class="ri" data-active="{{ at.graph }}" onClick="{{ nav.graph }}"><span>Graph</span><span class="mono mut">1181</span></div>
+<div class="ri" data-active="{{ at.changes }}" onClick="{{ nav.changes }}"><span>Working copy</span><span class="mono mut">6</span></div>
+<div class="ri" data-active="{{ at.conflict }}" onClick="{{ nav.conflict }}"><span>Conflicts</span><span class="mono mut">3</span></div>
+<div class="ri" data-active="{{ at.branches }}" onClick="{{ nav.branches }}"><span>Branches</span><span class="mono mut">132</span></div>
+<div class="ri" data-active="{{ at.stash }}" onClick="{{ nav.stash }}"><span>Stash</span><span class="mono mut">3</span></div>
+<div class="ri" data-active="{{ at.requests }}" onClick="{{ nav.requests }}"><span>Pull requests</span><span class="mono mut">93</span></div>
+<div class="ri" data-active="{{ at.search }}" onClick="{{ nav.search }}"><span>Log</span><span class="mono mut">⌘F</span></div>
+<div class="ri" data-active="{{ at.rebase }}" onClick="{{ nav.rebase }}"><span>Rebase</span><span class="mono mut">6</span></div>
+<div class="hr"></div>
+<div class="ri" data-active="{{ at.repos }}" onClick="{{ nav.repos }}"><span>All repositories</span><span class="mono mut">7</span></div>
+<div class="ri" data-active="{{ at.settings }}" onClick="{{ nav.settings }}"><span>Settings</span><span class="mono mut">·</span></div>
+<div class="f1"></div>
+<div class="col g4 p8"><span class="note">Tags 1049 · Submodules 2</span><div class="btn" onClick="{{ openClone }}">Clone repository…</div></div>
+</div>
+
+<sc-if value="{{ at.graph }}" hint-placeholder-val="{{ true }}">
+<div class="scr row">
+<div class="col f1" style="min-width:0">
+<div class="hd"><div class="row ac g8"><span class="tl">Graph</span><span class="chip b">master</span><span class="chip">all branches</span></div><div class="row ac g6"><span class="chip b">lanes</span><span class="chip">flat list</span></div></div>
+<div class="row" style="flex:1;min-height:0;overflow:hidden">
+<div class="col" style="width:186px;flex:none">
+<div class="gr st" style="justify-content:flex-end"><span class="ref cur">✔ master</span></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref">roller/chromium/master</span></div>
+<div class="gr st"></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref">trop/10-x-y-bp-fix…</span></div>
+<div class="gr st" style="justify-content:flex-end"><span class="ref">11-x-y</span></div>
+<div class="gr"></div><div class="gr st"></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref">trop/11-x-y-deco…</span></div>
+<div class="gr st"></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref">honor-printing-11-x-y</span><span class="ref">+1</span></div>
+<div class="gr st"></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref tag">v12.0.0-nightly</span></div>
+<div class="gr st" style="justify-content:flex-end"><span class="ref">9-x-y</span></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref">roller/node/master</span></div>
+<div class="gr st"></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref">trop/9-x-y-bp…</span></div>
+<div class="gr st"></div><div class="gr"></div>
+</div>
+<div style="width:150px;flex:none;position:relative">
+<div class="col" style="position:absolute;inset:0">
+<div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div>
+</div>
+<svg viewBox="0 0 150 468" width="150" height="468" style="position:absolute;inset:0" fill="none" stroke-width="2">
+<path d="M18,0 V468" stroke="#2a78d6"></path>
+<path d="M18,13 C18,30 42,24 42,39 V195 C42,212 18,206 18,221" stroke="#7a5cc4"></path>
+<path d="M18,65 C18,84 66,74 66,91 V273 C66,292 18,282 18,299" stroke="#c0559b"></path>
+<path d="M42,117 C42,136 90,128 90,143 V221 C90,240 18,238 18,247" stroke="#c8862a"></path>
+<path d="M18,247 C18,266 114,258 114,273 V403 C114,420 18,414 18,429" stroke="#3f9d6a"></path>
+<path d="M18,325 C18,342 66,336 66,351 V468" stroke="#c0559b"></path>
+<g font-family="ui-monospace,Menlo,monospace" font-size="7" text-anchor="middle">
+<circle cx="18" cy="13" r="8" fill="#2a78d6"></circle><text x="18" y="16" fill="#fff">SM</text>
+<circle cx="42" cy="39" r="8" fill="#7a5cc4"></circle><text x="42" y="42" fill="#fff">AL</text>
+<circle cx="42" cy="65" r="8" fill="#7a5cc4"></circle><text x="42" y="68" fill="#fff">AL</text>
+<circle cx="66" cy="91" r="8" fill="#c0559b"></circle><text x="66" y="94" fill="#fff">SV</text>
+<circle cx="42" cy="117" r="8" fill="#7a5cc4"></circle><text x="42" y="120" fill="#fff">TR</text>
+<circle cx="90" cy="143" r="8" fill="#c8862a"></circle><text x="90" y="146" fill="#fff">JR</text>
+<circle cx="66" cy="169" r="8" fill="#c0559b"></circle><text x="66" y="172" fill="#fff">TR</text>
+<circle cx="42" cy="195" r="8" fill="#7a5cc4"></circle><text x="42" y="198" fill="#fff">TR</text>
+<circle cx="18" cy="221" r="8" fill="#2a78d6"></circle><text x="18" y="224" fill="#fff">SV</text>
+<circle cx="18" cy="247" r="8" fill="#2a78d6"></circle><text x="18" y="250" fill="#fff">JK</text>
+<circle cx="66" cy="273" r="8" fill="#c0559b"></circle><text x="66" y="276" fill="#fff">SA</text>
+<circle cx="18" cy="299" r="8" fill="#2a78d6"></circle><text x="18" y="302" fill="#fff">EB</text>
+<circle cx="114" cy="325" r="8" fill="#3f9d6a"></circle><text x="114" y="328" fill="#fff">TR</text>
+<circle cx="114" cy="351" r="8" fill="#3f9d6a"></circle><text x="114" y="354" fill="#fff">EB</text>
+<circle cx="66" cy="377" r="8" fill="#c0559b"></circle><text x="66" y="380" fill="#fff">JK</text>
+<circle cx="114" cy="403" r="8" fill="#3f9d6a"></circle><text x="114" y="406" fill="#fff">SM</text>
+<circle cx="18" cy="429" r="8" fill="#2a78d6"></circle><text x="18" y="432" fill="#fff">AL</text>
+<circle cx="66" cy="455" r="8" fill="#c0559b"></circle><text x="66" y="458" fill="#fff">SV</text>
+</g></svg>
+</div>
+<div class="col f1" style="border-left:1.5px solid var(--soft);min-width:0">
+<div class="gr st" data-active="true" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:280px"></div><span class="mono mut">now</span></div>
+<div class="gr" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:150px"></div></div>
+<div class="gr st" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:236px"></div></div>
+<div class="gr" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:190px"></div></div>
+<div class="gr st" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:212px"></div></div>
+<div class="gr" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:164px"></div></div>
+<div class="gr st" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:258px"></div></div>
+<div class="gr" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:176px"></div></div>
+<div class="gr st" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:220px"></div></div>
+<div class="gr" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:148px"></div><span class="mono mut">1 hour ago</span></div>
+<div class="gr st" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:196px"></div></div>
+<div class="gr" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:132px"></div></div>
+<div class="gr st" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:242px"></div><span class="mono mut">3 hours ago</span></div>
+<div class="gr" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:168px"></div></div>
+<div class="gr st" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:204px"></div></div>
+<div class="gr" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:140px"></div></div>
+<div class="gr st" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:228px"></div><span class="mono mut">yesterday</span></div>
+<div class="gr" onClick="{{ nav.diff }}"><div class="ph f1" style="max-width:160px"></div></div>
+</div>
+</div>
+<div class="row ac jb p8" style="border-top:1.5px solid var(--soft)"><span class="note">drag a commit onto a branch to merge · right-click for the full menu</span><span class="note">click a row to open its diff</span></div>
+</div>
+<div class="detail col">
+<div class="row ac jb p8" style="border-bottom:1.5px solid var(--soft)"><span class="note">commit</span><span class="mono mut">9d0d9a ⇩</span></div>
+<div class="col p10 g8">
+<div class="col bx p8 g4"><div class="ph" style="width:88%"></div><div class="ph" style="width:66%"></div><div class="ph" style="width:42%"></div></div>
+<div class="row ac g6"><span class="nd fill" style="width:20px;height:20px"></span><div class="col g3 f1"><div class="ph" style="width:58%"></div><div class="mono mut">authored · 12:29 PM</div></div></div>
+<div class="row ac g6"><span class="nd" style="width:20px;height:20px"></span><div class="col g3 f1"><div class="ph" style="width:44%"></div><div class="mono mut">committed · 12:29 PM</div></div></div>
+<div class="mono mut">parent 881ac9</div>
+<div class="hr"></div>
+<div class="row ac jb"><span class="note">4 files changed</span><div class="row g4"><span class="chip b">path</span><span class="chip">tree</span></div></div>
+<div class="col g6">
+<div class="row ac g6" onClick="{{ nav.diff }}"><span class="mono mut">~</span><div class="ph f1" style="max-width:150px"></div></div>
+<div class="row ac g6" onClick="{{ nav.diff }}"><span class="mono mut">~</span><div class="ph f1" style="max-width:180px"></div></div>
+<div class="row ac g6" onClick="{{ nav.diff }}"><span class="mono" style="color:#2a78d6">+</span><div class="ph f1" style="max-width:162px"></div></div>
+<div class="row ac g6" onClick="{{ nav.diff }}"><span class="mono mut">~</span><div class="ph f1" style="max-width:128px"></div></div>
+</div>
+<div class="btn" onClick="{{ nav.diff }}">Open full diff →</div>
+<div class="hr"></div>
+<div class="col g6"><span class="note">Commit actions</span><div class="row g6" style="flex-wrap:wrap"><span class="chip">Merge into master</span><span class="chip">Revert</span><span class="chip" onClick="{{ nav.rebase }}">Interactive rebase</span><span class="chip">Copy SHA</span></div></div>
+</div></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ at.diff }}" hint-placeholder-val="{{ false }}">
+<div class="scr">
+<div class="hd"><div class="row ac g8"><span class="btn" onClick="{{ nav.graph }}">← Graph</span><span class="tl">Diff · 9d0d9a</span><span class="mono mut">4 files · +48 −12</span></div><div class="row g6"><span class="chip">unified</span><span class="chip b">split</span></div></div>
+<div class="sc row g10" style="padding-top:10px">
+<div class="col g6" style="width:210px;flex:none">
+<span class="note">Files</span>
+<div class="col g4">
+<div class="gr" data-active="true"><span class="mono mut">~</span><div class="ph f1"></div><span class="mono mut">+18 −4</span></div>
+<div class="gr"><span class="mono mut">~</span><div class="ph f1" style="max-width:120px"></div><span class="mono mut">+2 −2</span></div>
+<div class="gr"><span class="mono" style="color:#2a78d6">+</span><div class="ph f1" style="max-width:150px"></div><span class="mono mut">new</span></div>
+<div class="gr"><span class="mono mut">~</span><div class="ph f1" style="max-width:100px"></div><span class="mono mut">+28 −6</span></div>
+</div>
+<div class="hr"></div>
+<div class="dsh p8 note">j / k jumps between hunks. Esc goes back to the graph.</div>
+</div>
+<div class="vr"></div>
+<div class="col f1 g6" style="min-width:0">
+<div class="row ac jb"><span class="mono mut">docs/api/session.md</span><span class="note">2 hunks</span></div>
+<div class="row f1 g10" style="min-height:0">
+<div class="col f1 g4 bx p10"><span class="mono mut">before</span><div class="ph" style="width:80%"></div><div class="ph" style="width:62%"></div><div class="ph" style="width:70%;background:rgba(0,0,0,.3)"></div><div class="ph" style="width:46%;background:rgba(0,0,0,.3)"></div><div class="ph" style="width:66%"></div><div class="ph" style="width:38%"></div><div class="ph" style="width:74%"></div><div class="ph" style="width:52%"></div></div>
+<div class="col f1 g4 bx p10"><span class="mono mut">after</span><div class="ph" style="width:80%"></div><div class="ph" style="width:62%"></div><div class="ph" style="width:88%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:56%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:70%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:66%"></div><div class="ph" style="width:38%"></div><div class="ph" style="width:74%"></div></div>
+</div>
+<div class="row ac jb"><div class="row g6"><span class="btn">Prev file</span><span class="btn pri">Next file</span></div><span class="note">1 of 4</span></div>
+</div></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ at.changes }}" hint-placeholder-val="{{ false }}">
+<div class="scr">
+<div class="hd"><div class="row ac g8"><span class="tl">Commit</span><span class="note">6 files changed on master</span></div><div class="row g6"><span class="chip">select all</span><span class="chip">none</span></div></div>
+<div class="sc" style="padding-top:10px">
+<div class="col bx p10 g6"><div class="ph" style="width:44%"></div><div class="hr"></div><div class="ph" style="width:68%"></div><div class="row ac jb"><span class="note">subject line, then optional body</span><span class="note">2 files staged</span></div></div>
+<div class="row f1 g10" style="min-height:0">
+<div class="col g6" style="width:250px;flex:none">
+<span class="note">Staged (2)</span>
+<div class="gr bx" data-active="true"><span class="mono" style="color:#2a78d6">+</span><div class="ph f1"></div><span class="mono mut">+18 −4</span></div>
+<div class="gr bx"><span class="mono mut">~</span><div class="ph f1" style="max-width:130px"></div><span class="mono mut">+2 −2</span></div>
+<div class="hr"></div>
+<span class="note">Unstaged (4)</span>
+<div class="gr dsh"><span class="mono mut">~</span><div class="ph f1" style="max-width:160px"></div></div>
+<div class="gr dsh"><span class="mono mut">−</span><div class="ph f1" style="max-width:110px"></div></div>
+<div class="gr dsh"><span class="mono mut">?</span><div class="ph f1" style="max-width:140px"></div></div>
+<div class="gr dsh"><span class="mono mut">?</span><div class="ph f1" style="max-width:96px"></div></div>
+<div class="f1"></div>
+<div class="btn" onClick="{{ nav.stash }}">Stash all changes instead</div>
+</div>
+<div class="vr"></div>
+<div class="col f1 g6" style="min-width:0">
+<div class="row ac jb"><span class="mono mut">src/auth/session.rs · hunk 1 of 3</span><div class="row g6"><span class="chip b">stage hunk</span><span class="chip">unstage hunk</span></div></div>
+<div class="col bx p10 g4 f1" style="min-height:0"><span class="mono mut">@@ 12,7 +12,9</span><div class="ph" style="width:70%"></div><div class="ph" style="width:52%"></div><div class="ph" style="width:86%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:60%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:44%;background:rgba(0,0,0,.3)"></div><div class="ph" style="width:74%"></div><div class="ph" style="width:38%"></div></div>
+<div class="row ac jb"><span class="note">nothing is committed until you press the button</span><div class="btn pri">Commit 2 files</div></div>
+</div></div>
+</div></div>
+</sc-if>
+
+<sc-if value="{{ at.conflict }}" hint-placeholder-val="{{ false }}">
+<div class="scr">
+<div class="hd"><div class="row ac g8"><span class="tl">Merge conflict</span><span class="mono mut">src/config.toml</span></div><div class="row ac g6"><span class="chip b">conflict 1</span><span class="chip">2</span><span class="chip">3</span><span class="btn">Abort merge</span></div></div>
+<div class="sc" style="padding-top:10px">
+<div class="row f1 g10" style="min-height:0">
+<div class="col f1 bx p10 g6"><div class="row ac jb"><span class="note">Ours — HEAD · 2h ago</span><span class="chip">Use this</span></div><div class="hr"></div><div class="ph" style="width:80%"></div><div class="ph" style="width:60%"></div><div class="ph" style="width:72%"></div><div class="ph" style="width:48%"></div></div>
+<div class="col f1 bx p10 g6" style="border-color:var(--acc)"><div class="row ac jb"><span class="note">Merged result · editable</span><span class="mono mut">✎</span></div><div class="hr"></div><div class="ph" style="width:70%"></div><div class="ph" style="width:84%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:52%"></div><div class="ph" style="width:64%"></div></div>
+<div class="col f1 bx p10 g6"><div class="row ac jb"><span class="note">Theirs — incoming · 1d ago</span><span class="chip">Use this</span></div><div class="hr"></div><div class="ph" style="width:66%"></div><div class="ph" style="width:78%"></div><div class="ph" style="width:44%"></div><div class="ph" style="width:58%"></div></div>
+</div>
+<div class="row ac jb"><span class="note">Nothing is committed until you finish. Your pre-merge state stays in the stash.</span><div class="row g6"><span class="chip">Edit manually</span><span class="btn">Decide later</span><span class="btn pri">Next conflict →</span></div></div>
+</div></div>
+</sc-if>
+
+<sc-if value="{{ at.rebase }}" hint-placeholder-val="{{ false }}">
+<div class="scr">
+<div class="hd"><div class="row ac g8"><span class="tl">Interactive rebase</span><span class="note">last 6 commits on feature/auth</span></div><div class="row g6"><span class="btn">Cancel</span><span class="btn pri">Apply</span></div></div>
+<div class="sc row g10" style="padding-top:10px">
+<div class="col f1 g6" style="min-width:0">
+<span class="note">Todo — set an action per commit, drag to reorder</span>
+<div class="row ac g8 bx p8"><span class="mono mut">⠿</span><span class="nd"></span><div class="ph f1" style="max-width:200px"></div><span class="chip">pick</span><span class="mono mut">a1f9c2</span></div>
+<div class="row ac g8 bx p8" style="background:var(--sel)"><span class="mono mut">⠿</span><span class="nd fill"></span><div class="ph f1" style="max-width:160px"></div><span class="chip b">squash</span><span class="mono mut">9c02de</span></div>
+<div class="row ac g8 bx p8"><span class="mono mut">⠿</span><span class="nd"></span><div class="ph f1" style="max-width:180px"></div><span class="chip b">reword</span><span class="mono mut">77aa10</span></div>
+<div class="row ac g8 bx p8"><span class="mono mut">⠿</span><span class="nd"></span><div class="ph f1" style="max-width:140px"></div><span class="chip">pick</span><span class="mono mut">4bc881</span></div>
+<div class="row ac g8 dsh p8"><span class="mono mut">⠿</span><span class="nd"></span><div class="ph f1" style="max-width:120px;opacity:.5"></div><span class="chip">drop</span><span class="mono mut">02de55</span></div>
+<div class="row ac g8 bx p8"><span class="mono mut">⠿</span><span class="nd"></span><div class="ph f1" style="max-width:170px"></div><span class="chip">pick</span><span class="mono mut">5ff210</span></div>
+</div>
+<div class="vr"></div>
+<div class="col f1 g6" style="min-width:0">
+<span class="note">Result preview — nothing has run yet</span>
+<div class="row ac g8 p8"><span class="nd"></span><div class="ph f1" style="max-width:200px"></div></div>
+<div class="row ac g8 p8"><span class="nd fill"></span><div class="ph f1" style="max-width:230px;background:rgba(42,120,214,.4)"></div></div>
+<div class="row ac g8 p8"><span class="nd"></span><div class="ph f1" style="max-width:180px;background:rgba(42,120,214,.4)"></div></div>
+<div class="row ac g8 p8"><span class="nd"></span><div class="ph f1" style="max-width:140px"></div></div>
+<div class="row ac g8 p8"><span class="nd"></span><div class="ph f1" style="max-width:170px"></div></div>
+<div class="hr"></div>
+<div class="col g4"><span class="note">6 → 4 commits · no other branch points at these</span><div class="dsh p8 note">The reflog keeps the old history for 30 days — Undo in the toolbar restores it.</div></div>
+</div></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ at.branches }}" hint-placeholder-val="{{ false }}">
+<div class="scr">
+<div class="hd"><div class="row ac g8"><span class="tl">Branches</span><span class="note">132 · 2 remotes</span></div><div class="row g6"><span class="btn">Manage remotes</span><span class="btn pri">New branch</span></div></div>
+<div class="sc" style="padding-top:10px">
+<div class="row g6 ac"><div class="dsh p8 f1"><span class="mono mut">filter by name</span></div><span class="chip b">mine</span><span class="chip">origin</span><span class="chip">upstream</span><span class="chip">merged</span><span class="chip">stale</span></div>
+<div class="row ac g8 p6" style="border-bottom:1.5px solid var(--soft)"><span class="note f1">branch</span><span class="note" style="width:90px">ahead / behind</span><span class="note" style="width:110px">last change</span><span class="note" style="width:150px">actions</span></div>
+<div class="col g4 f1" style="min-height:0">
+<div class="row ac g8 bx p8" style="background:var(--sel)"><span class="nd fill"></span><div class="ph f1" style="max-width:200px"></div><span class="chip b">current</span><span class="mono mut" style="width:90px">2 ↑ 0 ↓</span><span class="mono mut" style="width:110px">2 hours ago</span><div class="row g6" style="width:150px"><span class="chip">Push</span><span class="chip">Rename</span></div></div>
+<div class="row ac g8 bx p8"><span class="nd"></span><div class="ph f1" style="max-width:170px"></div><span class="mono mut" style="width:90px">0 ↑ 4 ↓</span><span class="mono mut" style="width:110px">yesterday</span><div class="row g6" style="width:150px"><span class="chip">Switch</span><span class="chip">Pull</span></div></div>
+<div class="row ac g8 bx p8"><span class="nd"></span><div class="ph f1" style="max-width:220px"></div><span class="mono mut" style="width:90px">3 ↑ 1 ↓</span><span class="mono mut" style="width:110px">2 days ago</span><div class="row g6" style="width:150px"><span class="chip">Switch</span><span class="chip" onClick="{{ nav.requests }}">Pull request</span></div></div>
+<div class="row ac g8 dsh p8"><span class="nd"></span><div class="ph f1" style="max-width:150px;opacity:.6"></div><span class="mono mut" style="width:90px">merged</span><span class="mono mut" style="width:110px">1 week ago</span><div class="row g6" style="width:150px"><span class="chip">Delete</span></div></div>
+<div class="row ac g8 dsh p8"><span class="nd"></span><div class="ph f1" style="max-width:130px;opacity:.6"></div><span class="mono mut" style="width:90px">merged</span><span class="mono mut" style="width:110px">3 weeks ago</span><div class="row g6" style="width:150px"><span class="chip">Delete</span></div></div>
+</div>
+<div class="row ac jb"><span class="note">4 branches are merged and safe to remove</span><span class="btn">Delete all 4</span></div>
+</div></div>
+</sc-if>
+
+<sc-if value="{{ at.stash }}" hint-placeholder-val="{{ false }}">
+<div class="scr row">
+<div class="col f1" style="min-width:0">
+<div class="hd"><div class="row ac g8"><span class="tl">Stash</span><span class="note">3 entries · stash@{0} … stash@{2}</span></div><div class="btn pri">Stash changes</div></div>
+<div class="row" style="flex:1;min-height:0;overflow:hidden">
+<div class="col" style="width:150px;flex:none;position:relative">
+<svg viewBox="0 0 150 312" width="150" height="312" style="position:absolute;inset:0" fill="none" stroke-width="2">
+<path d="M30,0 V312" stroke="#2a78d6"></path>
+<path d="M30,13 C30,30 66,24 66,39 V143 C66,160 30,154 30,169" stroke="#7a5cc4"></path>
+<g font-family="ui-monospace,Menlo,monospace" font-size="7" text-anchor="middle">
+<circle cx="30" cy="13" r="8" fill="#2a78d6"></circle><text x="30" y="16" fill="#fff">SM</text>
+<circle cx="66" cy="39" r="8" fill="#7a5cc4"></circle><text x="66" y="42" fill="#fff">AL</text>
+<circle cx="66" cy="91" r="8" fill="#7a5cc4"></circle><text x="66" y="94" fill="#fff">TR</text>
+<circle cx="66" cy="143" r="8" fill="#7a5cc4"></circle><text x="66" y="146" fill="#fff">SV</text>
+<circle cx="30" cy="169" r="8" fill="#2a78d6"></circle><text x="30" y="172" fill="#fff">JK</text>
+<circle cx="30" cy="221" r="8" fill="#2a78d6"></circle><text x="30" y="224" fill="#fff">EB</text>
+<circle cx="30" cy="273" r="8" fill="#2a78d6"></circle><text x="30" y="276" fill="#fff">AL</text>
+</g></svg>
+</div>
+<div class="col f1" style="min-width:0;border-left:1.5px solid var(--soft)">
+<div class="gr st"><div class="ph f1" style="max-width:220px"></div><span class="ref">stash@{0}</span><span class="mono mut">2h</span></div>
+<div class="gr"><div class="ph f1" style="max-width:150px"></div></div>
+<div class="gr st"><div class="ph f1" style="max-width:190px"></div><span class="ref">stash@{1}</span><span class="mono mut">1d</span></div>
+<div class="gr"><div class="ph f1" style="max-width:130px"></div></div>
+<div class="gr st"><div class="ph f1" style="max-width:210px"></div><span class="ref">stash@{2}</span><span class="mono mut">3d</span></div>
+<div class="gr"><div class="ph f1" style="max-width:160px"></div></div>
+<div class="gr st"><div class="ph f1" style="max-width:180px"></div></div>
+<div class="gr"><div class="ph f1" style="max-width:140px"></div></div>
+<div class="gr st"><div class="ph f1" style="max-width:200px"></div></div>
+<div class="gr"><div class="ph f1" style="max-width:120px"></div></div>
+<div class="gr st"><div class="ph f1" style="max-width:170px"></div></div>
+<div class="gr"><div class="ph f1" style="max-width:150px"></div></div>
+</div></div>
+<div class="row ac p8" style="border-top:1.5px solid var(--soft)"><span class="note">Each stash entry hangs off the commit it was made from, so you always know where it belongs.</span></div>
+</div>
+<div class="detail col">
+<div class="row ac jb p8" style="border-bottom:1.5px solid var(--soft)"><span class="note">stash entry</span><span class="mono mut">from a1f9c2</span></div>
+<div class="col p10 g8">
+<div class="col bx p8 g4" style="background:var(--sel)"><div class="ph" style="width:70%"></div><div class="mono mut">2h ago · on master · 3 files · +40 −8</div></div>
+<div class="col g6"><div class="btn pri">Pop</div><div class="btn">Apply — keep in stash</div><div class="btn">Drop</div></div>
+<div class="hr"></div>
+<span class="note">Files inside</span>
+<div class="col g6"><div class="row ac g6"><span class="mono mut">~</span><div class="ph f1" style="max-width:140px"></div></div><div class="row ac g6"><span class="mono" style="color:#2a78d6">+</span><div class="ph f1" style="max-width:120px"></div></div><div class="row ac g6"><span class="mono mut">~</span><div class="ph f1" style="max-width:160px"></div></div></div>
+<div class="dsh p8 note">Popping restores the changes to the working copy, ready to commit.</div>
+</div></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ at.requests }}" hint-placeholder-val="{{ false }}">
+<div class="scr row">
+<div class="col f1" style="min-width:0">
+<div class="hd"><div class="row ac g8"><span class="tl">Pull requests</span><span class="chip">origin</span><span class="chip">upstream</span></div><div class="btn pri">New pull request</div></div>
+<div class="sc" style="padding-top:10px">
+<span class="note">Needs you (2)</span>
+<div class="col g6">
+<div class="row ac g8 bx p8" style="background:var(--sel)"><span class="nd fill"></span><div class="col g3 f1"><div class="ph" style="width:52%"></div><div class="mono mut">#412 · feature/auth → master · 6 files · 2 approvals</div></div><span class="chip b">review</span></div>
+<div class="row ac g8 bx p8"><span class="nd"></span><div class="col g3 f1"><div class="ph" style="width:40%"></div><div class="mono mut">#409 · conflicts with master</div></div><span class="chip b" onClick="{{ nav.conflict }}">resolve</span></div>
+</div>
+<span class="note">Waiting on others (3)</span>
+<div class="col g6">
+<div class="row ac g8 dsh p8"><div class="ph f1" style="max-width:190px"></div><span class="mono mut">#415 · 1 of 2 approvals</span></div>
+<div class="row ac g8 dsh p8"><div class="ph f1" style="max-width:150px"></div><span class="mono mut">#414 · checks running</span></div>
+<div class="row ac g8 dsh p8"><div class="ph f1" style="max-width:210px"></div><span class="mono mut">#402 · draft</span></div>
+</div>
+<div class="f1"></div>
+<div class="dsh p8 note">Works with any host — pull requests are read through the account you connected in Settings.</div>
+</div></div>
+<div class="detail col">
+<div class="row ac jb p8" style="border-bottom:1.5px solid var(--soft)"><span class="note">pull request</span><span class="mono mut">#412 ↗</span></div>
+<div class="col p10 g8">
+<div class="col g4"><div class="ph" style="width:80%"></div><div class="mono mut">feature/auth → master · opened 2d ago</div></div>
+<div class="row g6" style="flex-wrap:wrap"><span class="chip b">2 approvals</span><span class="chip">checks passed</span><span class="chip">no conflicts</span></div>
+<div class="hr"></div>
+<span class="note">6 files changed</span>
+<div class="col g6"><div class="row ac g6" onClick="{{ nav.diff }}"><span class="mono" style="color:#2a78d6">+</span><div class="ph f1" style="max-width:140px"></div></div><div class="row ac g6" onClick="{{ nav.diff }}"><span class="mono mut">~</span><div class="ph f1" style="max-width:170px"></div></div><div class="row ac g6" onClick="{{ nav.diff }}"><span class="mono mut">~</span><div class="ph f1" style="max-width:120px"></div></div><div class="row ac g6" onClick="{{ nav.diff }}"><span class="mono mut">−</span><div class="ph f1" style="max-width:150px"></div></div></div>
+<div class="hr"></div>
+<span class="note">Conversation</span>
+<div class="dsh p8 col g4"><div class="ph" style="width:80%"></div><div class="ph" style="width:52%"></div></div>
+<div class="col g4"><span class="note">merge style</span><div class="row g6"><span class="chip b">squash merge</span><span class="chip">merge commit</span></div></div>
+<div class="btn pri">Merge into master</div>
+</div></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ at.search }}" hint-placeholder-val="{{ false }}">
+<div class="scr">
+<div class="hd"><div class="row ac g8"><span class="tl">Log search</span><span class="mono mut">142 results</span></div><div class="row g6"><span class="btn">Save this search</span><span class="btn" onClick="{{ nav.graph }}">Back to graph</span></div></div>
+<div class="sc" style="padding-top:10px">
+<div class="bx row ac p10 g8"><span class="mono mut">▸</span><div class="ph" style="width:26%"></div></div>
+<div class="row g6" style="flex-wrap:wrap"><span class="chip b">author: Ada ✕</span><span class="chip b">path: src/auth ✕</span><span class="chip b">message: session ✕</span><span class="chip">last 3 months</span><span class="chip">+ add filter</span></div>
+<div class="row f1 g10" style="min-height:0">
+<div class="col f1 g4" style="min-width:0">
+<div class="gr st" data-active="true" onClick="{{ nav.diff }}"><span class="nd fill"></span><div class="ph f1" style="max-width:240px"></div><span class="mono mut">a1f9c2 · 2h</span></div>
+<div class="gr" onClick="{{ nav.diff }}"><span class="nd"></span><div class="ph f1" style="max-width:180px"></div><span class="mono mut">9c02de · 1d</span></div>
+<div class="gr st" onClick="{{ nav.diff }}"><span class="nd"></span><div class="ph f1" style="max-width:220px"></div><span class="mono mut">77aa10 · 3d</span></div>
+<div class="gr" onClick="{{ nav.diff }}"><span class="nd"></span><div class="ph f1" style="max-width:150px"></div><span class="mono mut">4bc881 · 6d</span></div>
+<div class="gr st" onClick="{{ nav.diff }}"><span class="nd"></span><div class="ph f1" style="max-width:200px"></div><span class="mono mut">02de55 · 2w</span></div>
+<div class="gr" onClick="{{ nav.diff }}"><span class="nd"></span><div class="ph f1" style="max-width:170px"></div><span class="mono mut">5ff210 · 3w</span></div>
+</div>
+<div class="vr"></div>
+<div class="col g6" style="width:280px;flex:none">
+<span class="note">Also search</span>
+<div class="col g4"><div class="row ac g6 bx p6"><span class="mono mut">file</span><div class="ph f1" style="max-width:150px"></div></div><div class="row ac g6 bx p6"><span class="mono mut">person</span><div class="ph f1" style="max-width:110px"></div></div><div class="row ac g6 bx p6"><span class="mono mut">branch</span><div class="ph f1" style="max-width:130px"></div></div></div>
+<div class="hr"></div>
+<span class="note">Blame — who last touched each line</span>
+<div class="col g4"><div class="row ac g6"><span class="mono mut">Ada</span><div class="ph f1"></div></div><div class="row ac g6"><span class="mono mut">Cai</span><div class="ph f1" style="max-width:140px"></div></div><div class="row ac g6"><span class="mono mut">Ada</span><div class="ph f1" style="max-width:100px"></div></div></div>
+<div class="f1"></div>
+<div class="dsh p8 note">↵ opens the commit · ⌥↵ opens its diff</div>
+</div></div>
+</div></div>
+</sc-if>
+
+<sc-if value="{{ at.repos }}" hint-placeholder-val="{{ false }}">
+<div class="scr">
+<div class="hd"><div class="row ac g8"><span class="tl">Your repositories</span><span class="note">7</span></div><div class="row g6"><span class="chip b">needs attention 2</span><span class="chip">all</span><span class="btn pri" onClick="{{ openClone }}">Clone repository…</span></div></div>
+<div class="sc" style="padding-top:10px">
+<div class="row g10" style="flex-wrap:wrap">
+<div class="col g6 bx p10" style="width:300px;background:var(--sel)"><div class="row ac jb"><div class="ph" style="width:52%"></div><span class="chip b">open</span></div><div class="mono mut">~/code/electron · master</div><div class="hr"></div><div class="row g6"><span class="chip b">2 ahead</span><span class="chip">6 changed</span></div></div>
+<div class="col g6 bx p10" style="width:300px"><div class="row ac jb"><div class="ph" style="width:44%"></div><span class="chip b" onClick="{{ nav.conflict }}">resolve</span></div><div class="mono mut">~/code/site · release/2.1</div><div class="hr"></div><div class="row g6"><span class="chip">3 conflicts</span></div></div>
+<div class="col g6 bx p10" style="width:300px"><div class="row ac jb"><div class="ph" style="width:60%"></div><span class="chip">4 behind</span></div><div class="mono mut">~/work/docs · main</div><div class="hr"></div><div class="row g6"><span class="chip">clean</span></div></div>
+<div class="col g6 dsh p10" style="width:300px"><div class="ph" style="width:48%"></div><div class="mono mut">~/code/tools · main · nothing to do</div></div>
+<div class="col g6 dsh p10" style="width:300px"><div class="ph" style="width:38%"></div><div class="mono mut">~/code/dotfiles · main · nothing to do</div></div>
+<div class="col g6 dsh p10" style="width:300px"><div class="ph" style="width:56%"></div><div class="mono mut">~/scratch/exp · main · nothing to do</div></div>
+</div>
+<div class="f1"></div>
+<div class="dsh p8 note">Repositories are read straight from disk. Nothing is uploaded anywhere.</div>
+</div></div>
+</sc-if>
+
+<sc-if value="{{ at.settings }}" hint-placeholder-val="{{ false }}">
+<div class="scr">
+<div class="hd"><span class="tl">Settings</span><span class="note">GPL-3.0 · v0.1</span></div>
+<div class="sc row g10" style="padding-top:10px">
+<div class="col g4" style="width:170px;flex:none"><span class="chip b" style="text-align:center">You</span><span class="chip" style="text-align:center">Accounts</span><span class="chip" style="text-align:center">Behaviour</span><span class="chip" style="text-align:center">Appearance</span><span class="chip" style="text-align:center">Advanced</span></div>
+<div class="vr"></div>
+<div class="col f1 g10" style="min-width:0;max-width:520px">
+<div class="col g4"><span class="note">Name on your commits</span><div class="bx p8"><div class="ph" style="width:40%"></div></div></div>
+<div class="col g4"><span class="note">Email</span><div class="bx p8"><div class="ph" style="width:54%"></div></div></div>
+<div class="row ac jb bx p8"><span>Sign my commits</span><div class="sw" data-on="true"><i></i></div></div>
+<div class="row ac jb bx p8"><span>Ask before rewriting history</span><div class="sw" data-on="true"><i></i></div></div>
+<div class="row ac jb bx p8"><span>Show the git command behind each action</span><div class="sw" data-on="false"><i></i></div></div>
+<div class="row ac jb bx p8"><span>Dark theme</span><div class="sw" data-on="{{ isDark }}" onClick="{{ toggleTheme }}"><i></i></div></div>
+<div class="hr"></div>
+<span class="note">Accounts</span>
+<div class="col bx p8 g4"><div class="row ac jb"><div class="ph" style="width:36%"></div><span class="chip b">connected</span></div><div class="mono mut">github.com · ssh key + token in OS keychain</div></div>
+<div class="col bx p8 g4"><div class="row ac jb"><div class="ph" style="width:44%"></div><span class="chip">token expires in 12d</span></div><div class="mono mut">git.company.internal · self-hosted</div></div>
+<div class="btn">+ Add a host by URL</div>
+</div></div>
+</div>
+</sc-if>
+
+</div>
+
+<sc-if value="{{ cloneOpen }}" hint-placeholder-val="{{ false }}">
+<div class="mask">
+<div class="mdl">
+<div class="tt"><span class="mut">Clone repository</span><span class="f1"></span><span class="chip" onClick="{{ closeClone }}">✕</span></div>
+<div class="col p14 g10">
+<div class="col g4"><span class="note">Repository URL</span><div class="bx row ac p8 g8"><span class="mono mut">https://</span><div class="ph f1" style="max-width:210px"></div><span class="chip">paste</span></div><span class="note">ssh, https or a local path all work</span></div>
+<div class="col g4"><span class="note">Local path</span><div class="row g6 ac"><div class="bx p8 f1"><div class="ph" style="width:56%"></div></div><span class="btn">Choose…</span></div></div>
+<div class="col g4 dsh p10"><div class="row ac jb"><span class="note">Cloning… 42%</span><span class="mono mut">18 MB / 44 MB</span></div><div class="bx" style="height:8px;border-radius:4px;overflow:hidden"><div style="width:42%;height:100%;background:var(--acc)"></div></div></div>
+<div class="row ac jb"><span class="note">Advanced (shallow, submodules) ▸</span><div class="row g6"><span class="btn" onClick="{{ closeClone }}">Cancel</span><span class="btn pri" onClick="{{ closeClone }}">Clone</span></div></div>
+</div></div></div>
+</sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;graph&quot;,&quot;diff&quot;,&quot;changes&quot;,&quot;conflict&quot;,&quot;rebase&quot;,&quot;branches&quot;,&quot;stash&quot;,&quot;requests&quot;,&quot;search&quot;,&quot;repos&quot;,&quot;settings&quot;],&quot;default&quot;:&quot;graph&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const SCREENS = ["graph","diff","changes","conflict","rebase","branches","stash","requests","search","repos","settings"];
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { screen: p.startScreen || "graph", theme: p.theme || "light", clone: false }; }
+  go(s){ return () => this.setState({ screen: s, clone: false }); }
+  renderVals(){
+    const nav = {}, at = {};
+    SCREENS.forEach(s => { nav[s] = this.go(s); at[s] = this.state.screen === s; });
+    const dark = this.state.theme === "dark";
+    return {
+      nav, at,
+      theme: this.state.theme,
+      isDark: dark,
+      themeLabel: dark ? "light theme" : "dark theme",
+      toggleTheme: () => this.setState({ theme: dark ? "light" : "dark" }),
+      cloneOpen: this.state.clone,
+      openClone: () => this.setState({ clone: true }),
+      closeClone: () => this.setState({ clone: false })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

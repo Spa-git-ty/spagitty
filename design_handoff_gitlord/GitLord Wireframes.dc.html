@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&display=swap" rel="stylesheet"><style>
+body{margin:0;background:#f0eee9;font-family:system-ui,sans-serif}
+a{color:#2a78d6}a:hover{color:#1b5aa8}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 system-ui,sans-serif;color:#1a1a1a}
+.dv-sub{font:400 12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5);margin:0 0 24px;max-width:760px}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 system-ui,sans-serif;color:rgba(0,0,0,.55);max-width:480px}
+.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.dv-opt:target .dv-oid{background:#2a78d6;color:#fff}
+.dv-next{margin:26px 0 0;font:12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5)}
+.scr{margin:0 0 34px}
+.scrh{display:flex;align-items:baseline;gap:10px;font:600 12px/1 system-ui,sans-serif;color:#1a1a1a;margin:0 0 14px;padding-bottom:8px;border-bottom:1px dashed rgba(0,0,0,.18)}
+.scrn{font:600 10px ui-monospace,Menlo,monospace;color:rgba(0,0,0,.35)}
+.wf{width:480px;font:12px/1.35 'Architects Daughter',cursive;color:#1a1a1a}
+.tt{height:24px;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1.5px solid #1a1a1a;font-size:11px}
+.dot{width:7px;height:7px;border-radius:50%;border:1.5px solid #1a1a1a;flex:none}
+.bx{border:1.5px solid #1a1a1a;border-radius:3px}
+.dsh{border:1.5px dashed rgba(0,0,0,.45);border-radius:3px}
+.row{display:flex}.col{display:flex;flex-direction:column}
+.ac{align-items:center}.jb{justify-content:space-between}
+.g3{gap:3px}.g4{gap:4px}.g6{gap:6px}.g8{gap:8px}.g10{gap:10px}.g14{gap:14px}
+.f1{flex:1;min-width:0}
+.p6{padding:6px}.p8{padding:8px}.p10{padding:10px}.p14{padding:14px}
+.ph{height:6px;border-radius:3px;background:rgba(0,0,0,.16)}
+.btn{border:1.5px solid #1a1a1a;border-radius:12px;padding:2px 9px;font-size:11px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.btn.pri{background:#2a78d6;color:#fff;border-color:#2a78d6}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:10px}
+.mut{color:rgba(0,0,0,.5)}
+.hr{height:1.5px;background:rgba(0,0,0,.22)}
+.vr{width:1.5px;background:rgba(0,0,0,.22)}
+.nd{width:9px;height:9px;border-radius:50%;border:1.5px solid #1a1a1a;background:#fff;flex:none}
+.nd.fill{background:#2a78d6;border-color:#2a78d6}
+.lane{width:1.5px;background:rgba(0,0,0,.35)}
+.chip{border:1.5px solid rgba(0,0,0,.5);border-radius:9px;padding:0 7px;font-size:10px;white-space:nowrap}
+.chip.b{border-color:#2a78d6;color:#2a78d6}
+.body{height:306px;overflow:hidden}
+.note{font-size:11px;color:rgba(0,0,0,.45)}
+.sel{background:rgba(42,120,214,.09)}
+.gr{height:26px;display:flex;align-items:center;gap:6px;padding:0 6px;box-sizing:border-box}
+.st{background:rgba(0,0,0,.035)}
+.ref{display:inline-flex;align-items:center;gap:4px;border:1.5px solid rgba(0,0,0,.55);border-radius:3px;padding:0 5px;font-size:10px;font-family:ui-monospace,Menlo,monospace;background:#fff;white-space:nowrap;max-width:100%;overflow:hidden}
+.ref.cur{border-color:#2a78d6;color:#2a78d6}
+.tag{border-radius:3px 8px 8px 3px;border-style:dashed}
+.sbi{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 8px;font-size:11px}
+.tbi{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;color:rgba(0,0,0,.6);min-width:40px}
+</style></helmet>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Commit graph, same shape as your reference</span></div>
+<p class="dv-sub">Same information architecture: ref labels in their own left gutter, coloured branch lanes with elbow merges, an avatar node per commit, message column with relative time, commit detail on the right. Layout and behaviour match; chrome, wording and icons are original. Turn 1 below is unchanged.</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Full three-column shell — nav rail, lane graph, commit detail.</div><div class="dv-card"><div class="wf" style="width:900px">
+<div class="tt"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="mut" style="margin-left:8px">electron</span><span class="chip b" style="margin-left:4px">master</span><span class="f1"></span><span class="mono mut">search</span><span class="mono mut">menu</span><span class="chip">Work profile</span></div>
+<div class="row" style="border-bottom:1.5px solid rgba(0,0,0,.25)">
+<div class="row ac g10 p8" style="width:288px;border-right:1.5px solid rgba(0,0,0,.22)">
+<div class="col g3 f1"><span class="note">repository</span><div class="bx row ac jb p6"><div class="ph" style="width:44px"></div><span class="mono mut">▾</span></div></div>
+<div class="col g3 f1"><span class="note">branch</span><div class="bx row ac jb p6"><div class="ph" style="width:38px"></div><span class="mono mut">▾</span></div></div>
+</div>
+<div class="row ac g14 p8 f1">
+<span class="tbi">Undo<span class="mono">↺</span></span><span class="tbi">Redo<span class="mono">↻</span></span>
+<span class="vr" style="height:22px"></span>
+<span class="tbi">Get<span class="mono">⇩</span></span><span class="tbi">Send<span class="mono">⇧</span></span><span class="tbi">Branch<span class="mono">⑃</span></span><span class="tbi">Shelve<span class="mono">▤</span></span><span class="tbi">Unshelve<span class="mono">▥</span></span>
+<span class="f1"></span><span class="chip b">2 to send</span>
+</div></div>
+
+<div class="row" style="height:420px">
+<div class="col" style="width:150px;border-right:1.5px solid rgba(0,0,0,.22)">
+<div class="row ac jb p6" style="border-bottom:1.5px solid rgba(0,0,0,.14)"><span class="mono mut">◂ 1181 / 1181</span><span class="note">show all</span></div>
+<div class="p6"><div class="dsh row ac jb p6"><span class="mono mut">filter</span><span class="mono mut">⌘F</span></div></div>
+<div class="sbi st"><span>Local branches</span><span class="mono mut">1</span></div>
+<div class="sbi"><span>Remote branches</span><span class="mono mut">131</span></div>
+<div class="sbi st"><span>Requests</span><span class="mono mut">93</span></div>
+<div class="sbi"><span>Issues</span><span class="mono mut">—</span></div>
+<div class="sbi st"><span>Tags</span><span class="mono mut">1049</span></div>
+<div class="sbi"><span>Submodules</span><span class="mono mut">2</span></div>
+<div class="sbi st"><span>Shelf</span><span class="mono mut">3</span></div>
+<div class="hr"></div>
+<div class="col g4 p8"><span class="note">Local</span><div class="row ac g4"><span class="nd fill"></span><div class="ph f1"></div></div><div class="row ac g4"><span class="nd"></span><div class="ph f1" style="max-width:70px"></div></div><span class="note" style="margin-top:6px">Remote</span><div class="row ac g4"><span class="nd"></span><div class="ph f1" style="max-width:84px"></div></div><div class="row ac g4"><span class="nd"></span><div class="ph f1" style="max-width:60px"></div></div></div>
+<div class="f1"></div>
+<div class="p6 note">GPL-3.0 · 100%</div>
+</div>
+
+<div class="col f1" style="border-right:1.5px solid rgba(0,0,0,.22);overflow:hidden">
+<div class="row" style="height:364px">
+<div class="col" style="width:172px">
+<div class="gr st" style="justify-content:flex-end"><span class="ref cur">✔ master</span></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref">roller/chromium/master</span></div>
+<div class="gr st"></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref">trop/10-x-y-bp-fix…</span></div>
+<div class="gr st" style="justify-content:flex-end"><span class="ref">11-x-y</span></div>
+<div class="gr"></div>
+<div class="gr st"></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref">trop/11-x-y-deco…</span></div>
+<div class="gr st"></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref">honor-printing-11-x-y</span><span class="ref">+1</span></div>
+<div class="gr st"></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref tag">v12.0.0-nightly</span></div>
+<div class="gr st" style="justify-content:flex-end"><span class="ref">9-x-y</span></div>
+<div class="gr" style="justify-content:flex-end"><span class="ref">roller/node/master</span></div>
+</div>
+<div style="width:150px;position:relative;flex:none">
+<div class="col" style="position:absolute;inset:0">
+<div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div><div class="gr st"></div><div class="gr"></div>
+</div>
+<svg viewBox="0 0 150 364" width="150" height="364" style="position:absolute;inset:0" fill="none" stroke-width="2">
+<path d="M18,0 V364" stroke="#2a78d6"></path>
+<path d="M18,13 C18,30 42,24 42,39 V195 C42,212 18,206 18,221" stroke="#7a5cc4"></path>
+<path d="M18,65 C18,84 66,74 66,91 V273 C66,292 18,282 18,299" stroke="#c0559b"></path>
+<path d="M42,117 C42,136 90,128 90,143 V221 C90,240 18,238 18,247" stroke="#c8862a"></path>
+<path d="M18,247 C18,266 114,258 114,273 V364" stroke="#3f9d6a"></path>
+<g font-family="ui-monospace,Menlo,monospace" font-size="7" text-anchor="middle">
+<circle cx="18" cy="13" r="8" fill="#2a78d6"></circle><text x="18" y="16" fill="#fff">SM</text>
+<circle cx="42" cy="39" r="8" fill="#7a5cc4"></circle><text x="42" y="42" fill="#fff">AL</text>
+<circle cx="42" cy="65" r="8" fill="#7a5cc4"></circle><text x="42" y="68" fill="#fff">AL</text>
+<circle cx="66" cy="91" r="8" fill="#c0559b"></circle><text x="66" y="94" fill="#fff">SV</text>
+<circle cx="42" cy="117" r="8" fill="#7a5cc4"></circle><text x="42" y="120" fill="#fff">TR</text>
+<circle cx="90" cy="143" r="8" fill="#c8862a"></circle><text x="90" y="146" fill="#fff">JR</text>
+<circle cx="66" cy="169" r="8" fill="#c0559b"></circle><text x="66" y="172" fill="#fff">TR</text>
+<circle cx="42" cy="195" r="8" fill="#7a5cc4"></circle><text x="42" y="198" fill="#fff">TR</text>
+<circle cx="18" cy="221" r="8" fill="#2a78d6"></circle><text x="18" y="224" fill="#fff">SV</text>
+<circle cx="18" cy="247" r="8" fill="#2a78d6"></circle><text x="18" y="250" fill="#fff">JK</text>
+<circle cx="66" cy="273" r="8" fill="#c0559b"></circle><text x="66" y="276" fill="#fff">SA</text>
+<circle cx="18" cy="299" r="8" fill="#2a78d6"></circle><text x="18" y="302" fill="#fff">EB</text>
+<circle cx="114" cy="325" r="8" fill="#3f9d6a"></circle><text x="114" y="328" fill="#fff">TR</text>
+<circle cx="114" cy="351" r="8" fill="#3f9d6a"></circle><text x="114" y="354" fill="#fff">EB</text>
+</g></svg>
+</div>
+<div class="col f1" style="border-left:1.5px solid rgba(0,0,0,.14)">
+<div class="gr st sel"><div class="ph f1" style="max-width:210px"></div><span class="mono mut">now</span></div>
+<div class="gr"><div class="ph f1" style="max-width:120px"></div></div>
+<div class="gr st"><div class="ph f1" style="max-width:186px"></div></div>
+<div class="gr"><div class="ph f1" style="max-width:150px"></div></div>
+<div class="gr st"><div class="ph f1" style="max-width:168px"></div></div>
+<div class="gr"><div class="ph f1" style="max-width:132px"></div></div>
+<div class="gr st"><div class="ph f1" style="max-width:196px"></div></div>
+<div class="gr"><div class="ph f1" style="max-width:144px"></div></div>
+<div class="gr st"><div class="ph f1" style="max-width:174px"></div></div>
+<div class="gr"><div class="ph f1" style="max-width:126px"></div><span class="mono mut">1 hour ago</span></div>
+<div class="gr st"><div class="ph f1" style="max-width:158px"></div></div>
+<div class="gr"><div class="ph f1" style="max-width:110px"></div></div>
+<div class="gr st"><div class="ph f1" style="max-width:180px"></div><span class="mono mut">3 hours ago</span></div>
+<div class="gr"><div class="ph f1" style="max-width:140px"></div></div>
+</div>
+</div>
+<div class="hr"></div>
+<div class="row ac jb p6"><span class="note">drag a commit onto a branch to merge · right-click for the full menu</span><div class="row g6"><span class="chip b">lanes</span><span class="chip">flat list</span></div></div>
+</div>
+
+<div class="col" style="width:230px">
+<div class="row ac jb p6" style="border-bottom:1.5px solid rgba(0,0,0,.14)"><span class="note">commit</span><span class="mono mut">9d0d9a ⇩</span></div>
+<div class="col p8 g6">
+<div class="col bx p6 g3"><div class="ph" style="width:88%"></div><div class="ph" style="width:64%"></div><div class="ph" style="width:40%"></div></div>
+<div class="row ac g6"><span class="nd fill" style="width:18px;height:18px"></span><div class="col g3 f1"><div class="ph" style="width:58%"></div><div class="mono mut">authored · 12:29 PM</div></div></div>
+<div class="row ac g6"><span class="nd" style="width:18px;height:18px"></span><div class="col g3 f1"><div class="ph" style="width:40%"></div><div class="mono mut">committed · 12:29 PM</div></div></div>
+<div class="mono mut">parent 881ac9</div>
+<div class="hr"></div>
+<div class="row ac jb"><span class="note">4 files changed</span><div class="row g4"><span class="chip b">path</span><span class="chip">tree</span></div></div>
+<div class="col g4">
+<div class="row ac g4"><span class="mono mut">~</span><div class="ph f1" style="max-width:120px"></div></div>
+<div class="row ac g4"><span class="mono mut">~</span><div class="ph f1" style="max-width:150px"></div></div>
+<div class="row ac g4"><span class="mono" style="color:#2a78d6">+</span><div class="ph f1" style="max-width:132px"></div></div>
+<div class="row ac g4"><span class="mono mut">~</span><div class="ph f1" style="max-width:108px"></div></div>
+</div>
+<div class="dsh p6 note">Click a file to open its diff full-window (<a class="dv-oid" href="#1g">1g</a>).</div>
+</div></div>
+</div></div></div></div>
+
+</div>
+<p class="dv-next">Try next: "widen the ref gutter in <a class="dv-oid" href="#2a">2a</a>" · "show the same graph with the detail panel closed" · "dark version of <a class="dv-oid" href="#2a">2a</a>"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Git client — 12 screens, 3 approaches each</span></div>
+<p class="dv-sub">Lo-fi structural sketches only. Shared bets across all options: the graph is the center of gravity, one task holds the window at a time, plain-language labels with the git term as a secondary hint. Nothing here copies another product's chrome, icons or wording.</p>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">01</span>Repo open / welcome</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Recent list + two big verbs. Nothing else on screen.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="mut" style="margin-left:6px">no repository open</span></div>
+<div class="body col p14 g14">
+<div class="col g4"><div style="font-size:20px">Open a repository</div><div class="note">or start something new</div></div>
+<div class="row g8"><span class="btn pri">Open a folder…</span><span class="btn">Copy from a URL</span><span class="btn">Start fresh here</span></div>
+<div class="hr"></div>
+<div class="note">Recent</div>
+<div class="col g6">
+<div class="row ac g8 bx p6"><span class="nd fill"></span><div class="col g3 f1"><div class="ph" style="width:34%"></div><div class="mono mut">~/code/kernel-tools · main · 3 unsaved changes</div></div><span class="chip b">2 to send</span></div>
+<div class="row ac g8 bx p6"><span class="nd"></span><div class="col g3 f1"><div class="ph" style="width:26%"></div><div class="mono mut">~/code/site · release/2.1 · clean</div></div></div>
+<div class="row ac g8 bx p6"><span class="nd"></span><div class="col g3 f1"><div class="ph" style="width:40%"></div><div class="mono mut">~/work/docs · main · clean</div></div></div>
+</div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Search-first launcher — type a repo name, a URL, or a verb.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+<div class="body col ac p14 g10" style="justify-content:center">
+<div style="font-size:16px" class="mut">Where do you want to work?</div>
+<div class="bx row ac g8 p8" style="width:82%"><span class="mono mut">▸</span><div class="ph" style="width:40%"></div></div>
+<div class="col g4" style="width:82%">
+<div class="row ac g8 bx p6 sel"><span class="mono mut">repo</span><div class="ph f1" style="max-width:120px"></div><span class="mono mut">~/code/kernel-tools</span></div>
+<div class="row ac g8 bx p6"><span class="mono mut">repo</span><div class="ph f1" style="max-width:90px"></div><span class="mono mut">~/code/site</span></div>
+<div class="row ac g8 bx p6"><span class="mono mut">do</span><span style="font-size:11px">Copy a repository from a URL…</span></div>
+<div class="row ac g8 bx p6"><span class="mono mut">do</span><span style="font-size:11px">Start a new repository in a folder…</span></div>
+</div>
+<div class="note">↵ to open · ⌘K reopens this from anywhere</div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Status board — cards show what each repo needs before you open it.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="f1"></span><span class="btn">+ Add</span></div>
+<div class="body col p14 g10">
+<div class="row jb ac"><div style="font-size:16px">Your repositories</div><div class="row g6"><span class="chip b">Needs attention 2</span><span class="chip">All 7</span></div></div>
+<div class="row g10" style="flex-wrap:wrap">
+<div class="col g6 bx p8" style="width:47%"><div class="ph" style="width:55%"></div><div class="mono mut">main · 3 changed files</div><div class="hr"></div><div class="row g4"><span class="chip b">2 to send</span><span class="chip">1 waiting</span></div></div>
+<div class="col g6 bx p8" style="width:47%"><div class="ph" style="width:40%"></div><div class="mono mut">release/2.1 · conflict</div><div class="hr"></div><div class="row g4"><span class="chip b">fix conflict</span></div></div>
+<div class="col g6 dsh p8" style="width:47%"><div class="ph" style="width:48%"></div><div class="mono mut">main · nothing to do</div></div>
+<div class="col g6 dsh p8" style="width:47%"><div class="ph" style="width:36%"></div><div class="mono mut">main · nothing to do</div></div>
+</div>
+</div></div></div></div>
+
+</div></div>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">02</span>Main commit graph</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1d"><div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Graph owns the window. Refs in a collapsible rail; details open as an overlay, never a permanent third panel.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="mut" style="margin-left:6px">kernel-tools</span><span class="f1"></span><span class="btn">⇩ Get 1</span><span class="btn pri">⇧ Send 2</span></div>
+<div class="row body">
+<div class="col g6 p8" style="width:118px"><div class="note">Branches</div><div class="col g4"><div class="row ac g4 sel bx p6"><span class="nd fill"></span><div class="ph f1"></div></div><div class="row ac g4 p6"><span class="nd"></span><div class="ph f1"></div></div><div class="row ac g4 p6"><span class="nd"></span><div class="ph f1"></div></div></div><div class="hr"></div><div class="note">Elsewhere</div><div class="col g4"><div class="row ac g4 p6"><span class="nd"></span><div class="ph f1"></div></div><div class="row ac g4 p6"><span class="nd"></span><div class="ph f1"></div></div></div></div>
+<div class="vr"></div>
+<div class="col f1 p8 g6">
+<div class="row ac g6"><div class="dsh p6 f1 row ac g6"><span class="mono mut">find a commit, file or person</span></div><span class="chip">this branch</span></div>
+<div class="col g4">
+<div class="row ac g8 sel p6"><div class="row ac g4" style="width:40px"><span class="lane" style="height:20px"></span><span class="nd fill"></span></div><div class="col g3 f1"><div class="ph" style="width:62%"></div></div><span class="chip b">main</span><span class="mono mut">2h · AB</span></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:40px"><span class="lane" style="height:20px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:180px"></div><span class="mono mut">5h · CD</span></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:40px"><span class="lane" style="height:20px"></span><span class="lane" style="height:20px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:210px"></div><span class="mono mut">1d · AB</span></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:40px"><span class="lane" style="height:20px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:150px"></div><span class="mono mut">2d · EF</span></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:40px"><span class="lane" style="height:20px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:196px"></div><span class="mono mut">2d · AB</span></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:40px"><span class="lane" style="height:20px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:130px"></div><span class="mono mut">3d · CD</span></div>
+</div>
+<div class="hr"></div>
+<div class="row ac jb"><span class="note">3 changed files here</span><span class="btn">Review changes →</span></div>
+</div></div></div></div></div>
+
+<div class="dv-opt" id="1e"><div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Two panes, no third: graph left, one detail column right that swaps content by selection.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="mut" style="margin-left:6px">kernel-tools · main</span><span class="f1"></span><span class="btn">Sync</span></div>
+<div class="row body">
+<div class="col f1 p8 g4" style="flex:1.2">
+<div class="row ac g6"><span class="chip b">main</span><span class="chip">all branches</span><span class="f1"></span><span class="mono mut">1,204 commits</span></div>
+<div class="hr"></div>
+<div class="row ac g8 p6 sel"><div class="row ac g4" style="width:34px"><span class="nd fill"></span></div><div class="ph f1"></div></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:34px"><span class="lane" style="height:18px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:150px"></div></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:34px"><span class="lane" style="height:18px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:120px"></div></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:34px"><span class="lane" style="height:18px"></span><span class="lane" style="height:18px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:170px"></div></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:34px"><span class="lane" style="height:18px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:140px"></div></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:34px"><span class="lane" style="height:18px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:160px"></div></div>
+</div>
+<div class="vr"></div>
+<div class="col p8 g6" style="width:190px">
+<div class="row g4"><span class="chip b">Commit</span><span class="chip">Branch</span></div>
+<div class="ph" style="width:80%"></div><div class="ph" style="width:55%"></div>
+<div class="mono mut">a1f9c2 · Ada B. · 2h ago</div>
+<div class="hr"></div>
+<div class="note">Files (3)</div>
+<div class="col g4"><div class="row ac g4"><span class="mono" style="color:#2a78d6">+</span><div class="ph f1"></div></div><div class="row ac g4"><span class="mono mut">~</span><div class="ph f1"></div></div><div class="row ac g4"><span class="mono mut">−</span><div class="ph f1"></div></div></div>
+<div class="f1"></div>
+<span class="btn">Open full diff</span>
+</div></div></div></div></div>
+
+<div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Swimlanes: each branch is a labelled column, so "where am I" is answered by position alone.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="mut" style="margin-left:6px">kernel-tools</span><span class="f1"></span><span class="mono mut">⌘K</span></div>
+<div class="col body p8 g6">
+<div class="row g8"><div class="chip b f1" style="text-align:center">main</div><div class="chip f1" style="text-align:center">feature/auth</div><div class="chip f1" style="text-align:center">release/2.1</div></div>
+<div class="row g8 f1">
+<div class="col f1 g6 ac" style="padding-top:4px"><span class="nd fill"></span><span class="lane" style="height:20px"></span><span class="nd"></span><span class="lane" style="height:20px"></span><span class="nd"></span><span class="lane" style="height:44px"></span><span class="nd"></span></div>
+<div class="col f1 g6 ac" style="padding-top:34px"><span class="nd"></span><span class="lane" style="height:20px"></span><span class="nd"></span><span class="lane" style="height:20px"></span><span class="nd"></span></div>
+<div class="col f1 g6 ac" style="padding-top:70px"><span class="nd"></span><span class="lane" style="height:20px"></span><span class="nd"></span></div>
+</div>
+<div class="bx p8 col g4"><div class="row ac jb"><div class="ph" style="width:52%"></div><span class="mono mut">a1f9c2 · 2h</span></div><div class="note">selected commit · 3 files · on main only</div><div class="row g6"><span class="btn">See changes</span><span class="btn">Bring into main</span><span class="btn">Undo this</span></div></div>
+</div></div></div></div>
+
+</div></div>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">03</span>Commit detail + diff</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1g"><div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a>Full-window takeover with a back breadcrumb — diff gets the whole screen.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">← Graph</span><span class="mut">a1f9c2</span><span class="f1"></span><span class="chip">unified</span><span class="chip b">split</span></div>
+<div class="col body">
+<div class="col p8 g4"><div class="ph" style="width:50%"></div><div class="mono mut">Ada B. · 2h ago · parent 9c02de · 3 files, +48 −12</div></div>
+<div class="hr"></div>
+<div class="row f1">
+<div class="col p8 g6" style="width:150px"><div class="note">Files</div><div class="row ac g4 sel p6"><span class="mono" style="color:#2a78d6">+</span><div class="ph f1"></div></div><div class="row ac g4 p6"><span class="mono mut">~</span><div class="ph f1"></div></div><div class="row ac g4 p6"><span class="mono mut">−</span><div class="ph f1"></div></div></div>
+<div class="vr"></div>
+<div class="col f1 p8 g4">
+<div class="row g8"><div class="col f1 g3"><div class="mono mut">before</div><div class="ph" style="width:80%"></div><div class="ph" style="width:60%"></div><div class="ph" style="width:70%;background:rgba(0,0,0,.3)"></div><div class="ph" style="width:45%"></div><div class="ph" style="width:65%"></div><div class="ph" style="width:35%"></div></div>
+<div class="vr"></div>
+<div class="col f1 g3"><div class="mono mut">after</div><div class="ph" style="width:80%"></div><div class="ph" style="width:60%"></div><div class="ph" style="width:88%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:52%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:65%"></div><div class="ph" style="width:35%"></div></div></div>
+</div></div></div></div></div></div>
+
+<div class="dv-opt" id="1h"><div class="dv-olabel"><a class="dv-oid" href="#1h">1h</a>Bottom sheet under the graph — keeps context, drag to grow, Esc to dismiss.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="mut" style="margin-left:6px">kernel-tools</span></div>
+<div class="col body">
+<div class="col p8 g4" style="height:96px;overflow:hidden">
+<div class="row ac g8 p6"><div class="row ac g4" style="width:30px"><span class="nd"></span></div><div class="ph f1" style="max-width:150px"></div></div>
+<div class="row ac g8 p6 sel"><div class="row ac g4" style="width:30px"><span class="lane" style="height:16px"></span><span class="nd fill"></span></div><div class="ph f1" style="max-width:190px"></div></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:30px"><span class="lane" style="height:16px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:130px"></div></div>
+</div>
+<div class="row ac" style="justify-content:center;padding:2px 0"><div style="width:44px;height:4px;border-radius:2px;background:rgba(0,0,0,.3)"></div></div>
+<div class="col f1 bx p8 g6" style="border-radius:8px 8px 0 0;border-bottom:none">
+<div class="row ac jb"><div class="ph" style="width:44%"></div><span class="mono mut">a1f9c2 · Ada B.</span></div>
+<div class="row f1 g8">
+<div class="col g4" style="width:130px"><div class="row ac g4 sel p6"><span class="mono" style="color:#2a78d6">+</span><div class="ph f1"></div></div><div class="row ac g4 p6"><span class="mono mut">~</span><div class="ph f1"></div></div><div class="row ac g4 p6"><span class="mono mut">−</span><div class="ph f1"></div></div></div>
+<div class="vr"></div>
+<div class="col f1 g3"><div class="mono mut">@@ 12,7 +12,9</div><div class="ph" style="width:70%"></div><div class="ph" style="width:88%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:52%;background:rgba(0,0,0,.3)"></div><div class="ph" style="width:64%"></div><div class="ph" style="width:40%"></div></div>
+</div></div></div></div></div></div>
+
+<div class="dv-opt" id="1i"><div class="dv-olabel"><a class="dv-oid" href="#1i">1i</a>File tabs, one diff at a time — no file tree to scan, next/prev by keyboard.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">←</span><span class="mut">a1f9c2 · “short message here”</span></div>
+<div class="col body">
+<div class="row g4 p8" style="padding-bottom:0"><span class="chip b">file one</span><span class="chip">file two</span><span class="chip">file three</span><span class="f1"></span><span class="mono mut">1 / 3</span></div>
+<div class="col f1 p8 g4">
+<div class="mono mut">src/auth/session.rs · +18 −4</div>
+<div class="dsh col g3 p8 f1">
+<div class="ph" style="width:70%"></div><div class="ph" style="width:52%"></div>
+<div class="ph" style="width:86%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:60%;background:rgba(42,120,214,.4)"></div>
+<div class="ph" style="width:44%;background:rgba(0,0,0,.32)"></div>
+<div class="ph" style="width:74%"></div><div class="ph" style="width:38%"></div><div class="ph" style="width:66%"></div>
+</div>
+<div class="row ac jb"><span class="note">j / k moves between changes</span><div class="row g6"><span class="btn">Prev file</span><span class="btn pri">Next file</span></div></div>
+</div></div></div></div></div>
+
+</div></div>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">04</span>Staging / commit composer</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1j"><div class="dv-olabel"><a class="dv-oid" href="#1j">1j</a>Single column: tick what belongs, message pinned at the bottom.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">← Graph</span><span class="mut">Save your changes</span></div>
+<div class="col body p10 g8">
+<div class="row ac jb"><span class="note">6 changed files</span><div class="row g6"><span class="chip">select all</span><span class="chip">none</span></div></div>
+<div class="col g4 f1">
+<div class="row ac g6 bx p6"><span class="bx" style="width:11px;height:11px;background:#2a78d6;border-color:#2a78d6"></span><span class="mono" style="color:#2a78d6">+</span><div class="ph f1" style="max-width:190px"></div><span class="mono mut">+18 −4</span></div>
+<div class="row ac g6 bx p6"><span class="bx" style="width:11px;height:11px;background:#2a78d6;border-color:#2a78d6"></span><span class="mono mut">~</span><div class="ph f1" style="max-width:150px"></div><span class="mono mut">+2 −2</span></div>
+<div class="row ac g6 bx p6"><span class="bx" style="width:11px;height:11px"></span><span class="mono mut">~</span><div class="ph f1" style="max-width:210px"></div><span class="mono mut">+40 −1</span></div>
+<div class="row ac g6 bx p6"><span class="bx" style="width:11px;height:11px"></span><span class="mono mut">−</span><div class="ph f1" style="max-width:120px"></div><span class="mono mut">−96</span></div>
+<div class="row ac g6 bx p6"><span class="bx" style="width:11px;height:11px"></span><span class="mono mut">?</span><div class="ph f1" style="max-width:170px"></div><span class="mono mut">new</span></div>
+</div>
+<div class="col bx p8 g6"><div class="ph" style="width:58%"></div><div class="row ac jb"><span class="note">2 files selected · describe what changed</span><span class="btn pri">Save 2 files</span></div></div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1k"><div class="dv-olabel"><a class="dv-oid" href="#1k">1k</a>Review flow — one change at a time, keep / skip / undo, then write the message once.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">✕</span><span class="mut">Reviewing change 2 of 9</span><span class="f1"></span><div class="bx" style="width:90px;height:6px;border-radius:4px;overflow:hidden"><div style="width:24%;height:100%;background:#2a78d6"></div></div></div>
+<div class="col body p10 g8">
+<div class="col g3"><div class="mono mut">src/auth/session.rs · lines 12–20</div></div>
+<div class="dsh col g3 p8 f1">
+<div class="ph" style="width:66%"></div>
+<div class="ph" style="width:88%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:54%;background:rgba(42,120,214,.4)"></div>
+<div class="ph" style="width:40%;background:rgba(0,0,0,.32)"></div>
+<div class="ph" style="width:72%"></div><div class="ph" style="width:46%"></div>
+</div>
+<div class="row ac jb"><div class="row g6"><span class="btn pri">Keep ↵</span><span class="btn">Skip →</span><span class="btn">Throw away</span></div><span class="note">4 kept so far</span></div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1l"><div class="dv-olabel"><a class="dv-oid" href="#1l">1l</a>Files left, hunk diff right, message on top — familiar shape, three panels max.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="mut" style="margin-left:6px">main · 6 changed</span><span class="f1"></span><span class="btn pri">Save</span></div>
+<div class="col body">
+<div class="col p8 g4"><div class="bx p6"><div class="ph" style="width:48%"></div></div><div class="note">summary line · details optional</div></div>
+<div class="hr"></div>
+<div class="row f1">
+<div class="col p8 g4" style="width:160px"><div class="note">Included</div><div class="row ac g4 sel p6"><span class="mono" style="color:#2a78d6">+</span><div class="ph f1"></div></div><div class="row ac g4 p6"><span class="mono mut">~</span><div class="ph f1"></div></div><div class="hr"></div><div class="note">Left out</div><div class="row ac g4 p6"><span class="mono mut">~</span><div class="ph f1"></div></div><div class="row ac g4 p6"><span class="mono mut">?</span><div class="ph f1"></div></div></div>
+<div class="vr"></div>
+<div class="col f1 p8 g4"><div class="row ac jb"><span class="mono mut">@@ 12,7 +12,9</span><span class="chip">include this bit</span></div><div class="ph" style="width:70%"></div><div class="ph" style="width:86%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:50%;background:rgba(0,0,0,.32)"></div><div class="ph" style="width:64%"></div><div class="ph" style="width:36%"></div></div>
+</div></div></div></div></div>
+
+</div></div>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">05</span>Merge conflict resolver</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1m"><div class="dv-olabel"><a class="dv-oid" href="#1m">1m</a>Three panes — yours, result, theirs. Click a side to pull it into the middle.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="mut">Fixing 1 of 3 clashes</span><span class="f1"></span><span class="btn">Stop the merge</span></div>
+<div class="col body p8 g6">
+<div class="mono mut">src/config.toml</div>
+<div class="row f1 g6">
+<div class="col f1 g3 bx p6"><div class="note">Your version</div><div class="ph" style="width:80%"></div><div class="ph" style="width:60%"></div><div class="ph" style="width:70%"></div><span class="btn" style="align-self:flex-start">Use this</span></div>
+<div class="col f1 g3 bx p6 sel"><div class="note">Result</div><div class="ph" style="width:70%"></div><div class="ph" style="width:84%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:52%"></div><span class="note">editable</span></div>
+<div class="col f1 g3 bx p6"><div class="note">Their version</div><div class="ph" style="width:66%"></div><div class="ph" style="width:78%"></div><div class="ph" style="width:44%"></div><span class="btn" style="align-self:flex-start">Use this</span></div>
+</div>
+<div class="row ac jb"><div class="row g6"><span class="chip b">clash 1</span><span class="chip">2</span><span class="chip">3</span></div><span class="btn pri">Next clash →</span></div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1n"><div class="dv-olabel"><a class="dv-oid" href="#1n">1n</a>Guided: one clash, plain question, three answers. No git vocabulary at all.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="mut">Two people changed the same lines</span><span class="f1"></span><span class="mono mut">1 / 3</span></div>
+<div class="col body p14 g10">
+<div style="font-size:16px">Which version should win here?</div>
+<div class="mono mut">src/config.toml · lines 40–44</div>
+<div class="row g8 f1">
+<div class="col f1 g4 bx p8"><div class="row ac jb"><span class="note">Yours (2h ago)</span><span class="chip">keep</span></div><div class="ph" style="width:78%"></div><div class="ph" style="width:56%"></div></div>
+<div class="col f1 g4 bx p8"><div class="row ac jb"><span class="note">Theirs (1d ago)</span><span class="chip">keep</span></div><div class="ph" style="width:66%"></div><div class="ph" style="width:72%"></div></div>
+</div>
+<div class="row ac jb"><span class="btn">Combine and edit by hand</span><div class="row g6"><span class="btn">Decide later</span><span class="btn pri">Confirm</span></div></div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1o"><div class="dv-olabel"><a class="dv-oid" href="#1o">1o</a>One editor, clash markers as inline chips you step through.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">←</span><span class="mut">src/config.toml</span><span class="f1"></span><span class="btn">↑</span><span class="btn">↓</span><span class="chip b">3 left</span></div>
+<div class="col body p8 g4">
+<div class="ph" style="width:60%"></div><div class="ph" style="width:44%"></div>
+<div class="bx col g3 p6" style="border-color:#2a78d6"><div class="row g4 ac"><span class="chip b">yours</span><span class="chip">theirs</span><span class="chip">both</span><span class="f1"></span><span class="mono mut">clash 1</span></div><div class="ph" style="width:76%;background:rgba(42,120,214,.4)"></div><div class="ph" style="width:52%;background:rgba(0,0,0,.3)"></div></div>
+<div class="ph" style="width:70%"></div><div class="ph" style="width:38%"></div>
+<div class="dsh col g3 p6"><div class="row g4 ac"><span class="chip">yours</span><span class="chip">theirs</span><span class="chip">both</span><span class="f1"></span><span class="mono mut">clash 2</span></div><div class="ph" style="width:64%"></div></div>
+<div class="ph" style="width:50%"></div>
+<div class="row ac jb"><span class="note">saves as you go</span><span class="btn pri">Finish the merge</span></div>
+</div></div></div></div>
+
+</div></div>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">06</span>Interactive rebase (history surgery)</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1p"><div class="dv-olabel"><a class="dv-oid" href="#1p">1p</a>Drag list with a per-row action — power-user speed, dry-run before it touches anything.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="mut">Rewrite the last 6 commits on feature/auth</span><span class="f1"></span><span class="btn">Cancel</span></div>
+<div class="col body p8 g6">
+<div class="col g4 f1">
+<div class="row ac g6 bx p6"><span class="mono mut">⠿</span><span class="chip">keep</span><div class="ph f1" style="max-width:170px"></div><span class="mono mut">a1f9c2</span></div>
+<div class="row ac g6 bx p6 sel"><span class="mono mut">⠿</span><span class="chip b">reword</span><div class="ph f1" style="max-width:150px"></div><span class="mono mut">9c02de</span></div>
+<div class="row ac g6 bx p6"><span class="mono mut">⠿</span><span class="chip b">fold into above</span><div class="ph f1" style="max-width:120px"></div><span class="mono mut">77aa10</span></div>
+<div class="row ac g6 bx p6"><span class="mono mut">⠿</span><span class="chip">keep</span><div class="ph f1" style="max-width:190px"></div><span class="mono mut">4bc881</span></div>
+<div class="row ac g6 dsh p6"><span class="mono mut">⠿</span><span class="chip">drop</span><div class="ph f1" style="max-width:140px;opacity:.5"></div><span class="mono mut">02de55</span></div>
+</div>
+<div class="hr"></div>
+<div class="row ac jb"><span class="note">6 → 4 commits · safe copy kept for 30 days</span><div class="row g6"><span class="btn">Preview</span><span class="btn pri">Apply</span></div></div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1q"><div class="dv-olabel"><a class="dv-oid" href="#1q">1q</a>Before / after graph — you edit on the left, the outcome redraws on the right.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="mut">Tidy up history</span><span class="f1"></span><span class="btn pri">Apply</span></div>
+<div class="row body">
+<div class="col f1 p8 g4"><div class="note">Now</div>
+<div class="row ac g6"><span class="nd"></span><div class="ph f1" style="max-width:130px"></div><span class="chip">keep</span></div>
+<div class="row ac g6 sel"><span class="nd fill"></span><div class="ph f1" style="max-width:110px"></div><span class="chip b">fold</span></div>
+<div class="row ac g6"><span class="nd"></span><div class="ph f1" style="max-width:150px"></div><span class="chip">keep</span></div>
+<div class="row ac g6"><span class="nd"></span><div class="ph f1" style="max-width:100px"></div><span class="chip">drop</span></div>
+<div class="row ac g6"><span class="nd"></span><div class="ph f1" style="max-width:140px"></div><span class="chip">keep</span></div>
+</div>
+<div class="vr"></div>
+<div class="col f1 p8 g4"><div class="note">After</div>
+<div class="row ac g6"><span class="nd"></span><div class="ph f1" style="max-width:130px"></div></div>
+<div class="row ac g6"><span class="nd fill"></span><div class="ph f1" style="max-width:160px;background:rgba(42,120,214,.4)"></div></div>
+<div class="row ac g6"><span class="nd"></span><div class="ph f1" style="max-width:140px"></div></div>
+<div class="hr"></div>
+<div class="note">3 commits · nothing else on this branch moves</div>
+<div class="dsh p6 note">Branches pointing at rewritten commits: none</div>
+</div></div></div></div></div>
+
+<div class="dv-opt" id="1r"><div class="dv-olabel"><a class="dv-oid" href="#1r">1r</a>Wizard in plain language — pick a goal first, then the commits.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="mut">Step 1 of 3 · What do you want to do?</span></div>
+<div class="col body p14 g8">
+<div class="col g6">
+<div class="row ac g8 bx p8 sel"><span class="nd fill"></span><div class="col g3 f1"><span>Combine several commits into one</span><span class="note">squash</span></div></div>
+<div class="row ac g8 bx p8"><span class="nd"></span><div class="col g3 f1"><span>Fix a message or an author</span><span class="note">reword / amend</span></div></div>
+<div class="row ac g8 bx p8"><span class="nd"></span><div class="col g3 f1"><span>Remove a commit entirely</span><span class="note">drop</span></div></div>
+<div class="row ac g8 bx p8"><span class="nd"></span><div class="col g3 f1"><span>Move this work onto a newer base</span><span class="note">rebase</span></div></div>
+</div>
+<div class="f1"></div>
+<div class="row ac jb"><span class="note">You'll see a preview before anything changes.</span><span class="btn pri">Choose commits →</span></div>
+</div></div></div></div>
+
+</div></div>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">07</span>Branch &amp; remote manager</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1s"><div class="dv-olabel"><a class="dv-oid" href="#1s">1s</a>One table, ahead/behind as the primary column, remotes as a filter not a tree.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">← Graph</span><span class="mut">Branches</span><span class="f1"></span><span class="btn pri">New branch</span></div>
+<div class="col body p8 g6">
+<div class="row g6 ac"><div class="dsh p6 f1"><span class="mono mut">filter</span></div><span class="chip b">mine</span><span class="chip">origin</span><span class="chip">stale</span></div>
+<div class="col g4 f1">
+<div class="row ac g8 bx p6 sel"><span class="nd fill"></span><div class="ph f1" style="max-width:130px"></div><span class="chip b">current</span><span class="mono mut">2↑ 0↓</span></div>
+<div class="row ac g8 bx p6"><span class="nd"></span><div class="ph f1" style="max-width:160px"></div><span class="mono mut">0↑ 4↓</span><span class="btn">Switch</span></div>
+<div class="row ac g8 bx p6"><span class="nd"></span><div class="ph f1" style="max-width:120px"></div><span class="mono mut">merged</span><span class="btn">Delete</span></div>
+<div class="row ac g8 bx p6"><span class="nd"></span><div class="ph f1" style="max-width:180px"></div><span class="mono mut">3↑ 1↓</span><span class="btn">Switch</span></div>
+</div>
+<div class="hr"></div>
+<div class="row ac jb"><span class="note">Remotes: origin, upstream</span><span class="btn">Manage remotes</span></div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1t"><div class="dv-olabel"><a class="dv-oid" href="#1t">1t</a>Cards grouped by state: working on, ready to merge, safe to delete.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">←</span><span class="mut">Branches · 9</span><span class="f1"></span><span class="btn pri">New</span></div>
+<div class="col body p8 g6">
+<div class="note">Working on</div>
+<div class="row g6"><div class="col f1 bx p6 g3 sel"><div class="ph" style="width:70%"></div><div class="mono mut">2 to send · current</div></div><div class="col f1 bx p6 g3"><div class="ph" style="width:60%"></div><div class="mono mut">4 to get</div></div></div>
+<div class="note">Ready to merge</div>
+<div class="row g6"><div class="col f1 bx p6 g3"><div class="ph" style="width:66%"></div><div class="mono mut">up to date with main</div></div><div class="col f1 bx p6 g3"><div class="ph" style="width:52%"></div><div class="mono mut">review approved</div></div></div>
+<div class="note">Safe to delete (already merged)</div>
+<div class="row g6 ac"><div class="dsh p6 f1 row ac g6"><div class="ph" style="width:40%"></div><span class="mono mut">+3 more</span></div><span class="btn">Delete all 4</span></div>
+</div></div></div></div>
+
+</div></div>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">08</span>Stash / shelf</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1u"><div class="dv-olabel"><a class="dv-oid" href="#1u">1u</a>“Shelf” list with a peek at the files inside each entry.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">←</span><span class="mut">Shelf · 3 saved sets</span><span class="f1"></span><span class="btn pri">Shelve current changes</span></div>
+<div class="col body p8 g6">
+<div class="col g4">
+<div class="col bx p6 g4 sel"><div class="row ac jb"><div class="ph" style="width:52%"></div><span class="mono mut">2h ago · main</span></div><div class="row g4"><span class="chip">3 files</span><span class="chip">+40 −8</span></div><div class="row g6"><span class="btn pri">Bring back</span><span class="btn">Copy back, keep shelved</span><span class="btn">Discard</span></div></div>
+<div class="row ac g6 bx p6"><div class="ph f1" style="max-width:170px"></div><span class="mono mut">yesterday · 1 file</span></div>
+<div class="row ac g6 bx p6"><div class="ph f1" style="max-width:140px"></div><span class="mono mut">3d ago · 6 files</span></div>
+</div>
+<div class="f1"></div>
+<div class="dsh p6 note">Shelved sets are never lost by switching branches.</div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1v"><div class="dv-olabel"><a class="dv-oid" href="#1v">1v</a>Shelf as a graph side-rail — shelved sets hang off the commit they came from.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="mut" style="margin-left:6px">kernel-tools</span><span class="f1"></span><span class="chip b">shelf 3</span></div>
+<div class="row body">
+<div class="col f1 p8 g4">
+<div class="row ac g8 p6"><div class="row ac g4" style="width:30px"><span class="nd fill"></span></div><div class="ph f1" style="max-width:150px"></div></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:30px"><span class="lane" style="height:16px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:180px"></div></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:30px"><span class="lane" style="height:16px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:120px"></div></div>
+<div class="row ac g8 p6"><div class="row ac g4" style="width:30px"><span class="lane" style="height:16px"></span><span class="nd"></span></div><div class="ph f1" style="max-width:160px"></div></div>
+</div>
+<div class="vr"></div>
+<div class="col p8 g6" style="width:170px"><div class="note">Shelf</div>
+<div class="col bx p6 g3 sel"><div class="ph" style="width:70%"></div><div class="mono mut">from a1f9c2 · 3 files</div><span class="btn" style="align-self:flex-start">Bring back</span></div>
+<div class="col dsh p6 g3"><div class="ph" style="width:60%"></div><div class="mono mut">from 9c02de · 1 file</div></div>
+<div class="col dsh p6 g3"><div class="ph" style="width:50%"></div><div class="mono mut">from 4bc881 · 6 files</div></div>
+</div></div></div></div></div>
+
+</div></div>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">09</span>Pull / merge requests</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1w"><div class="dv-olabel"><a class="dv-oid" href="#1w">1w</a>Inbox split by “needs you” vs “waiting on others”, host-agnostic.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">←</span><span class="mut">Review requests</span><span class="f1"></span><span class="chip">origin</span><span class="btn pri">Open a request</span></div>
+<div class="col body p8 g6">
+<div class="note">Needs you (2)</div>
+<div class="col g4">
+<div class="row ac g8 bx p6 sel"><span class="nd fill"></span><div class="col g3 f1"><div class="ph" style="width:60%"></div><div class="mono mut">#412 · Ada B. → main · 6 files</div></div><span class="chip b">review</span></div>
+<div class="row ac g8 bx p6"><span class="nd"></span><div class="col g3 f1"><div class="ph" style="width:44%"></div><div class="mono mut">#409 · conflict with main</div></div><span class="chip b">fix</span></div>
+</div>
+<div class="note">Waiting on others (3)</div>
+<div class="col g4">
+<div class="row ac g8 dsh p6"><div class="ph f1" style="max-width:160px"></div><span class="mono mut">#415 · 1 approval</span></div>
+<div class="row ac g8 dsh p6"><div class="ph f1" style="max-width:130px"></div><span class="mono mut">#414 · checks running</span></div>
+</div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1x"><div class="dv-olabel"><a class="dv-oid" href="#1x">1x</a>Request detail: single column — state, checks, files, one action.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">← Requests</span><span class="mut">#412</span><span class="f1"></span><span class="btn">Open on host ↗</span></div>
+<div class="col body p10 g8">
+<div class="col g4"><div class="ph" style="width:58%"></div><div class="mono mut">feature/auth → main · Ada B. · opened 2d ago</div></div>
+<div class="row g6"><span class="chip b">2 approvals</span><span class="chip">checks passed</span><span class="chip">no conflicts</span></div>
+<div class="hr"></div>
+<div class="row f1 g8">
+<div class="col f1 g4"><div class="note">6 files changed</div><div class="row ac g4"><span class="mono" style="color:#2a78d6">+</span><div class="ph f1"></div></div><div class="row ac g4"><span class="mono mut">~</span><div class="ph f1"></div></div><div class="row ac g4"><span class="mono mut">~</span><div class="ph f1"></div></div><div class="row ac g4"><span class="mono mut">−</span><div class="ph f1"></div></div></div>
+<div class="vr"></div>
+<div class="col f1 g4"><div class="note">Conversation</div><div class="dsh p6 col g3"><div class="ph" style="width:80%"></div><div class="ph" style="width:50%"></div></div><div class="dsh p6 col g3"><div class="ph" style="width:64%"></div></div></div>
+</div>
+<div class="row ac jb"><span class="note">merge style: fold into one commit</span><span class="btn pri">Merge into main</span></div>
+</div></div></div></div>
+
+</div></div>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">10</span>Settings &amp; accounts</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1y"><div class="dv-olabel"><a class="dv-oid" href="#1y">1y</a>Short left index, one page of plain-language rows, no nested tabs.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">←</span><span class="mut">Settings</span></div>
+<div class="row body">
+<div class="col p8 g4" style="width:130px"><div class="chip b" style="text-align:center">You</div><div class="chip" style="text-align:center">Accounts</div><div class="chip" style="text-align:center">Behaviour</div><div class="chip" style="text-align:center">Appearance</div><div class="chip" style="text-align:center">Advanced</div><div class="f1"></div><div class="note">GPL-3.0 · v0.1</div></div>
+<div class="vr"></div>
+<div class="col f1 p10 g8">
+<div class="col g4"><div class="note">Name on your commits</div><div class="bx p6"><div class="ph" style="width:40%"></div></div></div>
+<div class="col g4"><div class="note">Email</div><div class="bx p6"><div class="ph" style="width:52%"></div></div></div>
+<div class="row ac jb bx p6"><span>Sign my commits</span><div class="bx" style="width:30px;height:15px;border-radius:9px;position:relative"><div style="position:absolute;right:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#2a78d6"></div></div></div>
+<div class="row ac jb bx p6"><span>Ask before rewriting history</span><div class="bx" style="width:30px;height:15px;border-radius:9px;position:relative"><div style="position:absolute;right:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#2a78d6"></div></div></div>
+<div class="row ac jb dsh p6"><span class="mut">Show git command for each action</span><div class="dsh" style="width:30px;height:15px;border-radius:9px;position:relative"><div style="position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:rgba(0,0,0,.3)"></div></div></div>
+</div></div></div></div></div>
+
+<div class="dv-opt" id="1z"><div class="dv-olabel"><a class="dv-oid" href="#1z">1z</a>Accounts as cards — any host, token-based, self-hosted included.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">←</span><span class="mut">Accounts</span><span class="f1"></span><span class="btn pri">Add an account</span></div>
+<div class="col body p10 g8">
+<div class="col g6">
+<div class="col bx p8 g4"><div class="row ac jb"><div class="ph" style="width:36%"></div><span class="chip b">connected</span></div><div class="mono mut">host: github.com · ssh key + token</div><div class="row g6"><span class="btn">Test</span><span class="btn">Sign out</span></div></div>
+<div class="col bx p8 g4"><div class="row ac jb"><div class="ph" style="width:44%"></div><span class="chip">token expires in 12d</span></div><div class="mono mut">host: git.company.internal (self-hosted)</div><div class="row g6"><span class="btn">Renew</span><span class="btn">Sign out</span></div></div>
+<div class="col dsh p8 g4"><div class="note">Add a host by URL — works with any git server.</div></div>
+</div>
+<div class="f1"></div>
+<div class="dsh p6 note">Credentials stay in your OS keychain. Nothing is sent anywhere else.</div>
+</div></div></div></div>
+
+</div></div>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">11</span>Clone / init flow</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1aa"><div class="dv-olabel"><a class="dv-oid" href="#1aa">1aa</a>One dialog: paste URL, pick folder, go. Progress replaces the form in place.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="mut">Copy a repository to this computer</span><span class="f1"></span><span class="btn">✕</span></div>
+<div class="col body p14 g10">
+<div class="col g4"><div class="note">Address</div><div class="bx row ac p6 g6"><span class="mono mut">https://</span><div class="ph f1" style="max-width:200px"></div><span class="chip">paste</span></div><div class="note">ssh, https or a local path all work</div></div>
+<div class="col g4"><div class="note">Put it in</div><div class="row g6 ac"><div class="bx p6 f1"><div class="ph" style="width:56%"></div></div><span class="btn">Choose…</span></div></div>
+<div class="col g4 dsh p8"><div class="row ac jb"><span class="note">Copying… 42%</span><span class="mono mut">18 MB / 44 MB</span></div><div class="bx" style="height:7px;border-radius:4px;overflow:hidden"><div style="width:42%;height:100%;background:#2a78d6"></div></div></div>
+<div class="row ac jb"><span class="note">Advanced (shallow, submodules) ▸</span><span class="btn pri">Copy</span></div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1ab"><div class="dv-olabel"><a class="dv-oid" href="#1ab">1ab</a>Fork in the road first: copy an existing one, or start a new one here.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="mut">Add a repository</span><span class="f1"></span><span class="btn">✕</span></div>
+<div class="col body p14 g10">
+<div class="row g8 f1">
+<div class="col f1 bx p8 g6 sel"><div style="font-size:14px">Copy an existing one</div><div class="note">from a URL or another folder</div><div class="dsh p6"><span class="mono mut">paste address</span></div><div class="f1"></div><span class="btn pri">Copy</span></div>
+<div class="col f1 bx p8 g6"><div style="font-size:14px">Start a new one</div><div class="note">turn a folder into a repository</div><div class="dsh p6"><span class="mono mut">choose folder</span></div><div class="f1"></div><span class="btn">Start</span></div>
+</div>
+<div class="dsh p6 note">You can connect it to a host later — nothing is required up front.</div>
+</div></div></div></div>
+
+</div></div>
+
+<div class="scr">
+<div class="scrh"><span class="scrn">12</span>History search &amp; filter</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1ac"><div class="dv-olabel"><a class="dv-oid" href="#1ac">1ac</a>Search bar over the graph — filters build as removable chips.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">←</span><span class="mut">Search history</span><span class="f1"></span><span class="mono mut">142 results</span></div>
+<div class="col body p8 g6">
+<div class="bx row ac p6 g6"><span class="mono mut">▸</span><div class="ph" style="width:30%"></div></div>
+<div class="row g4"><span class="chip b">author: Ada ✕</span><span class="chip b">touches: src/auth ✕</span><span class="chip">last 3 months</span><span class="chip">+ add filter</span></div>
+<div class="col g4 f1">
+<div class="row ac g8 p6 sel"><span class="nd fill"></span><div class="ph f1" style="max-width:190px"></div><span class="mono mut">a1f9c2 · 2h</span></div>
+<div class="row ac g8 p6"><span class="nd"></span><div class="ph f1" style="max-width:150px"></div><span class="mono mut">9c02de · 1d</span></div>
+<div class="row ac g8 p6"><span class="nd"></span><div class="ph f1" style="max-width:170px"></div><span class="mono mut">77aa10 · 3d</span></div>
+<div class="row ac g8 p6"><span class="nd"></span><div class="ph f1" style="max-width:130px"></div><span class="mono mut">4bc881 · 6d</span></div>
+</div>
+<div class="row ac jb"><span class="note">Enter opens · ⌥Enter opens the diff</span><span class="btn">Save this search</span></div>
+</div></div></div></div>
+
+<div class="dv-opt" id="1ad"><div class="dv-olabel"><a class="dv-oid" href="#1ad">1ad</a>File-first: pick a file, get its timeline and who changed which lines.</div><div class="dv-card"><div class="wf">
+<div class="tt"><span class="btn">←</span><span class="mut">History of a file</span><span class="f1"></span><span class="chip">follow renames</span></div>
+<div class="row body">
+<div class="col p8 g4" style="width:150px"><div class="dsh p6"><span class="mono mut">find a file</span></div><div class="row ac g4 sel p6"><div class="ph f1"></div></div><div class="row ac g4 p6"><div class="ph f1"></div></div><div class="row ac g4 p6"><div class="ph f1"></div></div><div class="row ac g4 p6"><div class="ph f1"></div></div></div>
+<div class="vr"></div>
+<div class="col f1 p8 g6">
+<div class="mono mut">src/auth/session.rs · 34 changes · 5 people</div>
+<div class="col g4">
+<div class="row ac g6"><span class="nd fill"></span><div class="ph f1" style="max-width:150px"></div><span class="mono mut">Ada · 2h</span></div>
+<div class="row ac g6"><span class="nd"></span><div class="ph f1" style="max-width:120px"></div><span class="mono mut">Cai · 1d</span></div>
+<div class="row ac g6"><span class="nd"></span><div class="ph f1" style="max-width:160px"></div><span class="mono mut">Ada · 5d</span></div>
+</div>
+<div class="hr"></div>
+<div class="note">Who wrote each line</div>
+<div class="col g3"><div class="row ac g4"><span class="mono mut">Ada</span><div class="ph f1"></div></div><div class="row ac g4"><span class="mono mut">Cai</span><div class="ph f1" style="max-width:120px"></div></div><div class="row ac g4"><span class="mono mut">Ada</span><div class="ph f1" style="max-width:90px"></div></div></div>
+</div></div></div></div></div>
+
+</div></div>
+
+<p class="dv-next">Try next: "build out <a class="dv-oid" href="#1d">1d</a> as the real shell and hang <a class="dv-oid" href="#1h">1h</a> + <a class="dv-oid" href="#1j">1j</a> off it" · "more variations on the conflict resolver" · "add the beginner onboarding screens"</p>
+</section>
+
+</x-dc>
+</body>
+</html>
