@@ -26,7 +26,7 @@
 	 */
 	const branchLabel = $derived(head?.branch ?? head?.short ?? '—');
 
-	let branchMenu = $state<{ x: number; y: number } | null>(null);
+	let branchMenu = $state<{ x: number; y: number; anchor: HTMLElement } | null>(null);
 
 	/**
 	 * Opened under the control rather than at the pointer, so a keyboard
@@ -39,8 +39,17 @@
 	 * so the two cannot race into a stale list.
 	 */
 	function openBranchMenu(event: MouseEvent) {
-		const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
-		branchMenu = { x: box.left, y: box.bottom + 4 };
+		// A second click on the control closes it. `Menu` leaves mousedowns on
+		// its anchor alone precisely so that this decision is made here, once,
+		// rather than by a mousedown that closes and a click that reopens
+		// (BUG-018).
+		if (branchMenu) {
+			branchMenu = null;
+			return;
+		}
+		const button = event.currentTarget as HTMLElement;
+		const box = button.getBoundingClientRect();
+		branchMenu = { x: box.left, y: box.bottom + 4, anchor: button };
 		if (!branches.loaded && !branches.loading) void branches.load();
 	}
 
@@ -221,6 +230,7 @@
 	<Menu
 		x={branchMenu.x}
 		y={branchMenu.y}
+		anchor={branchMenu.anchor}
 		label="Switch branch"
 		items={BRANCH_ITEMS}
 		onclose={() => (branchMenu = null)}

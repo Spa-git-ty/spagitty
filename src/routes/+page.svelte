@@ -79,7 +79,7 @@
 	 * soloed is listed underneath so there is always a way back — a filter you
 	 * cannot see is a filter you forget is on.
 	 */
-	let gear = $state<{ x: number; y: number } | null>(null);
+	let gear = $state<{ x: number; y: number; anchor: HTMLElement } | null>(null);
 
 	const gearItems = $derived<MenuItem[]>([
 		{ heading: 'Show' },
@@ -127,10 +127,17 @@
 	]);
 
 	function openGear(event: MouseEvent) {
-		const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		// Clicking the gear again closes it — see BUG-018 and the `anchor` note
+		// on `Menu`.
+		if (gear) {
+			gear = null;
+			return;
+		}
+		const button = event.currentTarget as HTMLElement;
+		const box = button.getBoundingClientRect();
 		// Anchored to the button's bottom-left, so the menu hangs under the gear
 		// instead of under the pointer — this one is clicked, not right-clicked.
-		gear = { x: box.left, y: box.bottom + 4 };
+		gear = { x: box.left, y: box.bottom + 4, anchor: button };
 	}
 
 	function openDiff(id: string) {
@@ -223,6 +230,7 @@
 	<Menu
 		x={gear.x}
 		y={gear.y}
+		anchor={gear.anchor}
 		items={gearItems}
 		label="Branch visibility"
 		onclose={() => (gear = null)}

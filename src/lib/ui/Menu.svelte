@@ -24,10 +24,22 @@
 		items: MenuItem[];
 		/** Named for screen readers, since the menu has no visible title. */
 		label: string;
+		/**
+		 * The control this menu was opened from, when it was opened by a click
+		 * rather than at the pointer.
+		 *
+		 * A pointer sends `mousedown` and then `click`. Without this, the
+		 * mousedown on the control landed outside the menu and closed it, and
+		 * the click that followed opened it again — so the one gesture everybody
+		 * tries first, clicking the control a second time, could not dismiss it
+		 * (BUG-018). Mousedowns on the anchor are left alone, and the control
+		 * decides on the click whether it is opening or closing.
+		 */
+		anchor?: HTMLElement | null;
 		onclose: () => void;
 	}
 
-	let { x, y, items, label, onclose }: Props = $props();
+	let { x, y, items, label, anchor = null, onclose }: Props = $props();
 
 	let element = $state<HTMLDivElement | null>(null);
 	let placed = $state<{ left: number; top: number } | null>(null);
@@ -119,7 +131,10 @@
 
 <svelte:window
 	onmousedown={(event) => {
-		if (element && !element.contains(event.target as Node)) onclose();
+		const target = event.target as Node;
+		// The control that opened it gets to be the control that closes it.
+		if (anchor?.contains(target)) return;
+		if (element && !element.contains(target)) onclose();
 	}}
 	onresize={onclose}
 />

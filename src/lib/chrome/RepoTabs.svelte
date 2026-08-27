@@ -26,7 +26,7 @@
 	 */
 
 	const tabs = $derived(workspace.tabs);
-	let menu = $state<{ x: number; y: number } | null>(null);
+	let menu = $state<{ x: number; y: number; anchor: HTMLElement } | null>(null);
 	let recents = $state<RepoSummary[]>([]);
 
 	/** Where the current repository is right now, for remembering on the way out. */
@@ -62,9 +62,15 @@
 	}
 
 	async function openMenu(event: MouseEvent): Promise<void> {
+		// Clicking the control again closes it — see BUG-018 and the `anchor`
+		// note on `Menu`.
+		if (menu) {
+			menu = null;
+			return;
+		}
 		const button = event.currentTarget as HTMLElement;
 		const box = button.getBoundingClientRect();
-		menu = { x: box.left, y: box.bottom + 2 };
+		menu = { x: box.left, y: box.bottom + 2, anchor: button };
 
 		try {
 			recents = await api.recentRepos();
@@ -158,7 +164,14 @@
 {/if}
 
 {#if menu}
-	<Menu x={menu.x} y={menu.y} items={menuItems} label="Repositories" onclose={() => (menu = null)} />
+	<Menu
+		x={menu.x}
+		y={menu.y}
+		anchor={menu.anchor}
+		items={menuItems}
+		label="Repositories"
+		onclose={() => (menu = null)}
+	/>
 {/if}
 
 <style>

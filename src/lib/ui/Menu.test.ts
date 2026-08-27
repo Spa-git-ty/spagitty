@@ -355,6 +355,35 @@ describe('dismissal', () => {
 		view.destroy();
 	});
 
+	it('leaves a mousedown on its anchor alone, so the control can toggle it', () => {
+		// BUG-018: a pointer sends `mousedown` then `click`. Closing on the
+		// mousedown and reopening on the click meant the control that opened a
+		// menu could never close it.
+		const button = document.createElement('button');
+		document.body.appendChild(button);
+		const onclose = vi.fn();
+		const view = render(Menu, {
+			x: 40,
+			y: 60,
+			items: [entry('One')],
+			label: 'Commit actions',
+			anchor: button,
+			onclose
+		});
+
+		button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		flushSync();
+
+		expect(onclose).not.toHaveBeenCalled();
+
+		// Anywhere else still closes it.
+		fire(document.body, 'mousedown');
+		expect(onclose).toHaveBeenCalledTimes(1);
+
+		view.destroy();
+		button.remove();
+	});
+
 	it('stays open on a mousedown inside itself', () => {
 		const { view, onclose } = open([entry('One')]);
 

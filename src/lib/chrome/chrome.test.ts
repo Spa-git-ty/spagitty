@@ -307,6 +307,61 @@ describe('Toolbar', () => {
 		view.destroy();
 	});
 
+	it('closes the branch menu when the control that opened it is clicked again', () => {
+		// BUG-018. A real pointer sends `mousedown` and then `click`. `Menu`
+		// closes on any outside mousedown, and the control reopened
+		// unconditionally on the click that followed — so clicking the control
+		// to dismiss the menu closed it and opened it again in the same
+		// gesture, and it read as a menu that could not be closed at all.
+		repoControl.setInfo(info('main'));
+		const view = render(Toolbar, {});
+
+		const field = view.get('.field');
+		field.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		field.click();
+		flushSync();
+		expect(view.find('.menu')).not.toBeNull();
+
+		field.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		field.click();
+		flushSync();
+		expect(view.find('.menu')).toBeNull();
+
+		view.destroy();
+	});
+
+	it('keeps the branch menu open when something inside it is pressed', () => {
+		repoControl.setInfo(info('main'));
+		const view = render(Toolbar, {});
+
+		const field = view.get('.field');
+		field.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		field.click();
+		flushSync();
+
+		view.get('.menu').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		flushSync();
+
+		expect(view.find('.menu')).not.toBeNull();
+		view.destroy();
+	});
+
+	it('closes the branch menu on a mousedown anywhere else', () => {
+		repoControl.setInfo(info('main'));
+		const view = render(Toolbar, {});
+
+		const field = view.get('.field');
+		field.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		field.click();
+		flushSync();
+
+		document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		flushSync();
+
+		expect(view.find('.menu')).toBeNull();
+		view.destroy();
+	});
+
 	it('falls back to the short SHA when HEAD is detached', () => {
 		repoControl.setInfo(info(null, true));
 		const view = render(Toolbar, {});
