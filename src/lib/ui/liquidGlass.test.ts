@@ -219,8 +219,10 @@ describe('inside the application', () => {
 
 		expect(document.querySelectorAll('.liquid-glass-stage > *')).toHaveLength(1);
 
+		// Deliberately nothing else: `destroy()` alone must clear the stage.
+		// This test used to call `node.remove()` here, which cleaned up on the
+		// action's behalf and so asserted nothing about it.
 		handle!.destroy!();
-		node.remove();
 		await paint();
 
 		expect(document.querySelectorAll('.liquid-glass-stage > *')).toHaveLength(0);
