@@ -59,16 +59,20 @@ describe('bandDepth', () => {
 });
 
 describe('svgDataUri', () => {
-	it('pre-multiplies the body by the device pixel ratio', () => {
-		// WebKit measures the `feImage` subregion in user units and blits the
-		// raster into a device-resolution surface, so a map authored in CSS
-		// pixels arrives shrunk by 1/dpr unless the contents are scaled first.
-		expect(decode(svgDataUri(100, 80, '<rect/>', 2))).toContain('<g transform="scale(2)">');
-		expect(decode(svgDataUri(100, 80, '<rect/>', 1))).toContain('<g transform="scale(1)">');
+	it('writes the body through untouched, in CSS pixels', () => {
+		// BUG-017: the body used to be wrapped in `scale(devicePixelRatio)`, to
+		// compensate for a filter region written in the wrong units. The region
+		// is a fraction of the bounding box now and the map is stretched onto
+		// it, so a scale factor here would be a second, disagreeing opinion
+		// about how big the map is.
+		const svg = decode(svgDataUri(100, 80, '<rect/>'));
+
+		expect(svg).toContain('<rect/>');
+		expect(svg).not.toContain('transform="scale');
 	});
 
 	it('keeps width, height and viewBox in CSS pixels', () => {
-		const svg = decode(svgDataUri(100, 80, '', 2));
+		const svg = decode(svgDataUri(100, 80, ''));
 
 		expect(svg).toContain('width="100"');
 		expect(svg).toContain('height="80"');
@@ -79,7 +83,7 @@ describe('svgDataUri', () => {
 		// `#` starts a fragment. An unescaped colour in a gradient stop would
 		// cut the document off mid-element and the filter would silently render
 		// nothing.
-		const uri = svgDataUri(10, 10, '<rect fill="#808080"/>', 1);
+		const uri = svgDataUri(10, 10, '<rect fill="#808080"/>');
 
 		expect(uri).not.toContain('#');
 		expect(decode(uri)).toContain('#808080');
@@ -88,7 +92,7 @@ describe('svgDataUri', () => {
 
 describe('axisMap', () => {
 	it('fills the field with neutral grey, so nothing outside a pane moves', () => {
-		const svg = decode(axisMap('x', 800, 600, [rect()], 1));
+		const svg = decode(axisMap('x', 800, 600, [rect()]));
 
 		expect(svg).toContain('<rect width="800" height="600" fill="#808080"/>');
 	});
@@ -96,8 +100,8 @@ describe('axisMap', () => {
 	it('ramps red on the horizontal axis and green on the vertical', () => {
 		// The displacement map reads x from R and y from G. An axis that wrote
 		// the other channel would push the backdrop sideways when it meant up.
-		const across = decode(axisMap('x', 800, 600, [rect()], 1));
-		const down = decode(axisMap('y', 800, 600, [rect()], 1));
+		const across = decode(axisMap('x', 800, 600, [rect()]));
+		const down = decode(axisMap('y', 800, 600, [rect()]));
 
 		expect(across).toContain('stop-color="#008080"');
 		expect(across).toContain('stop-color="#ff8080"');
@@ -106,13 +110,13 @@ describe('axisMap', () => {
 	});
 
 	it('runs its gradients along the axis it is for', () => {
-		expect(decode(axisMap('x', 800, 600, [rect()], 1))).toContain('x1="0" y1="0" x2="1" y2="0"');
-		expect(decode(axisMap('y', 800, 600, [rect()], 1))).toContain('x1="0" y1="0" x2="0" y2="1"');
+		expect(decode(axisMap('x', 800, 600, [rect()]))).toContain('x1="0" y1="0" x2="1" y2="0"');
+		expect(decode(axisMap('y', 800, 600, [rect()]))).toContain('x1="0" y1="0" x2="0" y2="1"');
 	});
 
 	it('puts one band at each rim, a band wide, and nothing in between', () => {
 		const r = rect({ x: 100, y: 50, w: 240, h: 180, depth: 18 });
-		const svg = decode(axisMap('x', 800, 600, [r], 1));
+		const svg = decode(axisMap('x', 800, 600, [r]));
 
 		// Leading band at the left rim.
 		expect(svg).toContain('<rect x="100" y="50" width="18" height="180" fill="url(#lead)"/>');
@@ -121,7 +125,7 @@ describe('axisMap', () => {
 	});
 
 	it('clips each band to its own pane, corners included', () => {
-		const svg = decode(axisMap('x', 800, 600, [rect({ radius: 14 })], 1));
+		const svg = decode(axisMap('x', 800, 600, [rect({ radius: 14 })]));
 
 		expect(svg).toContain('<clipPath id="c0">');
 		expect(svg).toContain('rx="14" ry="14"');
@@ -130,12 +134,12 @@ describe('axisMap', () => {
 
 	it('softens the band by a third of its width, and never by nothing', () => {
 		// A hard-edged band displaces in a step, and the step is a visible seam.
-		expect(decode(axisMap('x', 800, 600, [rect({ depth: 18 })], 1))).toContain('blur(6px)');
-		expect(decode(axisMap('x', 800, 600, [rect({ depth: 2 })], 1))).toContain('blur(1px)');
+		expect(decode(axisMap('x', 800, 600, [rect({ depth: 18 })]))).toContain('blur(6px)');
+		expect(decode(axisMap('x', 800, 600, [rect({ depth: 2 })]))).toContain('blur(1px)');
 	});
 
 	it('gives every pane its own clip, so two open at once do not share one', () => {
-		const svg = decode(axisMap('x', 800, 600, [rect(), rect({ x: 400 })], 1));
+		const svg = decode(axisMap('x', 800, 600, [rect(), rect({ x: 400 })]));
 
 		expect(svg).toContain('<clipPath id="c0">');
 		expect(svg).toContain('<clipPath id="c1">');
@@ -143,7 +147,7 @@ describe('axisMap', () => {
 	});
 
 	it('is a flat neutral field when nothing is open', () => {
-		const svg = decode(axisMap('x', 800, 600, [], 1));
+		const svg = decode(axisMap('x', 800, 600, []));
 
 		expect(svg).toContain('fill="#808080"');
 		expect(svg).not.toContain('url(#lead)');
@@ -153,7 +157,7 @@ describe('axisMap', () => {
 
 describe('shapeMask', () => {
 	it('draws each pane as a solid white footprint and nothing else', () => {
-		const svg = decode(shapeMask(800, 600, [rect()], 1));
+		const svg = decode(shapeMask(800, 600, [rect()]));
 
 		expect(svg).toContain(
 			'<rect x="100" y="50" width="240" height="180" rx="12" ry="12" fill="#ffffff"/>'
@@ -162,7 +166,7 @@ describe('shapeMask', () => {
 	});
 
 	it('is empty when no pane is open, so the frost lands nowhere', () => {
-		expect(decode(shapeMask(800, 600, [], 1))).not.toContain('<rect');
+		expect(decode(shapeMask(800, 600, []))).not.toContain('<rect');
 	});
 });
 
@@ -185,20 +189,45 @@ describe('thickest', () => {
 
 describe('filterMarkup', () => {
 	const sources = {
-		width: 800,
-		height: 600,
 		mapX: 'x-map',
 		mapY: 'y-map',
 		shape: 'shape-mask',
 		material: DEFAULTS
 	};
 
-	it('covers exactly the element it is on, in its own coordinates', () => {
+	it('covers exactly the element it is on, as a fraction of its own box', () => {
 		const filter = filterMarkup(sources);
 
 		expect(filter).toContain(`id="${FILTER_ID}"`);
-		expect(filter).toContain('x="0" y="0" width="800" height="600"');
-		expect(filter).toContain('filterUnits="userSpaceOnUse"');
+		expect(filter).toContain('x="0" y="0" width="1" height="1"');
+		expect(filter).toContain('filterUnits="objectBoundingBox"');
+	});
+
+	it('writes no pixel length into the region (BUG-017)', () => {
+		// The region used to be the filtered element's measured width and
+		// height in `userSpaceOnUse` units. WebKitGTK reads those user units as
+		// device pixels, so on a display whose ratio is not 1 the region
+		// covered 1/ratio of the element and the rest of the window went
+		// unpainted. A fraction of the bounding box cannot be misread.
+		const filter = filterMarkup(sources);
+		const open = filter.slice(0, filter.indexOf('>'));
+
+		expect(open).not.toContain('userSpaceOnUse');
+		expect(open).not.toMatch(/width="\d{2,}"/);
+		expect(open).not.toMatch(/height="\d{2,}"/);
+	});
+
+	it('gives no feImage a subregion, so each one defaults to the region', () => {
+		// A subregion of its own is a second set of numbers that can disagree
+		// with the region — which is exactly how the maps came to be measured
+		// in one unit and the region in another.
+		for (const image of filterMarkup(sources).match(/<feImage[^>]*>/g) ?? []) {
+			expect(image).not.toMatch(/\sx=/);
+			expect(image).not.toMatch(/\sy=/);
+			expect(image).not.toMatch(/\swidth=/);
+			expect(image).not.toMatch(/\sheight=/);
+			expect(image).toContain('preserveAspectRatio="none"');
+		}
 	});
 
 	it('adds the two axis maps and takes the doubled neutral back out', () => {

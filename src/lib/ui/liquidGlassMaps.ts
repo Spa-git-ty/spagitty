@@ -46,7 +46,7 @@ export const DEFAULTS: GlassOptions = {
 	depth: 18,
 	strength: 14,
 	chromaticAberration: 2,
-	blur: 13,
+	blur: 28,
 	saturate: 2
 };
 
@@ -68,30 +68,25 @@ export function bandDepth(requested: number, width: number, height: number): num
 /**
  * A map, as a data URI.
  *
- * The scale factor is the whole subtlety here, and getting it wrong is what
- * puts the refraction ring up and to the left of the pane it belongs to.
+ * Everything inside is authored in CSS pixels — the same coordinates
+ * `getBoundingClientRect` reports — and the `viewBox` says so. Each map is then
+ * stretched onto the filter region by `preserveAspectRatio="none"`, so the
+ * numbers here never have to know what a device pixel is.
  *
- * WebKit rasterises an `feImage` source at the size of the filter subregion
- * measured in *user* units, and then blits that raster one-for-one into a
- * filter surface running at *device* resolution. At a scale factor of 1 the two
- * agree and a map authored in CSS pixels lands exactly. On a scaled desktop —
- * and most desktops are scaled somehow — every coordinate inside the map is
- * read as a device pixel, and the whole map arrives shrunk by one over the
- * scale factor.
- *
- * Neither a `viewBox` nor a device-sized `width`/`height` fixes that, because
- * neither is what WebKit is measuring; both were tried. What does fix it is to
- * pre-multiply the contents: everything inside is authored in CSS pixels — the
- * same coordinates `getBoundingClientRect` reports — and one transform scales
- * the lot by the device pixel ratio on the way out.
+ * They used to. Every coordinate was pre-multiplied by the device pixel ratio,
+ * to compensate for WebKit rasterising an `feImage` at the size of a filter
+ * subregion that was itself written in the wrong units. Fixing the region
+ * (BUG-017) removed the thing being compensated for, and the compensation with
+ * it: the map is now measured against the region, and the region is a fraction
+ * of the pane's own box.
  */
-export function svgDataUri(width: number, height: number, body: string, dpr: number): string {
+export function svgDataUri(width: number, height: number, body: string): string {
 	return (
 		'data:image/svg+xml;utf8,' +
 		encodeURIComponent(
 			`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" ` +
 				`viewBox="0 0 ${width} ${height}">` +
-				`<g transform="scale(${dpr})">${body}</g>` +
+				body +
 				`</svg>`
 		)
 	);
@@ -116,8 +111,7 @@ export function axisMap(
 	axis: 'x' | 'y',
 	width: number,
 	height: number,
-	rects: PaneRect[],
-	dpr: number
+	rects: PaneRect[]
 ): string {
 	const low = axis === 'x' ? '#008080' : '#800080';
 	const high = axis === 'x' ? '#ff8080' : '#80ff80';
@@ -156,25 +150,19 @@ export function axisMap(
 		height,
 		`<defs>${defs.join('')}${clips.join('')}</defs>` +
 			`<rect width="${width}" height="${height}" fill="#808080"/>` +
-			bands.join(''),
-		dpr
+			bands.join('')
 	);
 }
 
 /** The panes' footprints, as a white-on-nothing alpha mask for the frost. */
-export function shapeMask(
-	width: number,
-	height: number,
-	rects: PaneRect[],
-	dpr: number
-): string {
+export function shapeMask(width: number, height: number, rects: PaneRect[]): string {
 	const shapes = rects
 		.map(
 			(r) =>
 				`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="${r.radius}" ry="${r.radius}" fill="#ffffff"/>`
 		)
 		.join('');
-	return svgDataUri(width, height, shapes, dpr);
+	return svgDataUri(width, height, shapes);
 }
 
 /**
@@ -204,8 +192,6 @@ function displace(scale: number, result: string, channel: 'R' | 'G' | 'B'): stri
 
 /** Everything the filter needs that is not geometry. */
 export interface FilterSources {
-	width: number;
-	height: number;
 	mapX: string;
 	mapY: string;
 	shape: string;
@@ -218,10 +204,25 @@ export interface FilterSources {
  * Three passes at three scales, one channel kept from each and screened back
  * together: the colour splits where the bend is sharpest, which is the rim, and
  * stays put everywhere else because everywhere else is not displaced at all.
+ *
+ * **The region carries no pixel unit, and that is deliberate (BUG-017).** It
+ * used to be written as `filterUnits="userSpaceOnUse"` with the filtered
+ * element's measured width and height — CSS pixels, straight from
+ * `getBoundingClientRect`. WebKitGTK consumes those user units as *device*
+ * pixels, so on any display whose ratio is not 1 the region covered only
+ * `1 / devicePixelRatio` of the element and everything outside it was left
+ * unpainted: on a 1701×1381 window at a ratio of 1.3636, a `.lens` measuring
+ * 1247×1013 got a region 1247×1013 device pixels wide, and the window's right
+ * column and bottom went flat `--bg` for as long as a menu was open.
+ *
+ * A fraction of the object's bounding box cannot be read in the wrong pixels,
+ * so `0 0 1 1` in `objectBoundingBox` units is the region — exactly the border
+ * box, which is what `.lens` was shaped to allow. The `feImage` primitives
+ * carry no subregion of their own for the same reason: absent, each defaults to
+ * the filter region, and `preserveAspectRatio="none"` stretches the map onto
+ * it. One set of numbers decides the geometry instead of two that can disagree.
  */
 export function filterMarkup({
-	width,
-	height,
 	mapX,
 	mapY,
 	shape,
@@ -229,11 +230,11 @@ export function filterMarkup({
 }: FilterSources): string {
 	const { strength, chromaticAberration: ca, blur, saturate } = material;
 	return (
-		`<filter id="${FILTER_ID}" x="0" y="0" width="${width}" height="${height}" ` +
-		`filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">` +
-		`<feImage href="${mapX}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" result="mapX"/>` +
-		`<feImage href="${mapY}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" result="mapY"/>` +
-		`<feImage href="${shape}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" result="shape"/>` +
+		`<filter id="${FILTER_ID}" x="0" y="0" width="1" height="1" ` +
+		`filterUnits="objectBoundingBox" color-interpolation-filters="sRGB">` +
+		`<feImage href="${mapX}" preserveAspectRatio="none" result="mapX"/>` +
+		`<feImage href="${mapY}" preserveAspectRatio="none" result="mapY"/>` +
+		`<feImage href="${shape}" preserveAspectRatio="none" result="shape"/>` +
 		// Sum of the two axes, with the doubled neutral taken back out:
 		// 0.5 + 0.5 - 0.5 is 0.5, so anywhere both maps are neutral stays
 		// neutral, and a full push on one axis survives at full strength.

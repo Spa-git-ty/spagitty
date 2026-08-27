@@ -175,7 +175,7 @@ describe('inside the application', () => {
 		expect(document.querySelector('.liquid-glass-stage')).toBeNull();
 	});
 
-	it('builds the filter the maps describe, at the window size', async () => {
+	it('builds the filter the maps describe, over the whole element', async () => {
 		const liquidGlass = await load();
 		const { lens } = shell(true);
 		liquidGlass(pane(lens!), undefined);
@@ -183,9 +183,47 @@ describe('inside the application', () => {
 
 		const filter = document.querySelector('svg')!.innerHTML;
 		expect(filter).toContain('id="liquid-glass-lens"');
-		expect(filter).toContain('width="800" height="600"');
+		// BUG-017: a fraction of the bounding box, never a pixel length — see
+		// the note on `filterMarkup`.
+		expect(filter).toContain('width="1" height="1"');
+		expect(filter).toContain('filterUnits="objectBoundingBox"');
 		// Three sources: both axis maps and the shape mask.
 		expect(document.querySelectorAll('feImage')).toHaveLength(3);
+	});
+
+	it('authors the maps at the filtered element\'s size, in CSS pixels', async () => {
+		const liquidGlass = await load();
+		const { lens } = shell(true);
+		liquidGlass(pane(lens!), undefined);
+		await paint();
+
+		const href = document.querySelector('feImage')!.getAttribute('href')!;
+		const map = decodeURIComponent(href.replace('data:image/svg+xml;utf8,', ''));
+
+		// The shell's `.lens` is 800 x 600, and the map says so — the region it
+		// is stretched onto is what turns those into device pixels.
+		expect(map).toContain('viewBox="0 0 800 600"');
+		expect(map).not.toContain('transform="scale');
+	});
+
+	it('takes a portaled pane back off the stage when it is torn down', async () => {
+		// The action moves a pane out of `.lens` and into a stage of its own. It
+		// is Svelte that removes the node afterwards, but nothing asserted that
+		// the move left it removable — and a pane left behind is a menu that
+		// never disappears, with the next one drawn over it.
+		const liquidGlass = await load();
+		const { lens } = shell(true);
+		const node = pane(lens!);
+		const handle = liquidGlass(node, undefined);
+		await paint();
+
+		expect(document.querySelectorAll('.liquid-glass-stage > *')).toHaveLength(1);
+
+		handle!.destroy!();
+		node.remove();
+		await paint();
+
+		expect(document.querySelectorAll('.liquid-glass-stage > *')).toHaveLength(0);
 	});
 
 	it('hides its own host from the accessibility tree and from the pointer', async () => {
