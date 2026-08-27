@@ -39,12 +39,11 @@
 		background-color: var(--glass-thick);
 		backdrop-filter: var(--blur-thick);
 		-webkit-backdrop-filter: var(--blur-thick);
-		border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		/* The stripe says which kind of news this is, and it is the palette's own
 		   green or red rather than a graph lane, which was cyan on Dracula. */
 		border-left: 3px solid var(--ok);
 		border-radius: var(--r-panel);
-		box-shadow: var(--glass-rim-thick), var(--shadow-3);
+		box-shadow: var(--shadow-3);
 		/* It arrives from the corner it lives in. */
 		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
 		/* A tint of the same colour behind it, so the meaning is carried by more
