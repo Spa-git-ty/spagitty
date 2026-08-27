@@ -136,6 +136,7 @@ rather than an audit.
 | [BUG-016](items/BUG-016-graph-columns-stop-at-the-last-row.md) | The graph's columns stop at the last commit row | 1A | Fixed |
 | [BUG-017](items/BUG-017-the-lens-wipes-the-window.md) | The lens wipes the right column and the bottom of the window | all | Fixed |
 | [BUG-018](items/BUG-018-a-menu-cannot-be-dismissed.md) | A menu cannot be dismissed, and the next one is drawn over it | all | Fixed |
+| [BUG-019](items/BUG-019-closing-the-last-tab-leaves-the-repository-open.md) | Closing the last tab leaves the repository open | chrome | Fixed |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
 report, reopened on a corrected diagnosis, and BUG-009's own document keeps the
