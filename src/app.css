@@ -391,7 +391,17 @@
 	 */
 	--blur-thin: blur(16px) saturate(180%);
 	--blur: blur(24px) saturate(200%);
-	--blur-thick: blur(32px) saturate(210%);
+	/*
+	 * The thick panes — menu, dialog, palette, toast, command log — carry the
+	 * material the author settled at the window (TASK-020), now as a
+	 * `backdrop-filter` rather than through an SVG lens (TASK-022).
+	 *
+	 * `saturate(0)` is deliberate and is not the "grey plastic" the note above
+	 * warns about: it was chosen by eye against the running application, and it
+	 * makes the frost read as grey light rather than as a tint of the commit
+	 * list under it. The note above still governs the two thinner grades.
+	 */
+	--blur-thick: blur(10px) saturate(0);
 
 	/*
 	 * The edge of a pane of glass — thick enough to bend light.
