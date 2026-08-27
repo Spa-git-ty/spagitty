@@ -8,7 +8,6 @@
 	 */
 	import Btn from '$lib/ui/Btn.svelte';
 	import { dialog } from '$lib/ui/dialog.svelte';
-	import { liquidGlass } from '$lib/ui/liquidGlass';
 
 	/**
 	 * The one confirmation and prompt dialog, mounted by the shell.
@@ -47,7 +46,6 @@
 	>
 		<div
 			class="panel"
-			use:liquidGlass
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="dialog-title"

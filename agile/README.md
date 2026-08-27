@@ -165,6 +165,9 @@ of its own.
 | [TASK-017](items/TASK-017-flow-restore.md) | Seventy-one commits with no path back to `main` | — | Done |
 | [TASK-018](items/TASK-018-first-ci-run.md) | Four gates that have never seen this code | — | Done |
 | [TASK-019](items/TASK-019-resume-session.md) | The launch sequence lives where no test can reach it | — | Done |
+| [TASK-020](items/TASK-020-the-glass-material-settled.md) | The glass material, settled at the window | all | Done |
+| [TASK-021](items/TASK-021-centre-the-name-in-the-title-bar.md) | Centre the name in the title bar | chrome | Done |
+| [TASK-022](items/TASK-022-the-glass-goes-back-on-the-gpu.md) | The glass goes back on the GPU | all | Done |
 
 ## Skipped identifiers
 
