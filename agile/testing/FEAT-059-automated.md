@@ -16,6 +16,7 @@
 - `closes workspace back to list view`: Verifies switching back to requests list.
 - `selects commit and loads commit files into cache`: Verifies commit diff isolation.
 - `adds and removes draft comments`: Verifies local draft comments management.
+- `preserves draft comments on review failure`: Validates draft comments retention on network or auth errors.
 - `submits review with draft comments included`: Verifies batch review submission with inline drafts.
 - `resolves comment threads`: Verifies marking threads as resolved.
 - `replies to comment thread`: Verifies inline reply dispatch.
@@ -26,6 +27,6 @@
 
 ## Coverage
 
-- Svelte lines coverage floor: >=70% strictly maintained (85.34% achieved across all suites).
+- Svelte lines coverage floor: >=70% strictly maintained (85.42% achieved across all suites).
 - 100% typechecked (`npm run check` clean with 0 errors).
 
