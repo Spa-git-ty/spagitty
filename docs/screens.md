@@ -468,27 +468,32 @@ everything else the token does.
 
 **The files, commits, and review workspace** (FEAT-058, FEAT-059). Opening a
 pull request transitions to a dedicated full-window PR workspace view. The top
-header carries the PR title, author, relative update time, status chip, checks
-rollup, and commit count, alongside a return button.
+header carries the PR title (with compact sizing and smooth, slow hover auto-scroll
+when long), author, relative update time, status chip, checks rollup, and commit
+count, alongside a return button.
 
-The left pane features collapsible accordion sections for **All changed files**
-and **Commits**. Commits display fixed-width summaries that smoothly scroll
-(marquee on hover) to reveal long messages without truncation, and expand to
-reveal per-commit changed files.
+The left pane features a leading **CHANGELOG** entry that renders the PR's formatted
+Markdown description and changelog in the main view, followed by collapsible
+accordion sections for **All Changed Files** and **List Of Commits**. Commits display
+fixed-width summaries that smoothly scroll (marquee on hover) to reveal long messages
+without truncation, and the entire commit row is clickable to expand and list
+per-commit changed files.
 
 The center diff pane supports both unified and split diffs. Each diff line offers
 an inline review comment trigger on hover. Review comments and local drafts render
-directly beneath their associated diff lines.
+directly beneath their associated diff lines. Draft comments automatically persist
+in local browser storage (`localStorage`) so no review work is lost on network
+hiccups or application restarts.
 
 **Reviewer vs Developer modes.** Reviewers can compose local draft inline comments,
 inspect all threads, and publish reviews (Approve, Request Changes, Comment) with
-draft comments batched together in a single submission. Developers can review
-feedback, reply directly to inline comment threads, and mark change requests as
-resolved.
+draft comments batched together in a single submission. Authors are prevented from
+approving their own PRs. Developers can review feedback, reply directly to inline
+comment threads, and mark change requests as resolved.
 
-The list is re-read after a review rather than patched locally: the review
-decision is the host's to compute, and a guess at it here would be a second
-source of truth for the one fact this screen exists to show.
+The PR list screen renders a smooth skeleton shimmer while credentials decrypt and
+forges load, with the previous side panel removed for an uncluttered workspace.
+The list and comments are immediately refreshed after a review is submitted.
 
 Merging is still not built, and the button still says so.
 

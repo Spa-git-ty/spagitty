@@ -16,22 +16,29 @@ FEAT-058 added file listing and basic top-level reviews in a side panel, but in-
 
 ## Change
 
-**Dedicated PR Workspace (`PRWorkspace.svelte`).** Clicking a PR transitions the screen into a full-window two-pane workspace with top meta header, collapsible accordions for all changed files and commits with hover auto-scroll, center diff pane, and bottom action footer.
+**Dedicated PR Workspace (`PRWorkspace.svelte`).** Clicking a PR transitions the screen into a full-window two-pane workspace with top meta header, compact title with slow marquee on hover, a leading CHANGELOG entry, collapsible accordions for all changed files and commits with hover auto-scroll, center diff and markdown panes, and bottom action footer.
 
-**Interactive Diff & Inline Comments (`PRDiffPane.svelte`).** Diff lines feature a hover `+` trigger to write inline comments. Draft comments stay local until publishing. Published comments render in threads with reply and resolution capabilities.
+**Interactive Diff & Inline Comments (`PRDiffPane.svelte`).** Diff lines feature a hover `+` trigger to write inline comments. Draft comments persist locally in `localStorage` across restarts and network failures. Published comments render in threads with reply and resolution capabilities.
 
-**REST Endpoints & Forge Integration (`forge/review.rs`).** Added endpoints for PR commits (`/pulls/{n}/commits`), commit files (`/commits/{sha}`), inline comments (`/pulls/{n}/comments`), comment replies, and batch review submission with inline drafts.
+**PR Description & Changelog View (`PRMarkdown.svelte`).** The leading `CHANGELOG` entry renders the PR's markdown description, task lists, code fences, and formatted notes.
+
+**REST Endpoints & Forge Integration (`forge/review.rs`, `forge.rs`).** Added endpoints for PR commits (`/pulls/{n}/commits`), commit files (`/commits/{sha}`), inline comments (`/pulls/{n}/comments`), comment replies, and batch review submission with inline drafts. Improved `status_error` to surface exact JSON error messages from host responses.
+
+**Shimmer Loading (`routes/requests/+page.svelte`).** Added flat skeleton shimmer placeholders while credentials decrypt and network reads run, removing false "No account connected" flashes and removing the old side panel.
 
 ## Acceptance criteria
 
 - Clicking any PR row transitions to the full workspace view with header, two-pane body, and footer.
-- Top header renders PR title, author, time, checks status, commit count, review status chip, and return button.
-- Left pane accordion includes "ALL changed files" and "LIST OF COMMITS".
-- Commits have fixed-width summaries that scroll on hover (marquee) and expand to reveal per-commit files.
+- Top header renders compact PR title with slow hover auto-scroll, author, time, checks status, commit count, review status chip, and return button.
+- First entry in left pane is `CHANGELOG`, rendering the formatted markdown description in the main pane when clicked.
+- Left pane accordion includes "All Changed Files" and "List Of Commits".
+- Commits have fixed-width summaries that scroll on hover (marquee) and entire row is clickable to expand per-commit files.
 - Selecting a file under all files or under a commit loads its diff in the center pane.
-- Hovering a diff line shows a comment trigger to draft inline comments locally.
-- Reviewer mode displays draft counts and submits batch reviews with all inline drafts.
+- Hovering a diff line shows a comment trigger to draft inline comments locally with automatic `localStorage` persistence.
+- Reviewer mode displays draft counts and submits batch reviews with all inline drafts, forcing immediate comment refresh.
 - Developer mode allows thread replies and marking change requests as resolved.
+- PR author cannot submit self-approval or change requests per host policy.
+- PR list screen renders a smooth shimmer loading skeleton and has no cluttering side panels.
 
 ## Non-scope
 
