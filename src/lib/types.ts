@@ -312,6 +312,14 @@ export interface PullRequest {
 
 export type ReviewState = 'awaitingReview' | 'changesRequested' | 'approved' | 'noReviewers';
 
+/**
+ * What a reviewer is saying, in Spagitty's own words (FEAT-058).
+ *
+ * Mapped onto the host's vocabulary at the edge, the way `ReviewState` already
+ * is: GitHub calls these `APPROVE`, `REQUEST_CHANGES` and `COMMENT`.
+ */
+export type ReviewVerdict = 'approve' | 'requestChanges' | 'comment';
+
 /** Which hosting service a remote points at (FEAT-017). */
 export type ForgeKind = 'gitHub';
 

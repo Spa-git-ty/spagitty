@@ -35,6 +35,7 @@
 pub mod github;
 pub mod http;
 pub mod keychain;
+pub mod review;
 
 use serde::{Deserialize, Serialize};
 

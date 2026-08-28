@@ -21,9 +21,17 @@
 #   Windows  the NSIS installer .exe, plus the bare spagitty.exe for anyone who
 #            would rather not run an installer.
 #
-# macOS is not built here. It needs signing and notarisation to be worth
-# handing to anybody, and an unsigned .app that Gatekeeper refuses to open is
-# worse than no download at all.
+#   macOS    a .dmg, built for Apple silicon and Intel as separate runners
+#            rather than a universal binary, so each download is the size of one
+#            architecture.
+#
+# **The macOS build is unsigned, and the notes say so.** This workflow used to
+# skip macOS entirely on the reasoning that an unsigned .app Gatekeeper refuses
+# to open is worse than no download at all. The author's decision is that all
+# three platforms are built: a Mac user with no build is stuck, where a Mac user
+# with an unsigned build has one documented step. Signing and notarisation need
+# an Apple Developer account and secrets in this repository, and neither exists
+# yet; when they do, they belong here and in gates.yml together.
 
 # Two ways in, because `workflow_dispatch` alone is not enough here. GitHub
 # only offers a dispatchable workflow that exists on the **default branch**,
@@ -115,10 +123,26 @@ jobs:
           - name: windows
             os: windows-latest
             bundles: nsis
+          # Apple silicon. `macos-latest` is arm64, and a build made on it does
+          # not run on an Intel Mac — hence the second entry rather than one
+          # runner and a hope.
+          - name: macos-arm64
+            os: macos-latest
+            bundles: dmg
+            target: aarch64-apple-darwin
+          - name: macos-x86_64
+            os: macos-13
+            bundles: dmg
+            target: x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          # Empty on Linux and Windows, where the runner's own triple is the
+          # one wanted; named on macOS so each runner builds for the
+          # architecture it is being published as.
+          targets: ${{ matrix.target || '' }}
       - uses: Swatinem/rust-cache@v2
       - uses: ./.github/actions/linux-deps
         if: runner.os == 'Linux'
@@ -133,7 +157,7 @@ jobs:
       # not have it, and this variable is how AppImage tooling is told to
       # unpack itself instead of mounting.
       - name: Build
-        run: npm run tauri build -- --bundles ${{ matrix.bundles }}
+        run: npm run tauri build -- --bundles ${{ matrix.bundles }} ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
         env:
           APPIMAGE_EXTRACT_AND_RUN: 1
           # What the update check compares against. Absent from every build
@@ -148,8 +172,17 @@ jobs:
           # Tauri has put the bundle under both paths across versions; take
           # whichever exists rather than guessing.
           find . -path ./node_modules -prune -o \
-                 \( -name '*.AppImage' -o -name '*-setup.exe' \) -print \
+                 \( -name '*.AppImage' -o -name '*-setup.exe' -o -name '*.dmg' \) -print \
             -exec cp {} out/ \;
+          # A .dmg is named from the product name and version, which is the same
+          # on both Mac runners — so the two would collide as they arrive at the
+          # release. The architecture goes in the filename here.
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            for image in out/*.dmg; do
+              [ -e "$image" ] || continue
+              mv "$image" "${image%.dmg}-${{ matrix.name }}.dmg"
+            done
+          fi
           # The bare executable, for anyone who would rather not run an
           # installer. Named per-platform so the two runners cannot collide.
           if [ "${{ runner.os }}" = "Windows" ]; then
@@ -205,8 +238,15 @@ jobs:
 
           - **Linux** — the \`.AppImage\` is self-contained. \`chmod +x\` it and run it.
           - **Windows** — \`*-setup.exe\` installs; \`spagitty-windows-x86_64.exe\` is the bare binary.
+          - **macOS** — \`*-macos-arm64.dmg\` for Apple silicon, \`*-macos-x86_64.dmg\` for Intel.
 
-          Unsigned. Licensed GPL-3.0-or-later." \
+          **Every build here is unsigned.** On macOS that is not cosmetic: Gatekeeper
+          refuses an unsigned app on a double-click, so open it once from the right-click
+          menu, or run \`xattr -d com.apple.quarantine /Applications/Spagitty.app\`.
+          Windows SmartScreen will also warn. Signing needs certificates this repository
+          does not have yet.
+
+          Licensed GPL-3.0-or-later." \
             $files
 
           echo "::notice::$TAG cut${draft:+ as a draft}"
