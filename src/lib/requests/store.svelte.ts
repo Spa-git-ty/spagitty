@@ -71,6 +71,40 @@ let fileSeq = 0;
 let reviewing = $state(false);
 let reviewError = $state<string | null>(null);
 
+function getDraftStorageKey(prNumber: number): string {
+	const slug = repo ? `${repo.owner}/${repo.name}` : 'global';
+	return `spagitty.drafts.${slug}.${prNumber}`;
+}
+
+function persistDrafts(prNumber: number, drafts: DraftComment[]): void {
+	if (typeof localStorage === 'undefined') return;
+	try {
+		const key = getDraftStorageKey(prNumber);
+		if (drafts.length === 0) {
+			localStorage.removeItem(key);
+		} else {
+			localStorage.setItem(key, JSON.stringify(drafts));
+		}
+	} catch {
+		// Storage unavailable; drafts kept in memory
+	}
+}
+
+function restoreDrafts(prNumber: number): DraftComment[] {
+	if (typeof localStorage === 'undefined') return [];
+	try {
+		const key = getDraftStorageKey(prNumber);
+		const stored = localStorage.getItem(key);
+		if (stored) {
+			const parsed = JSON.parse(stored);
+			if (Array.isArray(parsed)) return parsed;
+		}
+	} catch {
+		// Storage unavailable or unreadable
+	}
+	return [];
+}
+
 export const requests = {
 	get all(): PullRequest[] {
 		return list;
@@ -197,12 +231,23 @@ export const requests = {
 		this.clearFiles();
 	},
 
+	/** Restore local drafts for the open PR from storage. */
+	loadDrafts(): void {
+		const pr = this.open;
+		if (pr) {
+			draftComments = restoreDrafts(pr.number);
+		} else {
+			draftComments = [];
+		}
+	},
+
 	/** Open dedicated PR workspace. */
 	openWorkspace(id?: string): void {
 		if (id) {
 			this.select(id);
 		}
 		viewMode = 'workspace';
+		this.loadDrafts();
 		this.loadWorkspaceData();
 	},
 
@@ -254,17 +299,21 @@ export const requests = {
 	/** Add or update a draft inline comment. */
 	addDraftComment(path: string, line: number, side: string, body: string): void {
 		if (!body.trim()) return;
+		const pr = this.open;
 		draftComments = [
 			...draftComments.filter((c) => !(c.path === path && c.line === line && c.side === side)),
 			{ path, line, side, body: body.trim() }
 		];
+		if (pr) persistDrafts(pr.number, draftComments);
 	},
 
 	/** Remove a draft inline comment. */
 	removeDraftComment(path: string, line: number, side: string): void {
+		const pr = this.open;
 		draftComments = draftComments.filter(
 			(c) => !(c.path === path && c.line === line && c.side === side)
 		);
+		if (pr) persistDrafts(pr.number, draftComments);
 	},
 
 	/** Reply to an existing comment. */
@@ -401,7 +450,7 @@ export const requests = {
 		commentsFor = null;
 		commentsError = null;
 		commentsLoading = false;
-		draftComments = [];
+		this.loadDrafts();
 		selectedCommitSha = null;
 		commitFilesCache = {};
 		openPath = null;
@@ -424,6 +473,7 @@ export const requests = {
 				await api.submitReview(request.number, verdict, comment);
 			}
 			draftComments = [];
+			persistDrafts(request.number, []);
 			await Promise.all([this.load(), this.loadComments()]);
 			return true;
 		} catch (e) {

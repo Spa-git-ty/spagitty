@@ -181,6 +181,19 @@ describe('PR workspace store flow', () => {
 		expect(requests.draftComments).toHaveLength(0);
 	});
 
+	it('preserves draft comments on review failure', async () => {
+		requests.present([request()]);
+		requests.addDraftComment('src/main.rs', 2, 'RIGHT', 'Important feedback');
+
+		submitReview.mockRejectedValueOnce('network timeout');
+
+		const ok = await requests.review('comment', 'Summary note');
+		expect(ok).toBe(false);
+		expect(requests.reviewError).toContain('network timeout');
+		expect(requests.draftComments).toHaveLength(1);
+		expect(requests.draftComments[0].body).toBe('Important feedback');
+	});
+
 	it('submits review with draft comments included', async () => {
 		requests.present([request()]);
 		requests.addDraftComment('src/main.rs', 2, 'RIGHT', 'Inline review note');
