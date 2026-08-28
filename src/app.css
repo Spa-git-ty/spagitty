@@ -350,7 +350,14 @@
 :root {
 	--glass-thin: color-mix(in srgb, var(--panel) 62%, transparent);
 	--glass: color-mix(in srgb, var(--surface) 72%, transparent);
-	--glass-thick: color-mix(in srgb, var(--surface-2) 82%, transparent);
+	/*
+	 * 68%, not 82%. A tint that covers four fifths of what is behind it leaves
+	 * the frost nothing to be made of, and a pane whose backdrop cannot be seen
+	 * is not glass — it is a rectangle painted the colour of the surface. The
+	 * text over it stays legible because the blur behind it is 10px of a
+	 * commit list, which is a smooth field rather than a busy one (TASK-024).
+	 */
+	--glass-thick: color-mix(in srgb, var(--surface-2) 68%, transparent);
 
 	/*
 	 * The cheap half of the material, and what almost everything uses.
@@ -387,15 +394,26 @@
 	--blur: blur(24px) saturate(200%);
 	/*
 	 * The thick panes — menu, dialog, palette, toast, command log — carry the
-	 * material the author settled at the window (TASK-020), now as a
+	 * material the author settled at the window (TASK-020), as a
 	 * `backdrop-filter` rather than through an SVG lens (TASK-022).
 	 *
-	 * `saturate(0)` is deliberate and is not the "grey plastic" the note above
-	 * warns about: it was chosen by eye against the running application, and it
-	 * makes the frost read as grey light rather than as a tint of the commit
-	 * list under it. The note above still governs the two thinner grades.
+	 * **The radius is 10px and stays 10px.** It is the one number in this
+	 * material that has been measured on this renderer: TASK-022 clocked
+	 * `blur(10px)` at 16.0ms a frame, indistinguishable from no pane at all,
+	 * where the lens it replaced cost 196ms. Widening a blur is what a blur
+	 * costs, and nothing here is worth spending that budget again.
+	 *
+	 * `saturate` is where the material comes from instead, and it is a per-pixel
+	 * matrix rather than a kernel — it costs effectively nothing at any value.
+	 * It was `saturate(0)` from TASK-020 until TASK-024, which is the note this
+	 * paragraph replaces: at zero, the backdrop arrives as grey, and a grey
+	 * backdrop under a tint that already hides four fifths of it is
+	 * indistinguishable from a plain translucent rectangle. That is precisely
+	 * what the author reported seeing. Above 100% the colour behind the pane
+	 * survives the blur, which is what reads as *wet* — the note on the two
+	 * thinner grades above says the same thing and was right about it.
 	 */
-	--blur-thick: blur(10px) saturate(0);
+	--blur-thick: blur(10px) saturate(170%);
 
 	/*
 	 * The edge of a pane of glass — thick enough to bend light.
@@ -414,6 +432,22 @@
 	--glass-rim: none;
 	--glass-rim-thick: none;
 	--glass-sheen: none;
+
+	/*
+	 * The edge, as a border rather than as a rim (TASK-024).
+	 *
+	 * `--glass-rim` and `--glass-sheen` were box-shadows and a gradient, and
+	 * TASK-023 switched all three off when the author asked for a flat
+	 * interface with no shadows and no gradient washes. That is what a floating
+	 * pane lost its thickness to: with no edge at all, a translucent fill reads
+	 * as a hole rather than as a pane laid over something.
+	 *
+	 * A border gives the edge back without giving the shadow back. It is one
+	 * flat hairline — the thing TASK-023 kept, not the thing it removed — and
+	 * the top is lit while the rest is not, because light arriving from above a
+	 * pane is what says the pane has a near face and a far one.
+	 */
+	--glass-edge-line: 1px solid var(--glass-edge-low);
 }
 
 /*
@@ -426,7 +460,9 @@
 :root[data-theme='dark'] {
 	--glass-thin: color-mix(in srgb, var(--panel) 66%, transparent);
 	--glass: color-mix(in srgb, var(--surface) 76%, transparent);
-	--glass-thick: color-mix(in srgb, var(--surface-2) 86%, transparent);
+	/* 72% rather than 68%: smoked glass over a dark screen needs a little more
+	   body than frosted glass over a light one, or the pane reads as a smudge. */
+	--glass-thick: color-mix(in srgb, var(--surface-2) 72%, transparent);
 
 	--chrome-veil: color-mix(in srgb, var(--panel) 90%, transparent);
 	--surface-veil: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -436,7 +472,6 @@
 	--glass-rim: none;
 	--glass-rim-thick: none;
 	--glass-sheen: none;
-}
 }
 
 /*
@@ -451,7 +486,8 @@
 .glass-thin,
 .glass-thick {
 	box-shadow: var(--glass-rim);
-	border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+	border: var(--glass-edge-line);
+	border-top-color: var(--glass-edge);
 }
 
 .glass-thin {
