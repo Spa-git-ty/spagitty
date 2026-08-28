@@ -14,7 +14,7 @@
  */
 
 import * as api from '../api';
-import type { ForgeRepo, PullRequest } from '../types';
+import type { FileDiff, ForgeRepo, PullRequest, ReviewVerdict } from '../types';
 
 let list = $state<PullRequest[]>([]);
 let connected = $state(false);
@@ -25,6 +25,27 @@ let loading = $state(false);
 
 /** Guards against a slow read landing after a newer one. */
 let seq = 0;
+
+/**
+ * The files of the pull request currently open, and nothing else's.
+ *
+ * One request's worth rather than a cache keyed by number: a reader looks at
+ * one pull request at a time, and a cache would have to be invalidated when
+ * somebody pushes to a branch — which is a thing this screen cannot see happen.
+ * Re-reading on selection is one request and is always current.
+ */
+let files = $state<FileDiff[]>([]);
+let filesFor = $state<number | null>(null);
+let filesLoading = $state(false);
+let filesError = $state<string | null>(null);
+let openPath = $state<string | null>(null);
+
+/** Guards a slow file read landing after the reader has moved on. */
+let fileSeq = 0;
+
+/** In flight, or the host's refusal of the last attempt. */
+let reviewing = $state(false);
+let reviewError = $state<string | null>(null);
 
 export const requests = {
 	get all(): PullRequest[] {
@@ -63,8 +84,131 @@ export const requests = {
 		return list.find((request) => request.id === openId) ?? null;
 	},
 
+	/** The files of the open pull request. Empty until they are read. */
+	get files(): FileDiff[] {
+		return files;
+	},
+	get filesLoading(): boolean {
+		return filesLoading;
+	},
+	get filesError(): string | null {
+		return filesError;
+	},
+	/** Which file is open in the diff pane, or null. */
+	get openPath(): string | null {
+		return openPath;
+	},
+	/** The open file's diff, or null when none is selected. */
+	get openFile(): FileDiff | null {
+		return files.find((file) => file.path === openPath) ?? null;
+	},
+	get reviewing(): boolean {
+		return reviewing;
+	},
+	get reviewError(): string | null {
+		return reviewError;
+	},
+
 	select(id: string | null): void {
+		if (id === openId) return;
 		openId = id;
+		// The files belong to whichever request was open. Dropping them here
+		// rather than when the new ones arrive means the pane is never showing
+		// one pull request's diff under another's title.
+		this.clearFiles();
+	},
+
+	/** Open one file in the diff pane. */
+	selectPath(path: string | null): void {
+		openPath = path;
+	},
+
+	/**
+	 * Put a file list on the screen.
+	 *
+	 * The only way files get here — `loadFiles` calls it, and so do the tests.
+	 * Selects the first file, since a file list with nothing open is a screen
+	 * asking the reader to click before it will show them anything.
+	 */
+	presentFiles(next: FileDiff[], forNumber: number): void {
+		files = next;
+		filesFor = forNumber;
+		filesError = null;
+		if (openPath === null || !next.some((file) => file.path === openPath)) {
+			openPath = next[0]?.path ?? null;
+		}
+	},
+
+	/**
+	 * Read the open pull request's files.
+	 *
+	 * Does nothing when they are already read: this is called from an effect
+	 * that re-runs whenever the selection changes, and a request per re-render
+	 * would spend somebody's rate limit on nothing.
+	 */
+	async loadFiles(): Promise<void> {
+		if (!api.inTauri()) return;
+
+		const request = this.open;
+		if (request === null) return;
+		if (filesFor === request.number && filesError === null) return;
+
+		filesLoading = true;
+		filesError = null;
+		const mine = ++fileSeq;
+		try {
+			const found = await api.pullRequestFiles(request.number);
+			if (mine !== fileSeq) return;
+			this.presentFiles(found, request.number);
+		} catch (e) {
+			if (mine === fileSeq) {
+				filesError = String(e);
+				files = [];
+				filesFor = null;
+				openPath = null;
+			}
+		} finally {
+			if (mine === fileSeq) filesLoading = false;
+		}
+	},
+
+	clearFiles(): void {
+		fileSeq += 1;
+		files = [];
+		filesFor = null;
+		filesError = null;
+		filesLoading = false;
+		openPath = null;
+		reviewError = null;
+	},
+
+	/**
+	 * Leave a review on the open pull request.
+	 *
+	 * Resolves to whether it landed, so the caller can say so without reading
+	 * the error back out of the store. The list is re-read afterwards rather
+	 * than patched locally: the review decision is the host's to compute, and a
+	 * guess at it here would be a second source of truth for the one fact this
+	 * screen exists to show.
+	 */
+	async review(verdict: ReviewVerdict, comment: string): Promise<boolean> {
+		if (!api.inTauri()) return false;
+
+		const request = this.open;
+		if (request === null) return false;
+
+		reviewing = true;
+		reviewError = null;
+		try {
+			await api.submitReview(request.number, verdict, comment);
+			await this.load();
+			return true;
+		} catch (e) {
+			reviewError = String(e);
+			return false;
+		} finally {
+			reviewing = false;
+		}
 	},
 
 	/**
@@ -79,9 +223,13 @@ export const requests = {
 		connected = from.connected;
 		error = null;
 		// Keep the open request only while it is still in the list.
+		const was = openId;
 		if (openId === null || !next.some((request) => request.id === openId)) {
 			openId = next[0]?.id ?? null;
 		}
+		// A different request open than before means the files on screen belong
+		// to something nobody is looking at any more.
+		if (openId !== was) this.clearFiles();
 	},
 
 	/** Record a failure to reach the host, in the host's own words. */
@@ -90,6 +238,7 @@ export const requests = {
 		error = reason;
 		list = [];
 		openId = null;
+		this.clearFiles();
 	},
 
 	/**
@@ -135,6 +284,7 @@ export const requests = {
 		openId = null;
 		repo = null;
 		loading = false;
+		this.clearFiles();
 	}
 };
 
