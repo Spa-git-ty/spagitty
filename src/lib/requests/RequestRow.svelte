@@ -80,11 +80,9 @@
 		box-shadow: var(--shadow-1);
 	}
 
-	/* The one being read. A tint that fades out across the row rather than a
-	   full accent border, which on a list reads as an error. */
+	/* The one being read. */
 	.row.open {
-		background: linear-gradient(90deg, var(--accent-soft), transparent 60%),
-			var(--surface);
+		background: var(--selection);
 		border-color: color-mix(in srgb, var(--accent) 45%, var(--soft));
 		box-shadow: var(--sheen), var(--shadow-1);
 	}

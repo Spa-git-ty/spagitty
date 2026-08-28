@@ -450,7 +450,7 @@
 		border: 1px solid var(--line);
 		border-radius: var(--r-field);
 		background: var(--sunken);
-		box-shadow: inset 0 1px 2px color-mix(in srgb, var(--umbra) 6%, transparent);
+		box-shadow: none;
 		min-width: 0;
 		transition:
 			border-color var(--t-fast) var(--ease),

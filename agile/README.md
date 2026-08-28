@@ -168,6 +168,7 @@ of its own.
 | [TASK-020](items/TASK-020-the-glass-material-settled.md) | The glass material, settled at the window | all | Done |
 | [TASK-021](items/TASK-021-centre-the-name-in-the-title-bar.md) | Centre the name in the title bar | chrome | Done |
 | [TASK-022](items/TASK-022-the-glass-goes-back-on-the-gpu.md) | The glass goes back on the GPU | all | Done |
+| [TASK-023](items/TASK-023-flat-ui-remove-gradients.md) | Flatten UI and remove gradients | all | Done |
 
 ## Skipped identifiers
 
