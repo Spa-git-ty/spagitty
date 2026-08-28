@@ -1,50 +1,96 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import * as api from '$lib/api';
-	import { theme } from '$lib/theme.svelte';
+	import AccountsSection from '$lib/settings/AccountsSection.svelte';
+	import RemotesSection from '$lib/settings/RemotesSection.svelte';
+	import LicenseSection from '$lib/settings/LicenseSection.svelte';
+	import AppearanceSection from '$lib/settings/AppearanceSection.svelte';
+	import BehaviourSection from '$lib/settings/BehaviourSection.svelte';
+	import IdentitySection from '$lib/settings/IdentitySection.svelte';
+	import SigningSection from '$lib/settings/SigningSection.svelte';
+	import UpdateSection from '$lib/settings/UpdateSection.svelte';
+	import { SECTIONS, settings } from '$lib/settings/store.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
-	import ScreenStub from '$lib/ui/ScreenStub.svelte';
-	import { version } from '$lib/version';
-	import type { About } from '$lib/types';
 
-	let about = $state<About | null>(null);
+	/**
+	 * Identity, accounts, behaviour, appearance, and what this build is made of.
+	 *
+	 * A chip index rather than five screens: these are read rarely and changed
+	 * rarely, and one route that says which part of itself is showing is easier
+	 * to link to than five that each need a rail entry.
+	 *
+	 * The section is in the URL fragment, so `/settings#accounts` — which the
+	 * Pull requests screen links to — lands on the right one, and so does going
+	 * back to it. `hashchange` is listened for as well as read on mount: a
+	 * fragment-only navigation from another screen does not remount this one.
+	 *
+	 * Nothing here needs an open repository.
+	 */
+	function follow() {
+		settings.showFromHash(location.hash);
+	}
+
+	function choose(id: string) {
+		if (typeof history !== 'undefined') {
+			history.replaceState(history.state, '', `#${id}`);
+		}
+		settings.showFromHash(`#${id}`);
+	}
 
 	onMount(() => {
-		if (api.inTauri()) api.about().then((a) => (about = a));
+		follow();
+		settings.load();
+
+		window.addEventListener('hashchange', follow);
+		return () => window.removeEventListener('hashchange', follow);
 	});
 </script>
 
 <div class="screen">
-	<ScreenStub
-		title="Settings"
-		purpose="Identity, accounts, behaviour, appearance, and the licenses this build is made of."
-		parts={[
-			'Chip index: You, Accounts, Behaviour, Appearance, Advanced',
-			'Toggles: Sign my commits, Ask before rewriting history, Show the git command behind each action',
-			'Accounts: connected hosts, ssh key + token in the OS keychain',
-			'Advanced → About: this build, its commit, and every dependency license'
-		]}
-	>
-		{#snippet actions()}
-			<Chip onclick={() => theme.toggle()}>{theme.isDark ? 'light' : 'dark'} theme</Chip>
-		{/snippet}
-	</ScreenStub>
+	<header class="head">
+		<div class="left">
+			<span class="title">Settings</span>
+			{#each SECTIONS as section (section.id)}
+				<Chip active={settings.section === section.id} onclick={() => choose(section.id)}>
+					{section.label}
+				</Chip>
+			{/each}
+		</div>
+		{#if settings.busy}<span class="note">Working…</span>{/if}
+	</header>
+
+	<div class="body">
+		{#if settings.section === 'you'}
+			<IdentitySection />
+			<SigningSection />
+		{:else if settings.section === 'accounts'}
+			<AccountsSection />
+		{:else if settings.section === 'remotes'}
+			<RemotesSection />
+		{:else if settings.section === 'behaviour'}
+			<BehaviourSection />
+			<UpdateSection />
+		{:else if settings.section === 'appearance'}
+			<AppearanceSection />
+		{:else}
+			<LicenseSection />
+		{/if}
+	</div>
 
 	<!--
-		The GPL-3 obligations are not deferred until the Settings screen is
-		built: the license, and the exact commit this binary was built from, are
-		shown from the first commit.
+		Only a failure gets a footer here. Where the settings are stored is not
+		something the person changing them needs told, and rendered
+		unconditionally the strip would be empty on every ordinary visit.
 	-->
-	<footer class="about note">
-		<div>GitLord v{about?.version ?? version.number} · {about?.license ?? version.license}</div>
-		<div class="mono">build {about?.commit ?? version.commit}</div>
-		<div class="trademark">
-			GitLord is not affiliated with, endorsed by, or sponsored by the Git project or the
-			Software Freedom Conservancy. Git and the Git logo are trademarks of the Software
-			Freedom Conservancy.
-		</div>
-	</footer>
+	{#if settings.writeError || settings.error}
+		<footer class="foot">
+			{#if settings.writeError}
+				<span class="note error">{settings.writeError}</span>
+			{:else}
+				<span class="note error">{settings.error}</span>
+			{/if}
+		</footer>
+	{/if}
 </div>
 
 <style>
@@ -56,16 +102,58 @@
 		overflow: hidden;
 	}
 
-	.about {
+	.head {
 		flex: none;
-		padding: 10px 12px;
-		border-top: 1.5px solid var(--soft);
 		display: flex;
-		flex-direction: column;
-		gap: 4px;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		padding: 10px 12px;
+		background-color: var(--chrome-veil);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
-	.trademark {
-		max-width: 620px;
+	.left {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+		flex-wrap: wrap;
+	}
+
+	.title {
+		font-size: var(--fs-title);
+		white-space: nowrap;
+	}
+
+	/* A column since **You** grew a second section: two stacked sections with no
+	   gap read as one section with a stray heading in the middle. */
+	.body {
+		flex: 1;
+		min-height: 0;
+		overflow: auto;
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+	}
+
+	.foot {
+		flex: none;
+		padding: 8px 12px;
+		background-color: var(--chrome-veil);
+		border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow: 0 -1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
+	}
+
+	.error {
+		color: var(--danger);
 	}
 </style>

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "GitLord",
+  "productName": "Spagitty",
   "version": "0.1.0",
-  "identifier": "dev.gitlord.app",
+  "identifier": "dev.spagitty.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "GitLord",
+        "title": "Spagitty",
         "width": 1280,
         "height": 800,
         "minWidth": 1024,
@@ -20,7 +20,7 @@
         "resizable": true,
         "fullscreen": false,
         "decorations": false,
-        "transparent": false
+        "transparent": true
       }
     ],
     "security": {

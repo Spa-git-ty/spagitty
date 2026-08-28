@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Linux system dependencies. Needed by every job that compiles, which includes
+# the test and lint gates and not just the build.
+#
+# Two groups:
+#
+#   webkit2gtk and friends  Tauri 2 links against them to compile at all.
+#   libdbus-1-dev           the OS keychain, reached through the secret service
+#                           over D-Bus (FEAT-017). `spagitty-core` links it, so
+#                           a job that only runs `cargo test` needs it too.
+
+name: Linux build dependencies
+description: Install the webkit2gtk, libsoup and dbus packages Spagitty needs on Linux
+
+runs:
+  using: composite
+  steps:
+    - name: Install
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          libwebkit2gtk-4.1-dev \
+          libsoup-3.0-dev \
+          libjavascriptcoregtk-4.1-dev \
+          libappindicator3-dev \
+          librsvg2-dev \
+          patchelf \
+          build-essential \
+          curl \
+          wget \
+          file \
+          libssl-dev \
+          libgtk-3-dev \
+          libdbus-1-dev \
+          pkg-config

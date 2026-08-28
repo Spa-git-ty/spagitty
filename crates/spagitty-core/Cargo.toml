@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+[package]
+name = "spagitty-core"
+description = "Git operations for Spagitty"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+# gitoxide. MIT OR Apache-2.0 — clean to link into a GPL-3 work.
+# Default features on purpose: they carry the hash backend and the revision,
+# diff and status machinery. Trimming them means hand-picking a working set of
+# roughly a dozen interdependent features for no measurable gain here.
+gix = "0.86"
+# The OS keychain, where a forge token lives and nowhere else (FEAT-017).
+# MIT OR Apache-2.0.
+#
+# The *sync* secret-service backend on Linux on purpose: the async one wants a
+# runtime, and this crate is deliberately blocking throughout. It links
+# libdbus-1, which is why `.github/actions/linux-deps` installs it.
+keyring = { version = "3.6.3", default-features = false, features = [
+    "sync-secret-service",
+    "apple-native",
+    "windows-native",
+] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+# The one HTTP client in the application (FEAT-017). MIT OR Apache-2.0.
+#
+# Blocking, which is what this crate already is — gix and shell are both
+# synchronous and the workers are threads. reqwest would bring tokio into a
+# crate with no use for it.
+#
+# `native-tls` rather than rustls: the platform's own TLS stack and the
+# platform's own certificate store, so a desktop client behind a corporate
+# proxy with a custom root works without being told about it.
+#
+# Reached from exactly one file, `forge/http.rs`, and there is a test that walks
+# the crate to keep it that way.
+ureq = { version = "3.2.1", default-features = false, features = [
+    "native-tls",
+    "gzip",
+    "json",
+] }
+
+[features]
+# The repository fixtures, published for the Tauri layer's tests.
+#
+# `src-tauri` tests the graph worker and the session against a real repository,
+# and a second fixture builder there would be a second thing to keep honest.
+# Off by default, so a release build carries neither the fixtures nor tempfile.
+fixture = ["dep:tempfile"]
+
+[dependencies.tempfile]
+# Fixture repositories are built in a temporary directory and removed with it,
+# so tests never write anywhere a person keeps work.
+version = "3"
+optional = true
+
+[dev-dependencies]
+# The crate's own tests always want the fixtures.
+tempfile = "3"
