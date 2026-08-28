@@ -14,6 +14,8 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-29
+
 The first release. Everything below is new, so it is one `Added` section rather
 than a pretence that anything changed.
 
