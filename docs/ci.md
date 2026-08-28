@@ -11,10 +11,14 @@ the pipeline; nothing downstream runs. Definitions live in
 workflows landed with the code they gate and then waited six months for a remote
 to run on; that wait is over, and they turned out to be right.
 
-Gates 5 and 6 have still never run. Both are `main`-only, and `main` has not
-moved since before the rename, so the macOS and Windows builds remain the part
-of this pipeline that nothing has proved. Treat the first merge into `main` the
-way the first pull request was treated: as part of the work, not as a formality.
+**First `main` run: 2026-08-28.** Gate 5 built all three platforms green on the
+first merge into `main` (run `33204934146`). Gate 6 failed on that same run:
+the runner has no git identity, and `git tag -a` refused with `fatal: empty
+ident name`, so `v0.1.0` was never tagged and nothing was published — a halt,
+not a broken release. The fix (TASK-025) sets the `github-actions[bot]`
+identity in the job and, with it, moved the notes off `--generate-notes` and
+onto the changelog, as Amendment 20 requires. The fixed gate 6 has not run yet;
+it proves itself on the next merge into `main`.
 
 **One difference worth knowing** between a local run and the runner: `gitleaks`
 walks the pull request's merge ref on CI and the branch tip locally, so the
@@ -30,7 +34,7 @@ they are given.
 | 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `npm run coverage` | The suite passes and first-party coverage meets the Amendment 10 floor of 70% |
 | 4 | Security | `cargo deny check advisories`, `npm audit --audit-level=high`, `gitleaks` over the diff | No known-vulnerable dependency, no secret in the change |
 | 5 | Build | `npm run tauri build` on Linux, macOS and Windows | The release build works on every target, not only the one the author uses |
-| 6 | Release | tag, artifacts, generated notes | The build is published and traceable to a commit |
+| 6 | Release | tag, artifacts, notes read from `CHANGELOG.md` by `tools/release-notes.mjs` | The build is published, carries its changelog section as notes (Amendment 20), and is traceable to a commit |
 
 Cheapest and most certain first, so an obvious failure never burns a full build.
 
@@ -112,8 +116,9 @@ Recorded in the amendments book as proposals. None is in force here:
   compiles, every test passes, and the packaged app is broken.
 - Amendments compliance — verify a branch name carries a valid work item ID and
   that its `agile/` documents exist. Would sit at gate 0; costs nothing.
-- Commit and PR hygiene — conventional-commit linting, which is what would make
-  gate 6's generated notes reliable.
+- Commit and PR hygiene — conventional-commit linting. Its original payoff —
+  reliable generated notes — lapsed when gate 6 moved onto the changelog
+  (TASK-025), but tidy history remains its own argument.
 
 Cross-platform build matrix was also a candidate; it is adopted, and is what
 gate 5 already does.
