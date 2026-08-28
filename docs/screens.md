@@ -19,7 +19,7 @@ under Amendment 11.
 | 1E | Interactive rebase | `/rebase` | yes | Built | FEAT-009 |
 | 1F | Branches | `/branches` | yes | Built | FEAT-004 |
 | 1G | Stash | `/stash` | yes | Built | FEAT-005 |
-| 1H | Pull requests | `/requests` | yes | Built | FEAT-010, FEAT-017 |
+| 1H | Pull requests | `/requests` | yes | Built | FEAT-010, FEAT-017, FEAT-058 |
 | 1I | Log search | `/search` | yes | Built | FEAT-007 |
 | 1J | All repositories | `/repos` | yes | Built | FEAT-006 |
 | 1K | Settings | `/settings` | yes | Built | FEAT-011 |
@@ -466,7 +466,38 @@ per pull request for the line counts, the review decision and the checks —
 ninety-one requests for thirty open ones, against a budget shared with
 everything else the token does.
 
-Read-only, by decision. Nothing approves, merges, comments or closes.
+**The files, and the review** (FEAT-058). Opening a pull request reads the files
+it changes and shows the diff of whichever one is selected, in the Diff screen's
+own pane rather than a second renderer — the host's patch is parsed into the
+same `FileDiff` the rest of the application already renders, so a pull request's
+diff and a commit's diff are read the same way.
+
+That diff is **the host's**, not one computed here. A pull request's head branch
+is usually not fetched, and fetching it in order to list some files would turn
+opening a review into a network operation against the repository. The host has
+already computed this diff; the patch it sends is that computation.
+
+These two calls are REST, where the list is GraphQL, and the reason is the same
+one both times — the request count. GraphQL's `files` connection carries the
+path and the counts but has no field for the patch, so a GraphQL route would
+list the files and then need a REST call per file to show any of them.
+Submitting a review is one POST against three inputs, where GraphQL would first
+have to fetch the pull request's node id.
+
+**Reviewing writes.** Approve, request changes, or comment, with the comment
+posted as written. It is the only thing in Spagitty that writes to somebody
+else's server, it is visible to everyone watching the pull request the moment it
+lands, and it cannot be taken back from here — so it is confirmed first, and the
+confirmation names the verdict rather than asking whether the reader is sure.
+A verdict the host would reject for want of a comment is refused here instead,
+with a sentence, rather than being sent to collect a 422 that does not say which
+field was wrong.
+
+The list is re-read after a review rather than patched locally: the review
+decision is the host's to compute, and a guess at it here would be a second
+source of truth for the one fact this screen exists to show.
+
+Merging is still not built, and the button still says so.
 
 Failures are four different sentences, because they are four different
 decisions for the reader: could not reach the host, the host is rate limiting
