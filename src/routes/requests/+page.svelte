@@ -3,14 +3,10 @@
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { repo } from '$lib/repo.svelte';
-	import RequestDetail from '$lib/requests/RequestDetail.svelte';
 	import RequestRow from '$lib/requests/RequestRow.svelte';
 	import PRWorkspace from '$lib/requests/PRWorkspace.svelte';
 	import { requests } from '$lib/requests/store.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
-	import Icon from '$lib/ui/Icon.svelte';
-	import { panels } from '$lib/panels.svelte';
-	import Splitter from '$lib/ui/Splitter.svelte';
 
 	/**
 	 * What is waiting on you, above what is waiting on everyone else.
@@ -39,9 +35,6 @@
 			requests.load();
 		});
 	});
-
-	/** Whether the request detail panel is put away (FEAT-054). */
-	const detailHidden = $derived(panels.isHidden('requestsDetail'));
 </script>
 
 {#if requests.viewMode === 'workspace' && requests.open}
@@ -49,101 +42,84 @@
 {:else}
 	<div class="screen">
 		<header class="head">
-		<div class="left">
-			<span class="title">Pull requests</span>
-			{#if requests.repo}
-				<span class="note mono">{requests.repo.owner}/{requests.repo.name}</span>
-			{/if}
-			{#if requests.connected && requests.all.length > 0}
-				<span class="note">
-					{needingYou.length} waiting on you · {waiting.length} on others
-				</span>
-			{/if}
-		</div>
-		<div class="right">
-			{#if requests.loading}<span class="note">Reading…</span>{/if}
-			<Btn disabled={requests.loading} onclick={() => requests.load()}>Refresh</Btn>
-			<!-- The same put-it-away control the graph's detail panel has. -->
-			<button
-				class="panel-toggle"
-				aria-label={detailHidden ? 'Show the request panel' : 'Hide the request panel'}
-				title={detailHidden ? 'Show the request panel' : 'Hide the request panel'}
-				aria-pressed={!detailHidden}
-				onclick={() => panels.toggleHidden('requestsDetail')}
-			>
-				<Icon name={detailHidden ? 'chevron-left' : 'chevron-right'} size="1.1em" />
-			</button>
-		</div>
-	</header>
-
-	<div class="body">
-		<div class="lists">
-			{#if requests.error}
-				<!--
-					The host's own words. Offline, rate limited, refused and
-					"no account for this host" are four different decisions for
-					the reader, and the backend already told them apart.
-				-->
-				<div class="empty">
-					<p class="note error">{requests.error}</p>
-					<Btn onclick={() => goto('/settings#accounts')}>Settings → Accounts</Btn>
-				</div>
-			{:else if requests.repo === null}
-				<div class="empty">
-					<p class="note">This repository is not on a service Spagitty can read.</p>
-					<p class="note">
-						Pull requests are read from the host the <span class="mono">origin</span>
-						remote points at. This repository's remotes do not name one — which is not a
-						problem, only nothing to show here.
-					</p>
-				</div>
-			{:else if !requests.connected}
-				<div class="empty">
-					<p class="note">No account is connected.</p>
-					<p class="note">
-						Spagitty reads pull requests from whichever service hosts your
-						repository, and no service is connected yet. Connect one in Settings →
-						Accounts and they appear here.
-					</p>
-					<Btn primary onclick={() => goto('/settings#accounts')}>
-						Settings → Accounts
-					</Btn>
-				</div>
-			{:else if requests.all.length === 0}
-				<p class="note">Nothing open. Every pull request on this repository is closed.</p>
-			{:else}
-				{#if needingYou.length > 0}
-					<section class="group">
-						<h2 class="note heading">Needs you</h2>
-						<ul class="list">
-							{#each needingYou as request (request.id)}
-								<RequestRow {request} />
-							{/each}
-						</ul>
-					</section>
+			<div class="left">
+				<span class="title">Pull requests</span>
+				{#if requests.repo}
+					<span class="note mono">{requests.repo.owner}/{requests.repo.name}</span>
 				{/if}
-
-				{#if waiting.length > 0}
-					<section class="group">
-						<h2 class="note heading">Waiting on others</h2>
-						<ul class="list">
-							{#each waiting as request (request.id)}
-								<RequestRow {request} waiting />
-							{/each}
-						</ul>
-					</section>
+				{#if requests.connected && requests.all.length > 0}
+					<span class="note">
+						{needingYou.length} waiting on you · {waiting.length} on others
+					</span>
 				{/if}
-			{/if}
-		</div>
+			</div>
+			<div class="right">
+				{#if requests.loading}<span class="note">Reading…</span>{/if}
+				<Btn disabled={requests.loading} onclick={() => requests.load()}>Refresh</Btn>
+			</div>
+		</header>
 
-		{#if requests.connected && requests.all.length > 0}
-			{#if !detailHidden}
-				<Splitter panel="requestsDetail" label="Resize the request detail panel" />
-				<RequestDetail />
-			{/if}
-		{/if}
+		<div class="body">
+			<div class="lists">
+				{#if requests.error}
+					<!--
+						The host's own words. Offline, rate limited, refused and
+						"no account for this host" are four different decisions for
+						the reader, and the backend already told them apart.
+					-->
+					<div class="empty">
+						<p class="note error">{requests.error}</p>
+						<Btn onclick={() => goto('/settings#accounts')}>Settings → Accounts</Btn>
+					</div>
+				{:else if requests.repo === null}
+					<div class="empty">
+						<p class="note">This repository is not on a service Spagitty can read.</p>
+						<p class="note">
+							Pull requests are read from the host the <span class="mono">origin</span>
+							remote points at. This repository's remotes do not name one — which is not a
+							problem, only nothing to show here.
+						</p>
+					</div>
+				{:else if !requests.connected}
+					<div class="empty">
+						<p class="note">No account is connected.</p>
+						<p class="note">
+							Spagitty reads pull requests from whichever service hosts your
+							repository, and no service is connected yet. Connect one in Settings →
+							Accounts and they appear here.
+						</p>
+						<Btn primary onclick={() => goto('/settings#accounts')}>
+							Settings → Accounts
+						</Btn>
+					</div>
+				{:else if requests.all.length === 0}
+					<p class="note">Nothing open. Every pull request on this repository is closed.</p>
+				{:else}
+					{#if needingYou.length > 0}
+						<section class="group">
+							<h2 class="note heading">Needs you</h2>
+							<ul class="list">
+								{#each needingYou as request (request.id)}
+									<RequestRow {request} />
+								{/each}
+							</ul>
+						</section>
+					{/if}
+
+					{#if waiting.length > 0}
+						<section class="group">
+							<h2 class="note heading">Waiting on others</h2>
+							<ul class="list">
+								{#each waiting as request (request.id)}
+									<RequestRow {request} waiting />
+								{/each}
+							</ul>
+						</section>
+					{/if}
+				{/if}
+			</div>
+		</div>
 	</div>
-</div>
 {/if}
 
 <style>

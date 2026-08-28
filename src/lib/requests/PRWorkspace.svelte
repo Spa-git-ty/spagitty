@@ -39,6 +39,10 @@
 	let reviewVerdict = $state<ReviewVerdict>('comment');
 	let reviewSummary = $state('');
 
+	const isAuthor = $derived(
+		Boolean(requests.currentUser && request && requests.currentUser === request.authorName)
+	);
+
 	const unresolvedCount = $derived(comments.filter((c) => !c.resolved).length);
 	const resolvedCount = $derived(comments.filter((c) => c.resolved).length);
 
@@ -347,33 +351,41 @@
 					<h2 class="modal-title">Publish Pull Request Review</h2>
 
 					<div class="verdict-options">
-						<label class="verdict-option" class:selected={reviewVerdict === 'approve'}>
-							<input
-								type="radio"
-								name="verdict"
-								value="approve"
-								checked={reviewVerdict === 'approve'}
-								onchange={() => (reviewVerdict = 'approve')}
-							/>
-							<div class="verdict-info">
-								<strong>Approve</strong>
-								<span class="note">Submit feedback and approve merging.</span>
+						{#if isAuthor}
+							<div class="author-review-note note">
+								As the author of this pull request, you can submit comments. Approvals and change requests are reserved for reviewers.
 							</div>
-						</label>
+						{/if}
 
-						<label class="verdict-option" class:selected={reviewVerdict === 'requestChanges'}>
-							<input
-								type="radio"
-								name="verdict"
-								value="requestChanges"
-								checked={reviewVerdict === 'requestChanges'}
-								onchange={() => (reviewVerdict = 'requestChanges')}
-							/>
-							<div class="verdict-info">
-								<strong>Request Changes</strong>
-								<span class="note">Submit feedback that must be addressed before merging.</span>
-							</div>
-						</label>
+						{#if !isAuthor}
+							<label class="verdict-option" class:selected={reviewVerdict === 'approve'}>
+								<input
+									type="radio"
+									name="verdict"
+									value="approve"
+									checked={reviewVerdict === 'approve'}
+									onchange={() => (reviewVerdict = 'approve')}
+								/>
+								<div class="verdict-info">
+									<strong>Approve</strong>
+									<span class="note">Submit feedback and approve merging.</span>
+								</div>
+							</label>
+
+							<label class="verdict-option" class:selected={reviewVerdict === 'requestChanges'}>
+								<input
+									type="radio"
+									name="verdict"
+									value="requestChanges"
+									checked={reviewVerdict === 'requestChanges'}
+									onchange={() => (reviewVerdict = 'requestChanges')}
+								/>
+								<div class="verdict-info">
+									<strong>Request Changes</strong>
+									<span class="note">Submit feedback that must be addressed before merging.</span>
+								</div>
+							</label>
+						{/if}
 
 						<label class="verdict-option" class:selected={reviewVerdict === 'comment'}>
 							<input
@@ -400,6 +412,12 @@
 							bind:value={reviewSummary}
 						></textarea>
 					</div>
+
+					{#if requests.reviewError}
+						<div class="modal-error note error">
+							{requests.reviewError}
+						</div>
+					{/if}
 
 					{#if draftComments.length > 0}
 						<div class="drafts-preview note">
@@ -898,6 +916,23 @@
 		color: var(--fg);
 		box-sizing: border-box;
 		resize: vertical;
+	}
+
+	.author-review-note {
+		padding: 8px 10px;
+		background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+		border-left: 3px solid var(--accent);
+		border-radius: var(--r-card);
+		font-size: var(--fs-secondary);
+	}
+
+	.modal-error {
+		padding: 8px 10px;
+		background: color-mix(in srgb, var(--error, #e06c75) 10%, var(--bg));
+		border: 1px solid color-mix(in srgb, var(--error, #e06c75) 40%, transparent);
+		border-radius: var(--r-card);
+		font-size: var(--fs-secondary);
+		word-break: break-word;
 	}
 
 	.modal-actions {
