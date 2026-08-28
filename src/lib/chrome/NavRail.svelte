@@ -129,9 +129,7 @@
 		flex-direction: column;
 		background-color: var(--chrome-veil);
 		border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
-		box-shadow:
-			var(--glass-rim),
-			1px 0 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		box-shadow: none;
 		position: relative;
 		z-index: 1;
 		overflow: hidden;

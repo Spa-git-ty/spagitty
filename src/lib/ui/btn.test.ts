@@ -59,11 +59,9 @@ describe("the primary button's fill", () => {
 	});
 
 	it('leaves the accent fill to the glow rule in app.css', () => {
-		// The global rule is what paints it, and it still paints both layers:
-		// the fill through padding-box, the travelling ring through border-box.
+		// The global rule is what paints it as a flat accent fill.
 		const glow = block(globals, '.glow');
-		expect(glow).toContain('padding-box');
-		expect(glow).toContain('border-box');
+		expect(glow).toContain('var(--accent)');
 	});
 
 	it('still fills a glow button that cannot animate', () => {

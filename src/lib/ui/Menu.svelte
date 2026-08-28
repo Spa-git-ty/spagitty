@@ -101,6 +101,10 @@
 				: (current + delta + usable.length) % usable.length;
 
 		cursor = entries.indexOf(usable[next]);
+		void tick().then(() => {
+			const at = element?.querySelector('.entry.at') as HTMLElement | null;
+			at?.scrollIntoView({ block: 'nearest' });
+		});
 	}
 
 	/**
@@ -212,12 +216,15 @@
 		z-index: 50;
 		min-width: 200px;
 		max-width: 340px;
+		max-height: min(420px, calc(100vh - 64px));
+		overflow-y: auto;
+		overscroll-behavior: contain;
 		padding: 5px;
 		background-color: var(--glass-thick);
 		backdrop-filter: var(--blur-thick);
 		-webkit-backdrop-filter: var(--blur-thick);
 		border-radius: var(--r-panel);
-		box-shadow: var(--shadow-3);
+		box-shadow: none;
 		outline: none;
 		/* It appears at the pointer, so it grows from where it was asked for
 		   rather than fading in from nowhere. */

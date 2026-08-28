@@ -46,14 +46,10 @@
 		box-shadow: var(--shadow-3);
 		/* It arrives from the corner it lives in. */
 		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
-		/* A tint of the same colour behind it, so the meaning is carried by more
-		   than three pixels down one edge. */
-		background-image: linear-gradient(90deg, var(--ok-soft), transparent 42%);
 	}
 
 	.notice.error {
 		border-left-color: var(--danger);
-		background-image: linear-gradient(90deg, var(--danger-soft), transparent 42%);
 	}
 
 	.text {

@@ -847,12 +847,14 @@
 
 	.edge.left {
 		left: 0;
-		background: linear-gradient(to right, var(--shadow-edge), transparent);
+		border-right: 1px solid var(--line);
+		background: none;
 	}
 
 	.edge.right {
 		right: 0;
-		background: linear-gradient(to left, var(--shadow-edge), transparent);
+		border-left: 1px solid var(--line);
+		background: none;
 	}
 
 	.scroller {
@@ -953,7 +955,7 @@
 		right: 0;
 		width: 14px;
 		pointer-events: none;
-		background: linear-gradient(to left, var(--shadow-edge), transparent);
+		background: none;
 	}
 
 	/*
@@ -980,12 +982,7 @@
 	 * highlight rather than as a coloured block laid over the history.
 	 */
 	.row.selected {
-		background: linear-gradient(
-			90deg,
-			color-mix(in srgb, var(--accent) 22%, transparent) 0%,
-			var(--selection) 45%,
-			color-mix(in srgb, var(--selection) 55%, transparent) 100%
-		);
+		background: var(--selection);
 	}
 
 	/* The row the detail panel is showing, which is not the same as the set of

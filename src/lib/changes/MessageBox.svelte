@@ -103,7 +103,7 @@
 		background: var(--sunken);
 		border: 1px solid var(--soft);
 		border-radius: var(--r-panel);
-		box-shadow: inset 0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		box-shadow: none;
 		transition: border-color var(--t-fast) var(--ease);
 	}
 

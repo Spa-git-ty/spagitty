@@ -334,18 +334,7 @@
 		border-radius: var(--r-window);
 		outline: 0.2px solid var(--window-edge);
 		outline-offset: -0.2px;
-		box-shadow:
-			inset 0 1px 0 var(--window-sheen),
-			0 1px 2px var(--window-contact),
-			/*
-				No negative spread. A shadow's corner radius is the box's radius
-				plus its spread, so `-4px` drew the cast with an 8px corner under
-				a 12px window — a squarer shape beneath a rounder one, which is
-				what read as wrong. Without the shrink the cast follows the
-				window exactly; the offset, blur and alpha come down together so
-				the weight of it is unchanged (FEAT-042).
-			*/
-			0 6px 18px var(--window-cast);
+		box-shadow: none;
 	}
 
 	/*
@@ -372,7 +361,7 @@
 	/* Square against the screen edge, and nothing to cast a shadow onto. */
 	:global(:root[data-window='maximized']) .app {
 		border-radius: 0;
-		box-shadow: inset 0 1px 0 var(--window-sheen);
+		box-shadow: none;
 	}
 
 	.main {

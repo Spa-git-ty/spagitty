@@ -220,12 +220,8 @@
 	.ref.current {
 		border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 		color: var(--accent);
-		background: linear-gradient(
-			180deg,
-			color-mix(in srgb, var(--accent) 12%, var(--surface)),
-			color-mix(in srgb, var(--accent) 20%, var(--surface))
-		);
-		box-shadow: var(--sheen), 0 1px 3px var(--accent-soft);
+		background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+		box-shadow: none;
 	}
 
 	/* Somebody else's copy: flat on the row, dimmed, no lift. */
@@ -245,10 +241,6 @@
 		border-radius: 3px 9px 9px 3px;
 		border-color: color-mix(in srgb, var(--warn) 50%, transparent);
 		color: var(--warn);
-		background: linear-gradient(
-			180deg,
-			color-mix(in srgb, var(--warn) 10%, var(--surface)),
-			color-mix(in srgb, var(--warn) 18%, var(--surface))
-		);
+		background: color-mix(in srgb, var(--warn) 14%, var(--surface));
 	}
 </style>

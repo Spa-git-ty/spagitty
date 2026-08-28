@@ -231,7 +231,7 @@
 	   this screen that is a problem rather than a step. */
 	.row.conflicted {
 		border-color: color-mix(in srgb, var(--danger) 55%, transparent);
-		background: linear-gradient(90deg, var(--danger-soft), transparent 70%);
+		background: var(--danger-soft);
 		padding: 2px 8px;
 	}
 
@@ -241,8 +241,7 @@
 	}
 
 	.row.selected {
-		background: linear-gradient(90deg, var(--accent-soft), transparent 75%),
-			var(--surface);
+		background: var(--selection);
 		border-color: color-mix(in srgb, var(--accent) 60%, transparent);
 		box-shadow: var(--sheen), var(--shadow-1);
 	}
