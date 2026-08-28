@@ -61,7 +61,22 @@
 
 		<div class="body">
 			<div class="lists">
-				{#if requests.error}
+				{#if requests.loading && requests.all.length === 0}
+					<div class="shimmer-group" aria-busy="true" aria-label="Reading pull requests…">
+						<div class="shimmer-heading"></div>
+						<div class="shimmer-list">
+							{#each [1, 2, 3] as _}
+								<div class="shimmer-row">
+									<div class="shimmer-top">
+										<div class="shimmer-chip"></div>
+										<div class="shimmer-title"></div>
+									</div>
+									<div class="shimmer-sub"></div>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{:else if requests.error}
 					<!--
 						The host's own words. Offline, rate limited, refused and
 						"no account for this host" are four different decisions for
@@ -201,26 +216,80 @@
 		max-width: 520px;
 	}
 
+	@keyframes shimmer-pulse {
+		0%, 100% {
+			opacity: 0.35;
+		}
+		50% {
+			opacity: 0.8;
+		}
+	}
 
-	.panel-toggle {
-		display: grid;
-		place-items: center;
-		width: 28px;
-		height: 28px;
+	.shimmer-group {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		max-width: 680px;
+	}
+
+	.shimmer-heading {
+		width: 90px;
+		height: 14px;
+		background: var(--line);
+		border-radius: var(--r-input);
+		animation: shimmer-pulse 1.4s ease-in-out infinite;
+	}
+
+	.shimmer-list {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.shimmer-row {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		padding: 12px 14px;
+		background: color-mix(in srgb, var(--surface) 75%, transparent);
+		border: 1px solid var(--line);
+		border-radius: var(--r-card);
+		animation: shimmer-pulse 1.4s ease-in-out infinite;
+	}
+
+	.shimmer-row:nth-child(2) {
+		animation-delay: 0.18s;
+	}
+
+	.shimmer-row:nth-child(3) {
+		animation-delay: 0.36s;
+	}
+
+	.shimmer-top {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.shimmer-chip {
+		width: 44px;
+		height: 18px;
+		background: var(--line);
 		border-radius: var(--r-button);
-		color: var(--muted);
-		transition:
-			background var(--t-fast) var(--ease),
-			color var(--t-fast) var(--ease),
-			transform var(--t-fast) var(--spring);
 	}
 
-	.panel-toggle:hover {
-		background: var(--hover);
-		color: var(--accent);
+	.shimmer-title {
+		flex: 1;
+		max-width: 320px;
+		height: 16px;
+		background: var(--line);
+		border-radius: var(--r-input);
 	}
 
-	.panel-toggle:active {
-		transform: scale(0.92);
+	.shimmer-sub {
+		width: 200px;
+		height: 12px;
+		background: var(--line);
+		border-radius: var(--r-input);
 	}
 </style>
