@@ -113,14 +113,14 @@
 		background-color: var(--glass-thick);
 		backdrop-filter: var(--blur-thick);
 		-webkit-backdrop-filter: var(--blur-thick);
-		border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+		/* Only the top edge is on screen — the panel is anchored to the bottom
+		   and runs off both sides — so the lit edge is the whole edge (TASK-024). */
+		border-top: 1px solid var(--glass-edge);
 		border-radius: var(--r-panel) var(--r-panel) 0 0;
 		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
 		/* It slides up over whatever screen is open, so it takes the floating
 		   shadow — cast upward, which is the direction it came from. */
-		box-shadow:
-			0 -2px 6px color-mix(in srgb, var(--umbra) 14%, transparent),
-			0 -14px 32px color-mix(in srgb, var(--umbra) 22%, transparent);
+		box-shadow: none;
 	}
 
 	.bar {

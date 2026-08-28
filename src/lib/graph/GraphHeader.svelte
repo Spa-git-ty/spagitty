@@ -249,9 +249,7 @@
 		   which is what keeps a column heading readable while a hundred commits
 		   scroll beneath it. */
 		background-color: var(--chrome-veil);
-		box-shadow:
-			var(--glass-rim),
-			0 1px 3px color-mix(in srgb, var(--umbra) 8%, transparent);
+		box-shadow: none;
 		font-size: var(--fs-secondary);
 		font-weight: 550;
 		letter-spacing: 0.02em;

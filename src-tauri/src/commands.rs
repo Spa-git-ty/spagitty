@@ -14,6 +14,7 @@ use spagitty_core::branches::{self, BranchRow};
 use spagitty_core::clone::{self, Plan};
 use spagitty_core::conflicts::{self, ConflictSides, ConflictState};
 use spagitty_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
+use spagitty_core::forge::review::ReviewVerdict;
 use spagitty_core::forge::{self, Account, Kind, PullRequest, Repo};
 use spagitty_core::graph::ROW_PITCH;
 use spagitty_core::identity::{self, Identity, Key, Scope};
@@ -1155,19 +1156,21 @@ pub fn forge_disconnect<R: Runtime>(
     Ok(accounts::forget(&app, &host, &user))
 }
 
-/// The open pull requests for the open repository.
+/// What every forge call needs before it can make one: which repository, whose
+/// token, and who that token belongs to.
 ///
-/// Errors rather than an empty list when something is wrong, so the screen can
-/// say whether it is offline, rate limited, or looking at a repository nobody
-/// has connected an account for. An empty list means there are none.
-#[tauri::command]
-pub async fn pull_requests<R: Runtime>(
-    app: AppHandle<R>,
+/// Gathered in one place because the order matters and is easy to get wrong.
+/// Everything local happens here — the session, the account file, the
+/// keychain — and the caller then goes to the network on a thread of its own.
+/// Reading the session takes a lock, and **a lock must never be held across an
+/// await**, so this function takes `State` and gives it up before returning.
+///
+/// The three ways it can fail are three different sentences, because they are
+/// three different things for the reader to do about them.
+fn forge_credentials<R: Runtime>(
+    app: &AppHandle<R>,
     state: State<'_, AppState>,
-) -> Result<Vec<PullRequest>> {
-    // Everything local first — the session, the account file, the keychain —
-    // and only then the network, on a thread of its own. Reading the session
-    // takes a lock, and a lock must never be held across an await.
+) -> Result<(Repo, String, String)> {
     let Some(repo) = forge_repo(state)? else {
         return Err(Error::Forge {
             host: String::new(),
@@ -1175,7 +1178,7 @@ pub async fn pull_requests<R: Runtime>(
         });
     };
 
-    let connected = accounts::load(&app);
+    let connected = accounts::load(app);
     let Some(account) = accounts::for_host(&connected, &repo.host) else {
         return Err(Error::ForgeUnauthorized {
             host: repo.host.clone(),
@@ -1191,7 +1194,55 @@ pub async fn pull_requests<R: Runtime>(
     };
 
     let user = account.user.clone();
+    Ok((repo, token, user))
+}
+
+/// The open pull requests for the open repository.
+///
+/// Errors rather than an empty list when something is wrong, so the screen can
+/// say whether it is offline, rate limited, or looking at a repository nobody
+/// has connected an account for. An empty list means there are none.
+#[tauri::command]
+pub async fn pull_requests<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+) -> Result<Vec<PullRequest>> {
+    let (repo, token, user) = forge_credentials(&app, state)?;
     off_thread(move || forge::pull_requests(&repo, &token, &user)).await
+}
+
+/// The files one pull request changes, with the host's own diff of each.
+///
+/// The diff is the host's, not a local one: the head branch of a pull request
+/// is usually not fetched, and fetching it to render a file list would turn
+/// reading a review into a network operation on the repository (FEAT-058).
+#[tauri::command]
+pub async fn pull_request_files<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+) -> Result<Vec<FileDiff>> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::pull_request_files(&repo, &token, number)).await
+}
+
+/// Leave a review on a pull request.
+///
+/// The one thing in Spagitty that writes to somebody else's server, and it is
+/// not undoable from here: a submitted review is visible to everybody watching
+/// the pull request the moment it lands. The confirmation belongs to the
+/// screen; what this does is refuse to send a verdict the host would reject,
+/// so the reader is told what is missing rather than shown a 422.
+#[tauri::command]
+pub async fn submit_review<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+    verdict: ReviewVerdict,
+    comment: String,
+) -> Result<()> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::submit_review(&repo, &token, number, verdict, &comment)).await
 }
 
 /// Is there a newer Spagitty than this one?

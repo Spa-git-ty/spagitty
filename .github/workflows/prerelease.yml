@@ -86,14 +86,24 @@ jobs:
             exit 1
           fi
 
+      # An alpha's notes are the changelog's Unreleased section — that is what
+      # an alpha is a preview of (Amendment 20). Empty Unreleased, no alpha.
+      - name: Read the notes out of the changelog
+        run: |
+          node tools/release-notes.mjs Unreleased > notes.md
+          cat notes.md
+
+      # The runner has no git identity; an annotated tag needs one.
       - name: Tag and publish as a pre-release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${{ steps.version.outputs.tag }}" -m "Spagitty ${{ steps.version.outputs.tag }}"
           git push origin "${{ steps.version.outputs.tag }}"
           gh release create "${{ steps.version.outputs.tag }}" \
             --title "Spagitty ${{ steps.version.outputs.tag }}" \
             --prerelease \
-            --generate-notes \
+            --notes-file notes.md \
             $(find artifacts -type f | tr '\n' ' ')

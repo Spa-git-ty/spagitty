@@ -380,9 +380,7 @@
 		border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		/* The pane casts onto whatever screen is under it, which is what stops
 		   the toolbar and the content it sits above reading as one surface. */
-		box-shadow:
-			var(--glass-rim),
-			0 1px 3px color-mix(in srgb, var(--umbra) 8%, transparent);
+		box-shadow: none;
 		position: relative;
 		z-index: 2;
 	}

@@ -44,6 +44,7 @@ import type {
 	ForgeKind,
 	ForgeRepo,
 	PullRequest,
+	ReviewVerdict,
 	Settings,
 	Signing,
 	Update,
@@ -449,6 +450,34 @@ export function forgeDisconnect(host: string, user: string): Promise<ForgeAccoun
 /** The open pull requests for the open repository. */
 export function pullRequests(): Promise<PullRequest[]> {
 	return invoke('pull_requests');
+}
+
+/**
+ * The files one pull request changes, with the host's own diff of each
+ * (FEAT-058).
+ *
+ * The diff comes from the host rather than from the repository: the head
+ * branch of a pull request is usually not fetched, and fetching it to render a
+ * file list would turn reading a review into a network operation on the
+ * repository.
+ */
+export function pullRequestFiles(number: number): Promise<FileDiff[]> {
+	return invoke('pull_request_files', { number });
+}
+
+/**
+ * Leave a review on a pull request (FEAT-058).
+ *
+ * Outward-facing and not undoable from here: a submitted review is visible to
+ * everybody watching the pull request as soon as it lands. The screen confirms
+ * before calling this.
+ */
+export function submitReview(
+	number: number,
+	verdict: ReviewVerdict,
+	comment: string
+): Promise<void> {
+	return invoke('submit_review', { number, verdict, comment });
 }
 
 /**
