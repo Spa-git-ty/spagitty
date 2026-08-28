@@ -308,7 +308,7 @@ fn needs_you(me: &str, author: &str, review: ReviewState, reviewers: &[String]) 
 /// is `YYYY-MM-DDTHH:MM:SSZ`, always UTC, and this crate has no date dependency
 /// to spend on reading one field. Anything that does not match is 0, which the
 /// screen renders as an unknown time rather than as a wrong one.
-fn timestamp(iso: Option<&str>) -> i64 {
+pub(crate) fn timestamp(iso: Option<&str>) -> i64 {
     let Some(text) = iso else { return 0 };
     let bytes = text.as_bytes();
     if bytes.len() < 20 || bytes[4] != b'-' || bytes[10] != b'T' {

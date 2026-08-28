@@ -466,32 +466,25 @@ per pull request for the line counts, the review decision and the checks —
 ninety-one requests for thirty open ones, against a budget shared with
 everything else the token does.
 
-**The files, and the review** (FEAT-058). Opening a pull request reads the files
-it changes and shows the diff of whichever one is selected, in the Diff screen's
-own pane rather than a second renderer — the host's patch is parsed into the
-same `FileDiff` the rest of the application already renders, so a pull request's
-diff and a commit's diff are read the same way.
+**The files, commits, and review workspace** (FEAT-058, FEAT-059). Opening a
+pull request transitions to a dedicated full-window PR workspace view. The top
+header carries the PR title, author, relative update time, status chip, checks
+rollup, and commit count, alongside a return button.
 
-That diff is **the host's**, not one computed here. A pull request's head branch
-is usually not fetched, and fetching it in order to list some files would turn
-opening a review into a network operation against the repository. The host has
-already computed this diff; the patch it sends is that computation.
+The left pane features collapsible accordion sections for **All changed files**
+and **Commits**. Commits display fixed-width summaries that smoothly scroll
+(marquee on hover) to reveal long messages without truncation, and expand to
+reveal per-commit changed files.
 
-These two calls are REST, where the list is GraphQL, and the reason is the same
-one both times — the request count. GraphQL's `files` connection carries the
-path and the counts but has no field for the patch, so a GraphQL route would
-list the files and then need a REST call per file to show any of them.
-Submitting a review is one POST against three inputs, where GraphQL would first
-have to fetch the pull request's node id.
+The center diff pane supports both unified and split diffs. Each diff line offers
+an inline review comment trigger on hover. Review comments and local drafts render
+directly beneath their associated diff lines.
 
-**Reviewing writes.** Approve, request changes, or comment, with the comment
-posted as written. It is the only thing in Spagitty that writes to somebody
-else's server, it is visible to everyone watching the pull request the moment it
-lands, and it cannot be taken back from here — so it is confirmed first, and the
-confirmation names the verdict rather than asking whether the reader is sure.
-A verdict the host would reject for want of a comment is refused here instead,
-with a sentence, rather than being sent to collect a 422 that does not say which
-field was wrong.
+**Reviewer vs Developer modes.** Reviewers can compose local draft inline comments,
+inspect all threads, and publish reviews (Approve, Request Changes, Comment) with
+draft comments batched together in a single submission. Developers can review
+feedback, reply directly to inline comment threads, and mark change requests as
+resolved.
 
 The list is re-read after a review rather than patched locally: the review
 decision is the host's to compute, and a guess at it here would be a second

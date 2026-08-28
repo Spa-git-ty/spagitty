@@ -5,6 +5,7 @@
 	import { repo } from '$lib/repo.svelte';
 	import RequestDetail from '$lib/requests/RequestDetail.svelte';
 	import RequestRow from '$lib/requests/RequestRow.svelte';
+	import PRWorkspace from '$lib/requests/PRWorkspace.svelte';
 	import { requests } from '$lib/requests/store.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -43,8 +44,11 @@
 	const detailHidden = $derived(panels.isHidden('requestsDetail'));
 </script>
 
-<div class="screen">
-	<header class="head">
+{#if requests.viewMode === 'workspace' && requests.open}
+	<PRWorkspace />
+{:else}
+	<div class="screen">
+		<header class="head">
 		<div class="left">
 			<span class="title">Pull requests</span>
 			{#if requests.repo}
@@ -139,8 +143,8 @@
 			{/if}
 		{/if}
 	</div>
-
 </div>
+{/if}
 
 <style>
 	.screen {

@@ -6,7 +6,14 @@ import type { ForgeRepo, PullRequest } from '$lib/types';
 vi.mock('$lib/api', () => ({
 	inTauri: vi.fn(() => true),
 	forgeRepo: vi.fn(),
-	pullRequests: vi.fn()
+	forgeAccounts: vi.fn(() => Promise.resolve([])),
+	pullRequests: vi.fn(),
+	pullRequestFiles: vi.fn(),
+	pullRequestCommits: vi.fn(),
+	pullRequestComments: vi.fn(),
+	commitFiles: vi.fn(),
+	submitReview: vi.fn(),
+	replyComment: vi.fn()
 }));
 
 import * as api from '$lib/api';

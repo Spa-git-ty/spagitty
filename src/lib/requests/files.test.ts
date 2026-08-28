@@ -22,9 +22,14 @@ vi.mock('$lib/ui/dialog.svelte', () => ({
 vi.mock('$lib/api', () => ({
 	inTauri: vi.fn(() => true),
 	forgeRepo: vi.fn(),
+	forgeAccounts: vi.fn(() => Promise.resolve([])),
 	pullRequests: vi.fn(),
 	pullRequestFiles: vi.fn(),
-	submitReview: vi.fn()
+	pullRequestCommits: vi.fn(),
+	pullRequestComments: vi.fn(),
+	commitFiles: vi.fn(),
+	submitReview: vi.fn(),
+	replyComment: vi.fn()
 }));
 
 import * as api from '$lib/api';
