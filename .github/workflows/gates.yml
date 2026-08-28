@@ -223,6 +223,7 @@ jobs:
         id: version
         run: |
           version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
       # A tag that already exists is a release that already happened. Moving it
@@ -234,13 +235,26 @@ jobs:
             exit 1
           fi
 
+      # Amendment 20: the notes are the version's changelog section, not notes
+      # generated from the commit log. No section, no release — the gate fails
+      # before anything is tagged, which is the right order to fail in.
+      - name: Read the notes out of the changelog
+        run: |
+          node tools/release-notes.mjs "${{ steps.version.outputs.version }}" > notes.md
+          cat notes.md
+
+      # The runner has no git identity of its own, and an annotated tag needs
+      # one — this failed the first main release with "empty ident name".
+      # The bot identity is scoped to this repository, not set globally.
       - name: Tag and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${{ steps.version.outputs.tag }}" -m "Spagitty ${{ steps.version.outputs.tag }}"
           git push origin "${{ steps.version.outputs.tag }}"
           gh release create "${{ steps.version.outputs.tag }}" \
             --title "Spagitty ${{ steps.version.outputs.tag }}" \
-            --generate-notes \
+            --notes-file notes.md \
             $(find artifacts -type f | tr '\n' ' ')
