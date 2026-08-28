@@ -119,9 +119,10 @@ describe('command names and arguments', () => {
 
 	it('sends the whole settings object when storing it', async () => {
 		const settings = {
-			signCommits: true,
+			checkForUpdates: true,
 			confirmHistoryRewrite: false,
-			showGitCommands: true
+			showGitCommands: true,
+			pruneOnFetch: false
 		};
 		await api.setSettings(settings);
 		expect(invoked).toHaveBeenCalledWith('set_settings', { settings });

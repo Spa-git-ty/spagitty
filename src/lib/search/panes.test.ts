@@ -91,6 +91,7 @@ beforeEach(async () => {
 		committerName: 'Ada Lovelace',
 		committerEmail: 'ada@example.com',
 		commitTime: 1_700_000_000,
+		signed: false,
 		parents: [],
 		files: []
 	});
@@ -161,7 +162,7 @@ describe('ResultRows', () => {
 	});
 
 	it('shows the refs a result carries', async () => {
-		await withRows([row(0, { refs: [{ name: 'main', kind: 'branch', current: true }] })]);
+		await withRows([row(0, { refs: [{ name: 'main', kind: 'branch', current: true, local: true, remotes: [], divergence: null }] })]);
 		const view = render(ResultRows, {});
 
 		expect(view.text()).toContain('main');
@@ -324,6 +325,7 @@ describe('ResultDetail', () => {
 			committerName: 'Ada Lovelace',
 			committerEmail: 'ada@example.com',
 			commitTime: Math.floor(Date.now() / 1000) - 3600,
+			signed: false,
 			parents: [],
 			files: [
 				{ path: 'core.txt', status: 'modified' },

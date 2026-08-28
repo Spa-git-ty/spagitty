@@ -12,12 +12,12 @@
  */
 
 import {
-	ELBOW_C1,
-	ELBOW_C2,
+	ELBOW_RADIUS,
+	LANE_SPAN,
 	LANE_STROKE,
 	MERGE_R,
-	NODE_R,
 	ROW_PITCH,
+	laneNodeRadius,
 	laneX,
 	rowCenterY
 } from '../metrics';
@@ -47,6 +47,13 @@ export interface LaneDrawOptions {
 	nodeRing: string;
 	/** Lane columns the canvas is currently sized for. */
 	columns: number;
+	/**
+	 * Horizontal room the lanes share.
+	 *
+	 * `LANE_SPAN` until the graph column is dragged; after that it is whatever
+	 * the chosen width leaves, and the lanes compress into it (FEAT-039).
+	 */
+	span?: number;
 	/** Row height in effect. `scale.pitch`, not the design constant. */
 	pitch?: number;
 	/** Interface zoom, which scales the horizontal geometry and the node. */
@@ -85,6 +92,7 @@ export function drawLanes(options: LaneDrawOptions): void {
 		colors,
 		nodeRing,
 		columns,
+		span = LANE_SPAN,
 		pitch = ROW_PITCH,
 		zoom = 1,
 		highlight = null,
@@ -104,9 +112,9 @@ export function drawLanes(options: LaneDrawOptions): void {
 	// A row's edges describe the band *above* it, so the range runs one past
 	// `last` — otherwise the segment arriving at the first row below the fold
 	// would be missing and lanes would appear to stop short at the bottom edge.
-	// Elbow control points are fractions of the pitch, so they follow it.
-	const c1 = (ELBOW_C1 / ROW_PITCH) * pitch;
-	const c2 = (ELBOW_C2 / ROW_PITCH) * pitch;
+	// The corner radius follows the pitch, so a squeezed row turns proportionally
+	// tighter rather than keeping a corner too big for the space.
+	const corner = (ELBOW_RADIUS / ROW_PITCH) * pitch;
 
 	for (let i = first; i <= last + 1; i++) {
 		const commit = row(i);
@@ -119,8 +127,8 @@ export function drawLanes(options: LaneDrawOptions): void {
 		ctx.globalAlpha = Math.max(alphaFor(i), alphaFor(i - 1));
 
 		for (const edge of commit.edges) {
-			const x0 = laneX(edge.from, columns, zoom);
-			const x1 = laneX(edge.to, columns, zoom);
+			const x0 = laneX(edge.from, columns, zoom, span);
+			const x1 = laneX(edge.to, columns, zoom, span);
 
 			ctx.strokeStyle = colors[edge.color % colors.length];
 			ctx.beginPath();
@@ -128,17 +136,46 @@ export function drawLanes(options: LaneDrawOptions): void {
 			if (x0 === x1) {
 				ctx.lineTo(x1, bottom);
 			} else {
-				// A cubic elbow spanning exactly one row: it leaves vertically,
-				// crosses, and arrives vertically, so it meets the straight run
-				// above and below without a visible corner.
-				ctx.bezierCurveTo(x0, top + c1, x1, bottom - c2, x1, bottom);
+				// A rounded right angle, not a curve: straight down its own lane,
+				// turn, straight across, turn, straight down the new one. The
+				// straight runs are the point — they are what the eye follows
+				// when thirty lanes share a band.
+				//
+				// The radius is clamped against half the crossing and half the
+				// row so a jump between neighbouring lanes at a squeezed pitch
+				// turns tighter instead of bulging past its own corner.
+				const middle = (top + bottom) / 2;
+				const radius = Math.min(
+					corner,
+					Math.abs(x1 - x0) / 2,
+					Math.abs(bottom - top) / 2
+				);
+
+				// `arcTo` rounds the corner between the line into the point and
+				// the line out of it, which is exactly a quarter turn here.
+				ctx.arcTo(x0, middle, x1, middle, radius);
+				ctx.arcTo(x1, middle, x1, bottom, radius);
+				ctx.lineTo(x1, bottom);
 			}
 			ctx.stroke();
 		}
 	}
 	ctx.globalAlpha = 1;
 
-	const radius = NODE_R * zoom;
+	// The node follows the *depth*, not the drag (FEAT-046).
+	//
+	// Measured against the design span rather than the one in effect, so a
+	// column someone dragged narrower keeps full-size portraits and the lanes
+	// fold behind them — which is what the reference does, and what dragging a
+	// column is asking for: less of the window for the graph, not smaller
+	// faces. A history deeper than the design span can hold still shrinks, and
+	// there the shrink is what keeps the column readable rather than something
+	// anyone chose.
+	//
+	// This reverses FEAT-035's decision in the case the user caused. Its
+	// argument — that portraits at full size redraw over the compression they
+	// were meant to make room for — is true, and is now the intended picture.
+	const radius = laneNodeRadius(columns) * zoom;
 	const ratio = devicePixelRatio();
 	const tileSize = Math.max(8, Math.round(radius * 2 * ratio));
 
@@ -146,7 +183,7 @@ export function drawLanes(options: LaneDrawOptions): void {
 		const commit = row(i);
 		if (!commit) continue;
 
-		const x = laneX(commit.lane, columns, zoom);
+		const x = laneX(commit.lane, columns, zoom, span);
 		const y = rowCenterY(i, pitch) - scrollTop;
 		if (y < -radius || y > height + radius) continue;
 
@@ -258,7 +295,8 @@ function drawGhost(
 	pitch: number,
 	zoom: number,
 	scrollTop: number,
-	colors: string[]
+	colors: string[],
+	span: number
 ): void {
 	if (path.length < 2) return;
 
@@ -273,7 +311,7 @@ function drawGhost(
 	for (const index of path) {
 		const commit = row(index);
 		if (!commit) continue;
-		const x = laneX(commit.lane, columns, zoom);
+		const x = laneX(commit.lane, columns, zoom, span);
 		const y = rowCenterY(index, pitch) - scrollTop;
 		if (started) ctx.lineTo(x, y);
 		else {
@@ -299,7 +337,7 @@ function diamond(ctx: CanvasRenderingContext2D, x: number, y: number, r: number)
  * A square with rounded corners, centred on `x, y` and sized so that it reads
  * as the same weight as a circle of radius `r` beside it.
  *
- * `roundRect` would be shorter, but it is not in every webview GitLumiere ships
+ * `roundRect` would be shorter, but it is not in every webview Spagitty ships
  * against, and a merge node that silently stops being drawn is worse than four
  * arcs written out.
  */

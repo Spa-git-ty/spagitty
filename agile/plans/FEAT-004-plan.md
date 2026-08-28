@@ -38,13 +38,13 @@ clicking a row in a branch list means.
 
 **The branches command re-opens the repository.** `gix` reads config once, when
 a repository is opened, and a branch's upstream lives in config. Reusing the
-session handle meant a `--set-upstream-to` run while GitLumiere was open stayed
+session handle meant a `--set-upstream-to` run while Spagitty was open stayed
 invisible, and the screen reported "no upstream" for a branch that had one —
 caught in the visual sweep, not by a test. Re-discovery costs one directory
 walk; being quietly wrong about drift costs more.
 
 **`mine` means local, and says so.** The design handoff names the chip "mine",
-but GitLumiere does not know who you are until Settings does, and a guess would be
+but Spagitty does not know who you are until Settings does, and a guess would be
 wrong for anyone who commits under more than one identity. The chip keeps the
 handoff's word and carries a title explaining what it actually filters.
 
@@ -53,8 +53,8 @@ never labelled abandoned, short enough to catch the ones that were.
 
 ## Files
 
-- `crates/gitlumiere-core/src/branches.rs` — new
-- `crates/gitlumiere-core/src/shell.rs` — `checkout`, `create_branch`
+- `crates/spagitty-core/src/branches.rs` — new
+- `crates/spagitty-core/src/shell.rs` — `checkout`, `create_branch`
 - `src-tauri/src/commands.rs`, `lib.rs` — three commands
 - `src/lib/types.ts`, `src/lib/api.ts`
 - `src/lib/branches/{store.svelte.ts,BranchTable.svelte}`

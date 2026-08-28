@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { conflicts } from '$lib/conflicts/store.svelte';
+	import { openFile, stepFile } from '$lib/conflicts/actions';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 	import type { ConflictKind } from '$lib/types';
@@ -11,6 +12,10 @@
 	 * One chip per file rather than a dropdown: the number of conflicted files
 	 * is the thing people most want to know, and a dropdown hides it behind a
 	 * click.
+	 *
+	 * Every move goes through `$lib/conflicts/actions`, never straight to the
+	 * store, so an unsaved edit to the merged pane is asked about rather than
+	 * dropped on the way past (FEAT-016).
 	 */
 
 	/** What each kind is called on a chip. Short enough to sit beside a path. */
@@ -29,13 +34,13 @@
 
 <div class="pager">
 	<div class="steps">
-		<Btn disabled={conflicts.position <= 1} onclick={() => conflicts.step(-1)}>Previous</Btn>
+		<Btn disabled={conflicts.position <= 1} onclick={() => stepFile(-1)}>Previous</Btn>
 		<span class="note position">
 			{conflicts.position} of {conflicts.files.length}
 		</span>
 		<Btn
 			disabled={conflicts.position === 0 || conflicts.position >= conflicts.files.length}
-			onclick={() => conflicts.step(1)}
+			onclick={() => stepFile(1)}
 		>
 			Next
 		</Btn>
@@ -46,7 +51,7 @@
 			<Chip
 				active={file.path === conflicts.openPath}
 				title={`${file.path} — ${KIND_LABELS[file.kind]}`}
-				onclick={() => conflicts.select(file.path)}
+				onclick={() => openFile(file.path)}
 			>
 				{short(file.path)}
 			</Chip>

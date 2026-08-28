@@ -6,17 +6,26 @@ The pipeline is a sequence of gates in a fixed order. A gate that fails stops
 the pipeline; nothing downstream runs. Definitions live in
 `.github/workflows/`.
 
-**Not yet running.** The repository has no remote, so none of this has executed.
-It landed with the code it gates rather than being reconstructed later. The
-first push to a forge is also the first real run, and the first opportunity for
-these files to be wrong — treat the initial run as part of the work, not as a
-formality.
+**First run: 2026-08-26.** Gates 1 to 4 ran for the first time on pull request
+#1 into `dev` — run `32999076513`, nine and a half minutes, all four green. The
+workflows landed with the code they gate and then waited six months for a remote
+to run on; that wait is over, and they turned out to be right.
+
+Gates 5 and 6 have still never run. Both are `main`-only, and `main` has not
+moved since before the rename, so the macOS and Windows builds remain the part
+of this pipeline that nothing has proved. Treat the first merge into `main` the
+way the first pull request was treated: as part of the work, not as a formality.
+
+**One difference worth knowing** between a local run and the runner: `gitleaks`
+walks the pull request's merge ref on CI and the branch tip locally, so the
+commit counts differ — 115 against 125 on the first run. Both scan everything
+they are given.
 
 ## The gates
 
 | # | Gate | Runs | Proves |
 | --- | --- | --- | --- |
-| 1 | License | `cargo deny check licenses bans sources`, `license-checker-rseidelsohn` over the npm production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with GitLumiere shipping under GPL-3 |
+| 1 | License | `cargo deny check licenses bans sources`, `license-checker-rseidelsohn` over the npm production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with Spagitty shipping under GPL-3 |
 | 2 | Code quality | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `npm run check` | Formatting, lints and types across both languages |
 | 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `npm run coverage` | The suite passes and first-party coverage meets the Amendment 10 floor of 70% |
 | 4 | Security | `cargo deny check advisories`, `npm audit --audit-level=high`, `gitleaks` over the diff | No known-vulnerable dependency, no secret in the change |
@@ -43,6 +52,16 @@ Cheapest and most certain first, so an obvious failure never burns a full build.
 - Gates are blocking, not advisory. A red gate is fixed, not bypassed;
   `continue-on-error` is not used to get a merge through, and neither is a
   re-run until it passes.
+- **An advisory that cannot be fixed is recorded, not silenced.** `deny.toml`'s
+  `[advisories] ignore` list carries accepted risk **by advisory id**, each with
+  its crate and its reason, so anything *not* listed still fails gate 4. That is
+  the line between recording a risk and switching the gate off, and only the
+  first is allowed. A blanket setting — `unmaintained = "warn"`, or dropping the
+  check — is the second wearing different clothes.
+
+  Sixteen entries were added in TASK-010, all `unmaintained`, none a
+  vulnerability, and eleven of them the GTK3 bindings Tauri links against on
+  Linux with no upgrade available. They are deleted when Tauri moves to GTK4.
 - The order is fixed. A new check joins an existing gate or becomes a new one in
   the right place — it does not get bolted onto whichever job is convenient.
 - The coverage floor is defined once per language: `COVERAGE_FLOOR` in the
@@ -57,7 +76,7 @@ Cheapest and most certain first, so an obvious failure never burns a full build.
 Only first-party code counts, in either direction — dependencies neither
 inflate the number nor deflate it.
 
-- **Rust**: the workspace, with `crates/gitlumiere-core/src/fixture.rs` excluded.
+- **Rust**: the workspace, with `crates/spagitty-core/src/fixture.rs` excluded.
   It is test scaffolding, and counting a helper that every test exercises would
   lift the figure without any product code being tested.
 - **Frontend**: `src/lib/**`. `src/testing/**` is excluded for the same reason,
@@ -73,8 +92,10 @@ cargo deny check licenses bans sources     # gate 1, needs cargo-deny
 cargo fmt --all --check                    # gate 2
 cargo clippy --workspace --all-targets -- -D warnings
 npm run check
-cargo llvm-cov --workspace --ignore-filename-regex 'fixture\.rs' --summary-only
+cargo llvm-cov --workspace --ignore-filename-regex '(fixture|testing)\.rs' --summary-only
 npm run coverage                           # gate 3
+cargo deny check advisories                # gate 4
+npm audit --audit-level=high
 ```
 
 `cargo-deny` and `cargo-llvm-cov` are installed with

@@ -14,7 +14,7 @@
 //! Whether the destination existed is decided *before* the process starts and
 //! carried here. If it did, the directory is left exactly as it was found: the
 //! partial contents of a cancelled clone inside a directory the user already
-//! had is not something GitLumiere may delete. If it did not, the directory is
+//! had is not something Spagitty may delete. If it did not, the directory is
 //! removed — after the child is reaped, never after the kill signal, or the two
 //! race and files reappear behind the removal.
 
@@ -24,10 +24,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-use gitlumiere_core::clone::{self, Progress};
-use gitlumiere_core::shell;
 use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use spagitty_core::clone::{self, Progress};
+use spagitty_core::shell;
+use tauri::{AppHandle, Emitter, Runtime};
 
 pub const PROGRESS_EVENT: &str = "clone-progress";
 pub const DONE_EVENT: &str = "clone-done";
@@ -87,13 +87,13 @@ impl Drop for CloneWorker {
 /// Fails only if `git` could not be started at all. Everything after that —
 /// a bad URL, a refused authentication, a network that is not there — arrives
 /// on [`DONE_EVENT`] with git's own message.
-pub fn spawn(
-    app: AppHandle,
+pub fn spawn<R: Runtime>(
+    app: AppHandle<R>,
     url: String,
     destination: PathBuf,
     remove_on_cancel: bool,
     token: u64,
-) -> gitlumiere_core::Result<CloneWorker> {
+) -> spagitty_core::Result<CloneWorker> {
     let mut child = shell::clone_start(&url, &destination)?;
     let stderr = child.stderr.take();
 
@@ -101,7 +101,7 @@ pub fn spawn(
     let cancelled = Arc::new(AtomicBool::new(false));
 
     let handle = std::thread::Builder::new()
-        .name(format!("gitlumiere-clone-{token}"))
+        .name(format!("spagitty-clone-{token}"))
         .spawn({
             let child = child.clone();
             let cancelled = cancelled.clone();
@@ -138,7 +138,11 @@ pub fn spawn(
 /// newline — it is rewriting one line on a terminal — so both count as the end
 /// of a line here. Reading a byte at a time is through a `BufReader`, so it is
 /// a buffer index rather than a syscall.
-fn report(app: &AppHandle, token: u64, stderr: std::process::ChildStderr) -> Option<String> {
+fn report<R: Runtime>(
+    app: &AppHandle<R>,
+    token: u64,
+    stderr: std::process::ChildStderr,
+) -> Option<String> {
     let mut reader = BufReader::new(stderr);
     let mut line: Vec<u8> = Vec::new();
     let mut byte = [0u8; 1];
@@ -175,8 +179,8 @@ fn report(app: &AppHandle, token: u64, stderr: std::process::ChildStderr) -> Opt
 }
 
 /// Reap the child, tidy up if it was cancelled, and say what happened.
-fn finish(
-    app: &AppHandle,
+fn finish<R: Runtime>(
+    app: &AppHandle<R>,
     token: u64,
     child: &Mutex<std::process::Child>,
     cancelled: &AtomicBool,

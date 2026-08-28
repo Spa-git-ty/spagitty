@@ -99,7 +99,7 @@
 		min-height: 0;
 		display: flex;
 		flex-direction: column;
-		border-top: 1.5px solid var(--soft);
+		border-top: 1px solid var(--soft);
 	}
 
 	.ask {
@@ -109,7 +109,7 @@
 		gap: 6px;
 		flex-wrap: wrap;
 		padding: 8px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 	}
 
 	.field {
@@ -121,7 +121,7 @@
 
 	.field input {
 		width: 150px;
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
 		padding: 3px 6px;
 		background: transparent;
@@ -157,7 +157,7 @@
 	/* One block per run of lines from the same commit, which is how a blame is
 	   actually read: by change, not by line. */
 	.group {
-		border-left: 1.5px solid var(--soft);
+		border-left: 1px solid var(--soft);
 		padding-left: 8px;
 		margin-bottom: 10px;
 	}

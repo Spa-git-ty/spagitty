@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { readFileSync } from 'node:fs';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	GRAPH_DONE_EVENT,
@@ -58,6 +60,7 @@ function row(index: number, id = `${index}`.padStart(40, 'a')): GraphRow {
 		time: 1_700_000_000 - index * 60,
 		lane: 0,
 		color: 0,
+		signed: false,
 		parents: [],
 		refs: [],
 		edges: []
@@ -76,6 +79,7 @@ function detail(id: string): CommitDetail {
 		committerName: 'Ada Lovelace',
 		committerEmail: 'ada@example.com',
 		commitTime: 1_700_000_000,
+		signed: false,
 		parents: [],
 		files: []
 	};
@@ -171,6 +175,61 @@ describe('done', () => {
 	it('records an error from the walk', () => {
 		emitDone({ token: 0, total: 0, complete: false, error: 'could not walk the history' });
 		expect(graph.error).toBe('could not walk the history');
+	});
+
+	/**
+	 * FEAT-040 — the footer says how old what is on screen is, and "old" is
+	 * measured from the walk finishing rather than from the process starting or
+	 * from the last row arriving.
+	 */
+	it('dates the walk when it completes', () => {
+		const before = Math.floor(Date.now() / 1000);
+
+		emitRows({ token: 0, rows: [row(0)] });
+		expect(graph.refreshedAt).toBeNull();
+
+		emitDone({ token: 0, total: 1, complete: true, error: null });
+
+		expect(graph.refreshedAt).not.toBeNull();
+		expect(graph.refreshedAt!).toBeGreaterThanOrEqual(before);
+	});
+
+	it('does not date a walk that was cancelled', () => {
+		emitDone({ token: 0, total: 0, complete: false, error: null });
+		expect(graph.refreshedAt).toBeNull();
+	});
+});
+
+/**
+ * FEAT-040 — what the graph's footer is allowed to say.
+ *
+ * The two lines it used to carry told the user how to operate the screen they
+ * were already operating, which is the copy TASK-007 and TASK-009 removed
+ * everywhere else. The assertions read the screen's source because the footer is
+ * markup in a route, and a route is not a component this suite mounts.
+ */
+describe('the graph footer', () => {
+	const page = readFileSync('src/routes/+page.svelte', 'utf8');
+	const footer = page.slice(page.indexOf('<footer'), page.indexOf('</footer>'));
+
+	it('no longer explains the screen to the person using it', () => {
+		expect(footer).not.toMatch(/drag a branch|right-click a row|double-click a row/i);
+	});
+
+	it('says how much is changed, when it refreshed, and when it was fetched', () => {
+		expect(footer).toMatch(/changed file/);
+		expect(footer).toMatch(/refreshed \{refreshed\}/);
+		expect(footer).toMatch(/\{fetched\}/);
+	});
+
+	it('has a word for a repository that has never been fetched', () => {
+		// An empty time, or a time invented for a fetch that never happened, is
+		// the thing this must not do.
+		expect(page).toMatch(/never fetched/);
+	});
+
+	it('has a word for a working copy that has not been read', () => {
+		expect(footer).toMatch(/working copy not read yet/);
 	});
 });
 

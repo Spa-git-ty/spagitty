@@ -69,18 +69,45 @@
 		{ id: 'reset', label: 'Reset columns', run: () => columns.reset() }
 	]);
 
-	function startResize(event: PointerEvent, id: ColumnId) {
+	/**
+	 * A divider sizes the column on its **left**.
+	 *
+	 * That is the only model under which the boundary goes where the pointer
+	 * goes: everything left of it grows, everything right of it shifts along,
+	 * and the filling column takes up whatever is left.
+	 *
+	 * Two earlier attempts got this wrong in ways only a person dragging it
+	 * could see. Sizing the column *after* the divider changed that column's
+	 * width while its left edge stayed pinned, so the commit message column
+	 * shrank from its **right** edge and left a growing gap before the detail
+	 * panel — the boundary never moved. Skipping backwards past the graph column
+	 * moved the boundary correctly but left the graph itself unresizable, so
+	 * narrowing the table could not reclaim the empty half of a wide graph
+	 * column.
+	 *
+	 * Every column is now sizable, including the graph, whose lanes compress
+	 * into whatever width they are given (FEAT-039). So the answer is the
+	 * simplest one: the column the divider sits on.
+	 */
+	function resizeTarget(index: number): ColumnId {
+		return shown[index].id;
+	}
+
+	function startResize(event: PointerEvent, index: number) {
+		const id = resizeTarget(index);
+
 		event.preventDefault();
 		event.stopPropagation();
 
 		// Measured, not read from the store: the filling column's stored width
 		// is 0 until it is dragged, and starting a drag from 0 would snap it to
 		// its minimum before the pointer had moved a pixel.
-		const cell = (event.currentTarget as HTMLElement).parentElement;
+		const handle = event.currentTarget as HTMLElement;
+		const cell = handle.closest('.header')?.querySelector<HTMLElement>(`[data-column="${id}"]`);
 		const startWidth = cell ? cell.getBoundingClientRect().width : columns.width(id);
 
 		resizing = { id, startX: event.clientX, startWidth };
-		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		handle.setPointerCapture(event.pointerId);
 	}
 
 	function moveResize(event: PointerEvent) {
@@ -114,8 +141,11 @@
 	aria-label="Graph columns"
 >
 	{#each shown as column, index (column.id)}
+		{@const target = resizeTarget(index)}
+		{@const sized = shown.find((c) => c.id === target)?.label}
 		<div
 			class="cell"
+			data-column={column.id}
 			class:fills={column.fills}
 			class:dragging={dragging === index}
 			class:over={over === index && dragging !== index}
@@ -179,15 +209,13 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="divider"
-				class:fixed={column.computed}
-				title={column.computed
-					? 'The graph column is sized to the lanes on screen'
-					: `Resize ${column.label} — double-click to reset`}
-				onpointerdown={(event) => !column.computed && startResize(event, column.id)}
+				class:last={index === shown.length - 1}
+				title={`Resize ${sized} — double-click to reset`}
+				onpointerdown={(event) => startResize(event, index)}
 				onpointermove={moveResize}
 				onpointerup={endResize}
 				onpointercancel={endResize}
-				ondblclick={() => !column.computed && columns.unsize(column.id)}
+				ondblclick={() => columns.unsize(target)}
 			></div>
 		</div>
 	{/each}
@@ -216,8 +244,17 @@
 		display: flex;
 		align-items: stretch;
 		height: calc(var(--row-pitch) + 2px);
-		border-bottom: 1.5px solid var(--soft);
-		background: var(--panel);
+		border-bottom: 1px solid var(--line);
+		/* Chrome, so it is glass too — and it casts onto the rows under it,
+		   which is what keeps a column heading readable while a hundred commits
+		   scroll beneath it. */
+		background-color: var(--chrome-veil);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 8%, transparent);
+		font-size: var(--fs-secondary);
+		font-weight: 550;
+		letter-spacing: 0.02em;
 		flex: none;
 		user-select: none;
 	}
@@ -243,7 +280,7 @@
 	}
 
 	.cell.over {
-		box-shadow: inset 2px 0 0 var(--accent);
+		box-shadow: inset 0 -2px 0 var(--accent);
 	}
 
 	.label {
@@ -263,34 +300,49 @@
 		z-index: 1;
 	}
 
+	/*
+	 * The last column's divider sits wholly inside it.
+	 *
+	 * Every other divider straddles the boundary between two columns, which is
+	 * what makes it feel like it belongs to both. The last one has nothing on
+	 * its right but the window edge, so the same -3px put a third of the grab
+	 * area off-screen and the rest against the frame — the message column, which
+	 * is last by default, could not be resized at all.
+	 */
+	.divider.last {
+		right: 0;
+	}
+
 	.divider::after {
 		content: '';
 		position: absolute;
 		left: 3px;
 		top: 0;
-		width: 1.5px;
+		width: 1px;
 		height: 100%;
 		background: var(--soft);
 	}
 
+	/* Its line stays on the column's own edge rather than moving in with it. */
+	.divider.last::after {
+		left: auto;
+		right: 0;
+	}
+
+	/* A hover hint, not an announcement: the divider is a handle, and lighting
+	   it in the accent read as something breaking along the header's edge. */
 	.divider:hover::after {
-		background: var(--accent);
+		background: var(--line);
 	}
 
-	.divider.fixed {
-		cursor: default;
-	}
 
-	.divider.fixed:hover::after {
-		background: var(--soft);
-	}
 
 	.filter {
 		font: inherit;
 		font-size: var(--fs-secondary);
 		color: inherit;
 		background: var(--bg);
-		border: 1.5px solid var(--line);
+		border: 1px solid var(--line);
 		border-radius: var(--r-field);
 		padding: 1px 5px;
 		min-width: 0;

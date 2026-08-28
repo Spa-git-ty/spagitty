@@ -21,7 +21,7 @@ cargo clippy --workspace --all-targets -- -D warnings   clean
 
 ## Rust — reading the working copy
 
-`crates/gitlumiere-core/src/status.rs`, 14 tests.
+`crates/spagitty-core/src/status.rs`, 14 tests.
 
 | Test | Asserts |
 | --- | --- |
@@ -42,7 +42,7 @@ cargo clippy --workspace --all-targets -- -D warnings   clean
 
 ## Rust — changing the working copy
 
-`crates/gitlumiere-core/src/work.rs`, 22 tests. Ordered here by what they protect.
+`crates/spagitty-core/src/work.rs`, 22 tests. Ordered here by what they protect.
 
 **Nothing is lost.**
 
@@ -86,7 +86,7 @@ cargo clippy --workspace --all-targets -- -D warnings   clean
 
 ## Rust — diffing the working copy
 
-Added to `crates/gitlumiere-core/src/diff.rs`'s existing suite: `working_file_diff`
+Added to `crates/spagitty-core/src/diff.rs`'s existing suite: `working_file_diff`
 on both sides, exercised through the `work.rs` tests above, plus the patch
 builder's `\ No newline at end of file` behaviour.
 

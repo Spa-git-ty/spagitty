@@ -9,7 +9,7 @@
 	 * The open pull request.
 	 *
 	 * Every action here is disabled and names FEAT-017, because reviewing,
-	 * approving and merging all need a host and GitLumiere talks to none. A
+	 * approving and merging all need a host and Spagitty talks to none. A
 	 * control that looks live and does nothing is worse than one that explains
 	 * itself.
 	 */
@@ -48,8 +48,8 @@
 		</div>
 
 		<footer class="actions">
-			<Btn disabled title="Reviewing needs a connected account — FEAT-017.">Review</Btn>
-			<Btn disabled title="Merging needs a connected account — FEAT-017.">Merge</Btn>
+			<Btn disabled title="Reviewing needs a connected account">Review</Btn>
+			<Btn disabled title="Merging needs a connected account">Merge</Btn>
 		</footer>
 	{/if}
 </section>
@@ -61,7 +61,7 @@
 		min-height: 0;
 		overflow: auto;
 		padding: 8px;
-		border-left: 1.5px solid var(--soft);
+		border-left: 1px solid var(--soft);
 		display: flex;
 		flex-direction: column;
 		gap: 6px;

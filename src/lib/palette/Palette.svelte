@@ -152,7 +152,7 @@
 		/* Not centred: the palette appears where the eye already is on a screen
 		   read top-down, and centring it would move the list under the cursor. */
 		padding-top: 12vh;
-		background: color-mix(in srgb, var(--bg) 55%, transparent);
+		background: color-mix(in srgb, var(--umbra) 38%, transparent);
 		z-index: 40;
 	}
 
@@ -161,21 +161,38 @@
 		max-height: 60vh;
 		display: flex;
 		flex-direction: column;
-		background: var(--panel);
-		border: 1.5px solid var(--line);
+		background-color: var(--glass-thick);
+		backdrop-filter: var(--blur-thick);
+		-webkit-backdrop-filter: var(--blur-thick);
 		border-radius: var(--r-panel);
-		box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+		box-shadow: var(--shadow-3);
 		overflow: hidden;
+		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
 	}
 
+	/*
+	 * The query line. Deliberately *not* a well like every other field in the
+	 * application: it is the whole top of the panel rather than a control
+	 * sitting on one, so it takes the panel's own surface and is separated by a
+	 * hairline instead of a border.
+	 */
 	.field {
 		font: inherit;
 		font-size: var(--fs-title);
 		color: inherit;
 		background: transparent;
 		border: none;
+		border-bottom: 1px solid var(--soft);
+		border-radius: 0;
+		box-shadow: none;
 		outline: none;
 		padding: 12px 14px;
+	}
+
+	.field:focus {
+		background: transparent;
+		box-shadow: none;
+		border-color: var(--soft);
 	}
 
 	.field::placeholder {
@@ -204,6 +221,10 @@
 
 	.item.active {
 		background: var(--selection);
+	}
+
+	.item:not(.blocked):hover {
+		background: var(--hover);
 	}
 
 	.item.blocked {

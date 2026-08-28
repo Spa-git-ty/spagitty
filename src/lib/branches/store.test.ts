@@ -6,7 +6,9 @@ import type { BranchRow } from '$lib/types';
 vi.mock('$lib/api', () => ({
 	branches: vi.fn(),
 	checkout: vi.fn(),
-	createBranch: vi.fn()
+	createBranch: vi.fn(),
+	deleteBranch: vi.fn(),
+	renameBranch: vi.fn()
 }));
 
 vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
@@ -18,6 +20,8 @@ import { branches, STALE_DAYS } from './store.svelte';
 const list = vi.mocked(api.branches);
 const checkout = vi.mocked(api.checkout);
 const createBranch = vi.mocked(api.createBranch);
+const deleteBranch = vi.mocked(api.deleteBranch);
+const renameBranch = vi.mocked(api.renameBranch);
 
 const NOW = 1_800_000_000;
 
@@ -290,5 +294,72 @@ describe('clear', () => {
 		expect(branches.query).toBe('');
 		expect(branches.active).toEqual([]);
 		expect(branches.newName).toBe('');
+	});
+});
+
+describe('the destructive writes', () => {
+	beforeEach(() => {
+		deleteBranch.mockResolvedValue(undefined);
+		renameBranch.mockResolvedValue(undefined);
+		list.mockResolvedValue([]);
+	});
+
+	it('deletes a branch, forcing only when told to', async () => {
+		expect(await branches.delete('feature/live', true)).toBe(true);
+		expect(deleteBranch).toHaveBeenCalledWith('feature/live', true);
+
+		await branches.delete('merged/old', false);
+		expect(deleteBranch).toHaveBeenLastCalledWith('merged/old', false);
+	});
+
+	it('re-reads the list and the repository afterwards', async () => {
+		list.mockClear();
+		await branches.delete('feature/live', false);
+
+		// A deleted branch changes what every other row's merged flag means.
+		expect(list).toHaveBeenCalled();
+		expect(repoCalls.refreshed).toBeGreaterThan(0);
+	});
+
+	it('surfaces a refusal rather than pretending it worked', async () => {
+		deleteBranch.mockRejectedValueOnce(new Error('not fully merged'));
+
+		expect(await branches.delete('feature/live', false)).toBe(false);
+		expect(branches.writeError).toContain('not fully merged');
+	});
+
+	it('renames, trimming what was typed', async () => {
+		expect(await branches.rename('old', '  new  ')).toBe(true);
+		expect(renameBranch).toHaveBeenCalledWith('old', 'new');
+	});
+
+	it('refuses a rename to nothing or to the same name', async () => {
+		expect(await branches.rename('old', '   ')).toBe(false);
+		expect(await branches.rename('old', 'old')).toBe(false);
+		expect(renameBranch).not.toHaveBeenCalled();
+	});
+
+	it('deletes several branches one at a time', async () => {
+		// `git branch -d` takes a lock; running them at once is how a bulk
+		// cleanup half-happens.
+		await branches.deleteMany(['a', 'b', 'c'], false);
+
+		expect(deleteBranch.mock.calls.map((call) => call[0])).toEqual(['a', 'b', 'c']);
+	});
+
+	it('stops a bulk delete at the first refusal', async () => {
+		deleteBranch.mockResolvedValueOnce(undefined);
+		deleteBranch.mockRejectedValueOnce(new Error('not fully merged'));
+
+		expect(await branches.deleteMany(['a', 'b', 'c'], false)).toBe(false);
+		// `c` was never attempted: carrying on would leave a list of things
+		// that did not happen for reasons nobody saw.
+		expect(deleteBranch).toHaveBeenCalledTimes(2);
+		expect(branches.writeError).toContain('not fully merged');
+	});
+
+	it('does nothing for an empty bulk delete', async () => {
+		expect(await branches.deleteMany([], false)).toBe(false);
+		expect(deleteBranch).not.toHaveBeenCalled();
 	});
 });

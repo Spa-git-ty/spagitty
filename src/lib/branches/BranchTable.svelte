@@ -1,47 +1,99 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { branches } from '$lib/branches/store.svelte';
+	import { deleteBranch, renameBranch, undeletable } from '$lib/branches/actions';
+	import { columns, type ColumnId } from '$lib/branches/columns.svelte';
+	import DivergenceBar from '$lib/branches/DivergenceBar.svelte';
+	import { widest } from '$lib/branches/divergence';
 	import { relativeTime } from '$lib/format';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
-	import type { BranchRow } from '$lib/types';
 
 	/**
 	 * Branch, drift, last change, actions.
 	 *
 	 * Merged branches render dashed: the same device the rest of the application
-	 * uses for "not settled", here meaning "nothing here is only here". Deleting
-	 * them is FEAT-013, so the button says so rather than being hidden — a
-	 * screen that shows what is safe to remove and no way to remove it should at
-	 * least admit that is what it is doing.
+	 * uses for "not settled", here meaning "nothing here is only here". FEAT-013
+	 * made that reading actionable: they can be deleted, one at a time from the
+	 * row or all at once from the footer.
+	 *
+	 * A row that cannot be deleted keeps its button and says why in the title,
+	 * rather than losing it. A control that disappears leaves the reader
+	 * wondering whether they misremembered; one that explains itself does not.
+	 *
+	 * The columns were a hardcoded `grid-template-columns` until FEAT-047. They
+	 * are the same store the graph uses now, so they drag and they come back
+	 * that way. A divider sizes the column it sits on, which is the only model
+	 * under which the boundary follows the pointer — the reasoning is written
+	 * out once, in `GraphHeader.svelte`.
 	 */
 
-	const DELETE_PENDING = 'Deleting branches is not built yet';
-
 	const rows = $derived(branches.filtered);
+	const shown = $derived(columns.shown);
+	/** Both halves of every bar are scaled against this, so rows compare. */
+	const max = $derived(widest(rows));
 
-	/** `↑2 ↓3`, or a plain dash when there is nothing to compare against. */
-	function drift(row: BranchRow): string {
-		if (row.ahead === null || row.behind === null) return '—';
-		if (row.ahead === 0 && row.behind === 0) return 'level';
-		const parts: string[] = [];
-		if (row.ahead > 0) parts.push(`↑${row.ahead}`);
-		if (row.behind > 0) parts.push(`↓${row.behind}`);
-		return parts.join(' ');
+	/** The resize in progress: which column, and where it started. */
+	let resizing: { id: ColumnId; startX: number; startWidth: number } | null = null;
+
+	function startResize(event: PointerEvent, id: ColumnId) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		// Measured rather than read from the store: the filling column's stored
+		// width is 0 until it is dragged, and starting from 0 would snap it to
+		// its minimum before the pointer had moved.
+		const handle = event.currentTarget as HTMLElement;
+		const cell = handle.closest('.head')?.querySelector<HTMLElement>(`[data-column="${id}"]`);
+		const startWidth = cell ? cell.getBoundingClientRect().width : columns.width(id);
+
+		resizing = { id, startX: event.clientX, startWidth };
+		handle.setPointerCapture(event.pointerId);
 	}
 
-	function driftTitle(row: BranchRow): string {
-		if (row.upstream === null) return 'No upstream configured';
-		return `${row.ahead} ahead of and ${row.behind} behind ${row.upstream}, as of the last fetch`;
+	function moveResize(event: PointerEvent) {
+		if (!resizing) return;
+		columns.resize(resizing.id, resizing.startWidth + (event.clientX - resizing.startX));
+	}
+
+	function endResize(event: PointerEvent) {
+		if (!resizing) return;
+		(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+		resizing = null;
+	}
+
+	/** `width: Npx`, or nothing at all for the column that takes the rest. */
+	function sizing(column: { width: number; fills?: boolean }): string {
+		return column.fills ? '' : `width: ${column.width}px`;
 	}
 </script>
 
 <div class="table" role="table" aria-label="Branches">
 	<div class="head" role="row">
-		<span role="columnheader">branch</span>
-		<span role="columnheader" class="drift">ahead / behind</span>
-		<span role="columnheader" class="when">last change</span>
-		<span role="columnheader" class="actions">actions</span>
+		{#each shown as column, index (column.id)}
+			<span
+				class="cell"
+				class:fills={column.fills}
+				class:drift={column.id === 'drift'}
+				class:actions={column.id === 'actions'}
+				data-column={column.id}
+				style={sizing(column)}
+				role="columnheader"
+			>
+				<span class="label">{column.label}</span>
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div
+					class="divider"
+					class:last={index === shown.length - 1}
+					title={`Resize ${column.label} — double-click to reset`}
+					onpointerdown={(event) => startResize(event, column.id)}
+					onpointermove={moveResize}
+					onpointerup={endResize}
+					onpointercancel={endResize}
+					ondblclick={() => columns.unsize(column.id)}
+				></div>
+			</span>
+		{/each}
 	</div>
 
 	{#each rows as row (row.fullName)}
@@ -51,41 +103,66 @@
 			class:current={row.current}
 			role="row"
 		>
-			<div class="name" role="cell">
-				<span class="mono mark" aria-hidden="true">{row.current ? '✔' : ' '}</span>
-				<span class="label" title={row.fullName}>{row.name}</span>
-				{#if row.upstream}
-					<span class="mono muted up" title="Tracks {row.upstream}">→ {row.upstream}</span>
-				{/if}
-			</div>
-
-			<div class="drift mono" role="cell" title={driftTitle(row)}>{drift(row)}</div>
-
-			<div class="when note" role="cell" title={row.summary}>
-				{relativeTime(row.time)} · {row.authorName}
-			</div>
-
-			<div class="actions" role="cell">
-				{#if row.current}
-					<span class="note">on this branch</span>
-				{:else if row.kind === 'branch'}
-					<Btn disabled={branches.busy} onclick={() => branches.checkout(row.name)}>
-						Check out
-					</Btn>
-				{:else}
-					<Btn
-						disabled={branches.busy}
-						title="Create a local branch that tracks {row.name}"
-						onclick={() => {
-							branches.setNewName(row.name.replace(/^[^/]+\//, ''));
-							branches.setNewStart(row.name);
-						}}
-					>
-						Branch from it
-					</Btn>
-				{/if}
-				<Chip title={DELETE_PENDING}>Delete</Chip>
-			</div>
+			{#each shown as column (column.id)}
+				<div
+					class="cell"
+					class:fills={column.fills}
+					class:drift={column.id === 'drift'}
+					class:actions={column.id === 'actions'}
+					style={sizing(column)}
+					role="cell"
+				>
+					{#if column.id === 'name'}
+						<span class="mono mark" aria-hidden="true">{row.current ? '✔' : ' '}</span>
+						<span class="label" title={row.fullName}>{row.name}</span>
+						{#if row.upstream}
+							<span class="mono muted up" title="Tracks {row.upstream}">→ {row.upstream}</span>
+						{/if}
+					{:else if column.id === 'drift'}
+						<DivergenceBar {row} {max} />
+					{:else if column.id === 'when'}
+						<span class="when note" title={row.summary}>
+							{relativeTime(row.time)} · {row.authorName}
+						</span>
+					{:else if row.current}
+						<span class="note">on this branch</span>
+						<Chip title={undeletable(row) ?? undefined}>Delete</Chip>
+					{:else if row.kind === 'branch'}
+						<Btn disabled={branches.busy} onclick={() => branches.checkout(row.name)}>
+							Check out
+						</Btn>
+						<Chip
+							disabled={branches.busy}
+							title="Rename {row.name}"
+							onclick={() => renameBranch(row)}
+						>
+							Rename
+						</Chip>
+						<Chip
+							disabled={branches.busy}
+							danger={!row.merged}
+							title={row.merged
+								? `Delete ${row.name} — everything on it is already merged`
+								: `Delete ${row.name} — it has commits that are on no other branch`}
+							onclick={() => deleteBranch(row)}
+						>
+							Delete
+						</Chip>
+					{:else}
+						<Btn
+							disabled={branches.busy}
+							title="Create a local branch that tracks {row.name}"
+							onclick={() => {
+								branches.setNewName(row.name.replace(/^[^/]+\//, ''));
+								branches.setNewStart(row.name);
+							}}
+						>
+							Branch from it
+						</Btn>
+						<Chip title={undeletable(row) ?? undefined}>Delete</Chip>
+					{/if}
+				</div>
+			{/each}
 		</div>
 	{/each}
 
@@ -109,48 +186,72 @@
 
 	.head,
 	.row {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) 90px 220px 210px;
+		display: flex;
 		align-items: center;
-		gap: 10px;
 		padding: 4px 12px;
 	}
 
 	.head {
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		font-size: var(--fs-secondary);
 		color: var(--muted);
 		position: sticky;
 		top: 0;
 		background: var(--bg);
 		z-index: 1;
+		user-select: none;
+	}
+
+	.cell {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding-right: 10px;
+		flex: none;
+		min-width: 0;
+	}
+
+	.cell.fills {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.cell.drift {
+		gap: 8px;
+	}
+
+	.cell.actions {
+		justify-content: flex-end;
+		gap: 6px;
+		padding-right: 0;
 	}
 
 	.row {
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		min-height: 30px;
 	}
 
-	/* Nothing on a merged branch is only there. Dashed says "spent", the same
-	   way it says "not staged" on the Commit screen. */
+	/* Nothing on a merged branch is only there, so it reads as spent — dimmed
+	   rather than drawn with a dashed rule, which said "unfinished". */
 	.row.merged {
-		border-bottom-style: dashed;
 		color: var(--muted);
+		opacity: 0.78;
 	}
 
+	/* The branch you are on, marked the way the nav rail marks the screen you
+	   are on: an accent edge and a tint that fades out across the row. */
 	.row.current {
-		background: var(--selection);
+		background: linear-gradient(
+			90deg,
+			color-mix(in srgb, var(--accent) 18%, transparent) 0%,
+			var(--selection) 40%,
+			transparent 100%
+		);
 	}
 
 	.row:hover {
-		background: var(--stripe);
-	}
-
-	.name {
-		display: flex;
-		align-items: baseline;
-		gap: 6px;
-		min-width: 0;
+		background: var(--hover);
 	}
 
 	.mark {
@@ -160,6 +261,7 @@
 	}
 
 	.label {
+		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -169,21 +271,50 @@
 		flex: none;
 	}
 
-	.drift {
-		text-align: right;
-	}
-
 	.when {
+		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.actions {
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: 6px;
+	/*
+	 * The divider straddles the boundary, so it reads as belonging to both
+	 * columns; the last one sits wholly inside its own, because half of it
+	 * would otherwise be off the edge of the table.
+	 */
+	.divider {
+		position: absolute;
+		top: 0;
+		right: -3px;
+		width: 7px;
+		height: 100%;
+		cursor: col-resize;
+		z-index: 1;
+	}
+
+	.divider.last {
+		right: 0;
+	}
+
+	.divider::after {
+		content: '';
+		position: absolute;
+		left: 3px;
+		top: 0;
+		width: 1.5px;
+		height: 100%;
+		background: var(--soft);
+	}
+
+	.divider.last::after {
+		left: auto;
+		right: 0;
+	}
+
+	/* Same hint the panel splitters give — a hairline, never the accent. */
+	.divider:hover::after {
+		background: var(--line);
 	}
 
 	.empty {

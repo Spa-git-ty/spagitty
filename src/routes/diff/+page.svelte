@@ -9,6 +9,7 @@
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
+	import Splitter from '$lib/ui/Splitter.svelte';
 
 	/**
 	 * One commit's changes, hunk by hunk.
@@ -129,8 +130,21 @@
 		<div class="empty"><span class="note">Reading the commit…</span></div>
 	{:else}
 		<div class="body">
-			<FileList />
-			<DiffPane {focus} />
+			<FileList
+				files={diff.commit.files}
+				selected={diff.path}
+				onselect={(path) => diff.select(path)}
+				onstep={(delta) => diff.step(delta)}
+			/>
+			<Splitter panel="diffFiles" label="Resize the file list" />
+			<DiffPane
+				file={diff.file}
+				path={diff.path}
+				error={diff.fileError}
+				loading={diff.fileLoading}
+				view={diff.view}
+				{focus}
+			/>
 		</div>
 	{/if}
 
@@ -166,12 +180,22 @@
 
 	.head {
 		padding: 10px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	.foot {
 		padding: 8px;
-		border-top: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow: 0 -1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	.left,
@@ -214,6 +238,6 @@
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 </style>

@@ -4,7 +4,7 @@
 
 ## Approach
 
-One new core module, `crates/gitlumiere-core/src/rebase.rs`, and one screen. The
+One new core module, `crates/spagitty-core/src/rebase.rs`, and one screen. The
 module answers two questions and writes nothing:
 
 - **What would `git rebase -i <upstream>` open?** The todo list, in git's order.
@@ -52,7 +52,7 @@ owns the ordering; the component only reports intent.
 
 ## Files
 
-- `crates/gitlumiere-core/src/rebase.rs` — new; `lib.rs`
+- `crates/spagitty-core/src/rebase.rs` — new; `lib.rs`
 - `src-tauri/src/commands.rs`, `lib.rs`
 - `src/lib/types.ts`, `src/lib/api.ts`
 - `src/lib/rebase/{store.svelte.ts,TodoList.svelte,PreviewPane.svelte}`

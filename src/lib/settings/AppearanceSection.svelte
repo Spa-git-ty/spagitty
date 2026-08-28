@@ -89,7 +89,7 @@
 	</div>
 
 	<p class="note">
-		The first time GitLumiere runs it takes light or dark from the system preference and opens on
+		The first time Spagitty runs it takes light or dark from the system preference and opens on
 		{FAMILIES[0].name}. Choosing here replaces both until they are changed again.
 	</p>
 
@@ -175,7 +175,7 @@
 		align-items: center;
 		gap: 8px;
 		padding: 6px 8px;
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
 		text-align: left;
 		min-width: 0;
@@ -193,7 +193,7 @@
 	.swatch {
 		display: flex;
 		flex: none;
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
 		overflow: hidden;
 	}

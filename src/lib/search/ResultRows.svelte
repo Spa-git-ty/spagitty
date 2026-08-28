@@ -17,7 +17,7 @@
 	interface Props {
 		/** `↵` on the focused row. */
 		onopen?: (id: string) => void;
-		/** `⌥↵` on the focused row. */
+		/** `Alt+Enter` on the focused row. */
 		ondiff?: (id: string) => void;
 	}
 
@@ -101,7 +101,7 @@
 		flex: none;
 		width: 20px;
 		height: 20px;
-		border: 1.5px solid var(--line);
+		border: 1px solid var(--line);
 		border-radius: var(--r-pill);
 		display: inline-flex;
 		align-items: center;

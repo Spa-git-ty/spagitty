@@ -52,9 +52,9 @@ the user guessing which one they hit.
 
 ## Files
 
-- `crates/gitlumiere-core/src/diff.rs` — `commit_diff`, `file_diff`, the hunk
+- `crates/spagitty-core/src/diff.rs` — `commit_diff`, `file_diff`, the hunk
   builder, binary sniffing, line statistics
-- `crates/gitlumiere-core/src/error.rs` — `UnknownPath`
+- `crates/spagitty-core/src/error.rs` — `UnknownPath`
 - `src-tauri/src/commands.rs`, `src-tauri/src/lib.rs` — two commands registered
 - `src/lib/types.ts`, `src/lib/api.ts` — wire types and wrappers
 - `src/lib/diff/{store.svelte.ts,split.ts,FileList.svelte,DiffPane.svelte}`

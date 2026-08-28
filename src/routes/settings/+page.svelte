@@ -2,10 +2,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import AccountsSection from '$lib/settings/AccountsSection.svelte';
-	import AdvancedSection from '$lib/settings/AdvancedSection.svelte';
+	import RemotesSection from '$lib/settings/RemotesSection.svelte';
+	import LicenseSection from '$lib/settings/LicenseSection.svelte';
 	import AppearanceSection from '$lib/settings/AppearanceSection.svelte';
 	import BehaviourSection from '$lib/settings/BehaviourSection.svelte';
 	import IdentitySection from '$lib/settings/IdentitySection.svelte';
+	import SigningSection from '$lib/settings/SigningSection.svelte';
+	import UpdateSection from '$lib/settings/UpdateSection.svelte';
 	import { SECTIONS, settings } from '$lib/settings/store.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 
@@ -59,31 +62,35 @@
 	<div class="body">
 		{#if settings.section === 'you'}
 			<IdentitySection />
+			<SigningSection />
 		{:else if settings.section === 'accounts'}
 			<AccountsSection />
+		{:else if settings.section === 'remotes'}
+			<RemotesSection />
 		{:else if settings.section === 'behaviour'}
 			<BehaviourSection />
+			<UpdateSection />
 		{:else if settings.section === 'appearance'}
 			<AppearanceSection />
 		{:else}
-			<AdvancedSection />
+			<LicenseSection />
 		{/if}
 	</div>
 
-	<footer class="foot">
-		{#if settings.writeError}
-			<span class="note error">{settings.writeError}</span>
-		{:else if settings.error}
-			<span class="note error">{settings.error}</span>
-		{:else}
-			<span class="note">
-				The identity is git's own configuration and is written with <span class="mono"
-					>git config</span
-				>. Everything else on this screen is GitLumiere's own and is stored beside its list of
-				repositories.
-			</span>
-		{/if}
-	</footer>
+	<!--
+		Only a failure gets a footer here. Where the settings are stored is not
+		something the person changing them needs told, and rendered
+		unconditionally the strip would be empty on every ordinary visit.
+	-->
+	{#if settings.writeError || settings.error}
+		<footer class="foot">
+			{#if settings.writeError}
+				<span class="note error">{settings.writeError}</span>
+			{:else}
+				<span class="note error">{settings.error}</span>
+			{/if}
+		</footer>
+	{/if}
 </div>
 
 <style>
@@ -102,7 +109,13 @@
 		justify-content: space-between;
 		gap: 10px;
 		padding: 10px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	.left {
@@ -118,20 +131,29 @@
 		white-space: nowrap;
 	}
 
+	/* A column since **You** grew a second section: two stacked sections with no
+	   gap read as one section with a stray heading in the middle. */
 	.body {
 		flex: 1;
 		min-height: 0;
 		overflow: auto;
 		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
 	}
 
 	.foot {
 		flex: none;
 		padding: 8px 12px;
-		border-top: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow: 0 -1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 </style>

@@ -19,7 +19,7 @@ cargo clippy --workspace --all-targets -- -D warnings   clean
 | Frontend (`src/lib/**`) | 97.42% | 86.20% | 95.04% | 98.00% |
 | `src/lib/repos/**` | 97.38% | 83.07% | 97.36% | 99.00% |
 | Rust workspace | 87.55% | — | 76.43% | 85.51% |
-| `crates/gitlumiere-core/src/repo.rs` | 97.35% | — | 92.11% | 96.04% |
+| `crates/spagitty-core/src/repo.rs` | 97.35% | — | 92.11% | 96.04% |
 | `src-tauri/src/recents.rs` | 72.78% | — | 71.43% | 65.85% |
 
 `recents.rs` is the lowest figure in the change and the reason is worth writing

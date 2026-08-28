@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * The repositories GitLumiere has been shown.
+ * The repositories Spagitty has been shown.
  *
  * Every card is read where the repository sits, without opening it as the
  * current one. Nothing here scans the filesystem: the list is what the user

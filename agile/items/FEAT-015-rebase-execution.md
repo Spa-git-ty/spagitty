@@ -2,7 +2,10 @@
 
 # FEAT-015 — Rebase execution
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done on `feature/FEAT-015-rebase-execution`. `ops::rebase_interactive`
+and the `rebase_run` command were already built; the worker, the progress read,
+the conflict hand-off and the abort path were built here. The undo back to
+`ORIG_HEAD` is deliberately not a button — see the plan's non-scope.
 **Screen:** Interactive rebase (1E).
 
 ## Problem
@@ -13,7 +16,7 @@ stub.
 
 ## Why it was deferred
 
-Rebase rewrites history. It is the one operation in GitLumiere that can leave a
+Rebase rewrites history. It is the one operation in Spagitty that can leave a
 repository in a state the user cannot finish from the UI, and the reason
 `shell.rs` exists at all.
 
@@ -33,7 +36,7 @@ repository in a state the user cannot finish from the UI, and the reason
 - The whole argument in `shell.rs` applies here: the on-disk rebase state is a
   protocol other tools read. Nothing about it is reimplemented.
 - `GIT_SEQUENCE_EDITOR` is how the todo list is supplied without a terminal.
-- A rebase interrupted by the user closing GitLumiere must leave a repository the
+- A rebase interrupted by the user closing Spagitty must leave a repository the
   command line can finish.
 - The undo path is `git reset --hard ORIG_HEAD`, which is itself destructive:
   it needs the same treatment as anything else that discards work.

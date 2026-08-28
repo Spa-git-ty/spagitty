@@ -215,8 +215,8 @@ describe('RequestDetail', () => {
 		view.destroy();
 	});
 
-	it('disables every action and names what would build it', () => {
-		// Reviewing, approving and merging all need a host, and GitLumiere talks
+	it('disables every action and says what it needs, without naming a work item', () => {
+		// Reviewing, approving and merging all need a host, and Spagitty talks
 		// to none. A control that looks live and does nothing is worse than one
 		// that explains itself.
 		requests.present([request()]);
@@ -226,7 +226,10 @@ describe('RequestDetail', () => {
 		expect(buttons.length).toBeGreaterThan(0);
 		for (const button of buttons) {
 			expect(button.disabled).toBe(true);
-			expect(button.title).toContain('FEAT-017');
+			// It says what is missing — a connected account — rather than quoting
+			// an identifier only this project's own record can resolve.
+			expect(button.title).toContain('connected account');
+			expect(button.title).not.toMatch(/FEAT-\d/);
 		}
 		view.destroy();
 	});
@@ -255,9 +258,14 @@ describe('the promises this screen makes', () => {
 		}
 	});
 
-	it('makes no network call, because there is nothing to make one with', () => {
-		// A screen with no way to make a request cannot make one. That is a
-		// stronger claim than any behavioural test could make.
+	it('makes no network call from the webview, in any form', () => {
+		// The claim narrowed when FEAT-017 landed, and it is worth being exact
+		// about how. The application does talk to a host now — but not from
+		// here. The webview asks the backend, the backend makes one request in
+		// one file, and the token never crosses into JavaScript at all.
+		//
+		// A `fetch` in a screen would put a bearer token in the devtools network
+		// tab of anybody who opened it.
 		for (const source of sources()) {
 			expect(source).not.toMatch(/\bfetch\s*\(/);
 			expect(source).not.toContain('XMLHttpRequest');
@@ -266,22 +274,74 @@ describe('the promises this screen makes', () => {
 		}
 	});
 
-	it('links no HTTP client into the application, in either language', () => {
+	it('holds no token, anywhere in the screen', () => {
+		// The store, the rows, the detail panel and the route. A token reaches
+		// the OS keychain through the backend and is never read back out, so
+		// nothing here should so much as name one.
+		for (const source of sources()) {
+			expect(source).not.toMatch(/\btoken\b/i);
+			expect(source).not.toMatch(/\bAuthorization\b/);
+			expect(source).not.toMatch(/\bBearer\b/);
+		}
+	});
+
+	it('links no HTTP client into the webview', () => {
+		// Unchanged by FEAT-017, and the half of the old promise that still
+		// holds absolutely. The frontend has no way to reach a network.
 		const npm = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8'));
 		const declared = Object.keys({
 			...(npm.dependencies ?? {}),
 			...(npm.devDependencies ?? {})
 		});
+
 		for (const name of ['axios', 'node-fetch', 'got', 'undici', 'ky', 'superagent']) {
 			expect(declared).not.toContain(name);
 		}
+	});
 
-		for (const manifest of ['Cargo.toml', 'crates/gitlumiere-core/Cargo.toml', 'src-tauri/Cargo.toml']) {
+	it('links exactly one HTTP client into the application, and only in the core', () => {
+		// What the old test became (FEAT-017). It used to forbid every HTTP
+		// client in both languages; forbidding them outright stopped being
+		// possible the moment pull requests were read, so it now pins the thing
+		// that actually matters — that there is *one*, that it is the one that
+		// was chosen, and that the Tauri layer did not quietly grow a second.
+		const permitted = 'ureq';
+		const clients = ['reqwest', 'ureq', 'hyper', 'isahc', 'attohttpc', 'curl', 'surf'];
+
+		const core = readFileSync(join(process.cwd(), 'crates/spagitty-core/Cargo.toml'), 'utf8');
+		const declaredInCore = clients.filter((crate) =>
+			new RegExp(`^\\s*${crate}\\s*=`, 'm').test(core)
+		);
+		expect(declaredInCore).toEqual([permitted]);
+
+		for (const manifest of ['Cargo.toml', 'src-tauri/Cargo.toml']) {
 			const text = readFileSync(join(process.cwd(), manifest), 'utf8');
-			for (const crate of ['reqwest', 'ureq', 'hyper', 'isahc', 'attohttpc', 'curl']) {
-				expect(text).not.toMatch(new RegExp(`^\\s*${crate}\\s*=`, 'm'));
+			for (const crate of clients) {
+				expect(text, `${manifest} should link no HTTP client`).not.toMatch(
+					new RegExp(`^\\s*${crate}\\s*=`, 'm')
+				);
 			}
 		}
+	});
+
+	it('makes its requests from exactly one file', () => {
+		// The same argument `shell.rs` makes about spawning a process: one call
+		// site means "what does this send, and where" has one answer somebody
+		// can read in an afternoon. A second would have to be added here.
+		const core = join(process.cwd(), 'crates/spagitty-core/src');
+		const rust: string[] = [];
+		const walk = (dir: string) => {
+			for (const entry of readdirSync(dir, { withFileTypes: true })) {
+				const path = join(dir, entry.name);
+				if (entry.isDirectory()) walk(path);
+				else if (entry.name.endsWith('.rs')) rust.push(path);
+			}
+		};
+		walk(core);
+
+		const touching = rust.filter((path) => /\bureq\b/.test(readFileSync(path, 'utf8')));
+
+		expect(touching.map((path) => path.slice(core.length + 1))).toEqual(['forge/http.rs']);
 	});
 
 	it('names every state in words a user of any host would recognise', () => {

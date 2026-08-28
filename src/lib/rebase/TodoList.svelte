@@ -48,7 +48,7 @@
 			<span
 				class="handle"
 				aria-hidden="true"
-				title="Drag to reorder, or ⌥↑ / ⌥↓ from the row">⠿</span
+				title="Drag to reorder, or Alt+↑ / Alt+↓ from the row">⠿</span
 			>
 
 			<div class="actions">
@@ -91,20 +91,25 @@
 		align-items: center;
 		gap: 8px;
 		padding: 4px 6px;
-		border: 1.5px solid var(--soft);
-		border-radius: var(--r-field);
+		border: 1px solid var(--soft);
+		border-radius: var(--r-panel);
+		background-color: var(--surface-veil);
+		box-shadow: var(--glass-rim), var(--shadow-1);
 		min-width: 0;
 	}
 
-	/* A dropped commit stays visible and reads as spent — the same dashed
-	   device the Branches screen uses for a merged branch. */
+	/* A dropped commit stays visible and reads as spent: put back down on the
+	   page — no lift, no light, dimmed — rather than drawn with a dashed
+	   border, which read as "still being edited". */
 	.row.dropped {
-		border-style: dashed;
 		color: var(--muted);
+		background: none;
+		box-shadow: none;
 	}
 
 	.row.focused {
-		border-color: var(--accent);
+		border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+		box-shadow: var(--sheen), var(--shadow-2);
 	}
 
 	.handle {

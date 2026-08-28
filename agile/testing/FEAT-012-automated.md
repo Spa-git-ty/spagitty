@@ -20,7 +20,7 @@ Up from 264 Rust and 645 frontend at FEAT-011: 20 Rust tests (18 in
 | Tree | Regions / Statements | Branches | Functions | Lines |
 | --- | --- | --- | --- | --- |
 | Rust workspace | 86.27% | — | 76.17% | 84.98% |
-| `crates/gitlumiere-core/src/clone.rs` | 99.05% | — | 97.14% | 99.21% |
+| `crates/spagitty-core/src/clone.rs` | 99.05% | — | 97.14% | 99.21% |
 | `src-tauri/src/clone_worker.rs` | 0.00% | — | 0.00% | 0.00% |
 | Frontend (`src/lib/**`) | 95.90% | 82.55% | 93.64% | 97.03% |
 | `src/lib/clone/**` | 89.39% | 83.33% | 80.85% | 94.81% |
@@ -33,14 +33,14 @@ the progress parsing and the "is this step worth an event" rule are all in
 `clone.rs` at 99%. What remains in the worker is plumbing: read a pipe, kill a
 child, emit two events. SWEEP-1L-06 through SWEEP-1L-09 cover it by hand.
 
-## Rust — `crates/gitlumiere-core/src/clone.rs`, 18 tests
+## Rust — `crates/spagitty-core/src/clone.rs`, 18 tests
 
 ### Where the clone lands
 
 | Test | Asserts |
 | --- | --- |
 | `the_name_is_the_last_segment_the_way_git_clone_derives_it` | Eight address forms — HTTPS, scp-style, ssh with a port, a local path, `file://`, with and without `.git`, with a trailing slash |
-| `a_bare_host_gives_the_host_as_the_name_the_way_git_clone_does` | Not a special case: refusing it would make GitLumiere stricter than the command line for no visible reason |
+| `a_bare_host_gives_the_host_as_the_name_the_way_git_clone_does` | Not a special case: refusing it would make Spagitty stricter than the command line for no visible reason |
 | `a_name_that_would_escape_the_chosen_folder_is_refused` | `..` and friends. The destination is `parent.join(name)`, so a name of `..` would put the clone somewhere the user was never shown |
 | `the_destination_is_the_exact_path_that_will_be_created` | Criterion 2 |
 
@@ -68,7 +68,7 @@ child, emit two events. SWEEP-1L-06 through SWEEP-1L-09 cover it by hand.
 | `a_blank_line_is_not_progress` | |
 | `the_same_step_reported_again_is_not_worth_an_event` | git rewrites its line hundreds of times a second; one event per write would flood the webview to say the same thing |
 
-## Rust — `crates/gitlumiere-core/src/shell.rs`, 2 tests
+## Rust — `crates/spagitty-core/src/shell.rs`, 2 tests
 
 Both clone a fixture repository over a local path, so they need no network and
 still exercise a real `git clone`.
@@ -100,7 +100,7 @@ still exercise a real `git clone`.
 | `starts the clone and then offers to stop it` | The progress bar appears and Clone becomes Stop |
 | `shows the phase and the percentage git reported` | Criterion 4 — the bar's width is the percentage git gave |
 | `offers to open what was cloned once it finishes` | |
-| `says GitLumiere never asks for a password itself` | Criterion 5's honest half: credentials come from a helper, or the clone fails with git's message |
+| `says Spagitty never asks for a password itself` | Criterion 5's honest half: credentials come from a helper, or the clone fails with git's message |
 | `closes on Escape without stopping anything` | |
 
 ### `api.test.ts`, 3 tests

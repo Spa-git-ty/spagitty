@@ -57,7 +57,7 @@ account.
 - **Priority:** P2
 - **Preconditions:** An empty folder `<scratch>/project`.
 - **Steps:** Clone into it.
-- **Expected:** Allowed, and it works — `git clone` allows this, and GitLumiere
+- **Expected:** Allowed, and it works — `git clone` allows this, and Spagitty
   must not be stricter than the command line.
 - **Result:**
 
@@ -96,7 +96,7 @@ account.
 - **Priority:** P1
 - **Preconditions:** An **empty** folder `<scratch>/project` that you created.
 - **Steps:** Start a large clone into it, then press **Stop**.
-- **Expected:** `<scratch>/project` still exists. GitLumiere created neither the
+- **Expected:** `<scratch>/project` still exists. Spagitty created neither the
   folder nor your right to have it removed. Acceptance criterion 6, and the half
   that is easy to get wrong.
 - **Result:**
@@ -126,7 +126,7 @@ account.
   helper configured for that host — or temporarily unset one.
 - **Steps:** Clone it. Wait a full minute.
 - **Expected:** It **fails** with git's own message — authentication failed,
-  repository not found, or similar. It does **not** hang, and GitLumiere never
+  repository not found, or similar. It does **not** hang, and Spagitty never
   shows a password box of its own. Acceptance criterion 5.
 - **Result:**
 
@@ -135,7 +135,7 @@ account.
 - **Priority:** P1
 - **Preconditions:** A private repository you can clone from the command line
   because a helper or an ssh key supplies the credentials.
-- **Steps:** Clone it through GitLumiere.
+- **Steps:** Clone it through Spagitty.
 - **Expected:** It succeeds, with no prompt, exactly as the command line does.
   This is the reason cloning goes through `git` at all.
 - **Result:**

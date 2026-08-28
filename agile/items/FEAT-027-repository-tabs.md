@@ -2,7 +2,7 @@
 
 # FEAT-027 — Repository tabs in the title bar
 
-**Status:** Built. Plan in `agile/plans/FEAT-027-plan.md`, tests in
+**Status:** Done. Plan in `agile/plans/FEAT-027-plan.md`, tests in
 `agile/testing/FEAT-027-automated.md` and `agile/testing/FEAT-027-sweep.md`.
 **Screen:** the chrome, on every screen.
 
@@ -15,13 +15,13 @@ arrived at the graph's top with the previous screen and selection lost.
 
 ## Decisions the author made
 
-- **A tab switches; the backend keeps one repository.** GitLumiere's Rust side
+- **A tab switches; the backend keeps one repository.** Spagitty's Rust side
   holds one `AppState.session`, one graph worker, one watcher. Asked whether to
   build truly simultaneous sessions — a worker, a watcher and a walk per tab, with
   events routed per repository — the author chose not to buy a subsystem for a
   tab strip. The honest consequence is recorded below.
 - **`+` opens a menu**: Open repository…, Clone…, and the recent list.
-- **Closing a tab leaves the strip only.** The repository stays in GitLumiere's
+- **Closing a tab leaves the strip only.** The repository stays in Spagitty's
   list and in the `+` menu.
 
 ## What was built
@@ -39,7 +39,7 @@ arrived at the graph's top with the previous screen and selection lost.
   completes without finding it.
 - `repo.open` records every open as a tab, so the strip fills the same way from
   the All repositories screen, the launch argument and a finished clone.
-- The title bar: **GitLumiere** in bold, an **All repositories** button, the tabs,
+- The title bar: **Spagitty** in bold, an **All repositories** button, the tabs,
   the `+`, then the licence and version and the window controls. The repository
   name and branch chip are gone from it — they are on the toolbar and on the
   active tab.

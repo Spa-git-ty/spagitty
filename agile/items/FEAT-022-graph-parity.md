@@ -2,7 +2,7 @@
 
 # FEAT-022 — The graph as a launcher, not a report
 
-**Status:** Built. Plan in `agile/plans/FEAT-022-plan.md`, tests in
+**Status:** Done. Plan in `agile/plans/FEAT-022-plan.md`, tests in
 `agile/testing/FEAT-022-automated.md` and `-sweep.md`.
 **Surface:** the Graph screen (`/`), the shell's dialog and notice layers, and
 the command palette.
@@ -11,7 +11,7 @@ tokens every new surface here draws through).
 
 ## Problem
 
-GitLumiere's graph drew the history correctly and did nothing else. Everything the
+Spagitty's graph drew the history correctly and did nothing else. Everything the
 graph is actually *for* in a desktop client — branching from a commit you can
 see, resetting to it, cherry-picking a run of commits, getting a large
 repository down to the branches you care about — lived somewhere else or lived

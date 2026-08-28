@@ -52,7 +52,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: gitlumiere-alpha-${{ matrix.os }}
+          name: spagitty-alpha-${{ matrix.os }}
           path: |
             target/release/bundle/**
             src-tauri/target/release/bundle/**
@@ -90,10 +90,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git tag -a "${{ steps.version.outputs.tag }}" -m "GitLumiere ${{ steps.version.outputs.tag }}"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Spagitty ${{ steps.version.outputs.tag }}"
           git push origin "${{ steps.version.outputs.tag }}"
           gh release create "${{ steps.version.outputs.tag }}" \
-            --title "GitLumiere ${{ steps.version.outputs.tag }}" \
+            --title "Spagitty ${{ steps.version.outputs.tag }}" \
             --prerelease \
             --generate-notes \
             $(find artifacts -type f | tr '\n' ' ')

@@ -5,26 +5,26 @@
 	import { settings } from './store.svelte';
 
 	/**
-	 * GitLumiere's own preferences, stored in its config directory rather than in
+	 * Spagitty's own preferences, stored in its config directory rather than in
 	 * `.git/config` — none of them is a fact about a repository.
 	 *
 	 * **A toggle that does nothing yet says so.** Each one below persists, and
 	 * each names the work item that will make it take effect. Narrowing the
 	 * claim to the truth is the honest half of this screen: a switch that
 	 * silently does nothing is worse than one that says it is waiting.
+	 *
+	 * "Sign my commits" is no longer here. It was the one toggle nothing read,
+	 * and FEAT-019 answered it by moving the preference rather than wiring it
+	 * up: `commit.gpgsign` is the same switch in the place every other tool
+	 * looks, so it lives under **You** with the identity and is written with
+	 * `git config`.
 	 */
 	const TOGGLES: { key: keyof Settings; label: string; what: string; pending: string | null }[] = [
-		{
-			key: 'signCommits',
-			label: 'Sign my commits',
-			what: 'Pass --gpg-sign when committing, using whichever program git is configured with.',
-			pending: 'FEAT-019 — committing does not read this yet.'
-		},
 		{
 			key: 'confirmHistoryRewrite',
 			label: 'Ask before rewriting history',
 			what: 'Confirm before anything that changes commits that already exist.',
-			pending: 'FEAT-015 — nothing in this build rewrites history yet.'
+			pending: 'Nothing in this build rewrites history yet.'
 		},
 		{
 			key: 'showGitCommands',
@@ -32,7 +32,17 @@
 			// Not "the equivalent command line": what is shown is the command that
 			// ran, recorded where it was spawned. Reads never run one, and the
 			// panel says so rather than inventing one.
-			what: 'Adds a Commands panel listing every git command GitLumiere executes.',
+			what: 'Adds a Commands panel listing every git command Spagitty executes.',
+			pending: null
+		},
+		{
+			key: 'pruneOnFetch',
+			label: 'Prune deleted branches when fetching',
+			// FEAT-018. `--prune` was passed on every fetch, so refs were being
+			// deleted without anybody choosing it. The wording says what is
+			// deleted and what is not: a remote-tracking ref, never a local
+			// branch, and never a commit.
+			what: 'Deletes remote-tracking refs for branches the remote no longer has. Your own local branches are untouched.',
 			pending: null
 		}
 	];
@@ -41,7 +51,7 @@
 <section class="section">
 	<header>
 		<h2 class="heading">Behaviour</h2>
-		<span class="note">Stored in GitLumiere's own configuration, not in any repository.</span>
+		<span class="note">Stored in Spagitty's own configuration, not in any repository.</span>
 	</header>
 
 	{#each TOGGLES as toggle (toggle.key)}

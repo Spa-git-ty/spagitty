@@ -91,6 +91,9 @@ const TOKENS = [
 	'placeholder',
 	'accent',
 	'onAccent',
+	'danger',
+	'warn',
+	'ok',
 	'selection',
 	'stripe'
 ] as const;
@@ -194,6 +197,24 @@ describe('readability', () => {
 				contrast(palette.accent, palette.bg),
 				`${label} accent on bg`
 			).toBeGreaterThanOrEqual(3);
+		}
+	});
+
+	it('keeps every semantic colour visible against the background at 3:1', () => {
+		// Red, amber and green are read as *meaning* — a delete that cannot be
+		// told from a save is worse than one with no colour at all — so they are
+		// held to the same bar as the accent, which they sit beside.
+		for (const { label, palette } of ALL) {
+			for (const token of ['danger', 'warn', 'ok'] as const) {
+				expect(
+					contrast(palette[token], palette.bg),
+					`${label} ${token} on bg`
+				).toBeGreaterThanOrEqual(3);
+				expect(
+					contrast(palette[token], palette.panel),
+					`${label} ${token} on panel`
+				).toBeGreaterThanOrEqual(3);
+			}
 		}
 	});
 

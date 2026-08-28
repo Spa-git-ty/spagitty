@@ -27,7 +27,7 @@ proves nothing; run 03 and 04 there instead.
 - **Preconditions:** A release AppImage built from this branch. A shell with no
   `WEBKIT_*` variables set — check with `env | grep WEBKIT` and expect nothing.
 - **Steps:**
-  1. `./GitLumiere.AppImage`
+  1. `./Spagitty.AppImage`
   2. Wait for the window, then open any repository.
 - **Expected:** The UI paints. No white window at any point beyond the normal
   startup frame, and `Failed to create GBM buffer` does not appear on stderr.
@@ -36,7 +36,7 @@ proves nothing; run 03 and 04 there instead.
 ### SWEEP-004-02 — The old workaround still works, and is now redundant
 
 - **Priority:** P2
-- **Steps:** `WEBKIT_DISABLE_DMABUF_RENDERER=1 ./GitLumiere.AppImage`
+- **Steps:** `WEBKIT_DISABLE_DMABUF_RENDERER=1 ./Spagitty.AppImage`
 - **Expected:** Identical behaviour to SWEEP-004-01. Setting by hand what the
   app now sets itself changes nothing and breaks nothing.
 - **Result:**
@@ -44,7 +44,7 @@ proves nothing; run 03 and 04 there instead.
 ### SWEEP-004-03 — The escape hatch is real (negative path)
 
 - **Priority:** P1
-- **Steps:** `WEBKIT_DISABLE_DMABUF_RENDERER=0 ./GitLumiere.AppImage`
+- **Steps:** `WEBKIT_DISABLE_DMABUF_RENDERER=0 ./Spagitty.AppImage`
 - **Expected:** The app does **not** override the choice. On the reporting host
   that means the bug comes back — a white window and the GBM line on stderr,
   which is the correct outcome and proves the value was respected. On a healthy
@@ -54,7 +54,7 @@ proves nothing; run 03 and 04 there instead.
 ### SWEEP-004-04 — Development run, no variable in the command
 
 - **Priority:** P2
-- **Steps:** `npm run tauri dev -- -- -- /tmp/gitlumiere-fixture`, with no
+- **Steps:** `npm run tauri dev -- -- -- /tmp/spagitty-fixture`, with no
   `WEBKIT_DISABLE_DMABUF_RENDERER` in the command and none in the shell.
 - **Expected:** The window paints onto the fixture. The workaround that
   `docs/testing.md` used to require for this command is no longer needed.

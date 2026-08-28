@@ -10,7 +10,8 @@ vi.mock('$app/navigation', () => ({ goto: (path: string) => goto(path) }));
 vi.mock('$lib/api', () => ({
 	stashes: vi.fn(),
 	stashPush: vi.fn(() => Promise.resolve()),
-	commitDiff: vi.fn()
+	commitDiff: vi.fn(),
+	fileDiff: vi.fn()
 }));
 
 vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
@@ -22,6 +23,7 @@ import StashList from './StashList.svelte';
 
 const stashes = vi.mocked(api.stashes);
 const commitDiff = vi.mocked(api.commitDiff);
+const fileDiff = vi.mocked(api.fileDiff);
 
 function entry(index: number, overrides: Partial<StashEntry> = {}): StashEntry {
 	const id = `${index}`.padStart(40, 'a');
@@ -52,9 +54,21 @@ async function show(entries: StashEntry[]) {
 	await settle();
 }
 
+const change = {
+	path: '.gitignore',
+	status: 'modified' as const,
+	binary: false,
+	tooLarge: false,
+	added: 1,
+	removed: 0
+};
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	stash.clear();
+	fileDiff.mockImplementation((_id: string, path: string) =>
+		Promise.resolve({ ...change, path, hunks: [] })
+	);
 	commitDiff.mockImplementation((id: string) =>
 		Promise.resolve(
 			diff(id, [
@@ -93,7 +107,11 @@ describe('StashList', () => {
 
 		const lane = view.get('.lane');
 		expect(lane.querySelectorAll('circle')).toHaveLength(2);
-		expect(lane.querySelector('path')?.getAttribute('d')).toContain('C');
+		// A rounded right angle, the same shape the graph draws (FEAT-053):
+		// straight runs joined by two quarter-turn arcs.
+		const path = lane.querySelector('path')?.getAttribute('d') ?? '';
+		expect(path).toContain('A');
+		expect(path).not.toContain('C');
 
 		view.destroy();
 	});
@@ -145,7 +163,9 @@ describe('StashDetail', () => {
 		expect(view.text()).toContain('Ada Lovelace');
 		expect(view.text()).toContain('made on bbbbbbb');
 		expect(view.text()).toContain('1 file');
-		expect(view.get('.path').textContent).toBe('‎.gitignore');
+		// The files themselves are a column of their own since FEAT-034; what
+		// this panel keeps is the count and where in it you are.
+		expect(view.text()).toContain('file 1 of 1');
 
 		view.destroy();
 	});
@@ -161,9 +181,16 @@ describe('StashDetail', () => {
 		view.destroy();
 	});
 
-	it('says what pop, apply and drop would do rather than hiding them', async () => {
-		// Restoring the work is what a stash is for; a screen that listed
-		// stashes and pretended they could not be restored would be lying.
+	/**
+	 * FEAT-014. These three used to render as inert `<span>`s carrying "Not
+	 * built yet", beside a line telling the reader to go and run
+	 * `git stash pop` in a terminal instead.
+	 *
+	 * That was never true of the backend — `shell::stash_pop`, `stash_apply`,
+	 * `stash_drop`, `commands::stash_action` and `actions.stash` were all
+	 * complete, confirmation included. Only the wiring was missing.
+	 */
+	it('offers pop, apply and drop as real controls', async () => {
 		await show([entry(0)]);
 		const view = render(StashDetail, {});
 
@@ -174,21 +201,41 @@ describe('StashDetail', () => {
 		expect(labels).toContain('Drop');
 
 		for (const chip of chips) {
-			expect(chip.getAttribute('title')).toContain('Not built yet');
-			// Labels, not buttons: looking clickable would lie.
-			expect(chip.tagName).toBe('SPAN');
+			// Buttons, not labels: they do something now, and looking inert would
+			// lie in the other direction.
+			expect(chip.tagName).toBe('BUTTON');
+			expect(chip.getAttribute('title')).not.toContain('Not built yet');
 		}
-		expect(view.text()).toContain('git stash pop stash@{0}');
+
+		// The screen no longer sends the reader to a terminal.
+		expect(view.text()).not.toContain('git stash pop');
+		expect(view.text()).not.toContain('Not built yet');
 
 		view.destroy();
 	});
 
-	it('says an entry that changed nothing changed nothing', async () => {
+	it('asks the store to restore, with the action the chip stands for', async () => {
+		await show([entry(0)]);
+		const view = render(StashDetail, {});
+		const restore = vi.spyOn(stash, 'restore').mockResolvedValue();
+
+		const chips = view.all('.chip');
+		for (const chip of chips) click(chip);
+
+		expect(restore.mock.calls.map(([action]) => action)).toEqual(['pop', 'apply', 'drop']);
+
+		restore.mockRestore();
+		view.destroy();
+	});
+
+	it('counts an entry that changed nothing as no files', async () => {
+		// The sentence naming it lives on the file column, which is given it as
+		// its empty state; this panel only ever counted.
 		commitDiff.mockImplementation((id: string) => Promise.resolve(diff(id, [])));
 		await show([entry(0)]);
 		const view = render(StashDetail, {});
 
-		expect(view.text()).toContain('changed nothing');
+		expect(view.text()).toContain('0 files');
 		view.destroy();
 	});
 

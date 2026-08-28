@@ -2,7 +2,7 @@
 
 # Testing
 
-How GitLumiere is checked: what runs headless, how the app is driven for a visual
+How Spagitty is checked: what runs headless, how the app is driven for a visual
 sweep, and how the fixture repository the sweeps assume is built.
 
 ## Headless
@@ -20,7 +20,7 @@ Coverage of first-party code is measured on both sides and both must clear the
 Amendment 10 floor of 70%:
 
 ```sh
-cargo llvm-cov --workspace --ignore-filename-regex 'fixture\.rs' --summary-only
+cargo llvm-cov --workspace --ignore-filename-regex '(fixture|testing)\.rs' --summary-only
 npm run coverage
 ```
 
@@ -30,12 +30,56 @@ What counts, what does not, and which gate runs each command is in
 ## Fixtures in the Rust tests
 
 Anything that reads a repository is tested against a real one.
-`crates/gitlumiere-core/src/fixture.rs` builds them with the `git` binary — not
+`crates/spagitty-core/src/fixture.rs` builds them with the `git` binary — not
 with `gix`, because a fixture built by the library under test would agree with
 it by construction. `Fixture::empty()` is an initialised repository with no
 commits, `Fixture::woven()` the standard history below with a clean working
 copy, and `Fixture::dirty()` the same with work in progress. Each lives in a
 temporary directory that is removed with it.
+
+## Fixtures in the Tauri layer's tests
+
+`src-tauri` tests the graph worker, the filesystem watcher's debounce and the
+session against a real repository too. Two things make that possible.
+
+Everything in `src-tauri` that touches the application is generic over
+`R: tauri::Runtime` (TASK-003), so `tauri::test::mock_app` can supply an
+`AppHandle<MockRuntime>` where the real one supplies a Wry handle. And
+`spagitty-core`'s fixtures are `pub` behind a `fixture` feature, which
+`src-tauri` enables as a dev-dependency — one fixture builder for the workspace
+rather than two things building repositories with the `git` binary. Nothing
+enables the feature outside tests, so a release build carries neither the
+fixtures nor `tempfile`.
+
+`src-tauri/src/testing.rs` holds what an event test needs beyond that: a mock
+application managing the real `AppState`, an `Emitted<T>` collector with
+`at_least(n)` and `no_more_than(n)`, and `finishes_promptly`, which puts a
+deadline on a drop. The last one matters — dropping a worker joins its thread,
+so a worker that ignored its shutdown would hang the runner rather than fail.
+
+It also points `HOME` and the platform's other configuration variables at a
+temporary directory, once for the whole test binary. `open_repo` writes to the
+recent-repositories list, and a test run must not add rows to the list of
+repositories you have opened.
+
+## The one test that crosses the language boundary
+
+`ROW_PITCH` exists twice: in `src/lib/metrics.ts`, which is the source of truth,
+and in `crates/spagitty-core/src/graph.rs`, which describes lane elbows in row
+units and so needs the same number. Two copies of a constant in two languages
+drift, and in FEAT-029 they did — the geometry moved on one side while doc
+comments on both sides claimed a test was holding them together. There was no
+such test.
+
+`graph::tests::row_pitch_matches_the_frontend` is that test. It resolves
+`src/lib/metrics.ts` from `CARGO_MANIFEST_DIR`, reads the `export const
+ROW_PITCH` declaration out of the file, and asserts it against the crate's
+constant, failing with both values named so the message says which side moved.
+
+It is the only test here that reads another language's source, and it earns that
+by being the only constant duplicated across the boundary. Anything else needing
+to cross should go through the existing IPC types rather than growing a second
+file-reading test.
 
 ## Fixtures for the frontend tests
 
@@ -57,7 +101,7 @@ both staged and unstaged changes.
 Build it in a scratch directory — **never inside this repository**:
 
 ```sh
-FIX=/tmp/gitlumiere-fixture
+FIX=/tmp/spagitty-fixture
 mkdir -p "$FIX" && cd "$FIX"
 git init -q -b main
 git config user.name "Ada Lovelace"
@@ -118,7 +162,7 @@ The Conflicts screen needs a repository stopped mid-merge, which is a state the
 other screens should not be tested against. Build it separately:
 
 ```sh
-CFL=/tmp/gitlumiere-conflict
+CFL=/tmp/spagitty-conflict
 mkdir -p "$CFL" && cd "$CFL"
 git init -q -b main
 git config user.name "Ada Lovelace"
@@ -142,19 +186,18 @@ git merge theirs || true    # stops with a conflict, which is the point
 The application is driven for real, not screenshotted from a mock.
 
 ```sh
-npm run tauri dev -- -- -- /tmp/gitlumiere-fixture
+npm run tauri dev -- -- -- /tmp/spagitty-fixture
 ```
 
 The trailing path is passed to the binary and read by the `launch_path`
 command, so the app opens straight onto the fixture with no dialog.
 
-`WEBKIT_DISABLE_DMABUF_RENDERER` no longer has to be set by hand: since
-BUG-004 the binary sets it to `1` on Linux itself, before the webview starts, so
-a bare `npm run tauri dev` and a packaged launch both paint. It is still worth
-knowing about in two cases — setting it to `0` restores WebKit's DMABuf renderer
-on hardware that serves it, and a blank webview with `Failed to create GBM
-buffer` on stderr means something has stopped the app from applying its own
-default. See `src-tauri/src/platform.rs`.
+`WEBKIT_DISABLE_DMABUF_RENDERER` is left to the environment (FEAT-055): the
+binary used to set it to `1` on Linux, which cost every host the GPU path, and
+now it sets nothing. If the webview comes up blank with `Failed to create GBM
+buffer` on stderr, export `WEBKIT_DISABLE_DMABUF_RENDERER=1` before launching —
+that is the BUG-004 workaround, now opt-in. The binary does set
+`WEBKIT_FORCE_COMPOSITING_MODE=1` unless the environment already has an opinion.
 
 ### Driving it without a desk
 
@@ -177,7 +220,7 @@ the polite option — nothing steals focus from whatever is on screen:
 Xvfb :99 -screen 0 1600x1000x24 -nolisten tcp &
 
 env -u WAYLAND_DISPLAY DISPLAY=:99 GDK_BACKEND=x11 \
-    npm run tauri dev -- -- -- /tmp/gitlumiere-fixture
+    npm run tauri dev -- -- -- /tmp/spagitty-fixture
 ```
 
 `-u WAYLAND_DISPLAY` is the part that is easy to miss: with it set, GTK prefers

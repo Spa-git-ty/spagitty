@@ -37,7 +37,7 @@ deeply nested path. Compare against `git show <sha>` in a terminal.
 
 - **Priority:** P1
 - **Preconditions:** A commit with a change in the middle of a long file.
-- **Steps:** Put the GitLumiere pane and `git show <sha>` side by side.
+- **Steps:** Put the Spagitty pane and `git show <sha>` side by side.
 - **Expected:** Every hunk header matches. Every line's old and new numbers
   match. A removed line shows no new number; an added line shows no old number.
 - **Result:**
@@ -94,7 +94,7 @@ deeply nested path. Compare against `git show <sha>` in a terminal.
 
 - **Priority:** P3
 - **Preconditions:** Split selected.
-- **Steps:** Close GitLumiere, reopen it, open any diff.
+- **Steps:** Close Spagitty, reopen it, open any diff.
 - **Expected:** Split is still selected.
 - **Result:**
 
@@ -153,7 +153,7 @@ deeply nested path. Compare against `git show <sha>` in a terminal.
 ### SWEEP-1B-15 — A commit that does not exist
 
 - **Priority:** P2
-- **Preconditions:** GitLumiere running with a repository open.
+- **Preconditions:** Spagitty running with a repository open.
 - **Steps:** Navigate to `/diff?commit=0000000000000000000000000000000000000000`.
 - **Expected:** A plain message that there is no such commit. No blank screen,
   no stack trace.
@@ -162,7 +162,7 @@ deeply nested path. Compare against `git show <sha>` in a terminal.
 ### SWEEP-1B-16 — Opened before the repository is
 
 - **Priority:** P2
-- **Preconditions:** GitLumiere closed.
+- **Preconditions:** Spagitty closed.
 - **Steps:** Launch straight onto a commit's diff URL.
 - **Expected:** The screen waits for the repository to finish opening, then
   loads the commit. It never shows "no repository is open" for a repository

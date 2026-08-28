@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import type { IconName } from './ui/icons';
 import type { RepoCounts } from './types';
 
 /**
@@ -23,6 +24,11 @@ export type CountKey = keyof RepoCounts;
  *   1D  Conflicts          1J  All repositories
  *   1E  Rebase             1K  Settings
  *   1F  Branches           1L  Clone modal
+ *
+ * 1M is the Reflog (FEAT-050) and 1N is Tags (FEAT-051): the first screens that
+ * were not in the design handoff. Both came out of the GitKraken gap analysis,
+ * and they are numbered after the handoff's run rather than inserted into it so
+ * that a code still says where a screen came from.
  */
 export type ScreenCode =
 	| '1A'
@@ -36,7 +42,9 @@ export type ScreenCode =
 	| '1I'
 	| '1J'
 	| '1K'
-	| '1L';
+	| '1L'
+	| '1M'
+	| '1N';
 
 export interface NavItem {
 	code: ScreenCode;
@@ -44,31 +52,32 @@ export interface NavItem {
 	href: string;
 	/** Which count to show right-aligned, if any. */
 	count?: CountKey;
-	/** Shown instead of a count — e.g. the Log item's shortcut hint. */
-	hint?: string;
 	/** Render a divider above this item. */
 	dividerBefore?: boolean;
 	/**
-	 * One character, shown instead of the label while the rail is collapsed.
+	 * The screen's icon: beside the label when the rail is open, and the whole
+	 * item when it is collapsed.
 	 *
-	 * Chosen from the same glyph vocabulary the toolbar uses rather than an icon
-	 * font: the app ships no icon set, and a collapsed rail whose items are
-	 * indistinguishable boxes would be worse than no collapse at all.
+	 * These were Unicode glyphs, chosen because the application shipped no icon
+	 * set. It ships one now — `src/lib/ui/icons.ts` — so a screen names an icon
+	 * and every rail, menu and toolbar draws the same shape at the same weight.
 	 */
-	glyph: string;
+	icon: IconName;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-	{ code: '1A', label: 'Graph', href: '/', count: 'commits', glyph: '⑃' },
-	{ code: '1C', label: 'Working copy', href: '/changes', count: 'working', glyph: '✎' },
-	{ code: '1D', label: 'Conflicts', href: '/conflicts', count: 'conflicts', glyph: '⚔' },
-	{ code: '1F', label: 'Branches', href: '/branches', count: 'branches', glyph: '⌥' },
-	{ code: '1G', label: 'Stash', href: '/stash', count: 'stashes', glyph: '▤' },
-	{ code: '1H', label: 'Pull requests', href: '/requests', glyph: '⇄' },
-	{ code: '1I', label: 'Log', href: '/search', hint: '⌘F', glyph: '⌕' },
-	{ code: '1E', label: 'Rebase', href: '/rebase', glyph: '↻' },
-	{ code: '1J', label: 'All repositories', href: '/repos', dividerBefore: true, glyph: '⌂' },
-	{ code: '1K', label: 'Settings', href: '/settings', hint: '·', glyph: '⚙' }
+	{ code: '1A', label: 'Graph', href: '/', count: 'commits', icon: 'graph' },
+	{ code: '1C', label: 'Working copy', href: '/changes', count: 'working', icon: 'edit' },
+	{ code: '1D', label: 'Conflicts', href: '/conflicts', count: 'conflicts', icon: 'conflict' },
+	{ code: '1F', label: 'Branches', href: '/branches', count: 'branches', icon: 'branch' },
+	{ code: '1N', label: 'Tags', href: '/tags', count: 'tags', icon: 'tag' },
+	{ code: '1G', label: 'Stash', href: '/stash', count: 'stashes', icon: 'stash' },
+	{ code: '1H', label: 'Pull requests', href: '/requests', icon: 'request' },
+	{ code: '1E', label: 'Rebase', href: '/rebase', icon: 'rebase' },
+	{ code: '1I', label: 'Log', href: '/search', icon: 'search' },
+	{ code: '1M', label: 'Reflog', href: '/reflog', icon: 'history' },
+	{ code: '1J', label: 'All repositories', href: '/repos', dividerBefore: true, icon: 'folder' },
+	{ code: '1K', label: 'Settings', href: '/settings', icon: 'settings' }
 ];
 
 /** Screens that exist but are not reachable from the rail. */

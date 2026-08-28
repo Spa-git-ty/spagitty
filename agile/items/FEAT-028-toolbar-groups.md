@@ -2,7 +2,7 @@
 
 # FEAT-028 — The toolbar: centred, grouped, and without Commit
 
-**Status:** Built. Plan in `agile/plans/FEAT-028-plan.md`, tests in
+**Status:** Done. Plan in `agile/plans/FEAT-028-plan.md`, tests in
 `agile/testing/FEAT-028-automated.md` and `agile/testing/FEAT-028-sweep.md`.
 **Screen:** the chrome, on every screen.
 

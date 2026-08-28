@@ -34,7 +34,7 @@ files and one staged must not offer to "Commit 10 files" and then commit one.
 decides it, not convenience: the status walk is a read and stays in-process,
 while the index and the commit are the state every other tool reads. Hooks and
 signing settle it further — a commit written by us would silently skip both, so
-a commit made in GitLumiere would differ from the same commit made on the command
+a commit made in Spagitty would differ from the same commit made on the command
 line. The table in that header is extended in this change with the two new
 rows.
 
@@ -67,17 +67,17 @@ column keeps the answer beside the button.
 
 Core:
 
-- `crates/gitlumiere-core/src/status.rs` — `StatusEntry`, `WorkingCopy`,
+- `crates/spagitty-core/src/status.rs` — `StatusEntry`, `WorkingCopy`,
   `working_copy()`, real counts
-- `crates/gitlumiere-core/src/work.rs` — new
-- `crates/gitlumiere-core/src/diff.rs` — `Side`, `working_file_diff`,
+- `crates/spagitty-core/src/work.rs` — new
+- `crates/spagitty-core/src/diff.rs` — `Side`, `working_file_diff`,
   `working_hunk_patch`, `FileStatus::Untracked`
-- `crates/gitlumiere-core/src/shell.rs` — `stage`, `unstage`, `apply_to_index`,
+- `crates/spagitty-core/src/shell.rs` — `stage`, `unstage`, `apply_to_index`,
   `commit`, `head_message`, `run_with_stdin`, and two new rows in the header
   table
-- `crates/gitlumiere-core/src/error.rs` — `Status`, `NotStageable`, `Stale`,
+- `crates/spagitty-core/src/error.rs` — `Status`, `NotStageable`, `Stale`,
   `EmptyMessage`
-- `crates/gitlumiere-core/src/fixture.rs` — `Fixture::conflicted`
+- `crates/spagitty-core/src/fixture.rs` — `Fixture::conflicted`
 
 Tauri and wire:
 

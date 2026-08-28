@@ -44,11 +44,30 @@ let question = $state<Question | null>(null);
 let draft = $state('');
 let resolver: ((answer: Answer) => void) | null = null;
 
-function ask(next: Question, answerIfReplaced: Answer): Promise<Answer> {
+/**
+ * What a question answers with when it does not get a real answer.
+ *
+ * A confirmation says no; a prompt says nothing was typed. One definition,
+ * because a replaced question and a dismissed one are the same event from the
+ * caller's side and must not be able to disagree about it.
+ */
+function cancelValue(open: Question): Answer {
+	return open.kind === 'prompt' ? null : false;
+}
+
+function ask(next: Question): Promise<Answer> {
 	// Whatever was open loses; its caller is told so rather than left hanging.
-	if (resolver) {
-		resolver(answerIfReplaced);
+	//
+	// BUG-007: it is told with *its own* cancel value, not the incoming
+	// question's. Every prompt caller guards on `null` exactly — `if (name ===
+	// null) return` — so a prompt replaced by a confirmation used to resolve
+	// `false`, walk straight past that guard, and reach `api.createBranch` with
+	// a boolean where a branch name belongs.
+	if (resolver && question) {
+		const resolve = resolver;
+		const answer = cancelValue(question);
 		resolver = null;
+		resolve(answer);
 	}
 
 	question = next;
@@ -91,16 +110,13 @@ export const dialog = {
 		confirmLabel: string;
 		danger?: boolean;
 	}): Promise<boolean> {
-		return ask(
-			{
-				kind: 'confirm',
-				title: options.title,
-				body: options.body,
-				confirmLabel: options.confirmLabel,
-				danger: options.danger ?? false
-			},
-			false
-		) as Promise<boolean>;
+		return ask({
+			kind: 'confirm',
+			title: options.title,
+			body: options.body,
+			confirmLabel: options.confirmLabel,
+			danger: options.danger ?? false
+		}) as Promise<boolean>;
 	},
 
 	/** Ask for a line of text. Resolves null when dismissed. */
@@ -113,19 +129,16 @@ export const dialog = {
 		placeholder?: string;
 		danger?: boolean;
 	}): Promise<string | null> {
-		return ask(
-			{
-				kind: 'prompt',
-				title: options.title,
-				body: options.body,
-				confirmLabel: options.confirmLabel,
-				danger: options.danger ?? false,
-				label: options.label,
-				value: options.value ?? '',
-				placeholder: options.placeholder
-			},
-			null
-		) as Promise<string | null>;
+		return ask({
+			kind: 'prompt',
+			title: options.title,
+			body: options.body,
+			confirmLabel: options.confirmLabel,
+			danger: options.danger ?? false,
+			label: options.label,
+			value: options.value ?? '',
+			placeholder: options.placeholder
+		}) as Promise<string | null>;
 	},
 
 	/** Answer affirmatively: true, or the typed text. */
@@ -143,6 +156,6 @@ export const dialog = {
 	/** Dismiss. A prompt answers null, a confirmation answers false. */
 	dismiss(): void {
 		if (!question) return;
-		settle(question.kind === 'prompt' ? null : false);
+		settle(cancelValue(question));
 	}
 };

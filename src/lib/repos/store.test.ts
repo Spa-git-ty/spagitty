@@ -141,6 +141,7 @@ describe('opening', () => {
 			path: '/repos/quiet',
 			name: 'quiet',
 			bare: false,
+			lastFetched: null,
 			head: { branch: 'main', detached: false, id: 'a'.repeat(40), short: 'aaaaaaa' }
 		});
 

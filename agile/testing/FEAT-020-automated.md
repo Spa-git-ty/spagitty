@@ -7,7 +7,7 @@
 ```
 npm test                   785 passed, 0 failed   (45 files)
 npm run check              978 files, 0 errors, 0 warnings
-cargo test --workspace     272 passed, 0 failed   (gitlumiere-core)
+cargo test --workspace     272 passed, 0 failed   (spagitty-core)
 cargo clippy --all-targets clean
 cargo fmt --all --check    clean
 ```
@@ -17,7 +17,7 @@ Up from 760 frontend tests and 257 core tests at FEAT-022: 25 frontend tests
 in `palette/commands.test.ts` and the reshaped cases around them) and 15 Rust
 tests (12 in `record.rs`, 3 in `shell.rs`).
 
-`cargo fmt` also reformatted `crates/gitlumiere-core/src/ops.rs`, which had been
+`cargo fmt` also reformatted `crates/spagitty-core/src/ops.rs`, which had been
 left unformatted by FEAT-022. No behaviour there changed.
 
 ## Coverage against the Amendment 10 floor of 70%

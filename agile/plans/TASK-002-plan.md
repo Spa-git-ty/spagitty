@@ -9,7 +9,7 @@ Four pieces, in this order, because each one makes the next measurable.
 1. **A frontend test runner.** Vitest with `@vitest/coverage-v8`, configured in
    `vite.config.ts` so it shares the SvelteKit plugin and the `$lib` alias
    rather than growing a second build configuration.
-2. **A Rust fixture.** `tempfile` plus `crates/gitlumiere-core/src/fixture.rs`,
+2. **A Rust fixture.** `tempfile` plus `crates/spagitty-core/src/fixture.rs`,
    which builds real repositories with the `git` binary.
 3. **Tests**, prioritised by what can be wrong rather than by what is easy.
 4. **Gates and their documentation**, once there is something for gate 3 to
@@ -58,10 +58,10 @@ The pure, load-bearing parts of `watch.rs` are tested regardless.
 - `package.json`, `vite.config.ts` — runner, scripts, coverage thresholds
 - `src/testing/{mount.ts,graph-store.svelte.ts,repo-store.svelte.ts}`
 - `src/lib/**/*.test.ts` — one file per unit, or one per closely-related pair
-- `crates/gitlumiere-core/Cargo.toml`, `src/fixture.rs`, `src/lib.rs`
+- `crates/spagitty-core/Cargo.toml`, `src/fixture.rs`, `src/lib.rs`
 - Test modules appended to `repo.rs`, `refs.rs`, `status.rs`, `graph.rs`,
   `diff.rs`, `shell.rs`, `src-tauri/src/watch.rs`
-- `crates/gitlumiere-core/examples/graph-dump.rs` — the clippy fix
+- `crates/spagitty-core/examples/graph-dump.rs` — the clippy fix
 - `deny.toml`, `.github/workflows/{gates,prerelease}.yml`,
   `.github/actions/linux-deps/action.yml`
 - `docs/ci.md`, and the CI reference in `docs/architecture.md`

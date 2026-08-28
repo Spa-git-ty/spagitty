@@ -49,7 +49,7 @@
 			<p class="note">Reading…</p>
 		{:else if repos.cards.length === 0}
 			<div class="empty">
-				<p class="note">GitLumiere has not been shown a repository yet.</p>
+				<p class="note">Spagitty has not been shown a repository yet.</p>
 				<p class="note">
 					It never goes looking for one. Open a directory and it will be remembered
 					here.
@@ -118,12 +118,22 @@
 	.head {
 		justify-content: space-between;
 		padding: 10px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	.foot {
 		padding: 8px 12px;
-		border-top: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow: 0 -1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	.left,
@@ -186,6 +196,6 @@
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 </style>

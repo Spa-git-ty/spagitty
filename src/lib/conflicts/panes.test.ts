@@ -6,16 +6,27 @@ import type { ConflictFile, ConflictSide, ConflictSides, ConflictState } from '$
 
 vi.mock('$lib/api', () => ({
 	conflicts: vi.fn(),
-	conflictSides: vi.fn()
+	conflictSides: vi.fn(),
+	conflictRegions: vi.fn(() => Promise.resolve([])),
+	conflictTake: vi.fn(() => Promise.resolve()),
+	conflictResolveRegion: vi.fn(() => Promise.resolve()),
+	conflictWrite: vi.fn(() => Promise.resolve()),
+	conflictResolve: vi.fn(() => Promise.resolve()),
+	conflictContinue: vi.fn(() => Promise.resolve()),
+	conflictAbort: vi.fn(() => Promise.resolve())
 }));
 
 import * as api from '$lib/api';
 import ConflictPager from './ConflictPager.svelte';
+import ResolveBar from './ResolveBar.svelte';
 import SidePane from './SidePane.svelte';
 import { conflicts } from './store.svelte';
 
 const listCall = vi.mocked(api.conflicts);
 const sidesCall = vi.mocked(api.conflictSides);
+const regionsCall = vi.mocked(api.conflictRegions);
+const takeCall = vi.mocked(api.conflictTake);
+const resolveRegionCall = vi.mocked(api.conflictResolveRegion);
 
 function side(text: string, overrides: Partial<ConflictSide> = {}): ConflictSide {
 	return {
@@ -51,6 +62,9 @@ beforeEach(() => {
 		files: [file('src/a.txt'), file('b.txt')]
 	} satisfies ConflictState);
 	sidesCall.mockImplementation((path: string) => Promise.resolve(sidesFor(path)));
+	regionsCall.mockResolvedValue([
+		{ index: 0, startLine: 2, endLine: 6, ours: 'OURS\n', base: null, theirs: 'THEIRS\n' }
+	]);
 });
 
 describe('SidePane', () => {
@@ -226,5 +240,147 @@ describe('ConflictPager', () => {
 		expect(buttons[0].disabled).toBe(false);
 		expect(buttons[1].disabled).toBe(true);
 		later.destroy();
+	});
+});
+
+describe('the merged pane while it is being edited', () => {
+	it('is text until Edit, and a textarea after it', async () => {
+		await conflicts.load();
+
+		const reading = render(SidePane, {
+			title: 'Merged result',
+			subtitle: 'on disk',
+			side: sidesFor('src/a.txt').merged,
+			which: 'merged' as const,
+			kind: 'bothModified' as const,
+			middle: true
+		});
+		expect(reading.all('.editor')).toHaveLength(0);
+		reading.destroy();
+
+		conflicts.edit();
+		const editing = render(SidePane, {
+			title: 'Merged result',
+			subtitle: 'on disk',
+			side: sidesFor('src/a.txt').merged,
+			which: 'merged' as const,
+			kind: 'bothModified' as const,
+			middle: true
+		});
+		// Exactly what will be on disk afterwards — no line numbers, no
+		// decoration between what is typed and what is written.
+		expect(editing.get('.editor').tagName).toBe('TEXTAREA');
+		expect((editing.get('.editor') as HTMLTextAreaElement).value).toBe(conflicts.draft);
+		editing.destroy();
+	});
+
+	it('never turns another side into an editor', async () => {
+		await conflicts.load();
+		conflicts.edit();
+
+		const view = render(SidePane, {
+			title: 'Ours',
+			subtitle: 'HEAD',
+			side: side('one\nOURS\n'),
+			which: 'ours' as const,
+			kind: 'bothModified' as const
+		});
+
+		expect(view.all('.editor')).toHaveLength(0);
+		view.destroy();
+	});
+});
+
+describe('ResolveBar', () => {
+	it('offers a whole-file side, an edit and a mark-resolved', async () => {
+		await conflicts.load();
+		const view = render(ResolveBar, {});
+
+		expect(view.text()).toContain('Take ours');
+		expect(view.text()).toContain('Take theirs');
+		expect(view.text()).toContain('Edit');
+		expect(view.text()).toContain('Mark resolved');
+
+		view.destroy();
+	});
+
+	it('counts the conflicts in the file and offers one row for each', async () => {
+		await conflicts.load();
+		const view = render(ResolveBar, {});
+
+		expect(view.text()).toContain('1 conflict in this file');
+		// Numbered from 1 for the reader; the store counts from 0.
+		expect(view.text()).toContain('#1');
+		expect(view.text()).toContain('lines 2–6');
+
+		view.destroy();
+	});
+
+	it('resolves the region the button belongs to', async () => {
+		await conflicts.load();
+		const view = render(ResolveBar, {});
+
+		const theirs = view.all('.chip').find((c) => c.textContent?.trim() === 'theirs');
+		click(theirs as HTMLElement);
+		await Promise.resolve();
+
+		expect(resolveRegionCall).toHaveBeenCalledWith('src/a.txt', 0, 'theirs');
+		view.destroy();
+	});
+
+	it('takes a whole side without touching the regions', async () => {
+		await conflicts.load();
+		const view = render(ResolveBar, {});
+
+		const take = view.all('button').find((b) => b.textContent?.includes('Take ours'));
+		click(take as HTMLElement);
+		await Promise.resolve();
+
+		expect(takeCall).toHaveBeenCalledWith('src/a.txt', 'ours');
+		view.destroy();
+	});
+
+	it('offers an all-of-them shortcut only when there is more than one', async () => {
+		await conflicts.load();
+		const one = render(ResolveBar, {});
+		expect(one.all('.region.all')).toHaveLength(0);
+		one.destroy();
+
+		regionsCall.mockResolvedValue([
+			{ index: 0, startLine: 2, endLine: 6, ours: 'a\n', base: null, theirs: 'b\n' },
+			{ index: 1, startLine: 9, endLine: 13, ours: 'c\n', base: null, theirs: 'd\n' }
+		]);
+		await conflicts.refreshRegions();
+
+		const two = render(ResolveBar, {});
+		expect(two.text()).toContain('2 conflicts in this file');
+		expect(two.all('.region.all')).toHaveLength(1);
+		two.destroy();
+	});
+
+	it('swaps Edit for Save and discard once an edit is under way', async () => {
+		await conflicts.load();
+		conflicts.edit();
+		const view = render(ResolveBar, {});
+
+		expect(view.text()).toContain('Save');
+		expect(view.text()).toContain('discard edit');
+		expect(view.text()).not.toContain('Edit');
+
+		view.destroy();
+	});
+
+	it('says so when a file has no markers left to point at', async () => {
+		await conflicts.load();
+		regionsCall.mockResolvedValue([]);
+		await conflicts.refreshRegions();
+
+		const view = render(ResolveBar, {});
+		expect(view.text()).toContain('No conflict markers in this file');
+		// The whole-file controls are still there: a delete/modify conflict has
+		// no markers and still has to be resolved.
+		expect(view.text()).toContain('Take ours');
+
+		view.destroy();
 	});
 });

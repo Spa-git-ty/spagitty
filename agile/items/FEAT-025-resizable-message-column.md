@@ -2,7 +2,7 @@
 
 # FEAT-025 — A table you can size, and one that scrolls sideways
 
-**Status:** Built. Plan in `agile/plans/FEAT-025-plan.md`, tests in
+**Status:** Done. Plan in `agile/plans/FEAT-025-plan.md`, tests in
 `agile/testing/FEAT-025-automated.md` and `agile/testing/FEAT-025-sweep.md`.
 **Screen:** Graph (1A).
 

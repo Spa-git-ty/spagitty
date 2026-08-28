@@ -10,6 +10,13 @@ vi.mock('$lib/api', () => ({
 	setIdentity: vi.fn(),
 	settings: vi.fn(),
 	setSettings: vi.fn(() => Promise.resolve()),
+	signing: vi.fn(),
+	setSigning: vi.fn(),
+	clearSigning: vi.fn(),
+	forgeAccounts: vi.fn(() => Promise.resolve([])),
+	checkUpdate: vi.fn(),
+	forgeConnect: vi.fn(),
+	forgeDisconnect: vi.fn(),
 	licenses: vi.fn(),
 	about: vi.fn()
 }));
@@ -18,13 +25,15 @@ import * as api from '$lib/api';
 import { theme } from '$lib/theme.svelte';
 import { FAMILIES, paletteOf } from '$lib/themes';
 import AccountsSection from './AccountsSection.svelte';
-import AdvancedSection from './AdvancedSection.svelte';
+import LicenseSection from './LicenseSection.svelte';
 import AppearanceSection from './AppearanceSection.svelte';
 import BehaviourSection from './BehaviourSection.svelte';
+import UpdateSection from './UpdateSection.svelte';
 import IdentitySection from './IdentitySection.svelte';
 import { settings } from './store.svelte';
 
 const identity = vi.mocked(api.identity);
+const forgeAccounts = vi.mocked(api.forgeAccounts);
 const setIdentity = vi.mocked(api.setIdentity);
 const settingsCall = vi.mocked(api.settings);
 const setSettings = vi.mocked(api.setSettings);
@@ -66,9 +75,9 @@ beforeEach(async () => {
 	settings.clearState();
 	identity.mockResolvedValue(anIdentity());
 	settingsCall.mockResolvedValue({
-		signCommits: false,
+		checkForUpdates: true,
 		confirmHistoryRewrite: true,
-		showGitCommands: false
+		showGitCommands: false, pruneOnFetch: false
 	});
 	licenses.mockResolvedValue(LIST);
 	about.mockResolvedValue({ version: '0.1.0', commit: 'abc1234', license: 'GPL-3.0-or-later' });
@@ -145,14 +154,15 @@ describe('IdentitySection', () => {
 });
 
 describe('BehaviourSection', () => {
-	it('says which item will make each toggle take effect', async () => {
+	it('says a toggle is not honoured yet, without naming a work item', async () => {
 		// A switch that silently does nothing is worse than one that says it is
 		// waiting on something.
 		await settings.load();
 		const mounted = render(BehaviourSection, {});
 
 		expect(mounted.text()).toContain('Persisted, not yet honoured');
-		expect(mounted.text()).toContain('FEAT-015');
+		expect(mounted.text()).toContain('rewrites history');
+		expect(mounted.text()).not.toMatch(/FEAT-\d/);
 
 		mounted.destroy();
 	});
@@ -164,26 +174,30 @@ describe('BehaviourSection', () => {
 		click(mounted.all('button.chip')[0]);
 
 		expect(setSettings).toHaveBeenCalledWith({
-			signCommits: true,
-			confirmHistoryRewrite: true,
-			showGitCommands: false
+			checkForUpdates: true,
+			confirmHistoryRewrite: false,
+			showGitCommands: false,
+			pruneOnFetch: false
 		});
 		mounted.destroy();
 	});
 
 	it('shows the stored state of every toggle', async () => {
 		settingsCall.mockResolvedValue({
-			signCommits: true,
+			checkForUpdates: true,
 			confirmHistoryRewrite: false,
-			showGitCommands: true
+			showGitCommands: true,
+			pruneOnFetch: false
 		});
 		await settings.load();
 		const mounted = render(BehaviourSection, {});
 
+		// Three toggles: FEAT-018 added pruning and FEAT-019 took signing away,
+		// which is now `commit.gpgsign` under You rather than a preference here.
 		expect(mounted.all('button.chip').map((chip) => chip.textContent?.trim())).toEqual([
-			'on',
 			'off',
-			'on'
+			'on',
+			'off'
 		]);
 		mounted.destroy();
 	});
@@ -256,25 +270,81 @@ describe('AppearanceSection', () => {
 });
 
 describe('AccountsSection', () => {
-	it('says no account is connected and which item connects one', () => {
+	it('says no account is connected, and offers the two fields that connect one', () => {
 		const mounted = render(AccountsSection, {});
 
 		expect(mounted.text()).toContain('No account is connected');
-		expect(mounted.text()).toContain('FEAT-017');
+		expect(mounted.get('#account-host')).toBeTruthy();
+		expect(mounted.get('#account-token')).toBeTruthy();
+		expect(mounted.text()).not.toMatch(/FEAT-\d/);
+
+		mounted.destroy();
+	});
+
+	it('never puts the token in a field anyone can read', () => {
+		// Shoulder-reading, and a screenshot in a bug report. It is also never
+		// read back out of the keychain into this screen at all.
+		const mounted = render(AccountsSection, {});
+
+		expect(mounted.get('#account-token').getAttribute('type')).toBe('password');
+		expect(mounted.get('#account-token').getAttribute('autocomplete')).toBe('off');
+
+		mounted.destroy();
+	});
+
+	it('will not connect with an empty token or an empty host', () => {
+		const mounted = render(AccountsSection, {});
+		const connect = mounted
+			.all('button')
+			.find((button) => button.textContent?.includes('Connect'));
+
+		// The host is prefilled and the token is not, so the button starts dead
+		// rather than sending an empty secret to a host.
+		expect((connect as HTMLButtonElement).disabled).toBe(true);
+
+		mounted.destroy();
+	});
+
+	it('lists a connected account by host and login, and offers to disconnect it', async () => {
+		forgeAccounts.mockResolvedValueOnce([
+			{ kind: 'gitHub' as const, host: 'github.com', user: 'ada' }
+		]);
+		await settings.load();
+		const mounted = render(AccountsSection, {});
+
+		expect(mounted.text()).toContain('ada');
+		expect(mounted.text()).toContain('github.com');
+		expect(mounted.text()).toContain('Connected.');
+		expect(
+			mounted.all('button').some((button) => button.textContent?.includes('Disconnect'))
+		).toBe(true);
+
+		mounted.destroy();
+	});
+
+	it('says what leaves the machine, rather than that nothing does', () => {
+		// The promise narrowed when FEAT-017 landed. A sentence that stayed
+		// absolute would be a sentence that had become false.
+		const mounted = render(AccountsSection, {});
+		const text = mounted.text();
+
+		expect(text).toContain('uploads none of them');
+		expect(text).toContain('keychain');
+		expect(text).toMatch(/never approves, merges or comments/);
 
 		mounted.destroy();
 	});
 });
 
-describe('AdvancedSection', () => {
+describe('LicenseSection', () => {
 	it('keeps everything the About footer carried', async () => {
 		// The GPL-3 obligations predate this screen and must not regress while
 		// it is rebuilt.
 		await settings.load();
-		const mounted = render(AdvancedSection, {});
+		const mounted = render(LicenseSection, {});
 		const text = mounted.text();
 
-		expect(text).toContain('GitLumiere v0.1.0');
+		expect(text).toContain('Spagitty v0.1.0');
 		expect(text).toContain('abc1234');
 		expect(text).toContain('GPL-3.0-or-later');
 		expect(text).toContain('Software Freedom Conservancy');
@@ -284,7 +354,7 @@ describe('AdvancedSection', () => {
 
 	it('lists both trees and names a package that declares nothing', async () => {
 		await settings.load();
-		const mounted = render(AdvancedSection, {});
+		const mounted = render(LicenseSection, {});
 		const text = mounted.text();
 
 		expect(text).toContain('gix');
@@ -296,7 +366,7 @@ describe('AdvancedSection', () => {
 
 	it('filters both lists by package or license', async () => {
 		await settings.load();
-		const mounted = render(AdvancedSection, {});
+		const mounted = render(LicenseSection, {});
 
 		type(mounted.get('input'), 'gix');
 
@@ -316,7 +386,7 @@ describe('AdvancedSection', () => {
 			npm: []
 		});
 		await settings.load();
-		const mounted = render(AdvancedSection, {});
+		const mounted = render(LicenseSection, {});
 
 		expect(mounted.text()).toContain('did not generate a dependency license list');
 		expect(mounted.text()).toContain('cargo metadata failed');
@@ -328,10 +398,104 @@ describe('AdvancedSection', () => {
 	it('still shows the version and the commit when the list is missing', async () => {
 		licenses.mockResolvedValue({ generated: false, notes: [], rust: [], npm: [] });
 		await settings.load();
-		const mounted = render(AdvancedSection, {});
+		const mounted = render(LicenseSection, {});
 
 		expect(mounted.text()).toContain('abc1234');
 		expect(mounted.text()).toContain('GPL-3.0-or-later');
+
+		mounted.destroy();
+	});
+});
+
+describe('UpdateSection', () => {
+	const checkUpdate = vi.mocked(api.checkUpdate);
+
+	// The store is module state and outlives a test, so what the last check
+	// found would otherwise still be on screen for the next one.
+	beforeEach(() => settings.clearState());
+
+	it('says nothing has been checked before anything has', () => {
+		const mounted = render(UpdateSection, {});
+
+		expect(mounted.text()).toContain('Not checked yet');
+		mounted.destroy();
+	});
+
+	it('says what leaves the machine, beside the switch that stops it', () => {
+		// The one preference in the application that causes a network request,
+		// so the sentence explaining it belongs where the decision is made.
+		const mounted = render(UpdateSection, {});
+		const text = mounted.text();
+
+		expect(text).toContain('No account, no identifier');
+		expect(text).toContain('Turning it off stops every request');
+
+		mounted.destroy();
+	});
+
+	it('reports a newer release with a link that can be copied', async () => {
+		checkUpdate.mockResolvedValueOnce({
+			channel: 'released',
+			current: 'v0.1.0-preview.1',
+			latest: 'v0.1.0-preview.4',
+			newer: true,
+			url: 'https://github.com/Spa-git-ty/spagitty/releases/tag/v0.1.0-preview.4'
+		});
+		await settings.checkForUpdate();
+		const mounted = render(UpdateSection, {});
+
+		expect(mounted.text()).toContain('v0.1.0-preview.4');
+		expect(mounted.text()).toContain('has been released');
+		expect(mounted.text()).toContain('https://github.com/Spa-git-ty/spagitty/releases/tag/');
+
+		mounted.destroy();
+	});
+
+	it('says a build compiled here is not out of date', async () => {
+		// It has no tag to be behind, and it is usually ahead of every release.
+		checkUpdate.mockResolvedValueOnce({
+			channel: 'development',
+			current: null,
+			latest: 'v0.1.0-preview.9',
+			newer: false,
+			url: 'https://github.com/Spa-git-ty/spagitty/releases'
+		});
+		await settings.checkForUpdate();
+		const mounted = render(UpdateSection, {});
+
+		expect(mounted.text()).toContain('development build');
+		expect(mounted.text()).toContain('v0.1.0-preview.9');
+		// No download offered: the only thing that appears for a newer release
+		// is the link and its copy button, and this is not one.
+		expect(
+			mounted.all('button').some((button) => button.textContent?.includes('Copy link'))
+		).toBe(false);
+
+		mounted.destroy();
+	});
+
+	it('says so when there is nothing newer', async () => {
+		checkUpdate.mockResolvedValueOnce({
+			channel: 'released',
+			current: 'v0.1.0-preview.4',
+			latest: 'v0.1.0-preview.4',
+			newer: false,
+			url: 'https://github.com/Spa-git-ty/spagitty/releases/tag/v0.1.0-preview.4'
+		});
+		await settings.checkForUpdate();
+		const mounted = render(UpdateSection, {});
+
+		expect(mounted.text()).toContain('Up to date');
+
+		mounted.destroy();
+	});
+
+	it('shows the failure rather than a stale answer', async () => {
+		checkUpdate.mockRejectedValueOnce('could not reach api.github.com');
+		await settings.checkForUpdate();
+		const mounted = render(UpdateSection, {});
+
+		expect(mounted.text()).toContain('could not reach');
 
 		mounted.destroy();
 	});

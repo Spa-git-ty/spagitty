@@ -2,7 +2,7 @@
 
 # FEAT-019 — Commit signing
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done. Plan: [`agile/plans/FEAT-019-plan.md`](../plans/FEAT-019-plan.md).
 **Screen:** Working copy (1C), Settings (1K).
 
 ## Problem
@@ -15,7 +15,7 @@ unsigned commits and no indication that the switch did nothing.
 
 Signing is not a flag, it is a dependency on a program the user configured —
 GPG or an ssh signer — that can prompt for a passphrase, fail with an unhelpful
-message, or not be configured at all. GitLumiere commits through the `git` binary
+message, or not be configured at all. Spagitty commits through the `git` binary
 precisely so the configured signer runs, but a signing failure has to be
 reported as a signing failure rather than as "commit failed", and that is the
 work.
@@ -35,7 +35,7 @@ work.
 
 ## Non-scope
 
-- Key management. GitLumiere does not create, import or store signing keys, and
+- Key management. Spagitty does not create, import or store signing keys, and
   does not write to the OS keychain — that boundary is FEAT-017's.
 
 ## Notes for whoever picks this up
@@ -51,3 +51,44 @@ work.
 ## Dependencies
 
 FEAT-003 (the commit path), FEAT-011 (the toggle).
+
+## What is built, and what is not
+
+The open question above was answered: **`commit.gpgsign` is the authority**, and
+the "Sign my commits" toggle left Spagitty's preferences file rather than being
+wired up. Two switches for one behaviour disagree the moment one of them is
+changed outside this application, and setting `commit.gpgsign` in a terminal is
+how the preference is set on every machine that already signs. Settings gained a
+**Signing** section under **You**, beside the identity and sharing its scope.
+
+Built:
+
+- `spagitty_core::signing` — `commit.gpgsign`, `gpg.format`, `user.signingkey`
+  and the resolved program, read from the same cascade the identity is read
+  from, and written with `git config`.
+- `--gpg-sign` on the commit, when it is on and only then.
+- `Error::Signing`, told apart from an ordinary commit failure by reading git's
+  own stderr, so a hook refusing a commit is not relabelled.
+- The two conditions that can be known in advance — no signing program, and ssh
+  format with no key.
+- `signed` on `GraphRow` and `CommitDetail`: the `gpgsig` header, read as the
+  walk passes it. Presence, never verification.
+
+Built in a second commit, which is why this item was `Partial` for one:
+
+- The notice on the Working copy screen. The message box says the commit will be
+  signed and names the program, or warns — before the button — when signing is
+  on and cannot work. Silent when signing is off, which is the ordinary case.
+- The signed marking. `S` on the graph row, with a tooltip that says it is not
+  verified, and the full sentence in the commit detail panel where there is room
+  for the caveat and for `git verify-commit`.
+
+Nothing here says *verified*, and there is a test asserting the word never
+appears.
+
+## Not in scope, and still not
+
+Key management, and verification. Spagitty does not create, import or store
+signing keys — that boundary is FEAT-017's — and it reads the signature header
+rather than checking the signature, which would mean a subprocess and a keyring
+per row.

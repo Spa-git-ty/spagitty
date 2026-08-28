@@ -10,8 +10,11 @@ vi.mock('$lib/api', () => ({
 	unstage: vi.fn(),
 	stageHunk: vi.fn(),
 	unstageHunk: vi.fn(),
+	discard: vi.fn(),
+	discardHunk: vi.fn(),
 	commit: vi.fn(),
-	headMessage: vi.fn()
+	headMessage: vi.fn(),
+	signing: vi.fn()
 }));
 
 vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
@@ -21,11 +24,14 @@ import { calls as repoCalls, control as repoControl } from '../../testing/repo-s
 import { changes } from './store.svelte';
 
 const workingCopy = vi.mocked(api.workingCopy);
+const signing = vi.mocked(api.signing);
 const workingDiff = vi.mocked(api.workingDiff);
 const stage = vi.mocked(api.stage);
 const unstage = vi.mocked(api.unstage);
 const stageHunk = vi.mocked(api.stageHunk);
 const unstageHunk = vi.mocked(api.unstageHunk);
+const discard = vi.mocked(api.discard);
+const discardHunk = vi.mocked(api.discardHunk);
 const commit = vi.mocked(api.commit);
 const headMessage = vi.mocked(api.headMessage);
 
@@ -76,6 +82,8 @@ beforeEach(() => {
 	unstage.mockResolvedValue(undefined);
 	stageHunk.mockResolvedValue(undefined);
 	unstageHunk.mockResolvedValue(undefined);
+	discard.mockResolvedValue(undefined);
+	discardHunk.mockResolvedValue(undefined);
 	commit.mockResolvedValue('a'.repeat(40));
 	headMessage.mockResolvedValue('');
 });
@@ -479,5 +487,59 @@ describe('the side a file is opened on', () => {
 
 			expect(changes.selection?.side).toBe(side);
 		}
+	});
+});
+
+describe('discard', () => {
+	it('throws away the paths it is given and re-reads afterwards', async () => {
+		await changes.load();
+		await settle();
+		workingCopy.mockClear();
+
+		expect(await changes.discard(['b.txt', 'c.txt'])).toBe(true);
+
+		expect(discard).toHaveBeenCalledWith(['b.txt', 'c.txt']);
+		// Discarding changes what every other row means, the same as staging.
+		expect(workingCopy).toHaveBeenCalled();
+		expect(repoCalls.refreshed).toBeGreaterThan(0);
+	});
+
+	it('asks nothing itself — the confirmation is the caller’s', async () => {
+		// The store is the layer the tests can drive without a dialog on
+		// screen; `discard.ts` is where the question lives.
+		expect(await changes.discard(['b.txt'])).toBe(true);
+		expect(discard).toHaveBeenCalledTimes(1);
+	});
+
+	it('surfaces a refusal rather than pretending it worked', async () => {
+		discard.mockRejectedValueOnce(new Error('permission denied'));
+
+		expect(await changes.discard(['b.txt'])).toBe(false);
+		expect(changes.writeError).toContain('permission denied');
+	});
+
+	it('discards a hunk of the open unstaged file', async () => {
+		await changes.load();
+		await settle();
+
+		expect(await changes.discardHunk(1, '@@ -11 +11 @@')).toBe(true);
+		expect(discardHunk).toHaveBeenCalledWith('b.txt', 1, '@@ -11 +11 @@');
+	});
+
+	it('refuses to discard a hunk from the staged side', async () => {
+		// There is nothing to throw away there: the change has been kept once
+		// already, and unstaging is what brings it back within reach.
+		await changes.load();
+		await settle();
+		changes.open({ path: 'a.txt', side: 'staged' });
+		await settle();
+
+		expect(await changes.discardHunk(0, '@@ -1 +1 @@')).toBe(false);
+		expect(discardHunk).not.toHaveBeenCalled();
+	});
+
+	it('does nothing with no file open', async () => {
+		expect(await changes.discardHunk(0, '@@ -1 +1 @@')).toBe(false);
+		expect(discardHunk).not.toHaveBeenCalled();
 	});
 });

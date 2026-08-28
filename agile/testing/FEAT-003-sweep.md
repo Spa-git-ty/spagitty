@@ -9,7 +9,7 @@ for the last tickets. **Use a fixture, never your own work**: this screen
 writes to the index and creates commits.
 
 Keep a terminal open in the same repository. Almost every ticket below is
-"does GitLumiere agree with `git status`".
+"does Spagitty agree with `git status`".
 
 | Field | Meaning |
 | --- | --- |
@@ -102,7 +102,7 @@ Keep a terminal open in the same repository. Almost every ticket below is
 - **Preconditions:** A file with hunks, open on the Unstaged side.
 - **Steps:**
   1. In the terminal, replace the file's contents entirely.
-  2. Without pressing Refresh, press **stage hunk** in GitLumiere.
+  2. Without pressing Refresh, press **stage hunk** in Spagitty.
 - **Expected:** A message saying the file changed and to reload — not a partial
   stage, and not a silent success. Pressing **Refresh** afterwards shows the new
   state.

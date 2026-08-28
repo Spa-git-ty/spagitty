@@ -6,7 +6,7 @@
 	import type { ExecutedCommand } from '$lib/types';
 
 	/**
-	 * What GitLumiere ran, as a drawer along the bottom of the shell.
+	 * What Spagitty ran, as a drawer along the bottom of the shell.
 	 *
 	 * A drawer rather than a toast: a command worth showing is a command worth
 	 * reading twice, and `Notice` deliberately holds one message at a time.
@@ -82,14 +82,14 @@
 				</li>
 			{:else}
 				<li class="empty note">
-					Nothing has been run yet. This fills as GitLumiere executes commands.
+					Nothing has been run yet. This fills as Spagitty executes commands.
 				</li>
 			{/each}
 		</ol>
 
 		<!--
 			Said plainly rather than left to be inferred: an empty-looking log
-			next to a screen full of history would otherwise read as GitLumiere
+			next to a screen full of history would otherwise read as Spagitty
 			hiding what it did, when in fact reading history never runs `git` at
 			all.
 		-->
@@ -110,9 +110,17 @@
 		display: flex;
 		flex-direction: column;
 		max-height: min(46vh, 420px);
-		background: var(--panel);
-		border-top: 1.5px solid var(--line);
-		box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.24);
+		background-color: var(--glass-thick);
+		backdrop-filter: var(--blur-thick);
+		-webkit-backdrop-filter: var(--blur-thick);
+		border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+		border-radius: var(--r-panel) var(--r-panel) 0 0;
+		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
+		/* It slides up over whatever screen is open, so it takes the floating
+		   shadow — cast upward, which is the direction it came from. */
+		box-shadow:
+			0 -2px 6px color-mix(in srgb, var(--umbra) 14%, transparent),
+			0 -14px 32px color-mix(in srgb, var(--umbra) 22%, transparent);
 	}
 
 	.bar {
@@ -120,7 +128,8 @@
 		align-items: center;
 		gap: 8px;
 		padding: 6px 10px;
-		border-bottom: 1px solid var(--line);
+		background: color-mix(in srgb, var(--panel) 40%, transparent);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 	}
 
 	.title {
@@ -139,6 +148,8 @@
 
 	.close:hover {
 		color: var(--ink);
+		background: var(--hover);
+		border-radius: var(--r-field);
 	}
 
 	.list {
@@ -158,7 +169,7 @@
 	}
 
 	.row:hover {
-		background: var(--selection);
+		background: var(--hover);
 	}
 
 	/* The command itself is the thing to select and paste, so it never wraps
@@ -172,7 +183,7 @@
 	}
 
 	.row.failed .line {
-		color: var(--lane-3);
+		color: var(--danger);
 	}
 
 	.stderr {

@@ -7,12 +7,29 @@
  * looks like" — the preview is recomputed from the plan after every change, so
  * the two cannot disagree about what would happen.
  *
- * Nothing here executes anything. There is no command that could: `Apply` is
- * FEAT-015, and it renders disabled with that written on it.
+ * Since FEAT-015 it also runs the plan. Execution is kept at arm's length from
+ * planning even so: `run` starts a worker and returns, and everything after
+ * that arrives as an event. Three states matter and they are not the same —
+ * running, stopped part-way waiting for a person, and finished — and a store
+ * that collapsed the middle one into "failed" would send people looking for a
+ * problem instead of to the Conflicts screen.
  */
 
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import * as api from '../api';
-import type { RebaseAction, RebaseEdit, RebasePreview, RebaseTodo, TodoRow } from '../types';
+import { repo } from '../repo.svelte';
+import {
+	REBASE_DONE_EVENT,
+	REBASE_PROGRESS_EVENT,
+	type RebaseAction,
+	type RebaseDoneEvent,
+	type RebaseEdit,
+	type RebasePreview,
+	type RebaseProgress,
+	type RebaseProgressEvent,
+	type RebaseTodo,
+	type TodoRow
+} from '../types';
 
 let todo = $state<RebaseTodo | null>(null);
 let plan = $state<RebaseEdit[]>([]);
@@ -27,6 +44,22 @@ let focused = $state<string | null>(null);
 
 /** Guards against a slow preview landing after a newer edit. */
 let previewSeq = 0;
+
+/** The rebase running right now, by token. Null when none is. */
+let token = $state<number | null>(null);
+/** Where git has got to, from its own state directory. */
+let progress = $state<RebaseProgress | null>(null);
+/**
+ * What the last run ended as.
+ *
+ * `stopped` is not a failure: git got part-way and is waiting for a conflict to
+ * be resolved or an `edit` to be finished. It is the one outcome that sends the
+ * user somewhere else rather than telling them something went wrong.
+ */
+let outcome = $state<'ran' | 'stopped' | 'failed' | null>(null);
+let runError = $state<string | null>(null);
+/** Set while continue, skip or abort is in flight. */
+let busy = $state(false);
 
 /** The todo rows by id, so a plan entry can find what it is about. */
 function rowFor(id: string): TodoRow | null {
@@ -140,6 +173,156 @@ export const rebase = {
 		await this.recompute();
 	},
 
+	/** The token of the rebase running right now, or null. */
+	get token(): number | null {
+		return token;
+	},
+	get running(): boolean {
+		return token !== null;
+	},
+	get progress(): RebaseProgress | null {
+		return progress;
+	},
+	get outcome(): 'ran' | 'stopped' | 'failed' | null {
+		return outcome;
+	},
+	get runError(): string | null {
+		return runError;
+	},
+	get busy(): boolean {
+		return busy;
+	},
+	/**
+	 * True when git is part-way through and waiting for a person.
+	 *
+	 * Read from `progress` rather than from `outcome`, so that a rebase left
+	 * unfinished by a previous session — or started from the command line — is
+	 * recognised on arrival rather than only after this screen ran one.
+	 */
+	get stopped(): boolean {
+		return token === null && progress !== null;
+	},
+
+	/**
+	 * Start the plan. Resolves when it has *started*, not when it has finished.
+	 *
+	 * The confirmation belongs to the screen, not here: what has to be said
+	 * depends on the branch and the count, and a store that asked as well would
+	 * ask twice.
+	 */
+	async run(): Promise<boolean> {
+		if (token !== null || plan.length === 0) return false;
+
+		outcome = null;
+		runError = null;
+		progress = null;
+
+		try {
+			token = await api.rebaseRun(plan);
+			return true;
+		} catch (e) {
+			token = null;
+			outcome = 'failed';
+			runError = String(e);
+			return false;
+		}
+	},
+
+	/**
+	 * Listen for the rebase's progress.
+	 *
+	 * Attached by the layout before anything can emit, the same as the clone's,
+	 * so the first step of a fast rebase is never missed.
+	 */
+	async attach(): Promise<() => void> {
+		const offProgress: UnlistenFn = await listen<RebaseProgressEvent>(
+			REBASE_PROGRESS_EVENT,
+			(event) => {
+				// A step from a rebase that is no longer the one running belongs
+				// to a rebase that has already been reported.
+				if (event.payload.token !== token) return;
+				progress = {
+					step: event.payload.step,
+					total: event.payload.total,
+					branch: event.payload.branch,
+					original: event.payload.original
+				};
+			}
+		);
+
+		const offDone: UnlistenFn = await listen<RebaseDoneEvent>(REBASE_DONE_EVENT, (event) => {
+			if (event.payload.token !== token) return;
+			token = null;
+
+			outcome = event.payload.ok ? 'ran' : event.payload.stopped ? 'stopped' : 'failed';
+			runError = event.payload.error;
+
+			// A rebase that finished has no state left to read, and one that
+			// stopped has the position it stopped at. Asked either way, because
+			// the last progress event is a moment old and this is what the
+			// hand-off to Conflicts is decided on.
+			void this.refreshProgress();
+			void repo.refresh();
+		});
+
+		return () => {
+			offProgress();
+			offDone();
+		};
+	},
+
+	/** Ask the repository where a rebase stands, if one is standing anywhere. */
+	async refreshProgress(): Promise<void> {
+		try {
+			progress = await api.rebaseProgress();
+		} catch {
+			// No repository open, or one that cannot be read. Neither is worth
+			// putting an error on a screen about a rebase nobody started.
+			progress = null;
+		}
+	},
+
+	/** Carry on with a rebase that stopped, once its conflicts are resolved. */
+	continue(): Promise<boolean> {
+		return this.control(() => api.rebaseContinue());
+	},
+
+	/** Drop the commit it stopped on and carry on with the rest. */
+	skip(): Promise<boolean> {
+		return this.control(() => api.rebaseSkip());
+	},
+
+	/** Unwind the rebase and put the branch back where it started. */
+	abort(): Promise<boolean> {
+		return this.control(() => api.rebaseAbort());
+	},
+
+	/**
+	 * Run one of the three controls, then re-read where that left things.
+	 *
+	 * They share a shape because they share a hazard: each one either finishes
+	 * the rebase or leaves it stopped somewhere else, and the screen cannot tell
+	 * which from the call's own result.
+	 */
+	async control(operation: () => Promise<void>): Promise<boolean> {
+		if (busy || token !== null) return false;
+		busy = true;
+		runError = null;
+
+		try {
+			await operation();
+			return true;
+		} catch (e) {
+			runError = String(e);
+			return false;
+		} finally {
+			busy = false;
+			await this.refreshProgress();
+			outcome = progress === null ? 'ran' : 'stopped';
+			await repo.refresh();
+		}
+	},
+
 	focus(id: string | null): void {
 		focused = id;
 	},
@@ -175,6 +358,12 @@ export const rebase = {
 		loading = false;
 		error = null;
 		focused = null;
+		// Not `token`: a rebase that is running belongs to the repository, not
+		// to this screen's plan, and forgetting it here would orphan its events.
+		progress = null;
+		outcome = null;
+		runError = null;
+		busy = false;
 	}
 };
 

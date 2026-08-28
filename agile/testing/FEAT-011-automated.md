@@ -20,7 +20,7 @@ Up from 236 Rust and 592 frontend at FEAT-010: 28 Rust tests (13 identity,
 | Tree | Regions / Statements | Branches | Functions | Lines |
 | --- | --- | --- | --- | --- |
 | Rust workspace | 87.33% | — | 76.32% | 86.30% |
-| `crates/gitlumiere-core/src/identity.rs` | 97.31% | — | 92.00% | 96.89% |
+| `crates/spagitty-core/src/identity.rs` | 97.31% | — | 92.00% | 96.89% |
 | `src-tauri/src/about.rs` | 100.00% | — | 100.00% | 100.00% |
 | `src-tauri/src/settings.rs` | 59.84% | — | 66.20% | 66.20% |
 | Frontend (`src/lib/**`) | 96.15% | 82.57% | 93.83% | 96.98% |
@@ -34,7 +34,7 @@ that can be wrong — the parse, the defaults and the stored key names — and t
 is fully covered. The floor is measured across the workspace, which is at
 86.30%.
 
-## Rust — `crates/gitlumiere-core/src/identity.rs`, 13 tests
+## Rust — `crates/spagitty-core/src/identity.rs`, 13 tests
 
 ### Reading, per source
 

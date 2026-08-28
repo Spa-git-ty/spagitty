@@ -110,7 +110,7 @@ that is a P1 failure regardless of what else the ticket says.
 - **Steps:**
   1. Note `git rev-parse HEAD`, `git rev-parse ORIG_HEAD` (if it exists), and
      `git status --porcelain`.
-  2. In GitLumiere: reorder rows, squash, reword, drop, drop everything, reset,
+  2. In Spagitty: reorder rows, squash, reword, drop, drop everything, reset,
      re-plan onto a different upstream — as much editing as you can stand.
   3. Check all three again, plus `ls .git/rebase-merge .git/rebase-apply`.
 - **Expected:** HEAD unchanged, `ORIG_HEAD` unchanged, status identical, and

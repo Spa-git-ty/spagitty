@@ -238,7 +238,7 @@ describe('TodoList', () => {
 		const view = render(TodoList, {});
 
 		expect(view.get('.handle').title).toContain('Drag');
-		expect(view.get('.handle').title).toContain('⌥');
+		expect(view.get('.handle').title).toContain('Alt+');
 		view.destroy();
 	});
 });

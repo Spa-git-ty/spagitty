@@ -2,7 +2,12 @@
 
 # FEAT-018 — Fetch and push
 
-**Status:** Backlog. No plan yet; one is written when the work starts.
+**Status:** Done on `feature/FEAT-018-finish-fetch-push`. The five things
+listed under **What actually shipped** as still owed are built: pruning is a
+choice rather than something that always happened, progress streams from a
+worker, fetch can name a remote, the Branches screen says how stale its counts
+are, and the upstream on first push was fixed in FEAT-049. The problem
+statement below describes the tree as it was before any of it existed.
 **Surface:** the toolbar's Fetch and Push buttons, and the Branches screen's
 ahead/behind counts.
 
@@ -10,14 +15,47 @@ ahead/behind counts.
 
 The toolbar's Fetch and Push buttons carry a "Not built yet" tooltip.
 `shell::fetch` and `shell::push` are `unimplemented!()` stubs. Every ahead and
-behind count in GitLumiere is therefore as old as the last fetch someone ran from a
+behind count in Spagitty is therefore as old as the last fetch someone ran from a
 terminal.
 
 ## Why it was deferred
 
 Both are network operations needing credential helpers, and push is the first
-thing GitLumiere would do that other people can see. Neither belongs inside another
+thing Spagitty would do that other people can see. Neither belongs inside another
 screen's item.
+
+## What actually shipped
+
+Recorded by TASK-013, from the code rather than from the record.
+
+**Built**, across `994dbe9` (the plumbing) and `b71f8aa` (the live buttons):
+
+- `shell::fetch` and `shell::push` are real, not `unimplemented!()`, and go
+  through `shell.rs` for the reason its header gives.
+- The `fetch` and `push` commands, `api.fetch(remote)`, `api.push(remote,
+  refspec, force)`, and `actions.fetchAll` / `actions.pushCurrent` behind the
+  toolbar's two buttons.
+- Failures arrive as sentences: `perform` reports git's own message and does not
+  re-read on failure.
+- `push --force-with-lease`, never a plain force — the parameter exists in every
+  layer and no interface offers it, which is deliberate.
+
+**Not built at the time TASK-013 read the code**, and closed by this item's own
+branch unless another is named:
+
+- **Per-remote fetch.** Every layer takes a remote; the button always sends the
+  empty string, which means all remotes.
+- **Pruning as an explicit choice.** `shell::fetch` always passes `--prune`. The
+  item's own notes say pruning deletes remote-tracking refs and is destructive in
+  the sense Amendment 6 means — so it currently happens silently, which is the
+  opposite of what was asked for. This is the gap worth closing first.
+- **Setting an upstream on first push.** A branch with no upstream fails with
+  git's message rather than being offered `--set-upstream`. *Closed by
+  FEAT-049*, which needed it for the divergence bar to have anything to read.
+- **Progress.** Output arrives when the process ends; `--progress` is passed but
+  nothing streams it.
+- **The Branches screen saying how stale its counts are.** It refreshes after a
+  fetch, because everything re-reads, but it never says how old the numbers are.
 
 ## Scope when started
 

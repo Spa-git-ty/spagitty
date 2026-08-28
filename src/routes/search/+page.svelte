@@ -18,7 +18,7 @@
 	 * before the walk reaches the end of history.
 	 */
 
-	/** `⌘F` lands here with `?focus=1`, which is what focuses the first field. */
+	/** `Ctrl+F` lands here with `?focus=1`, which is what focuses the first field. */
 	const focused = $derived(page.url.searchParams.get('focus') === '1');
 
 	onMount(() => {
@@ -41,7 +41,7 @@
 		search.select(id);
 	}
 
-	/** `⌥↵` — its hunks, which are a different question and a different screen. */
+	/** `Alt+Enter` — its hunks, which are a different question and a different screen. */
 	function openDiff(id: string) {
 		search.select(id);
 		goto(`/diff?commit=${id}`);
@@ -94,13 +94,6 @@
 		</div>
 	</div>
 
-	<footer class="foot">
-		<span class="note">
-			<span class="mono">↵</span> opens the commit ·
-			<span class="mono">⌥↵</span> opens its diff. Text filters are plain substrings, matched
-			without regard to case; regular expressions are not built yet.
-		</span>
-	</footer>
 </div>
 
 <style>
@@ -118,7 +111,13 @@
 		justify-content: space-between;
 		gap: 10px;
 		padding: 10px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 		flex: none;
 	}
 
@@ -136,7 +135,13 @@
 	.bar {
 		flex: none;
 		padding: 8px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	.body {
@@ -160,16 +165,10 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
-		border-left: 1.5px solid var(--soft);
+		border-left: 1px solid var(--soft);
 	}
 
 	.working {
 		padding: 6px 8px;
-	}
-
-	.foot {
-		flex: none;
-		padding: 8px 12px;
-		border-top: 1.5px solid var(--soft);
 	}
 </style>

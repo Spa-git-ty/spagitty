@@ -7,6 +7,7 @@
 	import MessageBox from '$lib/changes/MessageBox.svelte';
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
+	import Splitter from '$lib/ui/Splitter.svelte';
 
 	/**
 	 * Stage what you mean to commit, write the message, commit.
@@ -82,6 +83,7 @@
 	{:else}
 		<div class="body">
 			<FileColumn />
+			<Splitter panel="changesFiles" label="Resize the file list" />
 			<div class="right-pane">
 				<MessageBox />
 				<HunkPane />
@@ -95,8 +97,6 @@
 				<span class="note error">{changes.writeError}</span>
 			{:else if work.conflicted.length > 0}
 				<span class="note">Resolve the conflicts before committing.</span>
-			{:else}
-				<span class="note">Nothing is committed until you press the button.</span>
 			{/if}
 		</div>
 		<Btn primary disabled={!changes.canCommit} onclick={() => changes.commit()}>
@@ -125,12 +125,22 @@
 
 	.head {
 		padding: 10px 12px;
-		border-bottom: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow:
+			var(--glass-rim),
+			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	.foot {
 		padding: 8px 12px;
-		border-top: 1.5px solid var(--soft);
+		background-color: var(--chrome-veil);
+		border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		box-shadow: 0 -1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		position: relative;
+		z-index: 1;
 	}
 
 	.left,
@@ -173,6 +183,6 @@
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 </style>

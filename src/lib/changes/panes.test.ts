@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { click, flushSync, render } from '../../testing/mount';
-import type { FileDiff, StatusEntry, WorkingCopy } from '$lib/types';
+import type { FileDiff, Signing, StatusEntry, WorkingCopy } from '$lib/types';
 
 import { vi } from 'vitest';
 vi.mock('$lib/changes/store.svelte', async () => await import('../../testing/changes-store.svelte'));
@@ -81,6 +81,56 @@ describe('FileColumn', () => {
 
 		expect(view.all('.row').filter((r) => r.textContent?.includes('a.txt'))).toHaveLength(2);
 		view.destroy();
+	});
+
+	/**
+	 * FEAT-048. The controls that throw work away are asserted for where they
+	 * are as much as for what they do: a discard button in the staged section
+	 * would sit next to `−` and mean something very different.
+	 */
+	it('offers discard on unstaged rows and on no staged row', () => {
+		control.setWork(work({ staged: [entry('a.txt')], unstaged: [entry('b.txt')] }));
+		const view = render(FileColumn, {});
+
+		const rows = view.all('.row');
+		expect(rows[0].querySelector('.act.discard')).toBeNull();
+		expect(rows[1].querySelector('.act.discard')).not.toBeNull();
+
+		view.destroy();
+	});
+
+	it('says an untracked row will be deleted rather than reverted', () => {
+		control.setWork(work({ unstaged: [entry('new.txt', 'untracked')] }));
+		const view = render(FileColumn, {});
+
+		expect(view.get('.act.discard').getAttribute('title')).toBe(
+			'Delete new.txt — this cannot be undone'
+		);
+
+		view.destroy();
+	});
+
+	it('warns on a tracked row that the change cannot come back', () => {
+		control.setWork(work({ unstaged: [entry('b.txt')] }));
+		const view = render(FileColumn, {});
+
+		expect(view.get('.act.discard').getAttribute('title')).toBe(
+			'Discard changes to b.txt — this cannot be undone'
+		);
+
+		view.destroy();
+	});
+
+	it('offers Discard all beside Stage all, and neither with nothing unstaged', () => {
+		control.setWork(work({ unstaged: [entry('b.txt')] }));
+		const view = render(FileColumn, {});
+		expect(view.text()).toContain('Discard all');
+		view.destroy();
+
+		control.setWork(work({ staged: [entry('a.txt')] }));
+		const empty = render(FileColumn, {});
+		expect(empty.text()).not.toContain('Discard all');
+		empty.destroy();
 	});
 
 	it('marks untracked files with the untracked glyph', () => {
@@ -224,6 +274,35 @@ describe('HunkPane', () => {
 		view.destroy();
 	});
 
+	it('offers to discard a hunk on the unstaged side only', () => {
+		// FEAT-048. On the staged side the change has been kept once already
+		// and unstaging is the reversible way back to it, so a destructive
+		// button there would sit next to a safe one reading almost the same.
+		control.setSelection({ path: 'core.txt', side: 'unstaged' });
+		control.setFile(diff());
+		const unstaged = render(HunkPane, {});
+		expect(unstaged.text()).toContain('discard hunk');
+		unstaged.destroy();
+
+		control.setSelection({ path: 'core.txt', side: 'staged' });
+		control.setFile(diff());
+		const staged = render(HunkPane, {});
+		expect(staged.text()).not.toContain('discard hunk');
+		staged.destroy();
+	});
+
+	it('paints the discard chip as the destructive one', () => {
+		control.setSelection({ path: 'core.txt', side: 'unstaged' });
+		control.setFile(diff());
+		const view = render(HunkPane, {});
+
+		const chips = view.all('.chip');
+		expect(chips[0].classList.contains('danger')).toBe(false);
+		expect(chips[1].classList.contains('danger')).toBe(true);
+
+		view.destroy();
+	});
+
 	it('asks for a file when none is open', () => {
 		const view = render(HunkPane, {});
 		expect(view.text()).toContain('Select a file');
@@ -290,6 +369,80 @@ describe('MessageBox', () => {
 		const long = render(MessageBox, {});
 		expect(long.get('.count').textContent?.trim()).toBe('60');
 		long.destroy();
+	});
+
+	/**
+	 * FEAT-019. The item asked that a repository which cannot sign be told so
+	 * *at* the point of commit rather than by a failure afterwards, and this is
+	 * where that promise is kept or broken.
+	 */
+	function signing(overrides: Partial<Signing> = {}): Signing {
+		return {
+			enabled: true,
+			origin: 'global',
+			format: 'openPgp',
+			key: null,
+			program: 'gpg',
+			problem: null,
+			repository: true,
+			global: true,
+			local: null,
+			...overrides
+		};
+	}
+
+	it('says nothing about signing when signing is off', () => {
+		// The ordinary case. A note on every commit in a repository that never
+		// signs is noise on every commit, and the absence already says it.
+		control.setSigning(signing({ enabled: false, problem: null }));
+		const view = render(MessageBox, {});
+
+		expect(view.find('.signing')).toBeNull();
+		view.destroy();
+	});
+
+	it('says nothing before signing has been read', () => {
+		const view = render(MessageBox, {});
+		expect(view.find('.signing')).toBeNull();
+		view.destroy();
+	});
+
+	it('says the commit will be signed, and names the program', () => {
+		control.setSigning(signing({ program: 'gpg2' }));
+		const view = render(MessageBox, {});
+
+		const note = view.get('.signing');
+		expect(note.textContent).toContain('will be signed');
+		expect(note.textContent).toContain('gpg2');
+		// A statement, not an alarm: signing being on is ordinary for anyone
+		// who signs.
+		expect(note.classList.contains('warn')).toBe(false);
+
+		view.destroy();
+	});
+
+	it('warns before the button when the signing program is not installed', () => {
+		control.setSigning(
+			signing({ problem: { kind: 'missingProgram', detail: 'spagitty-no-such-signer' } })
+		);
+		const view = render(MessageBox, {});
+
+		const note = view.get('.signing');
+		expect(note.textContent).toContain('spagitty-no-such-signer');
+		expect(note.classList.contains('warn')).toBe(true);
+
+		view.destroy();
+	});
+
+	it('warns when ssh signing has no key, which cannot work', () => {
+		control.setSigning(signing({ format: 'ssh', problem: { kind: 'noSigningKey' } }));
+		const view = render(MessageBox, {});
+
+		const note = view.get('.signing');
+		expect(note.textContent).toContain('user.signingkey');
+		expect(note.classList.contains('warn')).toBe(true);
+
+		view.destroy();
 	});
 
 	it('toggles amending and says what it does', () => {

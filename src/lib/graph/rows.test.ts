@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, press, render } from '../../testing/mount';
-import { LANE_COLUMNS_MIN, ROW_PITCH, laneColumnWidth } from '../metrics';
+import { LANE_COLUMNS_MAX, LANE_COLUMNS_MIN, ROW_PITCH, laneColumnWidth } from '../metrics';
 import type { GraphRow, RefChip } from '$lib/types';
 
 /**
@@ -10,9 +10,13 @@ import type { GraphRow, RefChip } from '$lib/types';
  * tested separately; here the rows are the input and the DOM is the output.
  */
 vi.mock('$lib/graph/store.svelte', async () => await import('../../testing/graph-store.svelte'));
+// `overlay.wip` reads `repo.counts`, which is what puts the uncommitted-changes
+// row on screen at all.
+vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
 
 import { readFileSync } from 'node:fs';
 import { calls, control } from '../../testing/graph-store.svelte';
+import { control as repoControl } from '../../testing/repo-store.svelte';
 import { columns } from './columns.svelte';
 
 const componentSource = readFileSync('src/lib/graph/CommitRows.svelte', 'utf8');
@@ -32,6 +36,7 @@ function row(index: number, overrides: Partial<GraphRow> = {}): GraphRow {
 		time: 1_700_000_000 - index * 86_400,
 		lane: 0,
 		color: 0,
+		signed: false,
 		parents: [],
 		refs: [],
 		edges: [],
@@ -40,11 +45,15 @@ function row(index: number, overrides: Partial<GraphRow> = {}): GraphRow {
 }
 
 function chip(name: string, kind: RefChip['kind'] = 'branch', current = false): RefChip {
-	return { name, kind, current };
+	return { name, kind, current, local: kind !== 'remote', remotes: [], divergence: null };
 }
 
 beforeEach(() => {
 	control.reset();
+	// The column store is a module singleton: a width or an order set by one
+	// test is still set in the next one. Every test here that touches a column
+	// used to have to be the first to do so.
+	columns.reset();
 	control.setRows([row(0), row(1), row(2)]);
 	vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} });
 });
@@ -55,6 +64,62 @@ describe('CommitRows', () => {
 
 		expect(view.get('.scroller').getAttribute('role')).toBe('listbox');
 		expect(view.all('[role="option"]')).toHaveLength(3);
+
+		view.destroy();
+	});
+
+	/**
+	 * FEAT-019. `S` rather than a tick: the tick already means "the branch you
+	 * are on" on a RefChip, and one mark cannot mean two things on one screen.
+	 */
+	it('marks a signed commit, and only a signed one', () => {
+		control.setRows([row(0, { signed: true }), row(1, { signed: false })]);
+		const view = render(CommitRows, {});
+
+		const marks = view.all('.signed');
+		expect(marks).toHaveLength(1);
+		expect(marks[0].textContent?.trim()).toBe('S');
+
+		view.destroy();
+	});
+
+	it('does not claim a signature it has not verified', () => {
+		// The whole reason this is cheap enough to put on every row: it reads a
+		// header. Saying "verified" would be a claim nothing here checked.
+		control.setRows([row(0, { signed: true })]);
+		const view = render(CommitRows, {});
+
+		const title = view.get('.signed').getAttribute('title') ?? '';
+		expect(title).toContain('does not verify');
+		expect(view.text()).not.toContain('verified');
+
+		view.destroy();
+	});
+
+	it('shows no edge shadow when there is nothing under it', () => {
+		// happy-dom lays nothing out, so `scrollWidth` is 0 and the table cannot
+		// overflow. That is the case worth pinning anyway: the affordance must
+		// be absent when it would be a lie.
+		const view = render(CommitRows, {});
+
+		for (const edge of view.all('.edge')) {
+			expect(edge.classList.contains('showing')).toBe(false);
+		}
+
+		view.destroy();
+	});
+
+	it('puts an edge on each side, and lets clicks through both', () => {
+		// They sit over the rows, so anything they cover has to stay reachable.
+		const view = render(CommitRows, {});
+
+		const edges = view.all('.edge');
+		expect(edges).toHaveLength(2);
+		expect(view.all('.edge.left')).toHaveLength(1);
+		expect(view.all('.edge.right')).toHaveLength(1);
+		for (const edge of edges) {
+			expect(edge.getAttribute('aria-hidden')).toBe('true');
+		}
 
 		view.destroy();
 	});
@@ -235,6 +300,42 @@ describe('CommitRows', () => {
 		view.destroy();
 	});
 
+	/**
+	 * FEAT-031 request 4. `CommitRows` has always taken an `onwip` prop and
+	 * `src/routes/+page.svelte` never passed one, so the row was dead: clicking
+	 * "Uncommitted changes" did nothing at all.
+	 */
+	it('opens the working copy when the uncommitted-changes row is clicked', () => {
+		const onwip = vi.fn();
+		repoControl.setCounts({
+			commits: 3,
+			branches: 1,
+			working: 3,
+			staged: 2,
+			conflicts: 0,
+			stashes: 0,
+			tags: 0,
+			submodules: 0
+		});
+		const view = render(CommitRows, { onwip });
+
+		const row = view.get('.wip');
+		expect(row.tagName).toBe('BUTTON');
+		expect(row.getAttribute('title')).toBe('Open the working copy');
+
+		row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		flushSync();
+
+		expect(onwip).toHaveBeenCalledTimes(1);
+		view.destroy();
+	});
+
+	/** The graph screen must actually pass the handler, which is what was missing. */
+	it('is given a handler by the graph screen', () => {
+		const page = readFileSync('src/routes/+page.svelte', 'utf8');
+		expect(page).toMatch(/<CommitRows[^>]*onwip=/);
+	});
+
 	it('starts at the design lane width', () => {
 		const view = render(CommitRows, {});
 		expect(view.get('.lane-space').style.width).toBe(`${laneColumnWidth(LANE_COLUMNS_MIN)}px`);
@@ -247,6 +348,31 @@ describe('CommitRows', () => {
 
 		expect(view.get('.lane-space').style.width).toBe(`${laneColumnWidth(9)}px`);
 		view.destroy();
+	});
+
+	/**
+	 * FEAT-035. Past the cap the column stops growing and the pitch gives
+	 * instead, so a busy history cannot push the message column off the screen.
+	 * Asserted at the component because this is the property the author asked
+	 * for — `metrics.test.ts` proves the geometry, this proves it is wired.
+	 */
+	it('stops widening the lane column at the cap, however deep the history', () => {
+		const atCap = `${laneColumnWidth(LANE_COLUMNS_MAX)}px`;
+
+		for (const deepest of [LANE_COLUMNS_MAX, 20, 60, 200]) {
+			control.setRows([
+				row(0),
+				row(1, { lane: deepest - 1, edges: [{ from: 0, to: deepest - 1, color: 1 }] })
+			]);
+			const view = render(CommitRows, {});
+
+			expect(
+				view.get('.lane-space').style.width,
+				`${deepest} lanes widened the column past the cap`
+			).toBe(atCap);
+
+			view.destroy();
+		}
 	});
 
 	it('does not narrow the lane column the instant the history does', () => {
@@ -268,6 +394,96 @@ describe('CommitRows', () => {
 
 		view.destroy();
 		vi.useRealTimers();
+	});
+});
+
+describe('the column bed', () => {
+	// BUG-016: the graph's band and its two rules were painted by a cell inside
+	// a row, so on a repository shorter than the window they stopped at the last
+	// commit and the table looked cut off. The bed paints them for the whole
+	// height, under the rows.
+
+	it('gives every shown column a slot, in the same order as a row', () => {
+		control.setRows([row(0), row(1), row(2)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		const slots = [...view.get('.bed').children];
+
+		expect(slots).toHaveLength(columns.shown.length);
+		// Default order is refs, graph, message.
+		expect((slots[0] as HTMLElement).style.width).toBe(`${columns.shown[0].width}px`);
+		expect((slots[1] as HTMLElement).classList.contains('lane-band')).toBe(true);
+		expect((slots[2] as HTMLElement).classList.contains('fill')).toBe(true);
+
+		view.destroy();
+	});
+
+	it('paints the band with the class the row graph cell also wears', () => {
+		// One declaration for both, so the band cannot come out one colour where
+		// there are commits and another where there are none.
+		control.setRows([row(0)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		expect(view.get('.lane-space').classList.contains('lane-band')).toBe(true);
+		expect(view.get('.bed .lane-band')).toBeTruthy();
+
+		view.destroy();
+	});
+
+	it('follows a column being resized, exactly as the rows do', () => {
+		control.setRows([row(0), row(1), row(2)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		columns.resize('refs', 120);
+		flushSync();
+
+		expect((view.get('.bed').children[0] as HTMLElement).style.width).toBe('120px');
+
+		view.destroy();
+	});
+
+	it('follows a reorder, so the band never lands on the wrong column', () => {
+		control.setRows([row(0), row(1), row(2)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		columns.reorder(1, 0);
+		flushSync();
+
+		const slots = [...view.get('.bed').children];
+		expect((slots[0] as HTMLElement).classList.contains('lane-band')).toBe(true);
+
+		view.destroy();
+	});
+
+	it('is there when the repository has no commits at all', () => {
+		// The empty case is the whole point: nothing draws the columns but this.
+		control.setRows([]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		expect(view.get('.bed').children).toHaveLength(columns.shown.length);
+		expect(view.all('.lane-space')).toHaveLength(0);
+
+		view.destroy();
+	});
+
+	it('is sized by the scroller rather than by the rows', () => {
+		// `.sizer` is `rows x pitch` tall; the bed must not be, or it would stop
+		// at the last commit again by another route.
+		control.setRows([row(0)]);
+		const view = render(CommitRows, {});
+		flushSync();
+
+		const bed = view.get('.bed');
+		expect(bed.parentElement?.classList.contains('rows')).toBe(true);
+		expect(bed.closest('.sizer')).toBeNull();
+		expect(bed.closest('.scroller')).toBeNull();
+
+		view.destroy();
 	});
 });
 

@@ -38,20 +38,22 @@
 	{#if !card.present}
 		<p class="note gone">
 			Not here any more. The path may have moved, or it may no longer be a
-			repository — GitLumiere has not touched it either way.
+			repository — Spagitty has not touched it either way.
 		</p>
 		<div class="path mono muted" title={card.path}>{card.path}</div>
 	{:else}
 		<div class="branch">
 			{#if card.branch}
-				<RefChip chip={{ name: card.branch, kind: 'branch', current: true }} />
+				<RefChip chip={{ name: card.branch, kind: 'branch', current: true, local: true, remotes: [], divergence: null }} />
 			{:else if card.short}
-				<RefChip chip={{ name: `detached at ${card.short}`, kind: 'branch', current: false }} />
+				<RefChip
+					chip={{ name: `detached at ${card.short}`, kind: 'branch', current: false, local: true, remotes: [], divergence: null }}
+				/>
 			{:else}
 				<span class="note">no commits yet</span>
 			{/if}
 			{#if card.branches !== null && card.branches > 1}
-				<span class="note">{card.branches} branches</span>
+				<span class="note count">{card.branches} branches</span>
 			{/if}
 		</div>
 
@@ -91,31 +93,69 @@
 </article>
 
 <style>
+	/*
+	 * A repository is a card, and now looks like one: a lifted surface with the
+	 * light on its top edge and a shadow under it, which rises under the
+	 * pointer. The wireframe drew all of this as a hairline rectangle and said
+	 * "nothing going on" by making the rectangle dashed.
+	 */
 	.card {
 		width: var(--repo-card-w);
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
-		padding: 10px;
-		border: 1.5px solid var(--soft);
-		border-radius: var(--r-field);
-		background: var(--bg);
+		padding: 11px;
+		border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		border-radius: var(--r-panel);
+		background-color: var(--surface-veil);
+		box-shadow: var(--glass-rim), var(--shadow-1);
+		transition:
+			box-shadow var(--t-slow) var(--ease),
+			transform var(--t-slow) var(--ease),
+			border-color var(--t-fast) var(--ease);
 	}
 
-	/* Dashed for a repository with nothing going on — the same device the rest
-	   of the application uses for "not right now". */
+	.card:hover {
+		box-shadow: var(--glass-rim), var(--shadow-2);
+		transform: translateY(-2px);
+	}
+
+	/* Nothing going on here. Left flat on the page rather than dashed: no lift,
+	   no light, dimmed text — a card that has not been picked up. */
 	.card.idle {
-		border-style: dashed;
+		background: none;
+		box-shadow: none;
 		color: var(--muted);
 	}
 
-	.card.missing {
-		border-color: var(--accent);
+	.card.idle:hover {
+		background-color: var(--surface-veil);
+		box-shadow: var(--glass-rim), var(--shadow-1);
 	}
 
+	/* Gone from disk. The palette's red, which is what the rest of the
+	   application uses for a thing that is wrong — it was the accent, which is
+	   also what "this one is open" uses, so the two were indistinguishable. */
+	.card.missing {
+		border-color: color-mix(in srgb, var(--danger) 55%, var(--soft));
+		background-color: color-mix(in srgb, var(--danger) 7%, var(--surface));
+	}
+
+	/* The one open right now. */
 	.card.open {
-		background: var(--selection);
-		border-color: var(--accent);
+		border-color: color-mix(in srgb, var(--accent) 55%, var(--soft));
+		background-color: color-mix(in srgb, var(--accent) 7%, var(--surface));
+		box-shadow:
+			var(--sheen),
+			var(--shadow-2);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.card,
+		.card:hover {
+			transform: none;
+			transition: none;
+		}
 	}
 
 	.top {
@@ -143,6 +183,15 @@
 		align-items: center;
 		gap: 6px;
 		min-width: 0;
+	}
+
+	/*
+	 * BUG-006. The branch name is the part that gives way, never the count.
+	 * "7 branches" is four characters of information that a card is useless
+	 * without; the branch name has an ellipsis and a `title` to fall back on.
+	 */
+	.branch .count {
+		flex: none;
 	}
 
 	/* The tail of a path identifies the directory, so the head gets the

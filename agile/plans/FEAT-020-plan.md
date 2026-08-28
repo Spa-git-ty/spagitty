@@ -8,9 +8,9 @@ FEAT-011 shipped a Settings toggle, "Show the git command behind each action"
 (`showGitCommands`). It persisted and nothing read it: flipping it changed
 nothing anywhere in the application.
 
-The honest version of the feature is not a label beside a button. GitLumiere runs
-`git` from exactly one module — `crates/gitlumiere-core/src/shell.rs`, whose header
-declares it is "the **only** place in GitLumiere that spawns a process" — and
+The honest version of the feature is not a label beside a button. Spagitty runs
+`git` from exactly one module — `crates/spagitty-core/src/shell.rs`, whose header
+declares it is "the **only** place in Spagitty that spawns a process" — and
 everything else is in-process `gix` with no command line at all. The record has
 to be produced by the thing that spawns, not by each screen describing what it
 believes it asked for: a screen would not know that a fetch carries
@@ -20,12 +20,12 @@ reverting a merge gained `-m 1` on the way down.
 FEAT-022 had just added thirteen write operations reachable from the graph,
 several destructive, which is what made this worth doing next: a user who cannot
 see that "Reset here (hard)" ran `git reset --hard <sha>` has no way to check
-GitLumiere against their own understanding of git.
+Spagitty against their own understanding of git.
 
 ## Architecture decision
 
 **The record lives in the core, beside the spawn site, and knows nothing about
-the UI.** `crates/gitlumiere-core/src/record.rs` holds a process-wide ring buffer
+the UI.** `crates/spagitty-core/src/record.rs` holds a process-wide ring buffer
 of the last 200 executions plus one optional observer. `shell.rs` writes to it;
 `src-tauri` registers the observer and forwards entries as an event.
 
@@ -51,9 +51,9 @@ reader who assumes display is doing the work.
 
 | File | Change |
 | --- | --- |
-| `crates/gitlumiere-core/src/record.rs` | New. Buffer, `Executed`, `Outcome`, `redact`, `observe`, `recent`, `clear`. |
-| `crates/gitlumiere-core/src/shell.rs` | All four spawns funnelled through `command` + `finish` / `record_spawn`. |
-| `crates/gitlumiere-core/src/lib.rs` | Registers the module; header states where the record comes from. |
+| `crates/spagitty-core/src/record.rs` | New. Buffer, `Executed`, `Outcome`, `redact`, `observe`, `recent`, `clear`. |
+| `crates/spagitty-core/src/shell.rs` | All four spawns funnelled through `command` + `finish` / `record_spawn`. |
+| `crates/spagitty-core/src/lib.rs` | Registers the module; header states where the record comes from. |
 | `src-tauri/src/command_log.rs` | New. Registers the observer, emits `git-command`. |
 | `src-tauri/src/commands.rs` | `git_commands(since)`, `clear_git_commands`. |
 | `src-tauri/src/lib.rs` | `setup` registers the observer before any command can run. |

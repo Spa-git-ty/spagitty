@@ -2,7 +2,7 @@
 
 # FEAT-021 — Themes, and a title bar that stops lying
 
-**Status:** Built. Plan in `agile/plans/FEAT-021-plan.md`, tests in
+**Status:** Done. Plan in `agile/plans/FEAT-021-plan.md`, tests in
 `agile/testing/FEAT-021-automated.md` and `-sweep.md`.
 **Surface:** the chrome's title bar, and Settings → Appearance (1K).
 
@@ -10,7 +10,7 @@
 
 Two things, and they meet in the same place.
 
-**GitLumiere has no visual system.** `src/app.css` said so itself: its hex values
+**Spagitty has no visual system.** `src/app.css` said so itself: its hex values
 were "wireframe placeholders and are expected to be replaced by the real visual
 system". The result is a white program and a black program rather than a
 designed one.

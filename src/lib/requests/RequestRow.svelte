@@ -49,21 +49,44 @@
 <style>
 	.row {
 		list-style: none;
-		border: 1.5px solid var(--soft);
-		border-radius: var(--r-field);
-		padding: 4px 8px;
+		background-color: var(--surface-veil);
+		border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+		border-radius: var(--r-panel);
+		box-shadow: var(--glass-rim), var(--shadow-1);
+		padding: 5px 9px;
+		transition:
+			box-shadow var(--t-fast) var(--ease),
+			border-color var(--t-fast) var(--ease);
 	}
 
-	/* Dashed for what is somebody else's move — the same device the rest of the
-	   application uses for "nothing to do here right now". */
+	.row:hover {
+		box-shadow: var(--glass-rim), var(--shadow-2);
+		transform: translateY(-1px);
+	}
+
+	/*
+	 * Waiting on somebody else. It used to be a dashed border — the wireframe's
+	 * word for "not settled" — which on a screen full of them read as a screen
+	 * full of unfinished boxes. It is a card that has not been lifted instead:
+	 * flat on the page, dimmed, no shadow.
+	 */
 	.row.waiting {
-		border-style: dashed;
+		background: none;
+		box-shadow: none;
 		color: var(--muted);
 	}
 
+	.row.waiting:hover {
+		box-shadow: var(--shadow-1);
+	}
+
+	/* The one being read. A tint that fades out across the row rather than a
+	   full accent border, which on a list reads as an error. */
 	.row.open {
-		background: var(--selection);
-		border-color: var(--accent);
+		background: linear-gradient(90deg, var(--accent-soft), transparent 60%),
+			var(--surface);
+		border-color: color-mix(in srgb, var(--accent) 45%, var(--soft));
+		box-shadow: var(--sheen), var(--shadow-1);
 	}
 
 	.body {

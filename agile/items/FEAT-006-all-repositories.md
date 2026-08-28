@@ -8,7 +8,7 @@
 
 ## Problem
 
-GitLumiere opens one repository at a time and forgets it on exit. Reopening means
+Spagitty opens one repository at a time and forgets it on exit. Reopening means
 the directory picker every launch, and the toolbar's repository picker — which
 looks like a dropdown — goes to a placeholder.
 
@@ -30,7 +30,7 @@ starts.
 
 ## Non-scope
 
-- Scanning the filesystem for repositories. GitLumiere remembers what it has been
+- Scanning the filesystem for repositories. Spagitty remembers what it has been
   given and does not go looking.
 - Cloning — FEAT-012, which will add to this list when it lands.
 - Any write to a repository other than the one currently open.

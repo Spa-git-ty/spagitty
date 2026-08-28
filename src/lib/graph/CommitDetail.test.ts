@@ -16,6 +16,7 @@ vi.mock('$lib/repo.svelte', () => ({
 				path: '/repos/fixture',
 				name: 'fixture',
 				bare: false,
+				lastFetched: null,
 				head: { branch: 'main', detached: false, id: 'a'.repeat(40), short: 'aaaaaaa' }
 			};
 		}
@@ -37,6 +38,7 @@ function graphRow(): GraphRow {
 		time: 1_700_000_000,
 		lane: 0,
 		color: 0,
+		signed: false,
 		parents: ['c'.repeat(40)],
 		refs: [],
 		edges: []
@@ -59,6 +61,7 @@ function detail(overrides: Partial<Detail> = {}): Detail {
 		committerName: 'Charles Babbage',
 		committerEmail: 'charles@example.com',
 		commitTime: 1_700_000_600,
+		signed: false,
 		parents: ['c'.repeat(40)],
 		files: [file('core.txt'), file('src/deep/nested/main.rs'), file('new.txt', 'added')],
 		...overrides
@@ -108,6 +111,29 @@ describe('a loaded commit', () => {
 		control.setDetail(detail(overrides));
 		return render(CommitDetail, {});
 	}
+
+	it('says a signed commit is signed, and that it is not verified', () => {
+		// Said in full here because there is room for the caveat, where the
+		// graph row has a letter and a tooltip (FEAT-019).
+		const view = open({ signed: true });
+
+		expect(view.text()).toContain('Signed');
+		expect(view.text()).toContain('does not verify');
+		expect(view.text()).toContain('git verify-commit');
+
+		view.destroy();
+	});
+
+	it('says nothing at all about an unsigned commit', () => {
+		// "not signed" on every commit in a repository nobody signs is a line of
+		// noise on every commit; the absence already says it.
+		const view = open({ signed: false });
+
+		expect(view.text()).not.toContain('Signed');
+		expect(view.text()).not.toContain('verify');
+
+		view.destroy();
+	});
 
 	it('shows the message, both people and the parent', () => {
 		const view = open();

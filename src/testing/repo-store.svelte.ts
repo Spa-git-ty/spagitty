@@ -117,8 +117,23 @@ export const repo = {
 	setCommitCount(n: number) {
 		counts = { ...counts, commits: n };
 	},
+	/**
+	 * Close, the way the real store closes.
+	 *
+	 * It used to call `control.reset()`, which clears the call counters as well
+	 * as the state — so `close()` incremented `calls.closed` and then wiped it,
+	 * and no test could ever observe that a close had happened. That is what
+	 * hid BUG-019: the one assertion that would have caught the missing call
+	 * was unwritable against this double.
+	 *
+	 * Only the state is cleared here. Resetting the counters belongs to
+	 * `control.reset()`, which the suite calls between tests.
+	 */
 	async close() {
 		calls.closed += 1;
-		control.reset();
+		info = null;
+		token = null;
+		counts = NO_COUNTS;
+		generation += 1;
 	}
 };

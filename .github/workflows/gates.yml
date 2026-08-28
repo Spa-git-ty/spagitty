@@ -106,7 +106,7 @@ jobs:
       - name: Rust tests and coverage
         run: |
           cargo llvm-cov --workspace \
-            --ignore-filename-regex 'fixture\.rs' \
+            --ignore-filename-regex '(fixture|testing)\.rs' \
             --fail-under-lines "$COVERAGE_FLOOR" \
             --summary-only
 
@@ -147,10 +147,23 @@ jobs:
       - name: npm advisories
         run: npm audit --audit-level=high
 
+      # gitleaks itself, not gitleaks-action.
+      #
+      # The action refuses to run for an organization account without a paid
+      # licence — "[GitLumiere] is an organization. License key is required." —
+      # so this gate failed on the tool never starting rather than on anything it
+      # found, and no diff has ever actually been scanned. The binary is the same
+      # scanner with the same rules and needs no licence.
+      #
+      # `--no-git` would scan the working tree; `detect` walks history, which is
+      # what catches a secret committed and then removed in a later commit.
       - name: Secrets in the diff
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=8.28.0
+          curl -sSfL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks detect --source . --redact --verbose --exit-code 1
 
   # --- Gate 5 -------------------------------------------------------------
   # main only. `dev` stops after gate 4; its build is triggered by hand.
@@ -183,7 +196,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: gitlumiere-${{ matrix.os }}
+          name: spagitty-${{ matrix.os }}
           path: |
             target/release/bundle/**
             src-tauri/target/release/bundle/**
@@ -225,9 +238,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git tag -a "${{ steps.version.outputs.tag }}" -m "GitLumiere ${{ steps.version.outputs.tag }}"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Spagitty ${{ steps.version.outputs.tag }}"
           git push origin "${{ steps.version.outputs.tag }}"
           gh release create "${{ steps.version.outputs.tag }}" \
-            --title "GitLumiere ${{ steps.version.outputs.tag }}" \
+            --title "Spagitty ${{ steps.version.outputs.tag }}" \
             --generate-notes \
             $(find artifacts -type f | tr '\n' ' ')

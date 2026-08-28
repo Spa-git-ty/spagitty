@@ -3,7 +3,7 @@
 /**
  * Wire types shared with the Rust core.
  *
- * These mirror the `serde` shapes in `crates/gitlumiere-core` and
+ * These mirror the `serde` shapes in `crates/spagitty-core` and
  * `src-tauri/src/commands.rs`, which all carry
  * `#[serde(rename_all = "camelCase")]`. Keep the two in step.
  */
@@ -12,12 +12,41 @@
 
 export type RefKind = 'branch' | 'remote' | 'tag';
 
-export interface RefChip {
-	/** Display name, already shortened: `master`, `origin/master`, `v12.0.0`. */
+/** Which forge a remote points at, decided from its URL. Picks a glyph, nothing more. */
+export type Host = 'gitHub' | 'gitLab' | 'bitbucket' | 'azureDevOps' | 'generic';
+
+/** A remote carrying a branch at a commit. */
+export interface RemoteMark {
+	/** `origin`, `upstream`. Not drawn on the chip; carried for the tooltip. */
 	name: string;
+	host: Host;
+}
+
+export interface RefChip {
+	/**
+	 * The branch's own short name — `master`, never `origin/master` — or the
+	 * tag's name. Where a branch lives is `local` and `remotes` (FEAT-036).
+	 */
+	name: string;
+	/**
+	 * `branch` when a local ref exists, `remote` when it lives only on a remote,
+	 * `tag` for tags. What the gutter sorts and styles by.
+	 */
 	kind: RefKind;
 	/** True for the branch HEAD points at. Renders with accent border and a check. */
 	current: boolean;
+	/** A local `refs/heads/` ref of this name is at this commit. */
+	local: boolean;
+	/** The remotes carrying this branch **at this commit**, in name order. */
+	remotes: RemoteMark[];
+	/**
+	 * How far the local branch has drifted from its upstream (FEAT-033).
+	 *
+	 * Null for a tag, for a branch with no upstream, and for a chip with no
+	 * local ref — none of them has anything to have drifted from. It comes from
+	 * the same read the Branches screen uses, so the two cannot disagree.
+	 */
+	divergence: BranchDivergence | null;
 }
 
 // --- Graph ----------------------------------------------------------------
@@ -58,6 +87,15 @@ export interface GraphRow {
 	/** Lane this commit's node sits in. */
 	lane: number;
 	color: number;
+	/**
+	 * The commit carries a signature (FEAT-019).
+	 *
+	 * Read off the object's `gpgsig` header as the walk passes it. It says the
+	 * commit **was signed**, not that the signature is valid — verifying means a
+	 * subprocess and a keyring per row, and the screens say "signed" rather than
+	 * "verified" for exactly that reason.
+	 */
+	signed: boolean;
 	parents: string[];
 	refs: RefChip[];
 	edges: LaneEdge[];
@@ -84,6 +122,8 @@ export interface CommitDetail {
 	committerName: string;
 	committerEmail: string;
 	commitTime: number;
+	/** The commit carries a signature. Present, not verified — see `GraphRow`. */
+	signed: boolean;
 	parents: string[];
 	files: ChangedFile[];
 }
@@ -234,7 +274,7 @@ export interface StashEntry {
 /**
  * The shape a pull request takes on the screen.
  *
- * **This is FEAT-017's contract.** Nothing populates it today — GitLumiere talks
+ * **This is FEAT-017's contract.** Nothing populates it today — Spagitty talks
  * to no hosting service — and it is defined now so that connecting a host is a
  * matter of filling this in rather than redesigning the screen around whatever
  * one host's API happens to return.
@@ -259,7 +299,7 @@ export interface PullRequest {
 	review: ReviewState;
 	/** Whether the host's checks passed. Null when the host runs none. */
 	checks: CheckState | null;
-	/** True when this one is waiting on the person using GitLumiere. */
+	/** True when this one is waiting on the person using Spagitty. */
 	needsYou: boolean;
 	/** Why it needs you, in one line, when it does. */
 	needsYouBecause: string | null;
@@ -271,6 +311,31 @@ export interface PullRequest {
 }
 
 export type ReviewState = 'awaitingReview' | 'changesRequested' | 'approved' | 'noReviewers';
+
+/** Which hosting service a remote points at (FEAT-017). */
+export type ForgeKind = 'gitHub';
+
+/** A repository on a hosting service, identified from a git remote. */
+export interface ForgeRepo {
+	kind: ForgeKind;
+	/** The hostname, so an enterprise installation is not handed the wrong token. */
+	host: string;
+	owner: string;
+	name: string;
+}
+
+/**
+ * A connected account.
+ *
+ * **No token.** It lives in the OS keychain and never crosses this boundary —
+ * a token in a type the webview can hold is a token in a devtools inspector.
+ */
+export interface ForgeAccount {
+	kind: ForgeKind;
+	host: string;
+	/** The login the token authenticates as, read back from the host. */
+	user: string;
+}
 
 export type CheckState = 'passing' | 'failing' | 'running';
 
@@ -308,7 +373,7 @@ export interface RebaseEdit {
 	 * The new message, for a `reword`.
 	 *
 	 * Collected on screen rather than at execution time: "at execution time"
-	 * means git opening an editor on a terminal GitLumiere does not have. A reword
+	 * means git opening an editor on a terminal Spagitty does not have. A reword
 	 * carrying no message is executed as a plain pick.
 	 */
 	message?: string | null;
@@ -327,6 +392,14 @@ export type ResetMode = 'soft' | 'mixed' | 'hard';
 
 /** What dropping one branch onto another can turn into. */
 export type Integration = 'merge' | 'mergeNoFastForward' | 'fastForward' | 'rebase';
+
+/**
+ * How a pull brings the remote's commits in.
+ *
+ * `fastForwardOnly` is the safe one: it refuses unless the local branch can
+ * simply move forward, so it can never write a merge commit or leave a conflict.
+ */
+export type PullMode = 'fastForwardOnly' | 'merge' | 'rebase';
 
 /** What to do with a stash entry. */
 export type StashAction = 'apply' | 'pop' | 'drop';
@@ -517,6 +590,13 @@ export interface RepoInfo {
 	name: string;
 	bare: boolean;
 	head: HeadInfo;
+	/**
+	 * Unix seconds of the last fetch — the mtime of `.git/FETCH_HEAD`, which git
+	 * writes on every fetch including one that brought nothing down. `null` for
+	 * a repository that has never been fetched, which is a real answer and is
+	 * said in words rather than shown as an empty time (FEAT-040).
+	 */
+	lastFetched: number | null;
 }
 
 /**
@@ -638,9 +718,166 @@ export interface CloneDoneEvent {
 	path: string;
 }
 
+/** Which network operation a worker is running (FEAT-018). */
+export type NetworkOperation = 'fetch' | 'push';
+
+/** Payload of `network-progress`: one step of git's own progress reporting. */
+export interface NetworkProgressEvent extends CloneProgress {
+	token: number;
+	operation: NetworkOperation;
+}
+
+/** Payload of `network-done`: the fetch or push for `token` has stopped. */
+export interface NetworkDoneEvent {
+	token: number;
+	operation: NetworkOperation;
+	ok: boolean;
+	error: string | null;
+	/**
+	 * git's last words on success — "Everything up-to-date", a ref update
+	 * summary — so a fetch that brought nothing down can say so.
+	 */
+	summary: string | null;
+}
+
+/** One tag, peeled to the commit it names (FEAT-051). */
+export interface Tag {
+	/** Short name — `v1.0.0`, not `refs/tags/v1.0.0`. */
+	name: string;
+	/** The commit it points at, after peeling an annotated tag. */
+	target: string;
+	targetShort: string;
+	/**
+	 * True when this is a tag object rather than a ref pointing at a commit.
+	 * Only an annotated tag can carry a message or a tagger.
+	 */
+	annotated: boolean;
+	/** The tag's own message. Empty for a lightweight tag, which has none. */
+	message: string;
+	taggerName: string;
+	/**
+	 * Unix seconds: the tagger's time for an annotated tag, the commit's own
+	 * for a lightweight one, which is the only date it has.
+	 */
+	time: number;
+	/** First line of the tagged commit's message. */
+	summary: string;
+}
+
+/** One move of one ref (FEAT-050). */
+export interface ReflogEntry {
+	/** Position from the newest, counting from 0 — the `n` in `HEAD@{n}`. */
+	index: number;
+	/** The revision this entry names: `HEAD@{3}`, `main@{0}`. */
+	revision: string;
+	/** Where the ref pointed before this move. */
+	before: string;
+	beforeShort: string;
+	after: string;
+	afterShort: string;
+	/** True when this entry created the ref — there is nothing before it. */
+	created: boolean;
+	authorName: string;
+	/** Unix seconds. */
+	time: number;
+	/** git's own description: `commit: subject`, `rebase (finish): …`. */
+	message: string;
+	/** The word before the colon, which is what a reader scans for. */
+	operation: string;
+}
+
+/** A ref's reflog, newest first. */
+export interface Reflog {
+	/** The ref this is the log of, as it should be shown: `HEAD`, `main`. */
+	reference: string;
+	entries: ReflogEntry[];
+	truncated: boolean;
+	/**
+	 * False when this ref has no reflog at all — reflogs turned off, or a ref
+	 * that has never moved. Different from an empty list, and said differently.
+	 */
+	exists: boolean;
+}
+
+/** How far a branch has drifted from its upstream (FEAT-033). */
+export interface BranchDivergence {
+	/** Short name of the configured upstream. */
+	upstream: string;
+	ahead: number;
+	behind: number;
+}
+
+/** One configured remote (FEAT-049). */
+export interface Remote {
+	name: string;
+	/** Where it is fetched from. */
+	url: string;
+	/**
+	 * Where it is pushed to, when that is configured separately. Null is the
+	 * ordinary case and means "the same as `url`".
+	 */
+	pushUrl: string | null;
+	/** Which forge the URL points at — the same glyph the graph's chips use. */
+	host: Host;
+	/**
+	 * Refs under `refs/remotes/<name>/`. Zero means it has never been fetched,
+	 * which is what tells "added a moment ago" from "gone stale".
+	 */
+	refs: number;
+}
+
+/** Which side of a conflict to keep. */
+export type ConflictSideName = 'ours' | 'theirs';
+
+/**
+ * One `<<<<<<< ======= >>>>>>>` block in a file on disk.
+ *
+ * Line numbers are 1-based and inclusive, matching the merged pane, so a region
+ * can be pointed at on screen without a second numbering scheme.
+ */
+export interface ConflictRegion {
+	/** Position in the file, counting from 0. What a caller names it by. */
+	index: number;
+	startLine: number;
+	endLine: number;
+	ours: string;
+	/** Present only when the file was merged with `diff3` markers. */
+	base: string | null;
+	theirs: string;
+}
+
+/** How far a rebase that is running has got, from git's own state directory. */
+export interface RebaseProgress {
+	/** Which commit is being applied, counting from 1. */
+	step: number;
+	total: number;
+	/** The branch being rebased. Null for one started from a detached HEAD. */
+	branch: string | null;
+	/** Short id of `ORIG_HEAD` — where the branch was before any of this. */
+	original: string | null;
+}
+
+/** Payload of `rebase-progress`. */
+export interface RebaseProgressEvent extends RebaseProgress {
+	token: number;
+}
+
+/**
+ * Payload of `rebase-done`: the rebase for `token` is no longer running.
+ *
+ * `stopped` is the hand-off, not a failure — git got part-way and is waiting
+ * for a conflict to be resolved or for an `edit` to be finished.
+ */
+export interface RebaseDoneEvent {
+	token: number;
+	ok: boolean;
+	stopped: boolean;
+	error: string | null;
+}
+
 // --- Settings -------------------------------------------------------------
 
-/** A configuration file GitLumiere will write to. Never inferred — always chosen. */
+/** A configuration file Spagitty will write to. Never inferred — always chosen. */
 export type IdentityScope = 'global' | 'local';
 
 /** The two keys the Settings screen edits, and no others. */
@@ -649,7 +886,7 @@ export type IdentityKey = 'name' | 'email';
 /**
  * Where the value git would actually use comes from.
  *
- * Wider than `IdentityScope`, because a value can come from somewhere GitLumiere
+ * Wider than `IdentityScope`, because a value can come from somewhere Spagitty
  * will not write: saying "system" out loud is what explains why editing the
  * global field did not change the effective value.
  */
@@ -671,11 +908,81 @@ export interface Identity {
 	repository: boolean;
 }
 
-/** GitLumiere's own behaviour toggles, stored in its config directory. */
+/** Spagitty's own behaviour toggles, stored in its config directory. */
 export interface Settings {
-	signCommits: boolean;
+	/**
+	 * Ask the project whether there is a newer Spagitty, at startup.
+	 *
+	 * On by default — the one preference here that changes what the application
+	 * does rather than what it checks. There is no package manager behind an
+	 * AppImage or a bare `.exe`, so this is the only way somebody finds out
+	 * their client is old. Turning it off stops every request.
+	 */
+	checkForUpdates: boolean;
 	confirmHistoryRewrite: boolean;
 	showGitCommands: boolean;
+	/**
+	 * Delete remote-tracking refs the remote no longer has, when fetching.
+	 *
+	 * Off by default: pruning deletes refs, and a branch vanishing from the
+	 * graph because a fetch quietly pruned it is a surprise nobody asked for.
+	 */
+	pruneOnFetch: boolean;
+}
+
+/** Which signing machinery git is configured to use — `gpg.format`. */
+export type SigningFormat = 'openPgp' | 'ssh' | 'x509';
+
+/**
+ * Why a commit that is meant to be signed would not be.
+ *
+ * Both are known before the commit is attempted, which is the point: a
+ * repository with no working signer is told so at the point of commit rather
+ * than after one fails.
+ */
+export type SigningProblem =
+	| { kind: 'missingProgram'; detail: string }
+	| { kind: 'noSigningKey' };
+
+/**
+ * Commit signing, as git would resolve it here.
+ *
+ * `commit.gpgsign` is the authority — there is no separate Spagitty preference,
+ * because two switches for one behaviour disagree the moment one of them is
+ * changed outside this application.
+ */
+export interface Signing {
+	/** What a commit made now would do. */
+	enabled: boolean;
+	/** Which file `enabled` came from. `unset` means nothing sets it. */
+	origin: IdentityOrigin;
+	format: SigningFormat;
+	/** `user.signingkey`, effective. */
+	key: string | null;
+	/** The program git would run for this format. */
+	program: string;
+	/** Null when signing is off: a signer that will not be used cannot fail. */
+	problem: SigningProblem | null;
+	/** False when no repository is open. */
+	repository: boolean;
+	/** `commit.gpgsign` as each writable scope holds it. */
+	global: boolean | null;
+	local: boolean | null;
+}
+
+/** Which kind of build is asking about updates. */
+export type UpdateChannel = 'released' | 'development';
+
+/** What an update check found. */
+export interface Update {
+	channel: UpdateChannel;
+	/** The tag this build was cut as, or null for a build somebody compiled. */
+	current: string | null;
+	/** The newest tag the project has published. */
+	latest: string;
+	/** True only when this is a released build and the latest is a different one. */
+	newer: boolean;
+	url: string;
 }
 
 export interface Dependency {
@@ -733,7 +1040,7 @@ export type CommandOutcome =
 	| { kind: 'started' };
 
 /**
- * One `git` command GitLumiere actually ran, recorded at the spawn site.
+ * One `git` command Spagitty actually ran, recorded at the spawn site.
  *
  * Reads are absent by design: log walking, refs, diff and status happen
  * in-process and have no command line. Nothing is invented for them.
@@ -757,3 +1064,7 @@ export const GRAPH_ROWS_EVENT = 'graph-rows';
 export const GRAPH_DONE_EVENT = 'graph-done';
 export const REPO_CHANGED_EVENT = 'repo-changed';
 export const GIT_COMMAND_EVENT = 'git-command';
+export const REBASE_PROGRESS_EVENT = 'rebase-progress';
+export const REBASE_DONE_EVENT = 'rebase-done';
+export const NETWORK_PROGRESS_EVENT = 'network-progress';
+export const NETWORK_DONE_EVENT = 'network-done';

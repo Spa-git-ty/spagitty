@@ -27,20 +27,35 @@ vi.mock('$lib/chrome/window', () => ({ appWindow }));
 /** A controllable stand-in for the repo store. */
 vi.mock('$lib/repo.svelte', async () => await import('../../testing/repo-store.svelte'));
 
+/** The same, for the branch list the toolbar's dropdown reads (FEAT-045). */
+vi.mock('$lib/branches/store.svelte', async () => await import('../../testing/branches-store.svelte'));
+
+import {
+	branchRow,
+	control as branchControl,
+	calls as branchCalls
+} from '../../testing/branches-store.svelte';
 import { control as repoControl, calls as repoCalls } from '../../testing/repo-store.svelte';
 import { control as graphControl } from '../../testing/graph-store.svelte';
 import NavRail from './NavRail.svelte';
 import ResizeEdges from './ResizeEdges.svelte';
+import RepoTabs from './RepoTabs.svelte';
+import StatusStrip from './StatusStrip.svelte';
 import TitleBar from './TitleBar.svelte';
 import Toolbar from './Toolbar.svelte';
 import { version } from '$lib/version';
 import { workspace } from '$lib/workspace.svelte';
 
-function info(branch: string | null = 'main', detached = false): RepoInfo {
+function info(
+	branch: string | null = 'main',
+	detached = false,
+	path = '/repos/fixture'
+): RepoInfo {
 	return {
-		path: '/repos/fixture',
-		name: 'fixture',
+		path,
+		name: path.split('/').pop() ?? 'fixture',
 		bare: false,
+		lastFetched: null,
 		head: { branch, detached, id: 'a'.repeat(40), short: 'aaaaaaa' }
 	};
 }
@@ -63,13 +78,14 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	repoControl.reset();
 	graphControl.reset();
+	branchControl.reset();
 	vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} });
 });
 
 describe('TitleBar', () => {
 	it('falls back to the product name with no repository open', () => {
 		const view = render(TitleBar, {});
-		expect(view.get('.name').textContent).toBe('GitLumiere');
+		expect(view.get('.name').textContent).toBe('Spagitty');
 		view.destroy();
 	});
 
@@ -80,38 +96,35 @@ describe('TitleBar', () => {
 		repoControl.setInfo(info('main'));
 		const view = render(TitleBar, {});
 
-		expect(view.get('.name').textContent).toBe('GitLumiere');
+		expect(view.get('.name').textContent).toBe('Spagitty');
 		view.destroy();
 	});
 
-	it('offers the way back to every repository', () => {
-		const view = render(TitleBar, {});
-
-		click(view.get('.all'));
-
-		expect(goto).toHaveBeenCalledWith('/repos');
-		view.destroy();
-	});
-
-	it('shows the open repositories as tabs, with the active one marked', () => {
+	it('no longer carries the tabs or the way back (FEAT-044)', () => {
+		// Both were passengers in the row that has to survive a narrow window,
+		// and neither is a window control. The tabs have a row of their own; the
+		// way back is screen 1J on the rail.
 		workspace.clear();
 		workspace.opened('/repos/fixture');
-		workspace.opened('/repos/other');
 
 		const view = render(TitleBar, {});
 
-		const labels = view.all('.tab .label').map((element) => element.textContent);
-		expect(labels).toEqual(['fixture', 'other']);
-		expect(view.get('.tab.active .label').textContent).toBe('other');
+		expect(view.all('.tab').length).toBe(0);
+		expect(view.text()).not.toContain('All repositories');
 
 		workspace.clear();
 		view.destroy();
 	});
 
-	it('states the license and version, which the GPL asks for', () => {
+	it('no longer states the license and version, which moved (FEAT-043)', () => {
+		// They are the least changing facts in the application and they were in
+		// the row that names what is open — the one that gives way to tabs as
+		// repositories are opened. The strip below has them.
 		const view = render(TitleBar, {});
-		expect(view.text()).toContain(version.licenseShort);
-		expect(view.text()).toContain(`v${version.number}`);
+
+		expect(view.text()).not.toContain(version.licenseShort);
+		expect(view.text()).not.toContain(`v${version.number}`);
+
 		view.destroy();
 	});
 
@@ -187,20 +200,229 @@ describe('TitleBar', () => {
 	});
 });
 
-describe('Toolbar', () => {
-	it('says there is no repository rather than showing an empty picker', () => {
-		const view = render(Toolbar, {});
-		expect(view.text()).toContain('no repository');
-		expect(view.text()).toContain('—');
+describe('RepoTabs', () => {
+	it('shows the open repositories as tabs, with the active one marked', () => {
+		workspace.clear();
+		workspace.opened('/repos/fixture');
+		workspace.opened('/repos/other');
+
+		const view = render(RepoTabs, {});
+
+		const labels = view.all('.tab .label').map((element) => element.textContent);
+		expect(labels).toEqual(['fixture', 'other']);
+		expect(view.get('.tab.active .label').textContent).toBe('other');
+
+		workspace.clear();
 		view.destroy();
 	});
 
-	it('shows the repository and branch once one is open', () => {
+	it('is a row of its own, which is where it now lives (FEAT-044)', () => {
+		workspace.clear();
+		workspace.opened('/repos/fixture');
+
+		const view = render(RepoTabs, {});
+
+		expect(view.all('.tabrow').length).toBe(1);
+		expect(view.get('.tabrow .tabs')).toBeTruthy();
+
+		workspace.clear();
+		view.destroy();
+	});
+
+	it('draws no row at all when nothing is open (FEAT-044)', () => {
+		// A band of chrome across the window with nothing in it makes an empty
+		// application look broken.
+		workspace.clear();
+
+		const view = render(RepoTabs, {});
+
+		expect(view.all('.tabrow').length).toBe(0);
+		expect(view.all('.tab').length).toBe(0);
+
+		view.destroy();
+	});
+
+	it('closes the repository when the last tab is closed', async () => {
+		// BUG-019: `workspace.close` returns the tab to show next, and null when
+		// there is none. The caller switched to `next` and did nothing at all
+		// when it was null, so closing the last tab took the strip away and left
+		// the repository open behind it — the toolbar still naming it, the rail
+		// still counting it, the graph still full of its commits.
+		workspace.clear();
+		workspace.opened('/repos/fixture');
+		repoControl.setInfo(info('main', false, '/repos/fixture'));
+		repoCalls.closed = 0;
+
+		const view = render(RepoTabs, {});
+		view.get('.tab .close').click();
+		await Promise.resolve();
+		flushSync();
+
+		expect(repoCalls.closed).toBe(1);
+
+		workspace.clear();
+		view.destroy();
+	});
+
+	it('does not close the repository while another tab is left', async () => {
+		// Closing one of several is a switch, not a close.
+		workspace.clear();
+		workspace.opened('/repos/fixture');
+		workspace.opened('/repos/other');
+		repoControl.setInfo(info('main', false, '/repos/other'));
+		repoCalls.closed = 0;
+
+		const view = render(RepoTabs, {});
+		view.all('.tab .close')[1].click();
+		await Promise.resolve();
+		flushSync();
+
+		expect(repoCalls.closed).toBe(0);
+
+		workspace.clear();
+		view.destroy();
+	});
+
+	it('keeps the way to open a repository in the row', () => {
+		workspace.clear();
+		workspace.opened('/repos/fixture');
+
+		const view = render(RepoTabs, {});
+
+		expect(view.get('.add').getAttribute('aria-label')).toBe('Add a repository');
+
+		workspace.clear();
+		view.destroy();
+	});
+});
+
+describe('StatusStrip', () => {
+	it('states the license and version, which the GPL asks for (FEAT-043)', () => {
+		const view = render(StatusStrip, {});
+
+		expect(view.text()).toContain(version.licenseShort);
+		expect(view.text()).toContain(`v${version.number}`);
+
+		view.destroy();
+	});
+
+	it('carries the full SPDX identifier where a short one is shown', () => {
+		// `GPL-3.0` is the abbreviation that fits; the authoritative identifier
+		// is `GPL-3.0-or-later`, and it must be reachable without opening
+		// Settings.
+		const view = render(StatusStrip, {});
+
+		expect(view.get('.note').getAttribute('title')).toBe(version.license);
+
+		view.destroy();
+	});
+
+	it('says nothing else, on purpose', () => {
+		// The left end is empty until something genuinely window-wide earns it.
+		// A strip filled with second copies of what the rail and toolbar already
+		// say is how a status bar becomes noise.
+		const view = render(StatusStrip, {});
+
+		expect(view.text().trim()).toBe(`${version.licenseShort} · v${version.number}`);
+
+		view.destroy();
+	});
+});
+
+describe('TitleBar', () => {
+	it('puts the name in the middle of the window, not the middle of the gap', () => {
+		// TASK-021: three columns with equal outer ones. Centring the name in
+		// the space the window controls leave over would land it visibly left.
+		const view = render(TitleBar, {});
+		const bar = view.get('.titlebar');
+		const children = [...bar.children];
+
+		expect(children).toHaveLength(3);
+		expect(children[1].classList.contains('name')).toBe(true);
+		expect(children[1].textContent).toBe('Spagitty');
+		// The leading column is empty and says nothing to a screen reader.
+		expect(children[0].textContent).toBe('');
+		expect(children[0].getAttribute('aria-hidden')).toBe('true');
+
+		view.destroy();
+	});
+});
+
+describe('Toolbar', () => {
+	it('says there is no repository, and offers no control that cannot work', () => {
+		// FEAT-045: an empty dropdown is worse than an absent one.
+		const view = render(Toolbar, {});
+
+		expect(view.text()).toContain('no repository');
+		expect(view.all('.field')).toHaveLength(0);
+		view.destroy();
+	});
+
+	it('reads as a location once a repository is open', () => {
 		repoControl.setInfo(info('main'));
 		const view = render(Toolbar, {});
 
-		expect(view.text()).toContain('fixture');
-		expect(view.text()).toContain('main');
+		// The name is a name, not a control: nothing to click, nothing to
+		// navigate. All repositories is on the rail and in the tabs row.
+		expect(view.get('.repo').textContent).toBe('fixture');
+		expect(view.get('.repo').tagName).toBe('SPAN');
+		expect(view.text()).toContain('›');
+		expect(view.get('.field .value').textContent).toBe('main');
+		view.destroy();
+	});
+
+	it('closes the branch menu when the control that opened it is clicked again', () => {
+		// BUG-018. A real pointer sends `mousedown` and then `click`. `Menu`
+		// closes on any outside mousedown, and the control reopened
+		// unconditionally on the click that followed — so clicking the control
+		// to dismiss the menu closed it and opened it again in the same
+		// gesture, and it read as a menu that could not be closed at all.
+		repoControl.setInfo(info('main'));
+		const view = render(Toolbar, {});
+
+		const field = view.get('.field');
+		field.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		field.click();
+		flushSync();
+		expect(view.find('.menu')).not.toBeNull();
+
+		field.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		field.click();
+		flushSync();
+		expect(view.find('.menu')).toBeNull();
+
+		view.destroy();
+	});
+
+	it('keeps the branch menu open when something inside it is pressed', () => {
+		repoControl.setInfo(info('main'));
+		const view = render(Toolbar, {});
+
+		const field = view.get('.field');
+		field.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		field.click();
+		flushSync();
+
+		view.get('.menu').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		flushSync();
+
+		expect(view.find('.menu')).not.toBeNull();
+		view.destroy();
+	});
+
+	it('closes the branch menu on a mousedown anywhere else', () => {
+		repoControl.setInfo(info('main'));
+		const view = render(Toolbar, {});
+
+		const field = view.get('.field');
+		field.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		field.click();
+		flushSync();
+
+		document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		flushSync();
+
+		expect(view.find('.menu')).toBeNull();
 		view.destroy();
 	});
 
@@ -265,19 +487,123 @@ describe('Toolbar', () => {
 		view.destroy();
 	});
 
-	it('reaches the repository and branch screens from the pickers', () => {
+	it('opens the branch list in place rather than replacing the screen (FEAT-045)', async () => {
+		repoControl.setInfo(info('main'));
+		branchControl.setRows([branchRow({ name: 'main', current: true }), branchRow({ name: 'topic' })]);
+
 		const view = render(Toolbar, {});
-		const [repositories, branches] = view.all('.field');
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
 
-		click(repositories);
-		expect(goto).toHaveBeenCalledWith('/repos');
-
-		click(branches);
-		expect(goto).toHaveBeenCalledWith('/branches');
+		expect(goto).not.toHaveBeenCalledWith('/branches');
+		expect(document.body.textContent).toContain('topic');
 
 		view.destroy();
 	});
 
+	it('lists local branches and not remote-tracking refs', async () => {
+		// A remote ref is not a thing to check out; offering one is how an
+		// accidental detached HEAD happens.
+		repoControl.setInfo(info('main'));
+		branchControl.setRows([
+			branchRow({ name: 'main', current: true }),
+			branchRow({ name: 'topic' }),
+			branchRow({ name: 'origin/topic', kind: 'remote', fullName: 'refs/remotes/origin/topic' })
+		]);
+
+		const view = render(Toolbar, {});
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		const labels = [...document.querySelectorAll('.entry')].map((e) => e.textContent ?? '');
+		expect(labels.some((label) => label.includes('topic'))).toBe(true);
+		expect(labels.some((label) => label.includes('origin/topic'))).toBe(false);
+
+		view.destroy();
+	});
+
+	it('shows the branch already checked out, disabled, with its reason', async () => {
+		repoControl.setInfo(info('main'));
+		branchControl.setRows([branchRow({ name: 'main', current: true }), branchRow({ name: 'topic' })]);
+
+		const view = render(Toolbar, {});
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		const current = [...document.querySelectorAll('.entry')].find((entry) =>
+			entry.textContent?.includes('main')
+		);
+		expect((current as HTMLButtonElement).disabled).toBe(true);
+		expect(current?.textContent).toContain('already on it');
+
+		view.destroy();
+	});
+
+	it('reads the branch list when the dropdown is opened, and not before', async () => {
+		repoControl.setInfo(info('main'));
+		branchControl.setUnloaded();
+
+		const view = render(Toolbar, {});
+		expect(branchCalls.loads).toBe(0);
+
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		expect(branchCalls.loads).toBe(1);
+		view.destroy();
+	});
+
+	it('checks out the branch that was chosen', async () => {
+		repoControl.setInfo(info('main'));
+		branchControl.setRows([branchRow({ name: 'main', current: true }), branchRow({ name: 'topic' })]);
+
+		const view = render(Toolbar, {});
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		const topic = [...document.querySelectorAll('.entry')].find((entry) =>
+			entry.textContent?.includes('topic')
+		);
+		click(topic as HTMLElement);
+		flushSync();
+		await Promise.resolve();
+
+		expect(branchCalls.checkedOut).toEqual(['topic']);
+		view.destroy();
+	});
+
+	it('says why a checkout was refused, where the switch was asked for', async () => {
+		repoControl.setInfo(info('main'));
+		branchControl.setRows([branchRow({ name: 'main', current: true }), branchRow({ name: 'topic' })]);
+		branchControl.failNextCheckout('your local changes would be overwritten');
+
+		const view = render(Toolbar, {});
+		click(view.get('.field'));
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		const topic = [...document.querySelectorAll('.entry')].find((entry) =>
+			entry.textContent?.includes('topic')
+		);
+		click(topic as HTMLElement);
+		flushSync();
+		await Promise.resolve();
+		flushSync();
+
+		expect(view.text()).toContain('your local changes would be overwritten');
+		view.destroy();
+	});
 });
 
 describe('NavRail', () => {
@@ -303,6 +629,33 @@ describe('NavRail', () => {
 		view.destroy();
 	});
 
+	it('names no shortcut on the Log item (FEAT-041)', () => {
+		// It said `Ctrl+F` on every platform, in a column of counts. The
+		// shortcut is real and unchanged; the palette is where it is listed,
+		// with the notation the platform actually uses.
+		const view = render(NavRail, {});
+
+		const log = view.all('.item').find((i) => i.textContent?.includes('Log'));
+		expect(log?.textContent).not.toMatch(/ctrl|cmd|⌘/i);
+
+		view.destroy();
+	});
+
+	it('shows nothing beside a screen that has no count (FEAT-041)', () => {
+		// A `·` means "not computed yet". Settings has no count and is not
+		// waiting for one, so its dot claimed a number that was never coming —
+		// while Pull requests and Rebase, in the same position, showed nothing.
+		repoControl.setCounts(counts({ branches: 4 }));
+		const view = render(NavRail, {});
+
+		for (const label of ['Settings', 'Pull requests', 'Rebase']) {
+			const item = view.all('.item').find((i) => i.textContent?.includes(label));
+			expect(item?.textContent?.trim()).toBe(label);
+		}
+
+		view.destroy();
+	});
+
 	it('shows real counts where they exist', () => {
 		repoControl.setCounts(counts({ branches: 4, stashes: 2 }));
 		const view = render(NavRail, {});
@@ -324,15 +677,20 @@ describe('NavRail', () => {
 		view.destroy();
 	});
 
-	it('reports the walk as loading until it is complete', () => {
+	it('says whether the walk is still running', () => {
+		// The words changed with the row — "walking…" and "commits" rather than
+		// "loading" and "all" — but the fact being reported has not: whether
+		// what the rail is counting is final.
 		graphControl.setComplete(false);
 		const loading = render(NavRail, {});
-		expect(loading.get('.head').textContent).toContain('loading');
+		expect(loading.get('.head').textContent).toContain('walking');
+		expect(loading.get('.walk').classList.contains('running')).toBe(true);
 		loading.destroy();
 
 		graphControl.setComplete(true);
 		const done = render(NavRail, {});
-		expect(done.get('.head').textContent).toContain('all');
+		expect(done.get('.head').textContent).toContain('commits');
+		expect(done.get('.walk').classList.contains('running')).toBe(false);
 		done.destroy();
 	});
 
@@ -344,18 +702,52 @@ describe('NavRail', () => {
 		view.destroy();
 	});
 
-	it('reaches the log search from the filter field', () => {
+	/**
+	 * FEAT-030. The rail's filter field duplicated the Log screen's own query
+	 * bar and the Ctrl+F shortcut, and it occupied the top slot — which now
+	 * carries the action a new user actually needs first.
+	 */
+	it('has no filter field, and does not reach Log from the rail’s top slot', () => {
 		const view = render(NavRail, {});
-		click(view.get('.filter .field'));
-		expect(goto).toHaveBeenCalledWith('/search');
+
+		expect(view.find('.filter')).toBeNull();
+		expect(view.find('.field')).toBeNull();
+		expect(view.text()).not.toContain('filter commits');
+
 		view.destroy();
 	});
 
-	it('opens the directory picker from the footer', () => {
+	it('opens the directory picker from the top of the rail', () => {
 		const view = render(NavRail, {});
-		const open = view.all('button').find((b) => b.textContent?.includes('Open repository'));
-		click(open as HTMLElement);
+
+		const open = view.get('.open');
+		const button = open.querySelector('button') as HTMLElement;
+		expect(button.textContent).toContain('Open repository');
+
+		click(button);
 		expect(repoCalls.chosen).toBe(1);
+
+		view.destroy();
+	});
+
+	/** It is the first thing a new user needs, so it is painted as the primary action. */
+	it('paints Open repository as the rail’s primary action', () => {
+		const view = render(NavRail, {});
+
+		const button = view.get('.open button');
+		expect(button.classList.contains('primary')).toBe(true);
+
+		view.destroy();
+	});
+
+	it('leaves the foot holding the counts alone', () => {
+		const view = render(NavRail, {});
+
+		const foot = view.get('.foot');
+		expect(foot.textContent).toContain('Tags');
+		expect(foot.textContent).toContain('Submodules');
+		expect(foot.querySelector('button')).toBeNull();
+
 		view.destroy();
 	});
 });

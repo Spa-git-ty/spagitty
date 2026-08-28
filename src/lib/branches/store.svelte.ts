@@ -24,7 +24,7 @@ export const STALE_DAYS = 90;
 /**
  * The filter chips, in the order the screen draws them.
  *
- * `mine` means "local", not "authored by me": GitLumiere does not know who you are
+ * `mine` means "local", not "authored by me": Spagitty does not know who you are
  * until Settings does, and a chip that guessed would be wrong for anyone who
  * commits under more than one identity.
  */
@@ -193,6 +193,48 @@ export const branches = {
 	/** Check out a branch. Refused by git if it would overwrite work. */
 	checkout(name: string): Promise<boolean> {
 		return this.run(() => api.checkout(name));
+	},
+
+	/**
+	 * Rename a local branch.
+	 *
+	 * `git branch -m` carries the upstream configuration and the reflog across
+	 * with the ref, so there is nothing to move afterwards. A remote that
+	 * already has the old name keeps it — the confirmation says so.
+	 */
+	rename(from: string, to: string): Promise<boolean> {
+		if (to.trim() === '' || to === from) return Promise.resolve(false);
+		return this.run(() => api.renameBranch(from, to.trim()));
+	},
+
+	/**
+	 * Delete a local branch. `force` is `git branch -D` and loses commits.
+	 *
+	 * No confirmation here, the same split the rest of the application uses:
+	 * `$lib/branches/actions.ts` owns the wording, because what has to be said
+	 * depends on whether the branch is merged and on what it would take to get
+	 * it back.
+	 */
+	delete(name: string, force: boolean): Promise<boolean> {
+		return this.run(() => api.deleteBranch(name, force));
+	},
+
+	/**
+	 * Delete several branches in one pass.
+	 *
+	 * Sequential rather than concurrent: `git branch -d` takes a lock, and the
+	 * failures are per branch — one that refuses must not take the rest with
+	 * it. The first failure stops the run and is reported, because carrying on
+	 * past one would leave the user reading a list of things that did not
+	 * happen for reasons they never saw.
+	 */
+	deleteMany(names: string[], force: boolean): Promise<boolean> {
+		if (names.length === 0) return Promise.resolve(false);
+		return this.run(async () => {
+			for (const name of names) {
+				await api.deleteBranch(name, force);
+			}
+		});
 	},
 
 	/** Create the branch the form describes. Clears the form on success. */

@@ -1,31 +1,45 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Pull requests.
+ * Pull requests, read from whichever service hosts the open repository.
  *
- * GitLumiere talks to no hosting service, and by decision nothing here will in
- * this pass. What this store holds is the shape the screen renders once a host
- * *is* connected — the list, the selection, and whether an account exists at
- * all — so that FEAT-017 fills it in rather than redesigning the screen.
+ * FEAT-010 built this store's shape with nothing behind it; FEAT-017 filled it
+ * in without changing the shape, which is what the earlier item was for.
  *
- * There is no `load()` that calls anything. Adding one is FEAT-017's job, and
- * a stub that pretended to fetch would be worse than an honest absence.
+ * The read is a single call that either succeeds completely or fails with a
+ * reason — offline, rate limited, no account, or a repository the host will not
+ * show. Those are four different sentences and the store keeps them apart,
+ * because "could not load" is a useless thing to tell somebody who is about to
+ * decide whether to wait or to go and fix something.
  */
 
-import type { PullRequest } from '../types';
+import * as api from '../api';
+import type { ForgeRepo, PullRequest } from '../types';
 
 let list = $state<PullRequest[]>([]);
 let connected = $state(false);
 let error = $state<string | null>(null);
 let openId = $state<string | null>(null);
+let repo = $state<ForgeRepo | null>(null);
+let loading = $state(false);
+
+/** Guards against a slow read landing after a newer one. */
+let seq = 0;
 
 export const requests = {
 	get all(): PullRequest[] {
 		return list;
 	},
-	/** True when a hosting account is connected. Always false in this pass. */
+	/** True when the last read reached a host and came back with a list. */
 	get connected(): boolean {
 		return connected;
+	},
+	/** Which repository on a host this is, or null when it is not on one. */
+	get repo(): ForgeRepo | null {
+		return repo;
+	},
+	get loading(): boolean {
+		return loading;
 	},
 	get error(): string | null {
 		return error;
@@ -34,7 +48,7 @@ export const requests = {
 		return openId;
 	},
 
-	/** What is waiting on the person using GitLumiere. The screen leads with these. */
+	/** What is waiting on the person using Spagitty. The screen leads with these. */
 	get needingYou(): PullRequest[] {
 		return list.filter((request) => request.needsYou);
 	},
@@ -56,9 +70,9 @@ export const requests = {
 	/**
 	 * Put a list on the screen.
 	 *
-	 * The only way requests get here, and it exists for the tests and for
-	 * FEAT-017 to call once it has fetched something. Connecting an account,
-	 * storing a token and making the request are all FEAT-017.
+	 * The only way requests get here — `load` calls it, and so do the tests.
+	 * Kept separate from the read so that what the screen does with a list is
+	 * testable without one.
 	 */
 	present(next: PullRequest[], from: { connected: boolean } = { connected: true }): void {
 		list = next;
@@ -70,18 +84,57 @@ export const requests = {
 		}
 	},
 
-	/** Record a failure to reach the host. FEAT-017 will call this. */
+	/** Record a failure to reach the host, in the host's own words. */
 	fail(reason: string): void {
+		connected = false;
 		error = reason;
 		list = [];
 		openId = null;
 	},
 
+	/**
+	 * Read the open repository's pull requests.
+	 *
+	 * Two calls, and the first one decides whether the second is worth making:
+	 * a repository that is not on a host Spagitty reads has nothing to fetch,
+	 * and saying so is a different answer from a failed request.
+	 */
+	async load(): Promise<void> {
+		if (!api.inTauri()) return;
+
+		loading = true;
+		const mine = ++seq;
+		try {
+			const where = await api.forgeRepo();
+			if (mine !== seq) return;
+			repo = where;
+
+			if (where === null) {
+				list = [];
+				connected = false;
+				error = null;
+				openId = null;
+				return;
+			}
+
+			const found = await api.pullRequests();
+			if (mine !== seq) return;
+			this.present(found);
+		} catch (e) {
+			if (mine === seq) this.fail(String(e));
+		} finally {
+			if (mine === seq) loading = false;
+		}
+	},
+
 	clear(): void {
+		seq += 1;
 		list = [];
 		connected = false;
 		error = null;
 		openId = null;
+		repo = null;
+		loading = false;
 	}
 };
 

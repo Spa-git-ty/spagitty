@@ -11,7 +11,7 @@
  * Amendment 10.
  */
 
-import type { FileDiff, WorkingCopy } from '$lib/types';
+import type { FileDiff, WorkingCopy, Signing } from '$lib/types';
 import type { Selection } from '$lib/changes/store.svelte';
 
 const EMPTY: WorkingCopy = { staged: [], unstaged: [], conflicted: [] };
@@ -27,6 +27,8 @@ let fileLoading = $state(false);
 let subject = $state('');
 let body = $state('');
 let amend = $state(false);
+/** FEAT-019: what the message box says about signing, or null to say nothing. */
+let signing = $state<Signing | null>(null);
 let busy = $state(false);
 let writeError = $state<string | null>(null);
 
@@ -35,6 +37,8 @@ export const calls = {
 	staged: [] as string[][],
 	unstaged: [] as string[][],
 	hunks: [] as Array<{ index: number; header: string }>,
+	discarded: [] as string[][],
+	discardedHunks: [] as Array<{ index: number; header: string }>,
 	opened: [] as Selection[],
 	commits: 0,
 	loads: 0,
@@ -79,6 +83,9 @@ export const control = {
 	setAmend(next: boolean) {
 		amend = next;
 	},
+	setSigning(next: Signing | null) {
+		signing = next;
+	},
 	reset() {
 		work = EMPTY;
 		loaded = false;
@@ -91,11 +98,14 @@ export const control = {
 		subject = '';
 		body = '';
 		amend = false;
+		signing = null;
 		busy = false;
 		writeError = null;
 		calls.staged = [];
 		calls.unstaged = [];
 		calls.hunks = [];
+		calls.discarded = [];
+		calls.discardedHunks = [];
 		calls.opened = [];
 		calls.commits = 0;
 		calls.loads = 0;
@@ -136,6 +146,9 @@ export const changes = {
 	},
 	get amend() {
 		return amend;
+	},
+	get signing(): Signing | null {
+		return signing;
 	},
 	get busy() {
 		return busy;
@@ -179,6 +192,15 @@ export const changes = {
 	},
 	async hunk(index: number, header: string) {
 		calls.hunks.push({ index, header });
+		return true;
+	},
+	async discard(paths: string[]) {
+		calls.discarded.push(paths);
+		return true;
+	},
+	async discardHunk(index: number, header: string) {
+		if (selection?.side !== 'unstaged') return false;
+		calls.discardedHunks.push({ index, header });
 		return true;
 	},
 	async commit() {

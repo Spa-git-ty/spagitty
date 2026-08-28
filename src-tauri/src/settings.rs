@@ -1,15 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! GitLumiere's own preferences.
+//! Spagitty's own preferences.
 //!
 //! Application state rather than repository state, so it lives here beside
-//! [`crate::recents`] rather than in `gitlumiere-core`: none of it is a fact about
+//! [`crate::recents`] rather than in `spagitty-core`: none of it is a fact about
 //! a repository, and none of it belongs in `.git/config` where every other tool
 //! would read it.
 //!
 //! The identity — `user.name` and `user.email` — is deliberately *not* here. It
 //! is git's own configuration, every tool reads it, and it is handled by
-//! `gitlumiere_core::identity` through `git config`.
+//! `spagitty_core::identity` through `git config`.
+//!
+//! Commit signing left this file for the same reason (FEAT-019). It was here,
+//! as `signCommits`, and nothing read it — but wiring it up would have been the
+//! defect rather than the fix: `commit.gpgsign` is the same preference in the
+//! place every other tool looks, and two switches for one behaviour disagree
+//! the moment one of them is changed outside this application. A settings file
+//! written before that still carrying the key is not a problem; unknown keys
+//! are ignored on the way in, and the next write drops it.
 //!
 //! A hand-edited file must not stop the application starting, so anything that
 //! does not parse reads as the defaults. That is the same treatment the
@@ -18,7 +26,7 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 
 const FILE: &str = "settings.json";
 
@@ -30,32 +38,52 @@ const FILE: &str = "settings.json";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
-    /// Sign commits with the configured GPG or SSH program.
-    pub sign_commits: bool,
+    /// Ask the project whether there is a newer Spagitty, at startup.
+    ///
+    /// On by default, which is the one preference here that changes what the
+    /// application *does* rather than what it checks — the others are off for
+    /// exactly that reason. It earns the exception by being the only way a
+    /// person finds out their client is old: there is no package manager
+    /// behind an AppImage or a bare `.exe`, and a security fix nobody hears
+    /// about is not a fix. It can be turned off, and turning it off stops
+    /// every request.
+    pub check_for_updates: bool,
     /// Ask before anything that rewrites history.
     pub confirm_history_rewrite: bool,
     /// Show the `git` command behind each action.
     pub show_git_commands: bool,
+    /// Delete remote-tracking refs the remote no longer has, when fetching.
+    ///
+    /// A setting rather than something that always happens (FEAT-018).
+    /// Pruning deletes refs, and a destructive step that nobody chose is the
+    /// thing Amendment 6 exists to stop — it was passed on every fetch before
+    /// this was added.
+    pub prune_on_fetch: bool,
 }
 
 impl Default for Settings {
-    /// Off, except the one that asks first.
+    /// Off, except the one that asks first and the one that looks for updates.
     ///
     /// A confirmation defaults to on because the cost of asking is a click and
-    /// the cost of not asking is a rewritten history. The other two change what
-    /// the application does rather than what it checks, and a preference the
-    /// user did not set should not do that.
+    /// the cost of not asking is a rewritten history. The update check is the
+    /// deliberate exception to "a preference the user did not set should not
+    /// change what the application does" — its reasoning is on the field.
+    /// The rest are off.
     fn default() -> Self {
         Settings {
-            sign_commits: false,
+            check_for_updates: true,
             confirm_history_rewrite: true,
             show_git_commands: false,
+            // Off, like the other two that change what the application does.
+            // A branch that vanishes from the graph because a fetch pruned it
+            // is a surprise, and one nobody asked for.
+            prune_on_fetch: false,
         }
     }
 }
 
 /// The stored settings, or the defaults.
-pub fn load(app: &AppHandle) -> Settings {
+pub fn load<R: Runtime>(app: &AppHandle<R>) -> Settings {
     let Some(path) = file(app) else {
         return Settings::default();
     };
@@ -70,7 +98,7 @@ pub fn load(app: &AppHandle) -> Settings {
 /// A failed write is worth saying out loud here, unlike the repository list: a
 /// toggle that silently did not persist looks exactly like one that did until
 /// the next restart.
-pub fn save(app: &AppHandle, settings: Settings) -> Result<(), String> {
+pub fn save<R: Runtime>(app: &AppHandle<R>, settings: Settings) -> Result<(), String> {
     let path =
         file(app).ok_or_else(|| "there is no configuration directory to write to".to_string())?;
 
@@ -87,7 +115,7 @@ fn parse(text: &str) -> Settings {
     serde_json::from_str(text).unwrap_or_default()
 }
 
-fn file(app: &AppHandle) -> Option<PathBuf> {
+fn file<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
     app.path().app_config_dir().ok().map(|dir| dir.join(FILE))
 }
 
@@ -107,8 +135,9 @@ mod tests {
         // The cost of asking is a click. The cost of not asking is a rewritten
         // history, so this is the one that defaults to on.
         assert!(Settings::default().confirm_history_rewrite);
-        assert!(!Settings::default().sign_commits);
         assert!(!Settings::default().show_git_commands);
+        // The one other exception, and the field says why it earns it.
+        assert!(Settings::default().check_for_updates);
     }
 
     #[test]
@@ -121,9 +150,9 @@ mod tests {
 
     #[test]
     fn a_file_from_an_older_build_keeps_what_it_carries_and_defaults_the_rest() {
-        let partial = parse(r#"{"signCommits": true}"#);
+        let partial = parse(r#"{"showGitCommands": true}"#);
 
-        assert!(partial.sign_commits);
+        assert!(partial.show_git_commands);
         assert!(
             partial.confirm_history_rewrite,
             "a key the file predates arrives at its default"
@@ -133,17 +162,22 @@ mod tests {
     #[test]
     fn a_key_the_build_does_not_know_is_ignored_rather_than_fatal() {
         // Going back a version must not cost the settings that still apply.
-        let settings = parse(r#"{"signCommits": true, "somethingLater": "on"}"#);
+        // `signCommits` is one such key now: it lived here until FEAT-019 moved
+        // the preference to `commit.gpgsign`, and a file written before that
+        // still carries it.
+        let settings = parse(r#"{"signCommits": true, "showGitCommands": true, "later": "on"}"#);
 
-        assert!(settings.sign_commits);
+        assert!(settings.show_git_commands);
+        assert!(settings.confirm_history_rewrite);
     }
 
     #[test]
     fn settings_read_back_as_they_were_written() {
         let written = Settings {
-            sign_commits: true,
+            check_for_updates: false,
             confirm_history_rewrite: false,
             show_git_commands: true,
+            prune_on_fetch: true,
         };
         let text = serde_json::to_string_pretty(&written).expect("serialising");
 
@@ -156,8 +190,12 @@ mod tests {
         // these keys. A rename on either side has to be a deliberate one.
         let text = serde_json::to_string(&Settings::default()).expect("serialising");
 
-        assert!(text.contains("signCommits"), "{text}");
+        assert!(text.contains("checkForUpdates"), "{text}");
         assert!(text.contains("confirmHistoryRewrite"), "{text}");
         assert!(text.contains("showGitCommands"), "{text}");
+        assert!(text.contains("pruneOnFetch"), "{text}");
+        // And the one that left: writing it again would recreate a second
+        // switch for a preference `commit.gpgsign` already holds.
+        assert!(!text.contains("signCommits"), "{text}");
     }
 }

@@ -6,7 +6,7 @@
 	/**
 	 * A floating menu, positioned at a point.
 	 *
-	 * Every right-click menu in GitLumiere is this component with a different list,
+	 * Every right-click menu in Spagitty is this component with a different list,
 	 * because the behaviour that has to be right — closing on an outside click,
 	 * closing on Escape, staying inside the window, arrow-key navigation, not
 	 * letting a disabled entry be chosen — is the same every time and is not
@@ -23,10 +23,22 @@
 		items: MenuItem[];
 		/** Named for screen readers, since the menu has no visible title. */
 		label: string;
+		/**
+		 * The control this menu was opened from, when it was opened by a click
+		 * rather than at the pointer.
+		 *
+		 * A pointer sends `mousedown` and then `click`. Without this, the
+		 * mousedown on the control landed outside the menu and closed it, and
+		 * the click that followed opened it again — so the one gesture everybody
+		 * tries first, clicking the control a second time, could not dismiss it
+		 * (BUG-018). Mousedowns on the anchor are left alone, and the control
+		 * decides on the click whether it is opening or closing.
+		 */
+		anchor?: HTMLElement | null;
 		onclose: () => void;
 	}
 
-	let { x, y, items, label, onclose }: Props = $props();
+	let { x, y, items, label, anchor = null, onclose }: Props = $props();
 
 	let element = $state<HTMLDivElement | null>(null);
 	let placed = $state<{ left: number; top: number } | null>(null);
@@ -64,13 +76,56 @@
 		await entry.run();
 	}
 
+	/**
+	 * Move the cursor by `delta`, over the entries that can actually run.
+	 *
+	 * BUG-008: with nothing selected yet, `entries[cursor]` is `entries[-1]` —
+	 * `undefined` — and `findIndex` answers `-1` for it. Down happened to work
+	 * out (`-1 + 1` is the first entry); up did not, landing on
+	 * `usable.length - 2`, so the first ArrowUp into a three-item menu chose the
+	 * middle one and into a two-item menu chose the first.
+	 *
+	 * With no cursor there is no "current", so the direction alone decides:
+	 * down opens at the first entry, up at the last.
+	 */
 	function step(delta: number) {
 		const usable = entries.filter((entry) => !entry.disabled);
 		if (usable.length === 0) return;
 
 		const current = usable.findIndex((entry) => entry === entries[cursor]);
-		const next = (current + delta + usable.length) % usable.length;
+		const next =
+			current === -1
+				? delta > 0
+					? 0
+					: usable.length - 1
+				: (current + delta + usable.length) % usable.length;
+
 		cursor = entries.indexOf(usable[next]);
+	}
+
+	/**
+	 * Close when the focus is no longer in the menu.
+	 *
+	 * The menu takes focus as soon as it is placed, so "focus is somewhere
+	 * else" is the same statement as "the user is doing something else" — and
+	 * unlike a mousedown, it is true however the focus left: a click, a Tab, a
+	 * touch, another window taking over. `focusout` bubbles, so this catches
+	 * focus leaving any entry inside as well as the container itself.
+	 *
+	 * Two moves are not leaving. Focus travelling between entries stays inside
+	 * `element`, and focus landing on the control that opened the menu belongs
+	 * to that control's own toggle — closing here would let its click reopen
+	 * what this just closed, which is the whole of BUG-018.
+	 *
+	 * A null `relatedTarget` means the focus went nowhere in particular, which
+	 * is what clicking any ordinary part of the application does. That is a
+	 * close.
+	 */
+	function leftTheMenu(event: FocusEvent) {
+		const next = event.relatedTarget as Node | null;
+		if (next && element?.contains(next)) return;
+		if (next && anchor?.contains(next)) return;
+		onclose();
 	}
 
 	function onkeydown(event: KeyboardEvent) {
@@ -100,7 +155,10 @@
 
 <svelte:window
 	onmousedown={(event) => {
-		if (element && !element.contains(event.target as Node)) onclose();
+		const target = event.target as Node;
+		// The control that opened it gets to be the control that closes it.
+		if (anchor?.contains(target)) return;
+		if (element && !element.contains(target)) onclose();
 	}}
 	onresize={onclose}
 />
@@ -114,6 +172,7 @@
 	aria-label={label}
 	tabindex="-1"
 	{onkeydown}
+	onfocusout={leftTheMenu}
 >
 	{#each items as item, index (index)}
 		{#if 'separator' in item}
@@ -142,17 +201,28 @@
 </div>
 
 <style>
+	/*
+	 * A menu floats over the application rather than sitting in it, so it takes
+	 * the floating surface and the deepest of the three shadows — and the
+	 * shadow is the theme's own ink rather than black, which is what stopped a
+	 * menu over Gruvbox looking like a hole cut in the window.
+	 */
 	.menu {
 		position: fixed;
 		z-index: 50;
 		min-width: 200px;
 		max-width: 340px;
 		padding: 5px;
-		background: var(--panel);
-		border: 1.5px solid var(--line);
+		background-color: var(--glass-thick);
+		backdrop-filter: var(--blur-thick);
+		-webkit-backdrop-filter: var(--blur-thick);
 		border-radius: var(--r-panel);
-		box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26);
+		box-shadow: var(--shadow-3);
 		outline: none;
+		/* It appears at the pointer, so it grows from where it was asked for
+		   rather than fading in from nowhere. */
+		transform-origin: top left;
+		animation: pop-in var(--t-enter-liquid) var(--spring-liquid);
 	}
 
 	/* Rendered so it can be measured, but not shown at the wrong place first. */
@@ -176,8 +246,14 @@
 		font-size: var(--fs-secondary);
 	}
 
+	/* The item the keyboard is on. A stronger tint than the hover state, so the
+	   two are tellable apart at a glance. */
 	.entry.at:not(:disabled) {
 		background: var(--selection);
+	}
+
+	.entry:not(:disabled):hover {
+		background: var(--hover);
 	}
 
 	.entry:disabled {
@@ -185,8 +261,13 @@
 		cursor: default;
 	}
 
+	/* The palette's red, not the graph's third lane — see `Chip.svelte`. */
 	.entry.danger:not(:disabled) .label {
-		color: var(--lane-3);
+		color: var(--danger);
+	}
+
+	.entry.danger:not(:disabled):hover {
+		background: var(--danger-soft);
 	}
 
 	.label {

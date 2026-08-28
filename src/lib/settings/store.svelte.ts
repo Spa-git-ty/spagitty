@@ -5,7 +5,7 @@
  *
  * Three unrelated things live behind one screen, and they are kept apart here
  * because they are stored in three different places: the identity is git's own
- * configuration, the toggles are GitLumiere's preferences file, and the build
+ * configuration, the toggles are Spagitty's preferences file, and the build
  * identity and license list are compiled in. A failure in one must not blank the
  * others — About in particular, since the license and the commit are an
  * obligation rather than a convenience.
@@ -15,17 +15,28 @@
  */
 
 import * as api from '../api';
-import type { About, Identity, IdentityKey, IdentityScope, Licenses, Settings } from '../types';
+import type {
+	About,
+	Identity,
+	IdentityKey,
+	IdentityScope,
+	Licenses,
+	ForgeAccount,
+	Settings,
+	Signing,
+	Update
+} from '../types';
 
-export type Section = 'you' | 'accounts' | 'behaviour' | 'appearance' | 'advanced';
+export type Section = 'you' | 'accounts' | 'remotes' | 'behaviour' | 'appearance' | 'license';
 
 /** The chip index, in the order it is shown. */
 export const SECTIONS: { id: Section; label: string }[] = [
 	{ id: 'you', label: 'You' },
 	{ id: 'accounts', label: 'Accounts' },
+	{ id: 'remotes', label: 'Remotes' },
 	{ id: 'behaviour', label: 'Behaviour' },
 	{ id: 'appearance', label: 'Appearance' },
-	{ id: 'advanced', label: 'Advanced' }
+	{ id: 'license', label: 'License' }
 ];
 
 /**
@@ -36,9 +47,10 @@ export const SECTIONS: { id: Section; label: string }[] = [
  * They exist so the first frame is not blank, not as a second definition.
  */
 const DEFAULTS: Settings = {
-	signCommits: false,
+	checkForUpdates: true,
 	confirmHistoryRewrite: true,
-	showGitCommands: false
+	showGitCommands: false,
+	pruneOnFetch: false
 };
 
 function isSection(value: string): value is Section {
@@ -47,6 +59,20 @@ function isSection(value: string): value is Section {
 
 let section = $state<Section>('you');
 let identity = $state<Identity | null>(null);
+/**
+ * Commit signing, read from git rather than from the preferences file.
+ *
+ * Beside the identity because it is the same kind of thing and shares the same
+ * scope chip: both are git configuration with a global value and a repository
+ * override, and choosing the scope once for both is the honest arrangement.
+ */
+let signing = $state<Signing | null>(null);
+/** Connected hosting accounts (FEAT-017). Hosts and logins; never tokens. */
+let accounts = $state<ForgeAccount[]>([]);
+/** What the last update check found, and what it failed with. */
+let update = $state<Update | null>(null);
+let updateError = $state<string | null>(null);
+let checking = $state(false);
 let scope = $state<IdentityScope>('global');
 let drafts = $state<Record<IdentityKey, string>>({ name: '', email: '' });
 let stored = $state<Settings>(DEFAULTS);
@@ -83,6 +109,21 @@ export const settings = {
 	},
 	get identity(): Identity | null {
 		return identity;
+	},
+	get signing(): Signing | null {
+		return signing;
+	},
+	get accounts(): ForgeAccount[] {
+		return accounts;
+	},
+	get update(): Update | null {
+		return update;
+	},
+	get updateError(): string | null {
+		return updateError;
+	},
+	get checking(): boolean {
+		return checking;
 	},
 	get scope(): IdentityScope {
 		return scope;
@@ -130,6 +171,13 @@ export const settings = {
 	/** Select a section from a URL fragment, ignoring anything unrecognised. */
 	showFromHash(hash: string): void {
 		const name = hash.replace(/^#/, '');
+		// `advanced` was this section's name until it was renamed to `license`,
+		// which is what it had always actually held. A link written before the
+		// rename still lands somewhere sane rather than silently doing nothing.
+		if (name === 'advanced') {
+			section = 'license';
+			return;
+		}
 		if (isSection(name)) section = name;
 	},
 
@@ -157,8 +205,10 @@ export const settings = {
 		}
 		busy = true;
 		try {
-			const [read, toggles, list, build] = await Promise.allSettled([
+			const [read, signs, connected, toggles, list, build] = await Promise.allSettled([
 				api.identity(),
+				api.signing(),
+				api.forgeAccounts(),
 				api.settings(),
 				api.licenses(),
 				api.about()
@@ -172,6 +222,8 @@ export const settings = {
 			} else {
 				error = String(read.reason);
 			}
+			if (signs.status === 'fulfilled') signing = signs.value;
+			if (connected.status === 'fulfilled') accounts = connected.value;
 			if (toggles.status === 'fulfilled') stored = toggles.value;
 			if (list.status === 'fulfilled') licenses = list.value;
 			if (build.status === 'fulfilled') about = build.value;
@@ -209,6 +261,103 @@ export const settings = {
 	},
 
 	/**
+	 * Turn commit signing on or off in the chosen scope.
+	 *
+	 * Not optimistic, unlike the preference toggles: this writes to git's own
+	 * configuration and the answer carries more than the flag — which file it
+	 * landed in, and whether the signer it names can actually run. Showing that
+	 * before it is known would be showing a guess.
+	 */
+	async setSigning(on: boolean): Promise<void> {
+		if (busy) return;
+		busy = true;
+		writeError = null;
+		try {
+			signing = await api.setSigning(scope, on);
+		} catch (e) {
+			writeError = String(e);
+		} finally {
+			busy = false;
+		}
+	},
+
+	/**
+	 * Connect a hosting account (FEAT-017).
+	 *
+	 * The token is passed straight through to the backend and is never held in
+	 * this store. Resolves to whether it worked, so the field can be cleared
+	 * either way and the host reset only on success.
+	 */
+	async connectAccount(host: string, token: string): Promise<boolean> {
+		if (busy) return false;
+		busy = true;
+		writeError = null;
+		try {
+			// One host is supported; the kind is not a question to ask a person
+			// who already typed the hostname.
+			accounts = await api.forgeConnect('gitHub', host, token);
+			return true;
+		} catch (e) {
+			writeError = String(e);
+			return false;
+		} finally {
+			busy = false;
+		}
+	},
+
+	/** Disconnect an account, which also deletes its token from the keychain. */
+	async disconnectAccount(host: string, user: string): Promise<void> {
+		if (busy) return;
+		busy = true;
+		writeError = null;
+		try {
+			accounts = await api.forgeDisconnect(host, user);
+		} catch (e) {
+			writeError = String(e);
+		} finally {
+			busy = false;
+		}
+	},
+
+	/**
+	 * Ask whether there is a newer Spagitty.
+	 *
+	 * Not gated on `checkForUpdates` — that preference governs the automatic
+	 * check at startup. Pressing the button is somebody asking, and a button
+	 * that silently did nothing because of a setting elsewhere would be worse
+	 * than not having one.
+	 *
+	 * Kept out of `busy`, which gates the writes: a failed update check must
+	 * not leave the identity fields disabled.
+	 */
+	async checkForUpdate(): Promise<void> {
+		if (checking || !api.inTauri()) return;
+		checking = true;
+		updateError = null;
+		try {
+			update = await api.checkUpdate();
+		} catch (e) {
+			updateError = String(e);
+		} finally {
+			checking = false;
+		}
+	},
+
+	/** Remove `commit.gpgsign` from the chosen scope, letting the next one decide. */
+	async clearSigning(): Promise<void> {
+		if (busy) return;
+		busy = true;
+		writeError = null;
+		try {
+			signing = await api.clearSigning(scope);
+		} catch (e) {
+			writeError = String(e);
+		} finally {
+			busy = false;
+		}
+	},
+
+	/**
 	 * Flip a toggle and store it.
 	 *
 	 * Optimistic, and put back if the write fails: a toggle that shows one state
@@ -233,6 +382,11 @@ export const settings = {
 	clearState(): void {
 		section = 'you';
 		identity = null;
+		signing = null;
+		accounts = [];
+		update = null;
+		updateError = null;
+		checking = false;
 		scope = 'global';
 		drafts = { name: '', email: '' };
 		stored = DEFAULTS;

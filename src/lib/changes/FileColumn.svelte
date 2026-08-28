@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { changes } from '$lib/changes/store.svelte';
+	import { discardAll, discardPaths } from '$lib/changes/discard';
 	import { statusGlyph } from '$lib/format';
 	import Btn from '$lib/ui/Btn.svelte';
 	import type { DiffSide, StatusEntry } from '$lib/types';
@@ -13,6 +14,12 @@
 	 * appear in both sections at once, because a file can be staged in part;
 	 * collapsing that into one row is what makes people commit something they
 	 * did not mean to.
+	 *
+	 * Discard is offered on the unstaged side only (FEAT-048). That is the side
+	 * where the change has not been kept yet, and it is the side whose contents
+	 * `git restore --worktree` is defined against. A staged change is one
+	 * unstage away from being discardable, and putting the destructive button
+	 * next to `−` in the staged section would make the two easy to confuse.
 	 */
 
 	/** See FileList.svelte: keeps `.gitignore` from rendering as `gitignore.`. */
@@ -94,6 +101,13 @@
 					<Btn disabled={changes.busy} onclick={() => changes.stage(paths(work.unstaged))}>
 						Stage all
 					</Btn>
+					<Btn
+						disabled={changes.busy}
+						title="Throw away every unstaged change — this cannot be undone"
+						onclick={() => discardAll()}
+					>
+						Discard all
+					</Btn>
 				{/if}
 			</div>
 		</header>
@@ -121,6 +135,16 @@
 				>
 					+
 				</button>
+				<button
+					class="act discard mono"
+					disabled={changes.busy}
+					title={entry.status === 'untracked'
+						? `Delete ${entry.path} — this cannot be undone`
+						: `Discard changes to ${entry.path} — this cannot be undone`}
+					onclick={() => discardPaths([entry])}
+				>
+					✕
+				</button>
 			</div>
 		{/each}
 
@@ -135,7 +159,7 @@
 		width: var(--changes-files-w);
 		flex: none;
 		background: var(--panel);
-		border-right: 1.5px solid var(--line);
+		border-right: 1px solid var(--line);
 		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
@@ -154,7 +178,7 @@
 		justify-content: space-between;
 		gap: 6px;
 		padding: 4px 8px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 	}
 
 	.right {
@@ -175,34 +199,52 @@
 		gap: 4px;
 		margin: 2px 6px 0;
 		padding-right: 4px;
-		border: 1.5px solid transparent;
+		border: 1px solid transparent;
 		border-radius: var(--r-field);
 		min-width: 0;
+		transition:
+			background var(--t-fast) var(--ease),
+			border-color var(--t-fast) var(--ease),
+			box-shadow var(--t-fast) var(--ease);
 	}
 
-	/* Solid is settled, dashed is not — the same device the rest of the
-	   application uses. */
+	/*
+	 * Staged is settled, unstaged is not — and the difference is *depth* now
+	 * rather than a dashed border. A staged file is a card that has been picked
+	 * up: a raised surface with the light on its top edge and a shadow under
+	 * it. An unstaged one is lying flat on the page. The class is still called
+	 * `dashed` because that is what the markup and its tests call the state;
+	 * what it draws is what changed.
+	 */
 	.row.solid {
 		border-color: var(--soft);
+		background: var(--surface);
+		box-shadow: var(--sheen), var(--shadow-1);
 	}
 
 	.row.dashed {
-		border-style: dashed;
 		border-color: var(--soft);
+		background: none;
 	}
 
+	/* A file git cannot merge on its own. Red, because it is the one state on
+	   this screen that is a problem rather than a step. */
 	.row.conflicted {
-		border-color: var(--accent);
+		border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+		background: linear-gradient(90deg, var(--danger-soft), transparent 70%);
 		padding: 2px 8px;
 	}
 
 	.row:hover {
-		border-color: var(--accent);
+		border-color: color-mix(in srgb, var(--accent) 55%, var(--soft));
+		box-shadow: var(--sheen), var(--shadow-1);
 	}
 
 	.row.selected {
-		background: var(--selection);
-		border-color: var(--accent);
+		background: linear-gradient(90deg, var(--accent-soft), transparent 75%),
+			var(--surface);
+		border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+		box-shadow: var(--sheen), var(--shadow-1);
 	}
 
 	.open {
@@ -249,5 +291,11 @@
 
 	.act:disabled {
 		opacity: 0.4;
+	}
+
+	/* Red on hover only. A column of red crosses would read as a list of
+	   errors rather than as a column of available actions. */
+	.act.discard:hover:not(:disabled) {
+		color: var(--danger);
 	}
 </style>

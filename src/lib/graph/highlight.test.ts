@@ -20,7 +20,9 @@ function makeRow(
 	const refs: RefChip[] = (extra.refs ?? []).map((name) => ({
 		name,
 		kind: 'branch',
-		current: false
+		current: false,
+		local: true,
+		remotes: [], divergence: null
 	}));
 
 	return {
@@ -34,6 +36,7 @@ function makeRow(
 		time: 1_700_000_000 - index * 60,
 		lane: 0,
 		color: 0,
+		signed: false,
 		parents,
 		refs,
 		edges: []

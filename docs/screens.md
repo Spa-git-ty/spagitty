@@ -19,16 +19,24 @@ under Amendment 11.
 | 1E | Interactive rebase | `/rebase` | yes | Built | FEAT-009 |
 | 1F | Branches | `/branches` | yes | Built | FEAT-004 |
 | 1G | Stash | `/stash` | yes | Built | FEAT-005 |
-| 1H | Pull requests | `/requests` | yes | Built (offline) | FEAT-010 |
+| 1H | Pull requests | `/requests` | yes | Built | FEAT-010, FEAT-017 |
 | 1I | Log search | `/search` | yes | Built | FEAT-007 |
 | 1J | All repositories | `/repos` | yes | Built | FEAT-006 |
 | 1K | Settings | `/settings` | yes | Built | FEAT-011 |
 | 1L | Clone | modal | no | Built | FEAT-012 |
+| 1M | Reflog | `/reflog` | yes | Built | FEAT-050 |
+| 1N | Tags | `/tags` | yes | Built | FEAT-051 |
 
-**Every screen in the handoff is built.** What remains deferred is named on the
-screen that defers it — writes the Conflicts screen does not perform, the rebase
-it plans but does not run, the host the Pull requests screen cannot connect to.
-Each says so in place rather than being absent.
+**Every screen in the handoff is built**, and 1A–1L is the whole of it. 1M and
+1N were not in the handoff at all: the Reflog and Tags came out of the GitKraken
+gap analysis rather than the design, and they are numbered after the handoff's
+run rather than inserted into it, so that a code still says where a screen came
+from.
+
+What remains deferred is named on the screen that defers it, in place rather
+than being absent — a conflicted stash apply, and the forges Spagitty has no
+client for. The two that used to be listed here, the host Pull requests could
+not reach and the accounts Settings had no client for, were closed by FEAT-017.
 
 `src/lib/ui/ScreenStub.svelte` is no longer rendered by any route. It stays
 because it is how the next unbuilt screen says what it will be rather than
@@ -44,7 +52,12 @@ Persistent across every screen, built with FEAT-001.
   and `src/lib/chrome/ResizeEdges.svelte` provides the resize edges.
   It carries no theme control — Settings → Appearance is the one place the
   theme is set — and no shortcut hint: it used to show `⌘K` for Log search,
-  when the shortcut is `⌘F` and the notation was macOS's on every platform.
+  when the shortcut is `Ctrl+F` and the notation was macOS's on every platform.
+  Key names are written in their `Ctrl` / `Alt` form throughout the interface.
+  The one exception is the command palette, which picks its own notation from
+  the platform at runtime (`src/lib/palette/commands.ts`) — macOS is a build
+  target, and printing `Ctrl+` on a machine with no such key would be wrong in
+  the other direction.
 - **Toolbar** — repository and branch pickers, Undo/Redo, Clone, Fetch, Push,
   Branch, Stash, Rebase, and the primary Commit button. Actions that are not
   built yet say so on hover rather than failing silently when clicked.
@@ -52,12 +65,83 @@ Persistent across every screen, built with FEAT-001.
   are the same fact. Counts are right-aligned; `·` means "not computed yet", and
   screens that do not exist report `·` rather than a number that would be wrong.
 
+  The top slot is **Open repository…**, painted as the primary action (FEAT-030).
+  It is the first thing a new user needs and it used to sit below a spacer at the
+  bottom, which is the least discoverable place in the rail. The slot previously
+  held a "filter commits / ⌘F" field that only duplicated the Log screen's own
+  query bar and the `Ctrl+F` shortcut; it is gone. The foot keeps the "Tags N ·
+  Submodules N" line, now alone.
+
+  Rail order is the screens roughly as they are worked through — Graph, Working
+  copy, Conflicts, Branches, Stash, Pull requests, Rebase, Log — then a divider,
+  then All repositories and Settings. Log follows Rebase because it is where you
+  go to look something up rather than a step in that sequence.
+
+## The window itself
+
+The window is undecorated and **transparent**, so everything a person reads as
+"the window" is drawn by the application: a 12px corner, a 0.2px outline, an
+inset highlight along the top edge, and two shadows — a tight dark one holding
+the card down and a wide soft one giving it height (FEAT-037). `body` carries a
+margin for the shadow to fall into; without it a `box-shadow` on an element flush
+against the window edge is clipped away entirely.
+
+Maximizing drops all of it, because a floating card with a gap around it is a
+window that does not fit its own screen. CSS cannot ask Tauri its state, so
+`appWindow.watchMaximized()` publishes it as `data-window` on the root element.
+
+**The chrome is glass, and thick glass bends light** (FEAT-057). Every bar,
+rail, menu and dialog is a frosted pane; the panes that float — menus and
+dialogs — also refract, so the application behind them is pushed outward toward
+each rim and the colour splits a little where the bend is sharpest.
+
+It is not done the way the web does it. `backdrop-filter: url(#filter)` is what
+every published recreation of this effect uses, and **WebKitGTK renders nothing
+for it**: the declaration parses, `CSS.supports` answers yes, and the pane comes
+out identical to one with no filter. So the filter goes on the other side of the
+glass — an ordinary `filter` on the application underneath, displacing it in a
+ring the exact shape of each pane. What bends around a menu is the actual commit
+list, actually displaced.
+
+Two things follow from that, and they are visible in the markup. The filtered
+element is `.lens`, a wrapper inside `.app`: `.app` carries the window's outline
+and cast shadow, both drawn outside its border box, and a filter clips to that
+box — filtering `.app` would cut the window's own edge off for as long as a menu
+was open. And a pane cannot be inside what it bends, so a menu raised deep in a
+screen is moved to a window-sized stage of its own. The arithmetic is in
+`src/lib/ui/liquidGlassMaps.ts`, tested without a window; the measuring and the
+registry are in `src/lib/ui/liquidGlass.ts`, which does nothing at all when
+there is no `.lens` to filter — which is every component test.
+
+**The region is a fraction of the box, never a measurement of it.** The filter
+covers `0 0 1 1` in `objectBoundingBox` units, and the map sources carry no
+subregion so each one defaults to that. It used to be the element's measured
+width and height in `userSpaceOnUse` units — CSS pixels, which WebKitGTK
+consumes as device pixels, so on any display whose ratio is not 1 the region
+covered `1 / devicePixelRatio` of the window and the rest of it simply stopped
+painting for as long as a menu was open (BUG-017). A fraction cannot be read in
+the wrong unit, and with one set of numbers describing the geometry instead of two there
+is nothing left for the ratio to be wrong about — the maps are authored in CSS
+pixels and stretched onto the region, and nothing in either file refers to a
+device pixel.
+
+Worth knowing before diagnosing anything here: the compositor's monitor scale is
+not the webview's ratio. Hyprland reports `scale: 1` on the display where
+WebKitGTK reports 1.3636.
+
+**Every panel resizes.** `PANELS` in `src/lib/panels.svelte.ts` is the registry —
+each panel names its CSS variable, the edge it is anchored to, and its range —
+and `Splitter` takes any key. The anchored edge is what decides the drag
+direction, and the splitter measures **the panel beside it** rather than the
+window: the window's edge is the right reference only for the rail, and wrong for
+anything nested inside a screen where the rail's own width sits in between.
+
 ## 1A — Graph
 
 **Built.** `src/routes/+page.svelte`, `src/lib/graph/`.
 
 The centre of gravity, and the application's primary navigation surface rather
-than a read-only report: almost every operation GitLumiere can perform is reachable
+than a read-only report: almost every operation Spagitty can perform is reachable
 from a right-click here.
 
 A streamed, virtualised commit list with a lane canvas, a configurable column
@@ -92,7 +176,25 @@ never fetched, for the reasons in `src/lib/graph/avatar.ts`.
 
 The lane column stops widening at twelve columns — the reasoning and the
 measurements are in the doc comment on `LANE_COLUMNS_MAX` in
-`src/lib/metrics.ts`. The lane pitch, node radius and elbow control points were
+`src/lib/metrics.ts`.
+
+**Past that cap the pitch gives, not the column** (FEAT-035). A thirteenth lane
+is drawn closer to its neighbour rather than on top of it: the lanes share out
+`LANE_SPAN` between them, down to a floor of `LANE_PITCH_MIN`, so the column's
+width never depends on how busy the history is and the graph can never reach the
+message column. The node radius follows the pitch down — the node is what set
+the pitch in the first place, and a full-size portrait on a compressed column
+would paint straight back over the room the compression made.
+
+Two limits remain, both deliberate. Up to 32 lanes a node still fits inside its
+own pitch; past that it is held at `MERGE_R` and begins to overlap its
+neighbour, because a node that kept shrinking would stop being visible at the
+depth where it is the only thing locating a commit. And at 48 lanes the pitch
+reaches its floor, after which the deepest lanes do share a column — the old
+behaviour, now reached four times deeper. `git/git` peaks at 382 lanes; some
+histories defeat any width.
+
+The lane pitch, node radius and elbow control points were
 retuned in FEAT-022 against `docs/reference/gitkraken-commit-graph.md`, which
 also records what this graph deliberately will **not** do: no dragging commits,
 no inline message editing, no manual lane layout, no independent graph zoom.
@@ -114,13 +216,23 @@ than one person's work, and putting the merge author's portrait on it would
 claim they wrote the branch it swallowed.
 
 The lane column is a **surface of its own** — `--graph-bg`, a mix of `--panel`
-and `--bg` so every palette gets one — bounded by a hairline, painted per row so
-it scrolls with the rows rather than a frame behind them.
+and `--bg` so every palette gets one — bounded by a hairline. It is painted
+twice, from one declaration: by each row, so it scrolls with the rows, and by a
+**bed** laid out once at the full height of the table underneath them.
 
-Geometry moved with the faces: node radius 8.5, lane pitch 22, stroke 2.5, elbow
-control points 0.55/0.45. A five-lane column is 129px where it was 96px. FEAT-022
-had taken it down from 150px because the graph crowded the messages; a third of
-that comes back, deliberately, because a face needs room.
+The bed is what a repository shorter than the window needs. With the paint
+living only on the rows, the column ended at the last commit and left a blank
+slab down to the status strip, under a header that still showed three columns
+(BUG-016). The bed iterates `columns.shown`, exactly as the row and the lane
+canvas do, so all three move together when a column is resized, reordered or
+hidden — the arrangement BUG-003 established and for the same reason. Their
+order is set explicitly: bed, then rows, then canvas, then the scroll edges.
+
+Geometry moved with the faces: node radius 11, lane pitch 26, stroke 2.5, elbow
+control points 0.55/0.45. A five-lane column is 149px where it was 96px. FEAT-022
+had taken it down from 150px because the graph crowded the messages; FEAT-023 put
+129px back and FEAT-029 the rest, deliberately, because a face needs room — and
+a face at 8.5px radius was still being read as a coloured dot.
 
 **Hovering dims nothing.** Hovering a branch label used to grey out every commit
 outside it and hovering a row drew a dashed ghost line to its nearest reference.
@@ -155,20 +267,22 @@ Its status walk is what made the rail's Working copy and Conflicts counts real.
 The toolbar's Commit button counts `staged` rather than `working`: a working
 copy with ten changed files and one staged must not offer to commit ten.
 
-Nothing here can discard work. Stage, unstage and commit only move changes
-forward; a mistake costs an unstage. Discarding is a separate decision and is
-not built.
+**Discarding is built, and only on the unstaged side** (FEAT-048): file, hunk,
+or everything, each behind a confirmation whose wording says whether the file is
+reverted or deleted. The staged side is deliberately untouched — unstage first,
+which costs nothing, and then discard. Stage, unstage and commit still only move
+changes forward, so the one action that can lose work is the one that asks.
 
 ## 1D — Conflicts
 
 **Built.** `src/routes/conflicts/+page.svelte`, `src/lib/conflicts/`.
-Resolution writes are deferred to FEAT-016.
+It resolves as well as reads, since FEAT-016.
 
 Ours, the merged result and theirs, side by side, with the common ancestor
 behind a disclosure. The three come from the index: when git cannot merge two
 versions of a file it keeps all three — stage 1 the base, stage 2 ours, stage 3
 theirs — and leaves the working-tree file with markers in it. That is the whole
-data model, and `crates/gitlumiere-core/src/conflicts.rs` is a reader for it.
+data model, and `crates/spagitty-core/src/conflicts.rs` is a reader for it.
 
 Which stages exist *is* the kind of conflict. No stage 1 means both sides added
 the path; a missing stage 2 or 3 means that side deleted it, and the pane says
@@ -180,15 +294,22 @@ inferred from the presence of conflicts. Merge, rebase, cherry-pick and revert
 all leave conflicts behind, and naming the wrong one sends someone to the wrong
 command to get out.
 
-Nothing on this screen writes — not the module, not the commands, not the
-markup. There is a test that reads the index's modification time either side of
-visiting every conflicted file. Mark resolved and Abort render disabled with
-FEAT-016 named on each.
+**Reading still never writes**, and that is held by a test: `conflicts.rs`
+takes the index's modification time either side of visiting every conflicted
+file, and fails if a status walk rewrote it or left a lock behind. Resolving is
+the only thing that writes, and it is always something the user asked for.
+
+Three ways out of a file — take a whole side, take one marker region, or type
+into the merged pane — each followed by an explicit `git add`, so the index says
+what the screen says. Two ways out of the operation, both in the header:
+Continue, live only once nothing is conflicted, and Abort, whose confirmation
+names what comes back for the operation being abandoned rather than pointing
+vaguely at the reflog.
 
 ## 1E — Interactive rebase
 
 **Built.** `src/routes/rebase/+page.svelte`, `src/lib/rebase/`.
-Execution is deferred to FEAT-015.
+It runs the rebase as well as planning it, since FEAT-015.
 
 Plan a history rewrite and see the result before anything runs. Interactive
 rebase is feared because the todo list is edited blind — you choose squash and
@@ -208,13 +329,13 @@ plan cannot disagree. A squash folds upward, which is the direction git folds;
 a plan whose first row is a squash has nothing above it and is refused with
 that reason.
 
-Rows move by drag **and** from the keyboard (`⌥↑` / `⌥↓`). Drag alone is
+Rows move by drag **and** from the keyboard (`Alt+↑` / `Alt+↓`). Drag alone is
 untestable headlessly and unusable for some people, and the store owns the
 ordering so the component only reports intent.
 
 "May conflict" is a heuristic and the screen uses that word: two commits in the
 plan touching one path mark the later one. Knowing for certain means performing
-the merges, which is execution. Claiming a clean result GitLumiere cannot prove
+the merges, which is execution. Claiming a clean result Spagitty cannot prove
 would be the worse lie.
 
 Nothing runs. `shell::rebase_interactive` is still `unimplemented!()`, there is
@@ -225,7 +346,8 @@ progress, HEAD where it was, working copy clean.
 ## 1F — Branches
 
 **Built.** `src/routes/branches/+page.svelte`, `src/lib/branches/`.
-Delete and rename are deferred to FEAT-013.
+Delete and rename landed with FEAT-013, resizable columns and the divergence bar
+with FEAT-047.
 
 Every branch, how far it has drifted, and what is safe to forget: branch,
 ahead/behind, last change, actions. Merged branches render dashed — nothing on
@@ -233,8 +355,9 @@ them is only there — though the current branch never does, since saying
 "merged" about the branch you are on reads as "safe to delete".
 
 Ahead and behind are counted against the remote-tracking ref on disk, so they
-are as old as the last fetch. The footer says so; nothing on this screen talks
-to a network.
+are as old as the last fetch. The header says how old (FEAT-018), and nothing on
+this screen reaches a network to make them fresher — fetching is the toolbar's
+job, and the numbers change when it finishes.
 
 Checking out goes through `git switch`, which only ever changes branch — unlike
 `git checkout`, which guesses between a branch, a revision and a path. A
@@ -249,15 +372,43 @@ lives in config.
 ## 1G — Stash
 
 **Built.** `src/routes/stash/+page.svelte`, `src/lib/stash/`.
-Pop, apply and drop are deferred to FEAT-014.
 
-Stash entries drawn hanging off the commit each was made on, with a detail
-panel showing what is in the selected one.
+Stash entries drawn hanging off the commit each was made on, then the files in
+the selected entry, then the selected file's diff, then a detail panel for
+everything about the entry that is not a file.
+
+The middle two columns are the **Diff screen's own components** (FEAT-034), given
+their files and their file rather than reading a store — a stash is a commit, so
+the two lists are the same list and there is no second diff renderer to keep in
+step. `↑` and `↓` walk the files; `j` and `k` jump between hunks, as on 1B. The
+unified/split choice is shared with 1B on purpose: it is a preference about
+reading diffs, not about a screen.
+
+Pop, apply and drop are wired (FEAT-014). Each goes through
+`stash.restore(action)`, which hands the confirmation and the write to
+`graph/actions.ts` and then re-reads the list — the confirmation is written once
+there, so this screen and the graph's own stash menu cannot describe the same
+operation two different ways. `actions.stash` answers whether anything changed,
+so a cancelled dialog does not cost a re-read. Pop and drop release the
+selection before re-reading; apply keeps the entry open.
+
+A **conflicted apply** is not yet handled as its own state: `git stash pop` onto
+a conflict leaves the entry in place and the working copy conflicted, and today
+that surfaces as git's own message in a notice. Honest, but not the designed
+recovery FEAT-014's notes asked for — it needs a conflict write path and belongs
+with FEAT-016.
 
 There is no stash-diff code, and there does not need to be: a stash *is* a
-commit whose first parent is the commit the work was made on, so the detail
-panel asks `commit_diff` about the entry's id like any other commit, and
-`refs/stash`'s reflog is the list — `stash@{n}` is literally the nth entry.
+commit whose first parent is the commit the work was made on, so the screen asks
+`commit_diff` about the entry's id like any other commit and `file_diff` for one
+of its files, and `refs/stash`'s reflog is the list — `stash@{n}` is literally
+the nth entry.
+
+The open file survives a re-read of the same entry — after an apply, or after
+the watcher reports a change — rather than snapping back to the first file every
+time the screen refreshes. It is dropped when the *entry* changes, along with
+the hunks cached for it: those belong to one entry, and the same path in another
+is a different file.
 
 The lane is drawn with the graph's metrics but not its canvas. The canvas exists
 to keep scrolling flat across a hundred thousand rows; a stash list is a dozen,
@@ -267,37 +418,86 @@ Stashing is the only write. `git stash push` succeeds quietly with nothing to
 save, which from a button reads as a stash that happened and then vanished, so
 the core refuses that case with a reason instead.
 
+### Reading at depth (FEAT-052)
+
+The lane pitch compresses past twelve columns and stops at **14px** — half the
+design pitch. It used to stop at 6, which gave forty-eight lanes a distinct x
+and gave none of them a visible gap: on `git/git`, at a mean lane depth of 187,
+the column was a picket fence. Twenty-one lanes that can be told apart beat
+forty-eight that cannot, and a history deep enough to need a twenty-second was
+never going to have it read.
+
+A consequence worth knowing: the node radius shrinks with the pitch, and at the
+old floor nodes overlapped their neighbours past 32 lanes. At 14 they no longer
+can, at any depth.
+
+Ref chips start at the column's left edge rather than tucking against the graph,
+so every row's first chip is at the same x.
+
+The table shows a gradient at whichever edge has content hidden under it — the
+columns can be dragged wider than the window, and an overlay scrollbar that only
+appears once you are scrolling is no answer to "is there anything over there".
+
 ## 1H — Pull requests
 
-**Built, offline.** `src/routes/requests/+page.svelte`, `src/lib/requests/`.
-Connecting a host is FEAT-017.
+**Built.** `src/routes/requests/+page.svelte`, `src/lib/requests/`, and
+`crates/spagitty-core/src/forge/` behind it (FEAT-017).
 
 What is waiting on you above what is waiting on everyone else: solid rows over
 dashed ones, with the detail panel beside them — the same two-group device All
 repositories uses.
 
-**GitLumiere talks to no hosting service, and cannot.** No HTTP client is linked
-into this application in either language, and there is a test that reads the
-manifests and the screen's own source to keep it that way. A screen with no way
-to make a request cannot make one, which is a stronger claim than any
-behavioural test could make.
+**This is the only screen whose data comes off the network.** Everything else
+in Spagitty reads the disk, and the promise on the All repositories screen —
+repositories are read from disk and none is uploaded — still holds: what leaves
+the machine is a request to a host the user connected themselves, carrying a
+token they issued, asking for pull requests they can already see in a browser.
+No repository contents, no paths, no commit messages, no telemetry.
+
+The old promise was that no HTTP client was linked in either language, with a
+test to keep it that way. That could not survive reading pull requests, so the
+test became a narrower one that is still worth having: **exactly one** HTTP
+client, `ureq`, declared **only** in `spagitty-core`, and reachable from exactly
+one file — `forge/http.rs`. The webview still links none, still makes no
+request, and never holds a token. `requests.test.ts` asserts all of it.
+
+One request per refresh, through GraphQL. REST would need a list call plus three
+per pull request for the line counts, the review decision and the checks —
+ninety-one requests for thirty open ones, against a budget shared with
+everything else the token does.
+
+Read-only, by decision. Nothing approves, merges, comments or closes.
+
+Failures are four different sentences, because they are four different
+decisions for the reader: could not reach the host, the host is rate limiting
+and when it will stop, the token was refused, and no account is connected for
+this host. "Could not load" is useless to somebody deciding whether to wait or
+to go and fix something.
+
+Signing in is a personal access token rather than OAuth. It is issued, scoped
+and revoked by the person without touching anything else they own, and it needs
+no redirect listener and no client secret shipped inside a GPL binary anybody
+can read. The login is read back from the host rather than typed. The token goes
+to the OS keychain and never to a configuration file; `accounts.json` holds a
+host and a login and nothing else.
 
 The empty state is the screen rather than a placeholder. "No account is
 connected", with a way to Settings → Accounts, tells the user the screen works
 and the account does not — which is the difference between this and the
 `ScreenStub` it replaces.
 
-`PullRequest` in `src/lib/types.ts` is FEAT-017's contract, written now so that
-connecting a host is a matter of filling it in rather than redesigning the
-screen around whatever one host's API happens to return. The vocabulary is
-host-agnostic throughout, and a test asserts no host's name appears anywhere in
-the screen — the kind of thing that rots the moment somebody adds "Open on
-<host>" without thinking.
+`PullRequest` in `src/lib/types.ts` is the contract the screen was designed
+against before any host could be reached, and FEAT-017 filled it in rather than
+redesigning the screen around what one host's API happens to return — which is
+what it was written for. The vocabulary stays host-agnostic, and a test asserts
+no host's name appears anywhere in the screen: the kind of thing that rots the
+moment somebody adds "Open on <host>" without thinking. GitHub is the only host
+implemented, and it is implemented behind that contract.
 
 ## 1I — Log search
 
 **Built.** `src/routes/search/+page.svelte`, `src/lib/search/`.
-Reached from the rail and by `⌘F` from any screen, which lands here with the
+Reached from the rail and by `Ctrl+F` from any screen, which lands here with the
 first field focused — the focus travels in the URL (`?focus=1`) rather than
 through a store, so the shortcut and a bookmark behave identically.
 
@@ -315,7 +515,7 @@ Results stream as the walk finds them. Each query carries a token and starting
 one cancels the one before, so rows from an older query are dropped rather than
 rendered; that is what makes it safe to search on a keystroke.
 
-`↵` opens the commit in the side column — message, people, files — and `⌥↵`
+`↵` opens the commit in the side column — message, people, files — and `Alt+Enter`
 opens its hunks on the Diff screen, which is a different question.
 
 **Blame goes through the `git` binary**, and it is the one read in the
@@ -338,8 +538,8 @@ Every repository you work in and which ones need attention: "Needs you" above
 the path, what the repository was last doing, and a chip for each thing going on
 — conflicts first, since those are what stop work.
 
-GitLumiere never goes looking for repositories. Opening one is the only way it
-joins the list, which lives in GitLumiere's own config directory as a plain JSON
+Spagitty never goes looking for repositories. Opening one is the only way it
+joins the list, which lives in Spagitty's own config directory as a plain JSON
 file of paths.
 
 Each card is read where the repository sits, without opening it as the current
@@ -354,10 +554,16 @@ and never the directory.
 **Built.** `src/routes/settings/+page.svelte`, `src/lib/settings/`.
 
 Five sections behind a chip index — You, Accounts, Behaviour, Appearance,
-Advanced — because these are read rarely and changed rarely, and one route that
+License — because these are read rarely and changed rarely, and one route that
 says which part of itself is showing is easier to link to than five rail
 entries. The section is in the URL fragment, so `/settings#accounts` lands where
 the Pull requests screen points.
+
+The last section was called **Advanced** until TASK-007. It has only ever held
+the version, the build, the project's licence and its dependencies' licences, so
+the name described nothing it contained. `#advanced` is still accepted as a
+fragment and selects the renamed section, because a link written before the
+rename doing nothing at all is worse than one that is merely out of date.
 
 **Nothing here needs an open repository.** With none, the identity falls back to
 the global scope alone and every other section is unaffected.
@@ -388,7 +594,7 @@ colour there changes the first frame and not the theme.
 **The identity is read with `gix` and written with `git`.** That is the
 `shell.rs` rule applied without an exception: `.git/config` and `~/.gitconfig`
 are state the whole ecosystem reads, so writing them goes through `git config`;
-reading them does not. `crates/gitlumiere-core/src/identity.rs` is both halves.
+reading them does not. `crates/spagitty-core/src/identity.rs` is both halves.
 
 **The scope is a parameter, never inferred.** Writing to the wrong one is the
 quiet mistake this screen is shaped around — a repository-local identity that
@@ -396,7 +602,7 @@ silently became global is found months later on somebody else's commits. So both
 values report which file they came from, the fields say which one they are
 editing, and changing scope refills them rather than carrying a typed value
 across. A value coming from the system configuration or the environment is named
-as such rather than as a scope GitLumiere writes, because editing the global field
+as such rather than as a scope Spagitty writes, because editing the global field
 would not change it.
 
 **Clearing unsets the key.** `git config --unset`, not an empty string. An empty
@@ -404,7 +610,7 @@ would not change it.
 an unset one falls back to the next scope, which is what "clear" means.
 
 **A toggle that does nothing yet says so.** The three behaviour toggles persist
-in GitLumiere's own config directory beside the repository list, with the same
+in Spagitty's own config directory beside the repository list, with the same
 lenient-parse-or-default treatment for the same reason. A toggle that is not
 honoured yet names the item that will honour it — signing is still waiting on
 FEAT-019 — because narrowing the claim to the truth is better than a switch that
@@ -412,7 +618,7 @@ silently does nothing.
 
 **"Show the git command behind each action" is honoured** (FEAT-020). It adds a
 Commands button to the toolbar and a palette command; both open a drawer listing
-what GitLumiere actually ran, newest first, with the exit code and git's own stderr
+what Spagitty actually ran, newest first, with the exit code and git's own stderr
 under anything that failed. The lines come from `record.rs`, written by the
 module that spawns the process, so the panel shows the flags the shell layer
 added rather than what a screen believed it asked for. Reads are absent and the
@@ -463,7 +669,7 @@ is the first operation that needs credentials, and credential helpers are
 external programs resolved through config — the place OS keychain integration
 already lives. `GIT_TERMINAL_PROMPT=0` still holds, so a repository whose
 credentials no helper can supply fails with git's own message instead of hanging
-on a prompt there is no terminal for. **GitLumiere never asks for a password
+on a prompt there is no terminal for. **Spagitty never asks for a password
 itself.**
 
 **Everything that can be refused is refused before the process starts.** An
@@ -472,7 +678,7 @@ something in it: each is computed by `clone::plan` as the user types, and each
 is knowable without the network. Telling somebody after a round trip what they
 could have been told while typing is the failure this avoids. An existing
 *empty* destination is allowed, because `git clone` allows it — matching git's
-rule rather than inventing a stricter one is what makes a GitLumiere clone the same
+rule rather than inventing a stricter one is what makes a Spagitty clone the same
 as a command-line clone.
 
 **Progress is git's, parsed rather than invented.** `git clone --progress`
@@ -485,7 +691,7 @@ failure's message comes from: stderr is both channels, and it is read here.
 **Cancelling removes only what the clone created.** Whether the destination
 existed is decided before the process starts and remembered; a directory the
 user already had is left exactly as it was found, partial contents and all,
-because that is not GitLumiere's to delete. The removal happens after the child is
+because that is not Spagitty's to delete. The removal happens after the child is
 reaped, never after the kill signal, or the two race and files reappear behind
 it.
 

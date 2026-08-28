@@ -2,7 +2,7 @@
 
 # FEAT-011 — Settings (1K)
 
-**Status:** Built. Plan in `agile/plans/FEAT-011-plan.md`, tests in
+**Status:** Done. Plan in `agile/plans/FEAT-011-plan.md`, tests in
 `agile/testing/FEAT-011-automated.md` and `-sweep.md`.
 **Branch:** `feature/FEAT-011-settings`.
 **Route:** `/settings`. **Rail:** "Settings".

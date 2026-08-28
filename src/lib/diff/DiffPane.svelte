@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
-	import { diff } from '$lib/diff/store.svelte';
+	import type { DiffView } from '$lib/diff/store.svelte';
 	import { splitRows } from '$lib/diff/split';
-	import type { DiffLine } from '$lib/types';
+	import type { DiffLine, FileDiff } from '$lib/types';
 
 	/**
 	 * The hunks of the selected file, unified or side by side.
@@ -10,16 +10,25 @@
 	 * Line numbers come from the core, so both views can label a line without
 	 * counting rows themselves — which is what makes the split view's blank
 	 * cells harmless.
+	 *
+	 * Given its file rather than reading a store, so the Stash screen renders an
+	 * entry's files with this component (FEAT-034) rather than a second diff
+	 * renderer that would have to be kept in step with this one.
 	 */
 
 	interface Props {
+		/** The file to render, or null while it is being fetched. */
+		file: FileDiff | null;
+		/** The selected path. Null means nothing is selected yet. */
+		path: string | null;
+		error: string | null;
+		loading: boolean;
+		view: DiffView;
 		/** Index of the hunk to bring into view. Driven by `j` / `k`. */
 		focus?: number;
 	}
 
-	let { focus = 0 }: Props = $props();
-
-	const file = $derived(diff.file);
+	let { file, path, error, loading, view, focus = 0 }: Props = $props();
 
 	let hunkEls: HTMLElement[] = [];
 
@@ -37,19 +46,19 @@
 </script>
 
 <div class="pane">
-	{#if diff.fileError}
-		<div class="pad note error">{diff.fileError}</div>
-	{:else if diff.path === null}
+	{#if error}
+		<div class="pad note error">{error}</div>
+	{:else if path === null}
 		<div class="pad note">Select a file.</div>
 	{:else if file === null}
-		<div class="pad note">{diff.fileLoading ? 'Reading…' : ''}</div>
+		<div class="pad note">{loading ? 'Reading…' : ''}</div>
 	{:else if file.binary}
 		<div class="pad note">Binary file. There are no lines to show.</div>
 	{:else if file.tooLarge}
 		<div class="pad note">This file is too large to diff.</div>
 	{:else if file.hunks.length === 0}
 		<div class="pad note">No line changes — only the file's mode changed.</div>
-	{:else if diff.view === 'unified'}
+	{:else if view === 'unified'}
 		{#each file.hunks as hunk, index (hunk.header + index)}
 			<section class="hunk" bind:this={hunkEls[index]}>
 				<div class="hunk-head mono">{hunk.header}</div>
@@ -106,14 +115,14 @@
 	}
 
 	.error {
-		color: var(--accent);
+		color: var(--danger);
 	}
 
 	.hunk-head {
 		color: var(--muted);
 		background: var(--panel);
-		border-top: 1.5px solid var(--soft);
-		border-bottom: 1.5px solid var(--soft);
+		border-top: 1px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		padding: 2px 8px;
 		position: sticky;
 		top: 0;
@@ -161,12 +170,12 @@
 
 	.line.added,
 	.side.added {
-		background: color-mix(in srgb, var(--lane-5) 12%, transparent);
+		background: color-mix(in srgb, var(--ok) 14%, transparent);
 	}
 
 	.line.removed,
 	.side.removed {
-		background: color-mix(in srgb, var(--lane-3) 12%, transparent);
+		background: color-mix(in srgb, var(--danger) 14%, transparent);
 	}
 
 	/* The empty half of an uneven pairing is not a line that exists. */

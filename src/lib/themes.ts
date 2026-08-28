@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * GitLumiere's palettes.
+ * Spagitty's palettes.
  *
  * Four families, each with a light and a dark variant. They are **data**, not
  * stylesheets: eight `:root[data-theme=…]` blocks would be the same eleven
@@ -46,6 +46,17 @@ export interface Palette {
 	accent: string;
 	/** Text on top of a filled accent surface. Contrast-checked against it. */
 	onAccent: string;
+	/**
+	 * What a result means, in this family's own colours.
+	 *
+	 * Before these existed, anything that had to read as "not routine" borrowed
+	 * `lanes[2]` — the graph's third lane, which is red in Latte, pink in
+	 * Mocha and cyan in Dracula. A delete button that turns cyan is not a
+	 * delete button. Checked against the background at 3:1 like the accent.
+	 */
+	danger: string;
+	warn: string;
+	ok: string;
 	selection: string;
 	stripe: string;
 	/** The lane colour cycle. Five, because a sixth lane reuses the first. */
@@ -76,6 +87,14 @@ const LATTE: Palette = {
 	placeholder: 'rgba(76, 79, 105, 0.3)',
 	accent: '#1e66f5',
 	onAccent: '#ffffff',
+	danger: '#d20f39',
+	// Latte's own yellow is #df8e1d, which sits at 2.3:1 on its background —
+	// the same problem its pink and peach have as lane colours. Darkened along
+	// its own hue until a warning can be seen on both bg and panel.
+	warn: '#bc6a00',
+	// Latte's green, darkened for the same reason and to the same shade its
+	// fifth lane already uses — one green in this palette, not two.
+	ok: '#2e7d1f',
 	selection: 'rgba(30, 102, 245, 0.14)',
 	stripe: 'rgba(76, 79, 105, 0.05)',
 	// Latte's pink, peach and yellow sit at 2.3–2.6:1 on its own background —
@@ -95,6 +114,9 @@ const MOCHA: Palette = {
 	placeholder: 'rgba(205, 214, 244, 0.26)',
 	accent: '#89b4fa',
 	onAccent: '#1e1e2e',
+	danger: '#f38ba8',
+	warn: '#f9e2af',
+	ok: '#a6e3a1',
 	selection: 'rgba(137, 180, 250, 0.18)',
 	stripe: 'rgba(205, 214, 244, 0.05)',
 	lanes: ['#89b4fa', '#cba6f7', '#f5c2e7', '#fab387', '#a6e3a1']
@@ -111,6 +133,9 @@ const ALUCARD: Palette = {
 	placeholder: 'rgba(31, 31, 31, 0.28)',
 	accent: '#644ac9',
 	onAccent: '#fffbeb',
+	danger: '#cb3a2a',
+	warn: '#a34d14',
+	ok: '#14710a',
 	selection: 'rgba(100, 74, 201, 0.14)',
 	stripe: 'rgba(31, 31, 31, 0.045)',
 	lanes: ['#644ac9', '#a3144d', '#cf6a00', '#14710a', '#036a96']
@@ -127,6 +152,9 @@ const DRACULA: Palette = {
 	placeholder: 'rgba(248, 248, 242, 0.26)',
 	accent: '#bd93f9',
 	onAccent: '#282a36',
+	danger: '#ff5555',
+	warn: '#ffb86c',
+	ok: '#50fa7b',
 	selection: 'rgba(189, 147, 249, 0.2)',
 	stripe: 'rgba(248, 248, 242, 0.05)',
 	lanes: ['#bd93f9', '#ff79c6', '#8be9fd', '#f1fa8c', '#50fa7b']
@@ -148,6 +176,9 @@ const TOKYO_DAY: Palette = {
 	// carries text at 5.8:1; the lighter original stays as the first lane.
 	accent: '#1c62c4',
 	onAccent: '#ffffff',
+	danger: '#c64343',
+	warn: '#8f5e15',
+	ok: '#587539',
 	selection: 'rgba(28, 98, 196, 0.16)',
 	stripe: 'rgba(55, 96, 191, 0.06)',
 	lanes: ['#2e7de9', '#9854f1', '#b15c00', '#007197', '#587539']
@@ -164,6 +195,9 @@ const TOKYO_NIGHT: Palette = {
 	placeholder: 'rgba(192, 202, 245, 0.26)',
 	accent: '#7aa2f7',
 	onAccent: '#1a1b26',
+	danger: '#f7768e',
+	warn: '#e0af68',
+	ok: '#9ece6a',
 	selection: 'rgba(122, 162, 247, 0.18)',
 	stripe: 'rgba(192, 202, 245, 0.05)',
 	lanes: ['#7aa2f7', '#bb9af7', '#7dcfff', '#e0af68', '#9ece6a']
@@ -180,6 +214,9 @@ const GRUVBOX_LIGHT: Palette = {
 	placeholder: 'rgba(60, 56, 54, 0.3)',
 	accent: '#076678',
 	onAccent: '#fbf1c7',
+	danger: '#9d0006',
+	warn: '#b57614',
+	ok: '#79740e',
 	selection: 'rgba(7, 102, 120, 0.14)',
 	stripe: 'rgba(60, 56, 54, 0.055)',
 	lanes: ['#076678', '#8f3f71', '#af3a03', '#79740e', '#b57614']
@@ -196,6 +233,9 @@ const GRUVBOX_DARK: Palette = {
 	placeholder: 'rgba(235, 219, 178, 0.28)',
 	accent: '#83a598',
 	onAccent: '#282828',
+	danger: '#fb4934',
+	warn: '#fabd2f',
+	ok: '#b8bb26',
 	selection: 'rgba(131, 165, 152, 0.2)',
 	stripe: 'rgba(235, 219, 178, 0.05)',
 	lanes: ['#83a598', '#d3869b', '#fe8019', '#b8bb26', '#fabd2f']

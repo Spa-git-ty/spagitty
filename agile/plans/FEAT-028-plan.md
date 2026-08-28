@@ -26,7 +26,7 @@ that exists.
 | `src/lib/chrome/chrome.test.ts` | Updated to the new contract. |
 
 The test that covered the old Commit button moved to
-`~/claudetrashbin/gitlumiere-FEAT-028/` rather than being deleted.
+`~/claudetrashbin/spagitty-FEAT-028/` rather than being deleted.
 
 ## Risk
 

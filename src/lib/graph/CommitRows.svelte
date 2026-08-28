@@ -12,7 +12,7 @@
 	import { selection } from '$lib/graph/selection.svelte';
 	import * as act from '$lib/graph/actions';
 	import { clockTime, fullDate, isNotable, relativeTime } from '$lib/format';
-	import { laneColumns, laneColumnWidth, LANE_COLUMNS_MIN } from '$lib/metrics';
+	import { laneColumnWidth, laneSpanFor } from '$lib/metrics';
 	import { scale } from '$lib/scale.svelte';
 	import RefChip from '$lib/ui/RefChip.svelte';
 	import Menu from '$lib/ui/Menu.svelte';
@@ -77,17 +77,36 @@
 	 * It grows immediately but shrinks only after the narrower window has held
 	 * for a moment. Without that, scrolling through varying history would make
 	 * the message column jump left and right under the reader's eyes.
+	 *
+	 * `laneCount` is the *true* number of lanes on screen and is clamped at
+	 * neither end (FEAT-035, FEAT-046). The width it produces is clamped at
+	 * both — `laneColumnWidth` runs it through `laneColumns`, so the column is
+	 * never narrower than five lanes' worth nor wider than the cap — but the
+	 * geometry needs the real figure.
+	 *
+	 * Past the cap it is the pitch that gives rather than the column, and
+	 * clamping high is what used to draw the thirteenth lane on top of the
+	 * twelfth. Below five it decides when compression *starts*: floored at five,
+	 * a two-lane repository was squeezed as though five lanes had to fit, and
+	 * the squeeze began long before any two lanes were touching (FEAT-046).
 	 */
 	const SHRINK_DELAY = 400;
 
-	let laneCount = $state(LANE_COLUMNS_MIN);
+	/*
+	 * One lane before the first measurement, not five: an assumed five would
+	 * compress a two-lane repository for the length of the shrink delay every
+	 * time the screen is opened, and then relax — a visible pop at exactly the
+	 * moment there is nothing to compress. The effect below runs on mount and
+	 * grows immediately, so the true count arrives in the first frame.
+	 */
+	let laneCount = $state(1);
 	/** Untracked mirror, so the effect below doesn't depend on what it writes. */
-	let currentColumns = LANE_COLUMNS_MIN;
+	let currentColumns = 1;
 	let shrinkTimer: ReturnType<typeof setTimeout> | null = null;
 
 	$effect(() => {
 		void graph.version;
-		const needed = laneColumns(lanesNeeded(range.first, range.last, (i) => graph.row(i)));
+		const needed = lanesNeeded(range.first, range.last, (i) => graph.row(i));
 
 		if (needed > currentColumns) {
 			if (shrinkTimer) clearTimeout(shrinkTimer);
@@ -107,7 +126,18 @@
 		if (shrinkTimer) clearTimeout(shrinkTimer);
 	});
 
-	const laneWidth = $derived(laneColumnWidth(laneCount, scale.zoom));
+	/**
+	 * The graph column's width, and the room the lanes get inside it.
+	 *
+	 * Until someone drags it the column sizes itself to the lanes on screen, and
+	 * `laneColumnWidth` is that size. Once dragged, the chosen width wins and the
+	 * lanes compress into it (FEAT-039) — which is the same machinery FEAT-035
+	 * built for a history deeper than the cap, now reachable by hand.
+	 */
+	const laneWidth = $derived(
+		columns.width('graph') || laneColumnWidth(laneCount, scale.zoom)
+	);
+	const laneSpan = $derived(laneSpanFor(laneWidth, scale.zoom));
 	const shown = $derived(columns.shown);
 
 	/**
@@ -128,6 +158,42 @@
 
 	/** How far the rows are scrolled sideways; the header follows it. */
 	let scrollLeft = $state(0);
+
+	/**
+	 * Whether there is more table off either side.
+	 *
+	 * A scrollbar is the honest answer to "can this scroll", and on every
+	 * platform Spagitty runs on it is also an overlay that is invisible until
+	 * you are already scrolling — which makes it no answer at all to somebody
+	 * deciding whether there is anything over there. The edge shadow is: it
+	 * appears exactly when content is hidden under it and goes when it is not.
+	 *
+	 * Measured rather than derived from the column widths. The table is wider
+	 * than the window only sometimes, and by an amount that depends on a
+	 * dragged width, a zoom and the window — the element already knows all
+	 * three.
+	 */
+	let scrollWidth = $state(0);
+	let scrollerWidth = $state(0);
+
+	const moreLeft = $derived(scrollLeft > 0);
+	// A pixel of slack: fractional scroll positions at non-integer zoom levels
+	// otherwise leave the shadow up forever at the far right.
+	const moreRight = $derived(scrollLeft + scrollerWidth < scrollWidth - 1);
+
+	function measure(element: HTMLElement) {
+		scrollWidth = element.scrollWidth;
+		scrollerWidth = element.clientWidth;
+	}
+
+	// Measured when the table's width changes as well as on scroll, or the
+	// right edge would stay dark until the first sideways scroll — which is
+	// exactly the moment it is no longer needed.
+	$effect(() => {
+		void tableWidth;
+		void laneWidth;
+		if (scroller) measure(scroller);
+	});
 
 
 	// --- Dimming ----------------------------------------------------------
@@ -462,7 +528,7 @@
 			The working copy, above the newest commit — which is where it belongs
 			in time, not a compromise for being unable to give it a row index.
 		-->
-		<button class="wip" onclick={() => onwip?.()}>
+		<button class="wip" title="Open the working copy" onclick={() => onwip?.()}>
 			<span class="wip-node" aria-hidden="true"></span>
 			<span class="wip-text">
 				Uncommitted changes
@@ -474,13 +540,50 @@
 	{/if}
 
 	<div class="rows">
+		<!--
+			The bed the columns stand on (BUG-016).
+
+			The graph's band and the two rules either side of it used to be
+			painted by `.lane-space`, which is a cell inside a row — so on a
+			repository with fewer commits than the window is tall, the columns
+			stopped where the commits stopped and the table read as though it had
+			been cut off halfway down.
+
+			This layer is the same column arithmetic as a row and as the canvas
+			above it, laid out once at the full height of the scroller. It is
+			built from `columns.shown`, like the other two, so a resize, a
+			reorder or a hidden column moves all three together or none of them.
+
+			It paints only where a row does not cover it, which is exactly the
+			empty space under the last commit.
+		-->
+		<div
+			class="bed"
+			style="transform: translateX({-scrollLeft}px); {tableWidth === null
+				? ''
+				: `width: ${tableWidth}px`}"
+			aria-hidden="true"
+		>
+			{#each shown as column (column.id)}
+				{#if column.id === 'graph'}
+					<div class="bed-slot lane-band" style="width: {laneWidth}px"></div>
+				{:else if column.fills}
+					<div class="bed-slot fill"></div>
+				{:else}
+					<div class="bed-slot" style="width: {column.width}px"></div>
+				{/if}
+			{/each}
+		</div>
+
 		<div
 			class="scroller"
 			bind:this={scroller}
 			bind:clientHeight={viewportHeight}
+			bind:clientWidth={scrollerWidth}
 			onscroll={(event) => {
 				scrollTop = event.currentTarget.scrollTop;
 				scrollLeft = event.currentTarget.scrollLeft;
+				measure(event.currentTarget);
 			}}
 			{onkeydown}
 			role="listbox"
@@ -565,9 +668,27 @@
 								</div>
 							{:else if column.id === 'graph'}
 								<!-- Reserves the lane column; the canvas overlays exactly this. -->
-								<div class="cell lane-space" style="width: {laneWidth}px"></div>
+								<div class="cell lane-space lane-band" style="width: {laneWidth}px"></div>
 							{:else if column.id === 'message'}
 								<div class="cell message">
+									{#if row.signed}
+										<!--
+											FEAT-019. `S`, not a tick: the tick already means
+											"this is the branch you are on" on a RefChip, and
+											two meanings for one mark on one screen is worse
+											than a letter that has to be hovered once.
+
+											It says signed. It does not say verified — the
+											title spells that out, because the difference is
+											the whole reason this is cheap enough to show on
+											every row.
+										-->
+										<span
+											class="mono signed"
+											title="Signed. Spagitty reads the signature header; it does not verify the signature."
+											aria-label="signed">S</span
+										>
+									{/if}
 									<span class="summary" title={row.summary}>{row.summary}</span>
 									{#if time}<span class="mono muted when">{time}</span>{/if}
 								</div>
@@ -628,6 +749,7 @@
 				{#if column.id === 'graph'}
 					<div class="lane-slot" style="width: {laneWidth}px">
 						<LaneCanvas
+							span={laneSpan}
 							{scrollTop}
 							first={range.first}
 							last={range.last}
@@ -645,6 +767,13 @@
 				{/if}
 			{/each}
 		</div>
+
+		<!--
+			The edges. Purely an affordance: they say there is table under them
+			and take no clicks, so anything they cover stays reachable.
+		-->
+		<div class="edge left" class:showing={moreLeft} aria-hidden="true"></div>
+		<div class="edge right" class:showing={moreRight} aria-hidden="true"></div>
 	</div>
 </div>
 
@@ -674,7 +803,61 @@
 		overflow: hidden;
 	}
 
+	/*
+	 * Three layers over the same columns, stacked explicitly rather than by
+	 * document order: the bed underneath, the commits over it, the lane canvas
+	 * over both. `.edge` is above all three at 4.
+	 */
+	.bed {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		pointer-events: none;
+		z-index: 0;
+	}
+
+	.bed-slot {
+		flex: none;
+	}
+
+	.bed-slot.fill {
+		flex: 1;
+		min-width: 0;
+	}
+
+	/*
+	   A gradient rather than a hard line, and over the content rather than
+	   beside it: what it means is "this carries on underneath", and a rule
+	   would say "this stops here" — the opposite.
+	*/
+	.edge {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		width: 24px;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.12s ease;
+		z-index: 4;
+	}
+
+	.edge.showing {
+		opacity: 1;
+	}
+
+	.edge.left {
+		left: 0;
+		background: linear-gradient(to right, var(--shadow-edge), transparent);
+	}
+
+	.edge.right {
+		right: 0;
+		background: linear-gradient(to left, var(--shadow-edge), transparent);
+	}
+
 	.scroller {
+		position: relative;
+		z-index: 1;
 		height: 100%;
 		overflow-y: auto;
 		/*
@@ -730,6 +913,7 @@
 		bottom: 0;
 		display: flex;
 		pointer-events: none;
+		z-index: 2;
 	}
 
 	.lane-gap {
@@ -748,7 +932,38 @@
 		overflow: hidden;
 	}
 
-	.lane-space {
+	/*
+	   The seam where the lanes end and the messages begin.
+
+	   The lane column clips its canvas, so on a history deeper than the column
+	   is wide the lanes stop at a hard vertical edge — which reads as "the
+	   graph ends here" when what is true is "there is more of it than fits".
+	   A short shadow at the edge says the second thing: the lanes pass under
+	   the messages rather than stopping against them.
+
+	   Always on, unlike the scroll edges either side of the table, because
+	   what it marks is always true — this is a boundary between two columns,
+	   not a scroll position.
+	*/
+	.lane-slot::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		right: 0;
+		width: 14px;
+		pointer-events: none;
+		background: linear-gradient(to left, var(--shadow-edge), transparent);
+	}
+
+	/*
+	 * The graph's surface and the rule down each side of it.
+	 *
+	 * One declaration, worn by both the per-row cell and the bed beneath it, so
+	 * the band cannot come out one colour where there are commits and another
+	 * where there are none.
+	 */
+	.lane-band {
 		background: var(--graph-bg);
 		box-shadow:
 			inset 1px 0 0 var(--graph-line),
@@ -756,17 +971,28 @@
 	}
 
 	.row:hover {
-		background: var(--stripe);
+		background: var(--hover);
 	}
 
+	/*
+	 * A selected row is tinted across its width rather than filled flat, so the
+	 * lanes and the chips stay legible through it and the fill reads as a
+	 * highlight rather than as a coloured block laid over the history.
+	 */
 	.row.selected {
-		background: var(--selection);
+		background: linear-gradient(
+			90deg,
+			color-mix(in srgb, var(--accent) 22%, transparent) 0%,
+			var(--selection) 45%,
+			color-mix(in srgb, var(--selection) 55%, transparent) 100%
+		);
 	}
 
 	/* The row the detail panel is showing, which is not the same as the set of
 	   rows a cherry-pick would act on. */
 	.row.focused {
-		box-shadow: inset 2px 0 0 var(--accent);
+		box-shadow:
+			inset 0 0 12px color-mix(in srgb, var(--accent) 10%, transparent);
 	}
 
 	.row.dim {
@@ -781,8 +1007,21 @@
 		align-items: center;
 	}
 
+	/*
+	   Chips start at the column's own left edge, so every row's first chip is at
+	   the same x and the eye reads a column.
+
+	   They used to be `flex-end`, tucked against the graph. The idea was to sit
+	   them near the lane they label, but the lane they label moves and the chips
+	   do not all have the same width — so what it produced was a ragged left
+	   edge on every row, which is what a wall of refs looks like on a busy
+	   repository. A fixed start is the thing that reads as a column.
+
+	   `+n` stays last and is what the overflow clips, which is the right one to
+	   lose: it is already the summary.
+	*/
 	.refs {
-		justify-content: flex-end;
+		justify-content: flex-start;
 		gap: 4px;
 		padding: 0 8px;
 		overflow: hidden;
@@ -799,13 +1038,14 @@
 	}
 
 	.more {
-		border: 1.5px solid var(--soft);
+		border: 1px solid var(--soft);
 		border-radius: var(--r-field);
 		padding: 0 5px;
 		font-family: var(--font-mono);
 		font-size: var(--fs-mono);
 		color: var(--muted);
-		background: var(--bg);
+		background: var(--surface);
+		box-shadow: var(--sheen);
 		flex: none;
 	}
 
@@ -813,13 +1053,13 @@
 		flex: 1;
 		gap: 8px;
 		padding: 0 10px;
-		border-left: 1.5px solid var(--soft);
+		border-left: 1px solid var(--soft);
 	}
 
 	.text {
 		gap: 6px;
 		padding: 0 8px;
-		border-left: 1.5px solid var(--soft);
+		border-left: 1px solid var(--soft);
 	}
 
 	.summary,
@@ -854,7 +1094,11 @@
 		width: 2em;
 		height: 2em;
 		border-radius: 50%;
-		box-shadow: 0 0 0 1px var(--line);
+		/* A ring in the row's own colour, and a shadow under it so the disc sits
+		   on the row rather than being printed on it. */
+		box-shadow:
+			0 0 0 1px var(--line),
+			0 1px 2px color-mix(in srgb, var(--umbra) 18%, transparent);
 	}
 
 	.wip {
@@ -863,13 +1107,15 @@
 		gap: 8px;
 		width: 100%;
 		padding: 6px 10px;
-		border-bottom: 1.5px solid var(--soft);
+		border-bottom: 1px solid var(--soft);
 		text-align: left;
 		flex: none;
+		/* It opens the working copy, so it has to look like it does something. */
+		cursor: pointer;
 	}
 
 	.wip:hover {
-		background: var(--stripe);
+		background: var(--hover);
 	}
 
 	/* Hollow, so it does not read as a commit that has happened. */

@@ -15,6 +15,8 @@ import type {
 	BranchRow,
 	ClonePlan,
 	CommitDiff,
+	ConflictRegion,
+	ConflictSideName,
 	ConflictSides,
 	ConflictState,
 	DiffSide,
@@ -26,14 +28,25 @@ import type {
 	Licenses,
 	OpenResult,
 	Integration,
+	PullMode,
 	RebaseEdit,
 	RebasePreview,
+	RebaseProgress,
 	RebaseTodo,
+	Reflog,
+	Tag,
+	Remote,
 	ResetMode,
 	StashAction,
 	RepoSummary,
 	SearchQuery,
+	ForgeAccount,
+	ForgeKind,
+	ForgeRepo,
+	PullRequest,
 	Settings,
+	Signing,
+	Update,
 	Snapshot,
 	StashEntry,
 	WorkingCopy
@@ -114,6 +127,21 @@ export function stageHunk(path: string, index: number, header: string): Promise<
 
 export function unstageHunk(path: string, index: number, header: string): Promise<void> {
 	return invoke('unstage_hunk', { path, index, header });
+}
+
+/**
+ * Throw away unstaged changes to whole paths.
+ *
+ * The only call in this file that destroys work git cannot get back. The
+ * confirmation is the caller's job, and every caller has one.
+ */
+export function discard(paths: string[]): Promise<void> {
+	return invoke('discard', { paths });
+}
+
+/** Throw away one unstaged hunk. Refused if the view it came from is stale. */
+export function discardHunk(path: string, index: number, header: string): Promise<void> {
+	return invoke('discard_hunk', { path, index, header });
 }
 
 /** Commit what is staged. Resolves to the new commit's id. */
@@ -199,6 +227,124 @@ export function conflictSides(path: string): Promise<ConflictSides> {
 	return invoke('conflict_sides', { path });
 }
 
+/** Every conflict region in a file's merged text. */
+export function conflictRegions(text: string): Promise<ConflictRegion[]> {
+	return invoke('conflict_regions', { text });
+}
+
+/**
+ * Take one whole side of a conflicted file into the working tree.
+ *
+ * The file stays conflicted afterwards: marking it resolved is a separate call,
+ * because looking at the result is the point of the screen.
+ */
+export function conflictTake(path: string, side: ConflictSideName): Promise<void> {
+	return invoke('conflict_take', { path, side });
+}
+
+/**
+ * Resolve one marker region, or every region when `index` is null.
+ *
+ * The file is re-read on the other side rather than sent from here, so a stale
+ * screen cannot resolve a region that has moved.
+ */
+export function conflictResolveRegion(
+	path: string,
+	index: number | null,
+	side: ConflictSideName
+): Promise<void> {
+	return invoke('conflict_resolve_region', { path, index, side });
+}
+
+/** Write the merged pane's text to the file, exactly as given. */
+export function conflictWrite(path: string, text: string): Promise<void> {
+	return invoke('conflict_write', { path, text });
+}
+
+/** Mark paths resolved: `git add`. */
+export function conflictResolve(paths: string[]): Promise<void> {
+	return invoke('conflict_resolve', { paths });
+}
+
+/** Carry on with whatever the repository is in the middle of. */
+export function conflictContinue(): Promise<void> {
+	return invoke('conflict_continue');
+}
+
+/** Abandon it and put the repository back. */
+export function conflictAbort(): Promise<void> {
+	return invoke('conflict_abort');
+}
+
+/** Every tag, newest first (FEAT-051). */
+export function tags(): Promise<Tag[]> {
+	return invoke('tags');
+}
+
+/**
+ * Create a tag. A non-empty message makes it annotated.
+ *
+ * An empty `target` means HEAD, which is what `git tag` itself does.
+ */
+export function tagCreate(name: string, target: string, message: string): Promise<void> {
+	return invoke('tag_create', { name, target, message });
+}
+
+/** Delete a local tag. */
+export function tagDelete(name: string): Promise<void> {
+	return invoke('tag_delete', { name });
+}
+
+/**
+ * Rewrite an annotated tag's message, keeping it on the same commit.
+ *
+ * A tag object is immutable, so this deletes and recreates it — the date and
+ * tagger become today's.
+ */
+export function tagRetag(name: string, target: string, message: string): Promise<void> {
+	return invoke('tag_retag', { name, target, message });
+}
+
+/**
+ * Where a ref has been (FEAT-050).
+ *
+ * An empty `reference` means `HEAD`, whose log records checkouts as well as
+ * every move of whatever was checked out.
+ */
+export function reflog(reference: string, limit: number): Promise<Reflog> {
+	return invoke('reflog', { query: { reference, limit } });
+}
+
+/** Every ref whose reflog is worth offering, `HEAD` first. */
+export function reflogRefs(): Promise<string[]> {
+	return invoke('reflog_refs');
+}
+
+/** Every configured remote, in name order. */
+export function remotes(): Promise<Remote[]> {
+	return invoke('remotes');
+}
+
+/** Add a remote. Configuration only — nothing is fetched. */
+export function remoteAdd(name: string, url: string): Promise<void> {
+	return invoke('remote_add', { name, url });
+}
+
+/** Rename a remote, its tracking refs, and every upstream pointing at it. */
+export function remoteRename(from: string, to: string): Promise<void> {
+	return invoke('remote_rename', { from, to });
+}
+
+/** Remove a remote, its tracking refs, and the upstreams pointing at it. */
+export function remoteRemove(name: string): Promise<void> {
+	return invoke('remote_remove', { name });
+}
+
+/** Change where a remote points. */
+export function remoteSetUrl(name: string, url: string): Promise<void> {
+	return invoke('remote_set_url', { name, url });
+}
+
 /** Every remembered repository, as a card. Reads each where it sits. */
 export function recentRepos(): Promise<RepoSummary[]> {
 	return invoke('recent_repos');
@@ -234,7 +380,7 @@ export function cloneRelease(): Promise<void> {
 	return invoke('clone_release');
 }
 
-/** Remove a repository from GitLumiere's list. The directory is not touched. */
+/** Remove a repository from Spagitty's list. The directory is not touched. */
 export function forgetRepo(path: string): Promise<void> {
 	return invoke('forget_repo', { path });
 }
@@ -265,7 +411,82 @@ export function setIdentity(
 	return invoke('set_identity', { scope, key, value });
 }
 
-/** GitLumiere's own behaviour toggles. */
+/**
+ * Which repository on a hosting service the open one points at (FEAT-017).
+ *
+ * Null when no repository is open, when the remote is not a host Spagitty
+ * reads, or when there are several remotes and no `origin`. None of those is an
+ * error — plenty of repositories are not on a forge at all.
+ */
+export function forgeRepo(): Promise<ForgeRepo | null> {
+	return invoke('forge_repo');
+}
+
+/** The connected accounts. Hosts and logins; never tokens. */
+export function forgeAccounts(): Promise<ForgeAccount[]> {
+	return invoke('forge_accounts');
+}
+
+/**
+ * Connect an account by proving the token works.
+ *
+ * The token goes straight to the OS keychain and is not returned. The login
+ * comes back from the host rather than being typed, so it cannot be wrong.
+ */
+export function forgeConnect(
+	kind: ForgeKind,
+	host: string,
+	token: string
+): Promise<ForgeAccount[]> {
+	return invoke('forge_connect', { kind, host, token });
+}
+
+/** Disconnect an account and forget its token. */
+export function forgeDisconnect(host: string, user: string): Promise<ForgeAccount[]> {
+	return invoke('forge_disconnect', { host, user });
+}
+
+/** The open pull requests for the open repository. */
+export function pullRequests(): Promise<PullRequest[]> {
+	return invoke('pull_requests');
+}
+
+/**
+ * Commit signing as git would resolve it: `commit.gpgsign` and everything that
+ * decides whether it can work (FEAT-019).
+ */
+export function signing(): Promise<Signing> {
+	return invoke('signing');
+}
+
+/**
+ * Turn signing on or off in one scope, resolving to signing as it now stands.
+ *
+ * Written in both directions rather than unset when off: `commit.gpgsign =
+ * false` is a deliberate "not in this repository", and unsetting would let a
+ * global `true` through and spring the switch back on.
+ */
+export function setSigning(scope: IdentityScope, on: boolean): Promise<Signing> {
+	return invoke('set_signing', { scope, on });
+}
+
+/** Clear `commit.gpgsign` in one scope, so the next one up decides again. */
+export function clearSigning(scope: IdentityScope): Promise<Signing> {
+	return invoke('clear_signing', { scope });
+}
+
+/**
+ * Is there a newer Spagitty than this one?
+ *
+ * One unauthenticated request to the project's own releases endpoint. Whether
+ * to ask at startup is `checkForUpdates`; pressing the button in Settings asks
+ * regardless, because that is somebody asking.
+ */
+export function checkUpdate(): Promise<Update> {
+	return invoke('check_update');
+}
+
+/** Spagitty's own behaviour toggles. */
 export function settings(): Promise<Settings> {
 	return invoke('settings');
 }
@@ -333,8 +554,35 @@ export function rebaseOnto(onto: string, upstream = '', branch = ''): Promise<vo
 }
 
 /** Run the plan the Rebase screen built against the todo it is holding. */
-export function rebaseRun(edits: RebaseEdit[]): Promise<void> {
+/**
+ * Execute the plan. Resolves to the token its events carry, not to the outcome.
+ *
+ * The rebase runs on a worker: progress arrives as `rebase-progress` and it
+ * ends with `rebase-done`, which says whether git finished or stopped part-way
+ * waiting for a conflict to be resolved.
+ */
+export function rebaseRun(edits: RebaseEdit[]): Promise<number> {
 	return invoke('rebase_run', { edits });
+}
+
+/** How far a rebase that is running has got, or null when none is. */
+export function rebaseProgress(): Promise<RebaseProgress | null> {
+	return invoke('rebase_progress');
+}
+
+/** Carry on with a rebase that stopped, once its conflicts are resolved. */
+export function rebaseContinue(): Promise<void> {
+	return invoke('rebase_continue');
+}
+
+/** Drop the commit a rebase stopped on and carry on with the rest. */
+export function rebaseSkip(): Promise<void> {
+	return invoke('rebase_skip');
+}
+
+/** Unwind a rebase and put the branch back where it started. */
+export function rebaseAbort(): Promise<void> {
+	return invoke('rebase_abort');
 }
 
 /** Check out a commit with no branch attached — a detached HEAD. */
@@ -365,18 +613,47 @@ export function stashAction(index: number, action: StashAction): Promise<void> {
 	return invoke('stash_action', { index, action });
 }
 
-/** Fetch, pruning refs the remote no longer has. An empty remote fetches all. */
-export function fetch(remote = ''): Promise<string> {
-	return invoke('fetch', { remote });
-}
-
-/** Push. `force` is `--force-with-lease`, never a plain force. */
-export function push(remote = '', refspec = '', force = false): Promise<string> {
-	return invoke('push', { remote, refspec, force });
+/**
+ * Fetch. Resolves to the token its events carry, not to the outcome (FEAT-018).
+ *
+ * An empty remote fetches all of them. `prune` deletes remote-tracking refs the
+ * remote no longer has, and is the caller's choice: it used to happen on every
+ * fetch whether or not anybody wanted it.
+ *
+ * Progress arrives as `network-progress` and it ends with `network-done`.
+ */
+export function fetch(remote = '', prune = false): Promise<number> {
+	return invoke('fetch', { remote, prune });
 }
 
 /**
- * Every `git` command GitLumiere has run since `since`, oldest first.
+ * Pull: fetch and integrate, in one `git pull`.
+ *
+ * One call rather than fetch-then-merge, because git resolves which upstream the
+ * current branch tracks — from `branch.<name>.remote` and `branch.<name>.merge`,
+ * either of which may be configured per branch — and that resolution is exactly
+ * the part not worth reimplementing.
+ */
+export function pull(mode: PullMode, remote = ''): Promise<string> {
+	return invoke('pull', { remote, mode });
+}
+
+/**
+ * Push. `force` is `--force-with-lease`, never a plain force.
+ *
+ * Resolves to the token its events carry, the same as `fetch`.
+ */
+export function push(remote = '', refspec = '', force = false): Promise<number> {
+	return invoke('push', { remote, refspec, force });
+}
+
+/** Let go of a finished fetch or push, so the next one may start. */
+export function networkRelease(): Promise<void> {
+	return invoke('network_release');
+}
+
+/**
+ * Every `git` command Spagitty has run since `since`, oldest first.
  *
  * New ones also arrive as `git-command` events; this is the catch-up read for
  * what ran before the panel was opened.

@@ -42,12 +42,14 @@ describe('NAV_ITEMS', () => {
 		expect(new Set(hrefs).size).toBe(hrefs.length);
 	});
 
-	it('never both counts and hints on the same item', () => {
-		// The rail draws one right-aligned value; an item asking for both would
-		// silently lose one of them.
-		for (const item of NAV_ITEMS) {
-			expect(item.count !== undefined && item.hint !== undefined).toBe(false);
-		}
+	it('names no keyboard shortcut, in any notation (FEAT-041)', () => {
+		// The rail's right-hand column is counts. A shortcut printed there was
+		// the only non-number in it, and it was written in one platform's
+		// notation on every platform — the defect FEAT-021 took out of the title
+		// bar. The palette lists shortcuts, per platform, in one place.
+		// Serialised whole, so a shortcut smuggled back in under any property
+		// name fails this rather than only the one that was removed.
+		expect(JSON.stringify(NAV_ITEMS)).not.toMatch(/ctrl|cmd|⌘|⌃/i);
 	});
 
 	it('keeps the Diff screen off the rail', () => {
@@ -58,5 +60,43 @@ describe('NAV_ITEMS', () => {
 	it('starts at the graph', () => {
 		expect(NAV_ITEMS[0].href).toBe('/');
 		expect(NAV_ITEMS[0].code).toBe('1A');
+	});
+
+	/**
+	 * FEAT-030 put Log after Rebase. The order is the screens roughly as they
+	 * are worked through — what changed, what conflicts, what branches — and Log
+	 * is where you go to look something up rather than a step in that sequence.
+	 */
+	it('runs the screens in the order they are worked through', () => {
+		expect(NAV_ITEMS.map((item) => item.href)).toEqual([
+			'/',
+			'/changes',
+			'/conflicts',
+			'/branches',
+			// FEAT-051. Beside Branches because they are the same kind of
+			// thing — named positions in history — and the rail already
+			// counted tags with nowhere to send anyone.
+			'/tags',
+			'/stash',
+			'/requests',
+			'/rebase',
+			'/search',
+			// FEAT-050. After Log because they answer neighbouring questions —
+			// what is in history, and what was just done to it — and before the
+			// divider because both are about the open repository.
+			'/reflog',
+			'/repos',
+			'/settings'
+		]);
+	});
+
+	it('puts Log immediately after Rebase', () => {
+		const hrefs = NAV_ITEMS.map((item) => item.href);
+		expect(hrefs.indexOf('/search')).toBe(hrefs.indexOf('/rebase') + 1);
+	});
+
+	it('keeps the divider before All repositories', () => {
+		const repos = NAV_ITEMS.find((item) => item.href === '/repos');
+		expect(repos?.dividerBefore).toBe(true);
 	});
 });

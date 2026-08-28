@@ -4,7 +4,7 @@
 
 ## What exists
 
-All seven sit in `crates/gitlumiere-core/src/diff.rs` and test the pure functions
+All seven sit in `crates/spagitty-core/src/diff.rs` and test the pure functions
 beneath the commands, so they need no repository fixture.
 
 | Test | Layer | Asserts |

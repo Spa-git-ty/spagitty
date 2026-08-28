@@ -15,7 +15,7 @@ git update-ref refs/remotes/origin/main main~2
 git branch stale/old-work main~4
 ```
 
-Keep a terminal open. Most tickets are "does GitLumiere agree with `git branch -vv`".
+Keep a terminal open. Most tickets are "does Spagitty agree with `git branch -vv`".
 
 | Field | Meaning |
 | --- | --- |
@@ -50,7 +50,7 @@ Keep a terminal open. Most tickets are "does GitLumiere agree with `git branch -
   live but is not is worse than no number.
 - **Result:**
 
-### SWEEP-1F-04 — An upstream configured while GitLumiere is open
+### SWEEP-1F-04 — An upstream configured while Spagitty is open
 
 - **Priority:** P1
 - **Steps:**
@@ -86,7 +86,7 @@ Keep a terminal open. Most tickets are "does GitLumiere agree with `git branch -
 - **Priority:** P3
 - **Steps:** Hover the `mine` chip.
 - **Expected:** It explains that it means local branches, not "authored by me" —
-  which GitLumiere cannot know yet.
+  which Spagitty cannot know yet.
 - **Result:**
 
 ### SWEEP-1F-08 — Checking out

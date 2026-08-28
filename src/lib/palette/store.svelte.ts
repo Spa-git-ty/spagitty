@@ -3,7 +3,7 @@
 /**
  * The command palette, and the registry behind it.
  *
- * `Ctrl/Cmd+P` opens a list of everything GitLumiere can do, filtered as you type.
+ * `Ctrl/Cmd+P` opens a list of everything Spagitty can do, filtered as you type.
  * The point is not a second way to click a button: it is that a command which
  * only exists behind a right-click on the right row is otherwise undiscoverable
  * and unreachable from the keyboard.
