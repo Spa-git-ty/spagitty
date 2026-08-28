@@ -34,9 +34,24 @@ they are given.
 | 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `npm run coverage` | The suite passes and first-party coverage meets the Amendment 10 floor of 70% |
 | 4 | Security | `cargo deny check advisories`, `npm audit --audit-level=high`, `gitleaks` over the diff | No known-vulnerable dependency, no secret in the change |
 | 5 | Build | `npm run tauri build` on Linux, macOS and Windows | The release build works on every target, not only the one the author uses |
+
 | 6 | Release | tag, artifacts, notes read from `CHANGELOG.md` by `tools/release-notes.mjs` | The build is published, carries its changelog section as notes (Amendment 20), and is traceable to a commit |
 
 Cheapest and most certain first, so an obvious failure never burns a full build.
+
+**Every lane builds all three platforms.** Gate 5 and the prerelease workflow
+each run `ubuntu-latest`, `macos-latest` and `windows-latest`; the draft
+workflow builds Linux, Windows, and macOS on two runners — `macos-latest` for
+Apple silicon and `macos-13` for Intel, since a build made on one does not run
+on the other. Gate 5's macOS build is Apple silicon only, so a published
+release currently has no Intel Mac download; that is recorded as an open
+question in TASK-025 rather than fixed unwatched on the blocking release path.
+
+**Nothing is signed.** There is no Apple Developer account and no code-signing
+certificate in this repository, so macOS Gatekeeper refuses a downloaded build
+on a double-click and Windows SmartScreen warns. The draft lane's release notes
+carry the one step a Mac user needs; adding real signing is a change to gate 5
+and the draft lane together, not to one of them.
 
 ## What runs where
 

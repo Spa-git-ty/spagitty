@@ -39,11 +39,48 @@ Underneath the crash, the lane also predates Amendment 20 (ratified
   gate with nothing published.
 - `.github/workflows/prerelease.yml`: the same identity fix; an alpha's notes
   are the `Unreleased` section, which is what an alpha previews.
-- `.github/workflows/draft-release.yml` needs neither: it tags nothing, and
-  `gh release create` writes its tag server-side.
+- `.github/workflows/draft-release.yml` needs neither identity fix nor notes:
+  it tags nothing, and `gh release create` writes its tag server-side. It did
+  need macOS — see below.
 - `docs/ci.md` reconciled: the failed first run recorded, the gate 6 row now
   says where notes come from, the stale "gates 5 and 6 have never run"
-  paragraph corrected (Amendment 11).
+  paragraph corrected, and what each lane builds written down (Amendment 11).
+
+## Every platform, in every lane
+
+Asked for by the author while this was in progress: "releases should build for
+linux , windows and mac os".
+
+**Two of the three lanes already did.** Gate 5 in `gates.yml` — the one a merge
+into `main` runs, and the one whose artifacts gate 6 publishes — builds on
+`ubuntu-latest`, `macos-latest` and `windows-latest`, and all three came back
+green on the first `main` run. `prerelease.yml` builds the same three. So the
+published release already carries a macOS build; nothing was missing there.
+
+**The draft lane did not**, and said so in its own header: macOS was skipped on
+the reasoning that an unsigned app Gatekeeper refuses to open is worse than no
+download at all. That reasoning is now overruled by the author's instruction,
+and the workflow says so rather than being quietly edited: a Mac user with no
+build is stuck, where a Mac user with an unsigned build has one documented step.
+
+- Two Mac runners, not one: `macos-latest` is Apple silicon and a build made on
+  it does not run on an Intel Mac. `macos-13` covers Intel, each with its own
+  `--target`.
+- The `.dmg` is renamed with its architecture as it is collected, because both
+  runners produce the same filename from the same product name and version.
+- The release notes tell a Mac user what to do about Gatekeeper — open once
+  from the right-click menu, or clear the quarantine attribute — instead of
+  leaving them with a file that will not open.
+
+**Question to the author —** two things this raises that a real run has to
+answer rather than a reading:
+
+1. Gate 5 builds one Mac architecture, Apple silicon. An Intel Mac user gets
+   nothing from a published release. Adding `macos-13` there means also making
+   sure two `.dmg`s cannot collide when gate 6 flattens the artifacts, on the
+   blocking release path — worth doing, but worth doing where it can be watched.
+2. Signing and notarisation need an Apple Developer account and repository
+   secrets. Until they exist every build is unsigned on both Windows and macOS.
 
 ## Non-scope
 
@@ -61,6 +98,9 @@ Underneath the crash, the lane also predates Amendment 20 (ratified
 - Gate 6 tags with an identity, and refuses to publish a version whose
   changelog section does not exist — before the tag, not after it.
 - The prerelease lane publishes an alpha with the `Unreleased` notes.
+- Every release lane builds Linux, Windows and macOS, and the draft lane names
+  the architecture in each Mac download.
+- The notes tell a Mac user how to open an unsigned build.
 - `docs/ci.md` matches the workflows as they now are.
 
 ## Dependencies

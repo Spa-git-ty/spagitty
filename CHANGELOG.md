@@ -40,6 +40,9 @@ than a pretence that anything changed.
 - **Release lane** — releases are tagged from `main` with notes taken from
   this changelog; a manually triggered `dev` build publishes an alpha
   (`-alpha.N`), and a draft build can be cut from any branch without tagging.
+  Every lane builds Linux, Windows and macOS; the draft lane ships a `.dmg` for
+  Apple silicon and one for Intel. Builds are unsigned, and the release notes
+  say what that means on each platform.
 
 `v0.1.0-preview.1` and `v0.1.0-preview.2` were early preview builds cut before
 this changelog existed. They remain published as pre-releases and are
