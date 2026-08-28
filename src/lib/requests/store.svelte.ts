@@ -323,6 +323,7 @@ export const requests = {
 		try {
 			const reply = await api.replyComment(pr.number, commentId, body.trim());
 			comments = [...comments, reply];
+			void this.loadComments(true);
 			return true;
 		} catch {
 			return false;
@@ -366,12 +367,12 @@ export const requests = {
 	},
 
 	/** Read commits for the open PR. */
-	async loadCommits(): Promise<void> {
+	async loadCommits(force = false): Promise<void> {
 		if (!api.inTauri()) return;
 		if (typeof api.pullRequestCommits !== 'function') return;
 		const request = this.open;
 		if (request === null) return;
-		if (commitsFor === request.number && commitsError === null) return;
+		if (!force && commitsFor === request.number && commitsError === null) return;
 
 		commitsLoading = true;
 		commitsError = null;
@@ -388,12 +389,12 @@ export const requests = {
 	},
 
 	/** Read review comments for the open PR. */
-	async loadComments(): Promise<void> {
+	async loadComments(force = false): Promise<void> {
 		if (!api.inTauri()) return;
 		if (typeof api.pullRequestComments !== 'function') return;
 		const request = this.open;
 		if (request === null) return;
-		if (commentsFor === request.number && commentsError === null) return;
+		if (!force && commentsFor === request.number && commentsError === null) return;
 
 		commentsLoading = true;
 		commentsError = null;
@@ -410,12 +411,12 @@ export const requests = {
 	},
 
 	/** Read the open pull request's files. */
-	async loadFiles(): Promise<void> {
+	async loadFiles(force = false): Promise<void> {
 		if (!api.inTauri()) return;
 
 		const request = this.open;
 		if (request === null) return;
-		if (filesFor === request.number && filesError === null) return;
+		if (!force && filesFor === request.number && filesError === null) return;
 
 		filesLoading = true;
 		filesError = null;
@@ -474,7 +475,7 @@ export const requests = {
 			}
 			draftComments = [];
 			persistDrafts(request.number, []);
-			await Promise.all([this.load(), this.loadComments()]);
+			await Promise.all([this.load(), this.loadComments(true)]);
 			return true;
 		} catch (e) {
 			reviewError = String(e);
