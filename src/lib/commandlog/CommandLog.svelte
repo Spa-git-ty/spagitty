@@ -120,9 +120,7 @@
 		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
 		/* It slides up over whatever screen is open, so it takes the floating
 		   shadow — cast upward, which is the direction it came from. */
-		box-shadow:
-			0 -2px 6px color-mix(in srgb, var(--umbra) 14%, transparent),
-			0 -14px 32px color-mix(in srgb, var(--umbra) 22%, transparent);
+		box-shadow: none;
 	}
 
 	.bar {

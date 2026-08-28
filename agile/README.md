@@ -172,6 +172,7 @@ of its own.
 | [TASK-023](items/TASK-023-flat-ui-remove-gradients.md) | Flatten UI and remove gradients | all | Done |
 | [TASK-024](items/TASK-024-the-glass-reads-as-glass.md) | The glass reads as glass again | all | Open |
 | [TASK-025](items/TASK-025-release-lane-amendment-20.md) | The release lane obeys Amendment 20 | — | Open |
+| [TASK-026](items/TASK-026-remove-every-remaining-shadow.md) | Remove every remaining shadow | all | Open |
 
 ## Skipped identifiers
 

@@ -191,12 +191,12 @@
 		align-self: center;
 		border-radius: var(--r-pill);
 		background: var(--ok);
-		box-shadow: 0 0 6px color-mix(in srgb, var(--ok) 60%, transparent);
+		box-shadow: none;
 	}
 
 	.walk.running .pulse {
 		background: var(--accent);
-		box-shadow: 0 0 8px var(--accent-glow);
+		box-shadow: none;
 		animation: pulse-breathe 1.6s ease-in-out infinite;
 	}
 

@@ -247,10 +247,8 @@
 		font-weight: 550;
 		border: 1px solid var(--line);
 		border-bottom: none;
-		box-shadow:
-			inset 0 -2px 0 var(--accent),
-			var(--sheen),
-			0 -1px 3px color-mix(in srgb, var(--umbra) 6%, transparent);
+		/* The accent underline is a line, not a shadow: it stays. */
+		box-shadow: inset 0 -2px 0 var(--accent);
 	}
 
 	.label {

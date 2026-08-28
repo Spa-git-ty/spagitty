@@ -199,7 +199,7 @@
 		flex: none;
 		background: var(--panel);
 		border-left: 1px solid var(--line);
-		box-shadow: -1px 0 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		box-shadow: none;
 		position: relative;
 		z-index: 1;
 		display: flex;
