@@ -167,7 +167,7 @@
 	.splitter:focus-visible::after,
 	.splitter.dragging::after {
 		background: var(--accent);
-		box-shadow: 0 0 6px var(--accent-glow);
+		box-shadow: none;
 	}
 
 	.splitter:focus-visible {

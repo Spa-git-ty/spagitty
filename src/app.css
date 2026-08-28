@@ -301,17 +301,23 @@
 
 	--umbra: #000;
 
-	--shadow-1:
-		0 1px 2px color-mix(in srgb, var(--umbra) 34%, transparent),
-		0 2px 5px color-mix(in srgb, var(--umbra) 26%, transparent);
-	--shadow-2:
-		0 1px 2px color-mix(in srgb, var(--umbra) 38%, transparent),
-		0 6px 14px color-mix(in srgb, var(--umbra) 36%, transparent);
-	--shadow-3:
-		0 2px 5px color-mix(in srgb, var(--umbra) 44%, transparent),
-		0 12px 26px color-mix(in srgb, var(--umbra) 50%, transparent);
-
-	--sheen: inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent);
+	/*
+	 * Flat in the dark too (TASK-026).
+	 *
+	 * TASK-023 flattened the interface on the author's instruction and set these
+	 * four to `none` — but only on the light `:root`. The dark theme kept its
+	 * own real values here, so every pane that reads `--shadow-3` or `--sheen`
+	 * alone still cast and still caught light, in one theme out of two. The
+	 * paragraph above this block, about separation in the dark coming from
+	 * shadow density, describes a decision that has since been overruled.
+	 *
+	 * Separation in the dark now comes from the surfaces themselves, which do
+	 * still step toward the theme's own ink, and from the borders TASK-023 kept.
+	 */
+	--shadow-1: none;
+	--shadow-2: none;
+	--shadow-3: none;
+	--sheen: none;
 
 	/* A light accent needs its border to *darken* far less, or the bottom edge
 	   goes muddy against pale text. */

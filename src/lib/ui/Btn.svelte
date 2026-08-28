@@ -140,8 +140,7 @@
 	.btn.primary:active:not(:disabled) {
 		filter: brightness(0.96);
 		transform: translateY(1px) scale(0.985);
-		box-shadow:
-			inset 0 1px 3px color-mix(in srgb, var(--umbra) 26%, transparent);
+		box-shadow: none;
 	}
 
 	/*
@@ -160,10 +159,7 @@
 		color: var(--danger);
 		border-color: var(--danger);
 		background-color: color-mix(in srgb, var(--danger) 22%, var(--surface));
-		box-shadow:
-			var(--sheen),
-			0 1px 2px color-mix(in srgb, var(--umbra) 12%, transparent),
-			0 4px 12px var(--danger-soft);
+		box-shadow: none;
 	}
 
 	.btn:disabled {
