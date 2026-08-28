@@ -128,6 +128,7 @@ pub struct PullRequest {
     /// The number people say out loud: "#412".
     pub number: u64,
     pub title: String,
+    pub body: String,
     pub author_name: String,
     /// Seconds since the unix epoch.
     pub updated: i64,

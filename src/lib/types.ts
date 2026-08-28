@@ -288,6 +288,8 @@ export interface PullRequest {
 	/** The number people say out loud: "#412". */
 	number: number;
 	title: string;
+	/** Description / markdown changelog text. */
+	body: string;
 	/** Display name of whoever opened it. */
 	authorName: string;
 	/** Seconds since the unix epoch. */

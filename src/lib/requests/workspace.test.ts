@@ -25,6 +25,7 @@ vi.mock('$lib/api', () => ({
 
 import * as api from '$lib/api';
 import PRDiffPane from './PRDiffPane.svelte';
+import PRMarkdown from './PRMarkdown.svelte';
 import PRWorkspace from './PRWorkspace.svelte';
 import { requests } from './store.svelte';
 
@@ -49,6 +50,7 @@ function request(overrides: Partial<PullRequest> = {}): PullRequest {
 		id: 'PR_1',
 		number: 412,
 		title: 'Workspace review overhaul',
+		body: '## Overview\n\nThis PR overhauls the review workspace.',
 		authorName: 'ada',
 		updated: 1_787_650_200,
 		sourceBranch: 'feature/workspace',
@@ -265,8 +267,9 @@ describe('PRWorkspace component UI', () => {
 		expect(view.text()).toContain('#412');
 		expect(view.text()).toContain('Workspace review overhaul');
 		expect(view.text()).toContain('ada');
-		expect(view.text()).toContain('ALL changed files');
-		expect(view.text()).toContain('LIST OF COMMITS');
+		expect(view.text()).toContain('CHANGELOG');
+		expect(view.text()).toContain('All Changed Files');
+		expect(view.text()).toContain('List Of Commits');
 		expect(view.text()).toContain('src/main.rs');
 		expect(view.text()).toContain('Refactor diff and workspace components');
 
@@ -276,21 +279,21 @@ describe('PRWorkspace component UI', () => {
 		click(roleBtn);
 		expect(view.text()).toContain('Developer View');
 
+		// Click changelog tab to view PR markdown description
+		const changelogBtn = view.get('.changelog-btn');
+		click(changelogBtn);
+		expect(requests.openPath).toBe('__changelog__');
+		expect(view.text()).toContain('Pull Request Description');
+
 		// Toggle accordion
 		const headers = view.all('.accordion-header');
 		click(headers[0]); // collapse all files
 		click(headers[1]); // collapse commits
 
-		// Toggle commit expansion
+		// Toggle commit expansion via full commit row button
 		click(headers[1]); // expand commits again
-		const commitToggle = view.get('.commit-toggle');
-		click(commitToggle);
-
-		// Switch diff view
-		const splitBtn = view.all('.switch-btn')[1];
-		click(splitBtn);
-		expect(view.text()).toContain('before');
-		expect(view.text()).toContain('after');
+		const commitRowBtn = view.get('.commit-row-btn');
+		click(commitRowBtn);
 
 		view.destroy();
 	});
@@ -346,6 +349,30 @@ describe('PRDiffPane component UI', () => {
 		click(triggers[0]);
 
 		expect(view.text()).toContain('Add inline review comment');
+
+		view.destroy();
+	});
+});
+
+describe('PRMarkdown component', () => {
+	it('renders empty message when markdown is empty', () => {
+		const view = render(PRMarkdown, { markdown: '' });
+		expect(view.text()).toContain('No description or changelog provided');
+		view.destroy();
+	});
+
+	it('renders headings, code blocks, lists, and formatted text', () => {
+		const sample = `# Title\n\n## Subheading\n\nSome **bold** and \`inline_code\` and a [link](https://example.com).\n\n\`\`\`rust\nfn hello() {}\n\`\`\`\n\n- [x] Done task\n- [ ] Todo task\n\n> Important quote`;
+		const view = render(PRMarkdown, { markdown: sample });
+
+		expect(view.text()).toContain('Title');
+		expect(view.text()).toContain('Subheading');
+		expect(view.text()).toContain('bold');
+		expect(view.text()).toContain('inline_code');
+		expect(view.text()).toContain('fn hello() {}');
+		expect(view.text()).toContain('Done task');
+		expect(view.text()).toContain('Todo task');
+		expect(view.text()).toContain('Important quote');
 
 		view.destroy();
 	});

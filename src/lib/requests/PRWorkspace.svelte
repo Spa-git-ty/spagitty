@@ -3,6 +3,7 @@
 	import type { DiffView } from '$lib/diff/store.svelte';
 	import { relativeTime } from '$lib/format';
 	import PRDiffPane from '$lib/requests/PRDiffPane.svelte';
+	import PRMarkdown from '$lib/requests/PRMarkdown.svelte';
 	import {
 		CHECK_LABELS,
 		REVIEW_LABELS,
@@ -68,8 +69,8 @@
 </script>
 
 {#if request}
-	<div class="pr-workspace">
-		<!-- Top Header -->
+	<div class="pr-workspace" data-role={activeRole}>
+		<!-- Workspace Header -->
 		<header class="workspace-head">
 			<div class="head-left">
 				<Btn onclick={() => requests.closeWorkspace()}>
@@ -79,7 +80,9 @@
 
 				<div class="pr-title-group">
 					<span class="pr-number mono">#{request.number}</span>
-					<h1 class="pr-title" title={request.title}>{request.title}</h1>
+					<div class="pr-title-wrapper" title={request.title}>
+						<span class="pr-title">{request.title}</span>
+					</div>
 				</div>
 
 				<div class="head-meta">
@@ -118,7 +121,20 @@
 		<div class="workspace-body">
 			<!-- Left Navigation Pane -->
 			<aside class="left-pane">
-				<!-- Section 1: All changed files -->
+				<!-- CHANGELOG entry -->
+				<div class="changelog-entry-section">
+					<button
+						class="changelog-btn"
+						class:selected={openPath === '__changelog__'}
+						onclick={() => requests.selectPath('__changelog__')}
+						title="View pull request description and changelog"
+					>
+						<span class="changelog-badge mono">DOC</span>
+						<span class="changelog-label">CHANGELOG</span>
+					</button>
+				</div>
+
+				<!-- Section 1: All Changed Files -->
 				<div class="accordion-section">
 					<button
 						class="accordion-header"
@@ -126,7 +142,7 @@
 						aria-expanded={filesExpanded}
 					>
 						<span class="chevron" class:open={filesExpanded}>▸</span>
-						<span class="section-title">ALL changed files</span>
+						<span class="section-title">All Changed Files</span>
 						<span class="count-badge mono">({files.length})</span>
 					</button>
 
@@ -161,7 +177,7 @@
 					{/if}
 				</div>
 
-				<!-- Section 2: List of commits -->
+				<!-- Section 2: List Of Commits -->
 				<div class="accordion-section">
 					<button
 						class="accordion-header"
@@ -169,7 +185,7 @@
 						aria-expanded={commitsExpanded}
 					>
 						<span class="chevron" class:open={commitsExpanded}>▸</span>
-						<span class="section-title">LIST OF COMMITS</span>
+						<span class="section-title">List Of Commits</span>
 						<span class="count-badge mono">({commits.length})</span>
 					</button>
 
@@ -185,22 +201,19 @@
 									{@const commitFiles = requests.commitFilesCache[commit.sha] ?? []}
 
 									<li class="commit-item">
-										<div class="commit-row">
-											<button
-												class="commit-toggle"
-												onclick={() => toggleCommit(commit.sha)}
-												title="Toggle commit files"
-											>
-												<span class="chevron" class:open={isCommitExpanded}>▸</span>
-											</button>
-
+										<button
+											class="commit-row-btn"
+											onclick={() => toggleCommit(commit.sha)}
+											title={`Toggle ${commit.short}: ${commit.summary}`}
+										>
+											<span class="chevron" class:open={isCommitExpanded}>▸</span>
 											<span class="commit-sha mono">{commit.short}</span>
 
 											<!-- Fixed width with marquee auto-scroll on hover -->
 											<div class="marquee-wrapper" title={commit.summary}>
 												<span class="marquee-content">{commit.summary}</span>
 											</div>
-										</div>
+										</button>
 
 										<!-- Nested files under commit -->
 										{#if isCommitExpanded}
@@ -241,46 +254,56 @@
 				</div>
 			</aside>
 
-			<!-- Center Pane: Diff & Inline Comments -->
+			<!-- Center Pane: Diff & Inline Comments or Changelog -->
 			<main class="center-pane">
-				<div class="diff-header">
-					<div class="diff-file-info">
-						<span class="diff-path mono">{openPath ?? 'No file selected'}</span>
-						{#if openFile}
-							<span class="diff-file-stat mono">
-								<span class="added">+{openFile.added}</span>
-								<span class="removed">−{openFile.removed}</span>
-							</span>
-						{/if}
-					</div>
-
-					<div class="diff-controls">
-						<div class="view-switch">
-							<button
-								class="switch-btn"
-								class:active={diffView === 'unified'}
-								onclick={() => (diffView = 'unified')}
-							>
-								Unified
-							</button>
-							<button
-								class="switch-btn"
-								class:active={diffView === 'split'}
-								onclick={() => (diffView = 'split')}
-							>
-								Split
-							</button>
+				{#if openPath === '__changelog__'}
+					<div class="diff-header">
+						<div class="diff-file-info">
+							<span class="diff-path mono">CHANGELOG</span>
+							<span class="diff-file-stat note">Pull Request Description</span>
 						</div>
 					</div>
-				</div>
+					<PRMarkdown markdown={request.body ?? ''} />
+				{:else}
+					<div class="diff-header">
+						<div class="diff-file-info">
+							<span class="diff-path mono">{openPath ?? 'No file selected'}</span>
+							{#if openFile}
+								<span class="diff-file-stat mono">
+									<span class="added">+{openFile.added}</span>
+									<span class="removed">−{openFile.removed}</span>
+								</span>
+							{/if}
+						</div>
 
-				<PRDiffPane
-					file={openFile}
-					path={openPath}
-					error={requests.filesError}
-					loading={requests.filesLoading}
-					view={diffView}
-				/>
+						<div class="diff-controls">
+							<div class="view-switch">
+								<button
+									class="switch-btn"
+									class:active={diffView === 'unified'}
+									onclick={() => (diffView = 'unified')}
+								>
+									Unified
+								</button>
+								<button
+									class="switch-btn"
+									class:active={diffView === 'split'}
+									onclick={() => (diffView = 'split')}
+								>
+									Split
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<PRDiffPane
+						file={openFile}
+						path={openPath}
+						error={requests.filesError}
+						loading={requests.filesLoading}
+						view={diffView}
+					/>
+				{/if}
 			</main>
 		</div>
 
@@ -473,22 +496,36 @@
 		align-items: baseline;
 		gap: 6px;
 		min-width: 0;
+		max-width: 480px;
 	}
 
 	.pr-number {
 		color: var(--muted);
-		font-size: var(--fs-title);
+		font-size: var(--fs-body);
 		font-weight: 600;
+		flex: none;
+	}
+
+	.pr-title-wrapper {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		white-space: nowrap;
+		position: relative;
 	}
 
 	.pr-title {
 		margin: 0;
-		font-size: var(--fs-title);
+		font-size: var(--fs-body);
 		font-weight: 600;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		display: inline-block;
 		color: var(--fg);
+		transition: transform 5s linear;
+		white-space: nowrap;
+	}
+
+	.pr-title-wrapper:hover .pr-title {
+		transform: translateX(min(0px, calc(320px - 100%)));
 	}
 
 	.head-meta {
@@ -540,6 +577,53 @@
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
+	}
+
+	.changelog-entry-section {
+		padding: 4px 6px;
+		border-bottom: 1px solid var(--line);
+		background: var(--surface);
+	}
+
+	.changelog-btn {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 7px 10px;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--r-card);
+		color: var(--fg);
+		cursor: pointer;
+		text-align: left;
+		transition: background var(--t-fast) var(--ease);
+	}
+
+	.changelog-btn:hover {
+		background: var(--hover);
+	}
+
+	.changelog-btn.selected {
+		background: var(--selection);
+		border-color: var(--accent);
+	}
+
+	.changelog-badge {
+		font-size: 10px;
+		font-weight: 700;
+		padding: 2px 5px;
+		background: color-mix(in srgb, var(--accent) 15%, var(--panel));
+		color: var(--accent);
+		border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+		border-radius: var(--r-button);
+		flex: none;
+	}
+
+	.changelog-label {
+		font-size: var(--fs-secondary);
+		font-weight: 700;
+		letter-spacing: 0.5px;
 	}
 
 	.accordion-section {
@@ -686,21 +770,23 @@
 		border-bottom: 1px solid color-mix(in srgb, var(--line) 40%, transparent);
 	}
 
-	.commit-row {
+	.commit-row-btn {
+		width: 100%;
 		display: flex;
 		align-items: center;
 		gap: 6px;
 		padding: 6px 8px;
 		background: var(--surface);
+		border: none;
+		font: inherit;
+		color: inherit;
+		text-align: left;
+		cursor: pointer;
+		transition: background var(--t-fast) var(--ease);
 	}
 
-	.commit-toggle {
-		background: none;
-		border: none;
-		cursor: pointer;
-		padding: 0;
-		display: grid;
-		place-items: center;
+	.commit-row-btn:hover {
+		background: var(--hover);
 	}
 
 	.commit-sha {
@@ -727,12 +813,12 @@
 		display: inline-block;
 		font-size: var(--fs-secondary);
 		color: var(--fg);
-		transition: transform 1.5s ease-in-out;
+		transition: transform 4s ease-in-out;
 		white-space: nowrap;
 	}
 
-	.marquee-wrapper:hover .marquee-content {
-		transform: translateX(calc(-100% + 170px));
+	.commit-row-btn:hover .marquee-content {
+		transform: translateX(min(0px, calc(180px - 100%)));
 	}
 
 	/* Center Pane */

@@ -34,6 +34,7 @@ function request(overrides: Partial<PullRequest> = {}): PullRequest {
 		id: 'PR_1',
 		number: 412,
 		title: 'Give the graph a footer',
+		body: 'PR body markdown',
 		authorName: 'grace',
 		updated: 1_787_650_200,
 		sourceBranch: 'feature/footer',
