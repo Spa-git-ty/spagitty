@@ -236,7 +236,7 @@
 		width: 90px;
 		height: 14px;
 		background: var(--line);
-		border-radius: var(--r-input);
+		border-radius: var(--r-field);
 		animation: shimmer-pulse 1.4s ease-in-out infinite;
 	}
 
@@ -253,7 +253,7 @@
 		padding: 12px 14px;
 		background: color-mix(in srgb, var(--surface) 75%, transparent);
 		border: 1px solid var(--line);
-		border-radius: var(--r-card);
+		border-radius: var(--r-panel);
 		animation: shimmer-pulse 1.4s ease-in-out infinite;
 	}
 
@@ -283,13 +283,13 @@
 		max-width: 320px;
 		height: 16px;
 		background: var(--line);
-		border-radius: var(--r-input);
+		border-radius: var(--r-field);
 	}
 
 	.shimmer-sub {
 		width: 200px;
 		height: 12px;
 		background: var(--line);
-		border-radius: var(--r-input);
+		border-radius: var(--r-field);
 	}
 </style>

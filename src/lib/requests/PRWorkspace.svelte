@@ -501,7 +501,7 @@
 
 	.pr-number {
 		color: var(--muted);
-		font-size: var(--fs-body);
+		font-size: var(--fs-ui);
 		font-weight: 600;
 		flex: none;
 	}
@@ -516,10 +516,10 @@
 
 	.pr-title {
 		margin: 0;
-		font-size: var(--fs-body);
+		font-size: var(--fs-ui);
 		font-weight: 600;
 		display: inline-block;
-		color: var(--fg);
+		color: var(--ink);
 		transition: transform 5s linear;
 		white-space: nowrap;
 	}
@@ -593,8 +593,8 @@
 		padding: 7px 10px;
 		background: transparent;
 		border: 1px solid transparent;
-		border-radius: var(--r-card);
-		color: var(--fg);
+		border-radius: var(--r-panel);
+		color: var(--ink);
 		cursor: pointer;
 		text-align: left;
 		transition: background var(--t-fast) var(--ease);
@@ -641,7 +641,7 @@
 		font: inherit;
 		font-size: var(--fs-secondary);
 		font-weight: 600;
-		color: var(--fg);
+		color: var(--ink);
 		cursor: pointer;
 		text-align: left;
 	}
@@ -812,7 +812,7 @@
 	.marquee-content {
 		display: inline-block;
 		font-size: var(--fs-secondary);
-		color: var(--fg);
+		color: var(--ink);
 		transition: transform 4s ease-in-out;
 		white-space: nowrap;
 	}
@@ -851,7 +851,7 @@
 	.diff-path {
 		font-weight: 600;
 		font-size: var(--fs-secondary);
-		color: var(--fg);
+		color: var(--ink);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -896,7 +896,7 @@
 		background: var(--surface);
 		border-top: 1px solid var(--line);
 		flex: none;
-		font-size: var(--fs-body);
+		font-size: var(--fs-ui);
 	}
 
 	.footer-left {
@@ -995,11 +995,11 @@
 		width: 100%;
 		padding: 8px;
 		font: inherit;
-		font-size: var(--fs-body);
+		font-size: var(--fs-ui);
 		background: var(--bg);
 		border: 1px solid var(--line);
-		border-radius: var(--r-input);
-		color: var(--fg);
+		border-radius: var(--r-field);
+		color: var(--ink);
 		box-sizing: border-box;
 		resize: vertical;
 	}
@@ -1008,15 +1008,15 @@
 		padding: 8px 10px;
 		background: color-mix(in srgb, var(--accent) 8%, var(--bg));
 		border-left: 3px solid var(--accent);
-		border-radius: var(--r-card);
+		border-radius: var(--r-panel);
 		font-size: var(--fs-secondary);
 	}
 
 	.modal-error {
 		padding: 8px 10px;
-		background: color-mix(in srgb, var(--error, #e06c75) 10%, var(--bg));
-		border: 1px solid color-mix(in srgb, var(--error, #e06c75) 40%, transparent);
-		border-radius: var(--r-card);
+		background: color-mix(in srgb, var(--danger) 10%, var(--bg));
+		border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+		border-radius: var(--r-panel);
 		font-size: var(--fs-secondary);
 		word-break: break-word;
 	}

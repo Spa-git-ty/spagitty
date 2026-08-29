@@ -323,7 +323,7 @@
 		border-radius: 3px;
 		border: 1px solid var(--line);
 		background: var(--surface);
-		color: var(--fg);
+		color: var(--ink);
 		display: grid;
 		place-items: center;
 		opacity: 0;
@@ -452,7 +452,7 @@
 	.author-badge {
 		font-weight: 600;
 		font-size: var(--fs-secondary);
-		color: var(--fg);
+		color: var(--ink);
 	}
 
 	.resolved-chip {
@@ -475,9 +475,9 @@
 	}
 
 	.comment-body {
-		font-size: var(--fs-body);
+		font-size: var(--fs-ui);
 		white-space: pre-wrap;
-		color: var(--fg);
+		color: var(--ink);
 	}
 
 	.developer-actions {
@@ -514,19 +514,19 @@
 		font-size: var(--fs-secondary);
 		background: var(--bg);
 		border: 1px solid var(--line);
-		border-radius: var(--r-input);
-		color: var(--fg);
+		border-radius: var(--r-field);
+		color: var(--ink);
 	}
 
 	.composer-input {
 		width: 100%;
 		padding: 6px 8px;
 		font: inherit;
-		font-size: var(--fs-body);
+		font-size: var(--fs-ui);
 		background: var(--bg);
 		border: 1px solid var(--line);
-		border-radius: var(--r-input);
-		color: var(--fg);
+		border-radius: var(--r-field);
+		color: var(--ink);
 		resize: vertical;
 		box-sizing: border-box;
 	}

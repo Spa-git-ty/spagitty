@@ -257,9 +257,9 @@
 	.doc-content {
 		max-width: 820px;
 		margin: 0 auto;
-		color: var(--fg);
+		color: var(--ink);
 		line-height: 1.6;
-		font-size: var(--fs-body);
+		font-size: var(--fs-ui);
 	}
 
 	.doc-h1 {
@@ -298,7 +298,7 @@
 		margin: 12px 0;
 		background: var(--panel);
 		border: 1px solid var(--line);
-		border-radius: var(--r-card);
+		border-radius: var(--r-panel);
 		overflow: hidden;
 	}
 
@@ -313,7 +313,7 @@
 		margin: 0;
 		padding: 12px;
 		overflow-x: auto;
-		font-size: var(--fs-body);
+		font-size: var(--fs-code);
 		line-height: 1.45;
 	}
 
@@ -321,7 +321,7 @@
 		padding: 2px 5px;
 		background: var(--panel);
 		border: 1px solid var(--line);
-		border-radius: var(--r-input);
+		border-radius: var(--r-field);
 		font-size: 0.9em;
 	}
 
@@ -336,7 +336,7 @@
 		padding: 8px 14px;
 		background: color-mix(in srgb, var(--surface) 60%, transparent);
 		border-left: 3px solid var(--accent);
-		border-radius: 0 var(--r-card) var(--r-card) 0;
+		border-radius: 0 var(--r-panel) var(--r-panel) 0;
 		color: var(--muted);
 	}
 

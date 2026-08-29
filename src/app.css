@@ -566,6 +566,11 @@ body {
 #app,
 body > div {
 	height: 100%;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	padding: var(--window-gap);
 }
 
 /*
@@ -575,11 +580,6 @@ body > div {
  */
 :root {
 	--window-gap: 10px;
-}
-
-body > div {
-	padding: var(--window-gap);
-	box-sizing: border-box;
 }
 
 :root[data-window="maximized"] {
