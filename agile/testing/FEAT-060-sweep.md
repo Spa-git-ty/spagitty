@@ -10,23 +10,21 @@ Swift, per Amendment 4: the wheel stays with the author. The whole identity is
 laid out on one page — open `assets/brand/preview.html` in a browser and walk
 the sections; the checklist below maps to them.
 
-1. **The mark.** The bare mark on dark and light plates: the tangle should
-   read as continuing beyond the frame, the lanes visibly two colours and
-   parallel below the waist.
-2. **The ground colour.** The app's icon (`src-tauri/icons/icon.png`) should
-   sit on its panel like the app's own `--panel` (`#181825`) — not a colour
-   the icon made up.
-3. **App icon sizes.** 16 → 512 in a row: the three nodes should survive
-   intact down to 16px.
-4. **The lockups.** On both surfaces: mark and wordmark on one optical
+1. **The mark.** The bare mark: the amber plate and the four dark strands read
+   as the author's own drawing — the tangle at the top, the strands running
+   straight toward the bottom. Nothing here should look re-drawn or smeared.
+2. **App icon sizes.** 16 → 512 in a row (`src-tauri/icons/`): the plate and
+   the strands survive down to 16 px.
+3. **The lockups.** On both surfaces: mark and wordmark on one optical
    centreline; the wordmark's letterspacing deliberate, not broken.
-5. **The monogram.** The single-strand S should read as the *same* mark
-   squeezed to one strand — same wheat, same node at the foot.
-6. **The hero.** At README width: mark left, wordmark + tagline, faint lane
-   columns right. No banding, no clipped text.
-7. **Tray/menubar.** White on a dark tray, black on a bright one, monochrome
-   template in macOS; three nodes still visible at 22px.
-8. **The prohibition.** The whole set must contain nothing that reads as the
+4. **The hero.** At README width: mark left, wordmark + tagline. No banding,
+   no clipped text.
+5. **Tray/menubar.** White on a dark tray, black on a bright one, monochrome
+   template in macOS; the strands-only mark still carries at 22 px.
+6. **The accent.** The app's `--accent` matches the brand amber: `#EEB04D` in
+   the dark theme, `#976317` in the light one — and `preview.html` flags that
+   `--warn` sits ~1.09–1.35:1 against `--accent` in the light themes, accepted.
+7. **The prohibition.** The whole set must contain nothing that reads as the
    Git project's mark or orange.
 
 ## What this sweep cannot say

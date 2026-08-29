@@ -1,226 +1,238 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Generate Spagitty's application icon set.
+"""Generate Spagitty's application icon set from the author's vector mark.
 
-The icon is an original mark and reads two ways at once, which is the whole
-joke in the name: three strands that start tangled at the top and straighten
-into parallel commit lanes at the bottom, with a commit node on each. Spaghetti
-above, a commit graph below.
+The source of the identity is the author's own hand-drawn mark,
+`assets/brand/mark.svg` — an amber plate (`#EEB04D`) on a 912x953 viewBox with
+four dark strands (`#454447`) that tangle at the top and straighten into
+commit lanes toward the bottom. That file is copied into the tree verbatim and
+is the only geometry this module reads; nothing here re-draws the mark, so the
+icon cannot drift from the drawing the author approved.
 
-The strands are sine waves whose amplitude decays downward, drawn in the app's
-own lane palette plus one wheat tone for the pasta. Nothing here borrows the
-Git project's mark or its orange — Spagitty must never ship anything that could
-read as the Git project's logo.
+The mark's plate is 912x953, i.e. almost square. On a square app-icon canvas
+the whole plate fits with `xMidYMid meet`, centered horizontally with a thin
+frame of transparent padding. The full mark (plate + strands) is the app icon;
+the strands alone (no plate) feed the tray/menubar marks in `tools/make-brand.py`.
 
-This file is the mark's source form. Everything else that shows the brand —
-the wordmark lockup, monogram, hero, tray icons — is generated from the same
-mark by `tools/make-brand.py`, which imports this module rather than
-redrawing it. Regenerate with:
+Rendering is Pillow-only. The strand paths use the SVG default nonzero winding
+rule; Pillow's own `ImageDraw.polygon` fills even-odd and would punch holes
+where the hand-drawn outlines cross themselves, so a scanline fill that applies
+the winding rule directly is used instead. Output is supersampled then
+downscaled with LANCZOS, which makes regeneration byte-deterministic — the
+`--check` mode recomputes every committed file in memory and diffs the bytes.
 
-    python3 tools/make-icons.py          # writes src-tauri/icons/
-    python3 tools/make-icons.py --check  # verifies the committed set matches
-
-Requires Pillow. Everything it writes lands in src-tauri/icons/. The palettes
-are the real `--panel` / `--lane-*` tokens from src/app.css, so the icon always
-sits in the same colour family as the app it launches.
+Requires Pillow (gate 2 already installs it). Everything this writes lands in
+`src-tauri/icons/`.
 """
 
 from __future__ import annotations
 
+import io
 import math
 import pathlib
+import re
 import sys
-import tempfile
 
 from PIL import Image, ImageDraw
 
-# --- Palettes ---------------------------------------------------------------
-#
-# The app's tokens, read from src/app.css on the branch that first introduced
-# them. `lane-3..5` exist in the UI; the brand mark uses the first two + the
-# wheat accent that has lived in the icon since the original drawing.
+REPO = pathlib.Path(__file__).resolve().parent.parent
+ICON_DIR = REPO / "src-tauri" / "icons"
+MARK = REPO / "assets" / "brand" / "mark.svg"
 
-DARK = {
-    "ground": (24, 24, 37, 255),  # --panel (#181825)
-    "lanes": ((137, 180, 250, 255), (203, 166, 247, 255)),  # --lane-1, --lane-2
-    "wheat": (226, 183, 96, 255),  # the pasta strand
-}
-LIGHT = {
-    "ground": (230, 233, 239, 255),  # --panel (#e6e9ef)
-    "lanes": ((30, 102, 245, 255), (136, 57, 239, 255)),  # --lane-1, --lane-2
-    "wheat": (206, 138, 46, 255),  # a wheat darkened enough to sit on the light panel
-}
+# Geometry of the mark's viewBox; drawing constants are read from the SVG, so
+# these only describe how the viewBox maps onto a square canvas.
+VIEW_W, VIEW_H = 912.0, 953.0
+STRAND_COLOUR = (69, 68, 71, 255)  # #454447 from the <g fill>
+PLATE_COLOUR = (238, 176, 77, 255)  # #EEB04D (fallback; preferred from the SVG)
 
-# --- Geometry ---------------------------------------------------------------
-#
-# Fractions of the canvas, so everything is resolution independent.
+# Rasterising parameters. Supersample `ss` then LANCZOS-downscale; each cubic
+# is subdivided into `steps` straight segments. These settle the trade between
+# fidelity and determinism and are validated against librsvg at native size.
+SS = 8
+STEPS = 8
 
-CORNER = 0.22
-WHEAT_WIDTH = 0.080  # the pasta is the thickest strand
-LANE_WIDTH = 0.066
-NODE_R = 0.088
-NODE_RING = 0.028
-# The strands begin above the frame and are clipped by it, so the tangle reads
-# as continuing off the icon rather than as three stubby hooks.
-TOP = -0.18
-
-# Where each strand ends up once it has straightened out, its role, its phase
-# at the top, the height of the node that caps it, and which lane colour it is
-# (both lanes take distinct colours from the palette). The wheat is first so it
-# is drawn last (front to back), crossing over the lanes it tangles with.
-STRANDS = (
-    (0.27, "wheat", 0.0, 0.74, None),
-    (0.50, "lanes", 2.3, 0.83, 0),
-    (0.73, "lanes", 4.5, 0.69, 1),
-)
+SVG_CACHE = {"text": None}
 
 
-def strand_colour(theme: dict, role: str, lane: int | None) -> tuple:
-    return theme["wheat"] if role == "wheat" else theme["lanes"][lane]
-
-# How far a strand can swing at the very top, how fast that swing dies out as it
-# descends, and how many times it changes direction on the way.
-SWING = 0.155
-DECAY = 1.9
-TURNS = 2.45
+def svg_text() -> str:
+    if SVG_CACHE["text"] is None:
+        SVG_CACHE["text"] = MARK.read_text(encoding="utf-8")
+    return SVG_CACHE["text"]
 
 
-def strand_points(center: float, phase: float, bottom: float, steps: int = 400):
-    """One strand, from the tangle at the top down to the node that caps it."""
-    points = []
-    for i in range(steps + 1):
-        t = i / steps
-        amplitude = SWING * (1 - t) ** DECAY
-        x = center + amplitude * math.sin(2 * math.pi * TURNS * t + phase)
-        y = TOP + (bottom - TOP) * t
-        points.append((x, y))
-    return points
+def parse_svg_paths(svg: str) -> list[list[tuple[str, list[float]]]]:
+    """Parse every @d=... attribute into a list of (command, [nums]) streams."""
+    out = []
+    for d in re.findall(r'd="([^"]+)"', svg):
+        tokens = re.findall(r'([A-Za-z])|([-+]?\d*\.?\d+)', d)
+        cmds, nums = [], []
+        for kind, val in tokens:
+            if kind:
+                nums = []
+                cmds.append((kind, nums))
+            else:
+                nums.append(float(val))
+        out.append(cmds)
+    return out
 
 
-def stroke(draw: ImageDraw.ImageDraw, points, colour, width: float, size: float) -> None:
-    """Draw a path by stamping discs along it.
+def parse_svg_rect(svg: str) -> dict:
+    m = re.search(r'<rect\s([^>]+)/>', svg)
+    if not m:
+        return {}
+    attrs = {}
+    for k, v in re.findall(r'(\w[\w-]*)="([^"]*)"', m.group(1)):
+        try:
+            attrs[k] = float(v)
+        except ValueError:
+            attrs[k] = v
+    return attrs
 
-    `ImageDraw.line` with a thick width and `joint="curve"` leaves seams where
-    the segments meet — visible as hatching once the image is scaled down.
-    Stamping a disc per point costs more draws and gives a clean round stroke
-    with round ends, which is what a noodle wants.
+
+def _cubic_flatten(points: list[tuple[float, float]], steps: int) -> list:
+    out = [points[0]]
+    i = 1
+    while i + 2 < len(points):
+        p0, p1, p2, p3 = points[i - 1], points[i], points[i + 1], points[i + 2]
+        for j in range(1, steps + 1):
+            t = j / steps
+            u = 1 - t
+            x = u**3 * p0[0] + 3 * u**2 * t * p1[0] + 3 * u * t**2 * p2[0] + t**3 * p3[0]
+            y = u**3 * p0[1] + 3 * u**2 * t * p1[1] + 3 * u * t**2 * p2[1] + t**3 * p3[1]
+            out.append((x, y))
+        i += 3
+    return out
+
+
+def flatten_cmds(cmds: list[tuple[str, list[float]]], steps: int) -> list[list[tuple[float, float]]]:
+    """Turn an M/C/Z command stream into closed polygons (one per subpath)."""
+    polygons = []
+    cur: list[tuple[float, float]] = []
+    cx, cy, sx, sy = 0.0, 0.0, 0.0, 0.0
+    for cmd, nums in cmds:
+        if cmd == "M":
+            if cur:
+                polygons.append(cur)
+            cx, cy = nums[0], nums[1]
+            sx, sy = cx, cy
+            cur = [(cx, cy)]
+        elif cmd == "C":
+            i = 0
+            while i + 5 < len(nums):
+                cp1 = (nums[i], nums[i + 1])
+                cp2 = (nums[i + 2], nums[i + 3])
+                end = (nums[i + 4], nums[i + 5])
+                seg = [(cx, cy), cp1, cp2, end]
+                cur.extend(_cubic_flatten(seg, steps)[1:])
+                cx, cy = end
+                i += 6
+        elif cmd == "Z":
+            if cur and cur[-1] != cur[0]:
+                cur.append(cur[0])
+            if cur:
+                polygons.append(cur)
+            cur = []
+            cx, cy = sx, sy
+    if cur:
+        polygons.append(cur)
+    return polygons
+
+
+def fill_polygon_nz(image: Image.Image, poly: list[tuple[float, float]],
+                    fill: tuple[int, int, int, int]) -> None:
+    """Scanline-fill `poly` with the SVG nonzero winding rule.
+
+    Pillow's `polygon` is even-odd. The author's strands self-cross, and on the
+    folds even-odd would cut holes where nonzero keeps the ink solid. This does
+    a per-row sweep over the polygon's edges, drawing a span whenever the
+    running winding number is nonzero — the same rule librsvg applies.
     """
-    r = width / 2 * size
-    for x, y in points:
-        draw.ellipse([x * size - r, y * size - r, x * size + r, y * size + r], fill=colour)
+    n = len(poly)
+    if n < 3:
+        return
+    draw = ImageDraw.Draw(image)
+    height = image.height
+    buckets: dict[int, list[tuple[float, int]]] = {}
+    for i in range(n):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % n]
+        if y1 == y2:
+            continue
+        if y2 > y1:
+            y_lo, y_hi, wind = y1, y2, 1
+        else:
+            y_lo, y_hi, wind = y2, y1, -1
+        lo, hi = int(y_lo), int(y_hi)
+        if hi <= lo or hi < 0 or lo >= height:
+            continue
+        dx = (x2 - x1) / (y2 - y1)
+        for yy in range(max(lo, 0), min(hi, height)):
+            x = x1 + (yy + 0.5 - y1) * dx
+            buckets.setdefault(yy, []).append((x, wind))
+    for yy in range(height):
+        hits = buckets.get(yy)
+        if not hits:
+            continue
+        hits.sort(key=lambda t: t[0])
+        winding, prev_x = 0, None
+        for x, w in hits:
+            if winding != 0 and prev_x is not None:
+                x0, x1 = int(prev_x), int(x)
+                if x1 >= x0:
+                    draw.line((x0, yy, x1, yy), fill=fill)
+            winding += w
+            prev_x = x
 
 
-def node(draw: ImageDraw.ImageDraw, cx: float, cy: float, colour, ground, size: float) -> None:
-    """A commit node: the strand colour with a ground ring that reads at any size."""
-    r = NODE_R * size
-    ring = NODE_RING * size
-    draw.ellipse([cx - r - ring, cy - r - ring, cx + r + ring, cy + r + ring], fill=ground)
-    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=colour)
+def _hex_fill(value) -> tuple[int, int, int, int]:
+    if isinstance(value, str) and value.startswith("#") and len(value) == 7:
+        return (int(value[1:3], 16), int(value[3:5], 16), int(value[5:7], 16), 255)
+    return PLATE_COLOUR
 
 
-def render_mark(px: int, theme: dict, ss: int = 8) -> Image.Image:
-    """The mark on its rounded ground, as an RGBA image of `px` (square)."""
+def _render_raw(px: int, strands_only: bool = False, colour: tuple = None,
+                ss: int = SS, steps: int = STEPS) -> Image.Image:
+    """Render the mark at px*ss, centered by xMidYMid meet on a square canvas."""
+    svg = svg_text()
+    rect = parse_svg_rect(svg)
+    canvas = max(VIEW_W, VIEW_H)
+    scale = px * ss / canvas
+    xoff = (canvas - VIEW_W) / 2 * scale
     size = px * ss
     image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    ground = theme["ground"]
 
-    draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=CORNER * size, fill=ground)
+    if not strands_only:
+        draw = ImageDraw.Draw(image)
+        plate = _hex_fill(rect.get("fill")) if rect else PLATE_COLOUR
+        x, y = xoff + rect.get("x", 0) * scale, rect.get("y", 0) * scale
+        w, h = rect.get("width", 0) * scale, rect.get("height", 0) * scale
+        rad = rect.get("rx", 0) * scale
+        draw.rounded_rectangle([x, y, x + w, y + h], radius=rad, fill=plate)
 
-    # The strands run off the top of the frame, so they are drawn on their own
-    # layer and clipped to the same rounded rectangle as the ground.
-    strands = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    pen = ImageDraw.Draw(strands)
-
-    for center, role, phase, node_y, lane in reversed(STRANDS):
-        width = WHEAT_WIDTH if role == "wheat" else LANE_WIDTH
-        colour = strand_colour(theme, role, lane)
-        stroke(pen, strand_points(center, phase, node_y), colour, width, size)
-
-    for center, role, phase, node_y, lane in STRANDS:
-        colour = strand_colour(theme, role, lane)
-        node(pen, center * size, node_y * size, colour, ground, size)
-
-    mask = Image.new("L", (size, size), 0)
-    ImageDraw.Draw(mask).rounded_rectangle(
-        [0, 0, size - 1, size - 1], radius=CORNER * size, fill=255
-    )
-    image.paste(strands, (0, 0), Image.composite(strands.getchannel("A"), mask, mask))
-
-    return image.resize((px, px), Image.LANCZOS)
+    strand_fill = colour if colour is not None else STRAND_COLOUR
+    for cmds in parse_svg_paths(svg):
+        for poly in flatten_cmds(cmds, steps=steps):
+            scaled = [(xoff + px_ * scale, py * scale) for px_, py in poly]
+            fill_polygon_nz(image, scaled, strand_fill)
+    return image
 
 
-# --- Vector source ----------------------------------------------------------
-
-def _simplify(points, tolerance: float) -> list:
-    """Douglas–Peucker over the normalized strand points, for the SVG path."""
-    points = list(points)
-
-    def distance(p, a, b):
-        (ax, ay), (bx, by) = a, b
-        dx, dy = bx - ax, by - ay
-        length = math.hypot(dx, dy)
-        if length == 0:
-            return math.hypot(p[0] - ax, p[1] - ay)
-        t = max(0.0, min(1.0, ((p[0] - ax) * dx + (p[1] - ay) * dy) / (length * length)))
-        proj = (ax + t * dx, ay + t * dy)
-        return math.hypot(p[0] - proj[0], p[1] - proj[1])
-
-    def keep(pts):
-        if len(pts) < 3:
-            return pts
-        start, end = pts[0], pts[-1]
-        index = max(range(1, len(pts) - 1), key=lambda i: distance(pts[i], start, end))
-        if distance(pts[index], start, end) > tolerance:
-            return keep(pts[: index + 1])[:-1] + keep(pts[index:])
-        return [start, end]
-
-    return keep(points)
+def render_mark(px: int, strands_only: bool = False, colour: tuple = None,
+                ss: int = SS, steps: int = STEPS) -> Image.Image:
+    """The mark as an RGBA image of `px` x `px` (full plate unless strands_only)."""
+    raw = _render_raw(px, strands_only=strands_only, colour=colour, ss=ss, steps=steps)
+    return raw.resize((px, px), Image.LANCZOS) if ss > 1 else raw
 
 
-def write_mark_svg(path: pathlib.Path, theme: dict, view: int = 512) -> None:
-    """Emit the mark as a standalone SVG, the same maths as the raster."""
-    tol = 1.5 / view
-    width = {"wheat": WHEAT_WIDTH, "lanes": LANE_WIDTH}
-    parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {view} {view}">']
-    r = CORNER * view
-    parts.append(
-        f'<rect width="{view}" height="{view}" rx="{r}" fill="rgb{tuple(theme["ground"][:3])}"/>'
-    )
-    for center, role, phase, node_y, lane in reversed(STRANDS):
-        pts = _simplify(strand_points(center, phase, node_y), tol)
-        colour = strand_colour(theme, role, lane)
-        d = "M " + " L ".join(f"{x * view:.2f} {y * view:.2f}" for x, y in pts)
-        parts.append(
-            f'<path d="{d}" stroke="rgb{colour[:3]}" stroke-width="{width[role] * view:.2f}" '
-            f'stroke-linecap="round" fill="none"/>'
-        )
-    for center, role, _, node_y, lane in STRANDS:
-        colour = strand_colour(theme, role, lane)
-        x, y = center * view, node_y * view
-        rr = NODE_RING * view
-        parts.append(
-            f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{NODE_R * view + rr:.2f}" '
-            f'fill="rgb{theme["ground"][:3]}"/>'
-        )
-        parts.append(
-            f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{NODE_R * view:.2f}" fill="rgb{colour[:3]}"/>'
-        )
-    parts.append("</svg>")
-    text = "\n".join(parts) + "\n"
-    if path is None:
-        return text
-    path.write_text(text, encoding="utf-8")
+def _io(image: Image.Image, fmt: str, **kwargs) -> bytes:
+    buf = io.BytesIO()
+    image.save(buf, format=fmt, **kwargs)
+    return buf.getvalue()
 
 
-# --- The shipped set --------------------------------------------------------
-
-ICON_DIR = pathlib.Path(__file__).resolve().parent.parent / "src-tauri" / "icons"
-
-
-def regeneration(theme: dict) -> dict:
-    """Render every shipped icon, keyed by relative path, as PNG/ICO/ICNS bytes."""
-    master = render_mark(1024, theme)
+def regeneration() -> dict:
+    """Every shipped icon, keyed by relative path, as PNG/ICO/ICNS bytes."""
+    master = render_mark(1024)
     images = {
         "16x16.png": master.resize((16, 16), Image.LANCZOS),
         "32x32.png": master.resize((32, 32), Image.LANCZOS),
@@ -230,30 +242,18 @@ def regeneration(theme: dict) -> dict:
         "512x512.png": master.resize((512, 512), Image.LANCZOS),
         "icon.png": master.resize((512, 512), Image.LANCZOS),
     }
-    out = {}
-    for name, img in images.items():
-        buffer = io_bytes(img, format="PNG")
-        out[name] = buffer
-    ico = io_bytes(images["256x256.png"], format="ICO",
-                   sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
-    out["icon.ico"] = ico
+    out = {name: _io(img, "PNG") for name, img in images.items()}
+    out["icon.ico"] = _io(images["256x256.png"], "ICO",
+                          sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
     try:
-        out["icon.icns"] = io_bytes(master, format="ICNS")
+        out["icon.icns"] = _io(master, "ICNS")
     except Exception:  # pragma: no cover - platform/format availability
         out["icon.icns"] = None
     return out
 
 
-def io_bytes(image: Image.Image, format: str, sizes=None) -> bytes:
-    import io
-    buffer = io.BytesIO()
-    kwargs = {"sizes": sizes} if sizes else {}
-    image.save(buffer, format=format, **kwargs)
-    return buffer.getvalue()
-
-
-def write_set(outdir: pathlib.Path, theme: dict, print_lines: bool = False) -> None:
-    for name, data in regeneration(theme).items():
+def write_set(outdir: pathlib.Path, print_lines: bool = False) -> None:
+    for name, data in regeneration().items():
         if data is None:
             if print_lines:
                 print(f"  {name} skipped (this Pillow cannot write ICNS)")
@@ -263,9 +263,9 @@ def write_set(outdir: pathlib.Path, theme: dict, print_lines: bool = False) -> N
             print(f"  {name}")
 
 
-def check_set(outdir: pathlib.Path, theme: dict) -> bool:
+def check_set(outdir: pathlib.Path) -> list:
     drift = []
-    for name, data in regeneration(theme).items():
+    for name, data in regeneration().items():
         target = outdir / name
         if data is None:
             if not target.exists():
@@ -279,15 +279,14 @@ def check_set(outdir: pathlib.Path, theme: dict) -> bool:
 def main(argv) -> int:
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="verify the committed set matches")
-    parser.add_argument("--write-svg", action="store_true", help="also write the mark SVG sources")
+    parser.add_argument("--check", action="store_true",
+                        help="verify the committed set matches")
     args = parser.parse_args(argv)
 
     if args.check:
-        drift = check_set(ICON_DIR, DARK)
-        svg = write_mark_svg(None, DARK)
-        target = ICON_DIR / "mark.svg"
-        if not target.exists() or target.read_text() != svg:
+        drift = check_set(ICON_DIR)
+        svg = svg_text()
+        if (ICON_DIR / "mark.svg").read_text(encoding="utf-8") != svg:
             drift.append("mark.svg: differs from the committed vector source")
         if drift:
             print("drift in the icon set:")
@@ -299,11 +298,7 @@ def main(argv) -> int:
         return 0
 
     ICON_DIR.mkdir(parents=True, exist_ok=True)
-    write_set(ICON_DIR, DARK, print_lines=True)
-
-    if args.write_svg:
-        write_mark_svg(ICON_DIR / "mark.svg", DARK)
-        print("  mark.svg")
+    write_set(ICON_DIR, print_lines=True)
     return 0
 
 

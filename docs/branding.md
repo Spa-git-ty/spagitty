@@ -11,32 +11,30 @@ truth; see [Sources and checks](#sources-and-checks).
 
 ## The mark
 
-The mark reads two ways at once, which is the whole joke:
+The mark is the author's own hand-drawn drawing: an **amber plate** with four
+dark **strands** that start tangled at the top and read as a bundle drawing
+toward the commit intent at the bottom. It is not a control-program render of
+an idea — it is the hand drawing itself, and as such it is the settled
+identity and is never redrawn.
 
-- three strands start **tangled** at the top and **straighten** into parallel
-  commit lanes at the bottom;
-- each lane **ends in a node** — the commit you're looking at.
-
-The tangle is clipped by the frame, so it reads as continuing beyond the icon
-rather than as three stubby hooks.
-
-The strands are sine waves whose amplitude decays as they descend. The wheat
-strand runs uppermost at the very top of the tangle and crosses over the lanes
-it grabs. The other two lanes hold two different lane colours, so the graph
-half reads as distinct lines, not one smudge.
+The mark's geometry lives in `assets/brand/mark.svg` (a 912×953 viewBox: the
+`#EEB04D` plate plus a `<g fill="#454447">` holding the strand paths). That
+file is copied **verbatim** from the author's original and is the only geometry
+the generators read — nothing re-draws the mark, so the icon cannot drift from
+the drawing the author approved.
 
 ### Always
 
 - Use the generated assets, or regenerate them. Never redraw the mark.
-- Keep the strands **flat** with no shading, gradients, or outlines — the
-  brand is the two-tone lane palette on a panel colour, nothing more.
-- Prefer the dark version (lanes + wheat on `--panel` `#181825`) on any
-  surface; it is the shipped app icon.
+- Keep it flat — the amber plate and the dark strands, nothing more. No
+  shading, gradients, shadows, or outlines.
+- Place the mark on a panel or neutral ground where its amber plate can sit.
 
 ### Clearspace
 
-Clearspace is one node diameter (a node is `0.088` of the mark's height)
-around every edge of the mark. The lockup already includes it.
+Keep a clear margin around the mark of about one node's visual weight — in
+practice a gap of roughly 1/20 of the mark's height. The lockup already
+includes it.
 
 ### Never
 
@@ -47,64 +45,58 @@ around every edge of the mark. The lockup already includes it.
 
 ## The wordmark
 
-`spagitty` in **Inter** (SIL Open Font License 1.1), lowercase, weight 760,
+`spagitty` in **Inter** (SIL Open Font License 1.1), lowercase, weight 660,
 letterspaced by 45 units per em. Accompanying the mark it forms the
-**lockup** (mark left, wordmark right, gap one node diameter). Inter is
-bundled in `assets/brand/font/` so generation never needs the network; the
-app itself runs on the system font stack via `--font-ui` /
-`--font-mono`, which are independent of the brand face.
-
-The single-strand **monogram** — one Pasta strand forming an S, capped with a
-commit node — is for favicons, tray badges, and whatever tiny surface the full
-mark can't survive.
+**lockup** (mark left, wordmark right, gap one node's visual weight), which
+ships in dark- and light-surface ink variants. Inter is bundled in
+`assets/brand/font/` so generation never needs the network; the app itself
+runs on the system font stack via `--font-ui` / `--font-mono`, which are
+independent of the brand face.
 
 ## Colour
 
-All colours are the app's own tokens from `src/app.css`. The mark uses
-`--lane-1`, `--lane-2`, and the wheat accent; the other lane colours are
-reserved for the UI's own graphs and must not drift into the mark.
+The mark itself is fixed — amber plate `#EEB04D` and dark strands `#454447` —
+on every surface. The wordmark ink adapts to the surface it sits on.
 
-### Dark (default)
+### The mark
 
-| token | value | use |
+| element | value | use |
 | --- | --- | --- |
-| `--panel` | `#181825` | mark ground, app panels |
-| `--lane-1` | `#89b4fa` | first commit lane |
-| `--lane-2` | `#cba6f7` | second commit lane |
-| — | `#e2b760` | the wheat/pasta strand |
-| `--ink` | `#cdd6f4` | wordmark on dark surfaces |
-| `--accent` | `#89b4fa` | interactive accent (UI only) |
-| `--danger` | `#f38ba8` | destructive actions (UI only) |
+| plate | `#EEB04D` | the amber ground of the mark |
+| strands | `#454447` | the dark strands |
+| wordmark (light surface) | `#454447` | the strand grey on light panels |
+| wordmark (dark surface) | `#cdd6f4` | light ink on dark panels |
 
-### Light
+### The app accent
 
-| token | value | use |
-| --- | --- | --- |
-| `--panel` | `#e6e9ef` | mark ground on light surfaces |
-| `--lane-1` | `#1e66f5` | first commit lane |
-| `--lane-2` | `#8839ef` | second commit lane |
-| — | `#ce8a2e` | wheat darkened for the light ground |
-| `--ink` | `#4c4f69` | wordmark on light surfaces |
+The app's interactive accent is the brand amber, darkened so text and controls
+read on the surface they sit on:
 
-The UI defines `--lane-3..5` and `--danger` in each theme; those exist for
-the app's graphs and are not brand colours.
+| theme | `--accent` | contrast on bg | use |
+| --- | --- | --- | --- |
+| dark (Mocha, Dracula, Tokyo Night, Gruvbox dark) | `#EEB04D` | > 7:1 | accent on dark surfaces |
+| light (Latte, Alucard, Tokyo Day, Gruvbox light) | `#976317` | 3.9–4.9:1 | accent on light surfaces |
+
+`--warn` is unchanged and is allowed to sit beside the accent at a lower
+contrast ratio than 3:1 in the light themes (measured 1.09–1.35:1); this is an
+accepted trade so the identity keeps its amber hue across the UI.
 
 ## Sizing
 
 - Mark minimum: 16 px on-screen (the favicon floor); at 16 the tangle reads
-  as texture and the nodes as the three dots.
-- Wordmark minimum: 24 px cap height; below that, use the monogram.
-- The application icon ships at 16/32/128/256/512/1024, with `@2x` variants
-  and both platform icon formats (`.ico`, `.icns`), as `src-tauri/icons/`.
+  as texture.
+- Wordmark minimum: 24 px cap height.
+- The application icon ships at 16/32/128/256/512/1024, with `@2x` variants and
+  both platform icon formats (`.ico`, `.icns`), as `src-tauri/icons/`.
 
 ## Assets and sources
 
 | asset | path | production |
 | --- | --- | --- |
+| Mark source (the one truth) | `assets/brand/mark.svg`, `src-tauri/icons/mark.svg` | copied verbatim from the author |
 | App icon set | `src-tauri/icons/` | `tools/make-icons.py` |
-| Mark (bare) | `assets/brand/brand-mark.png` (+ light), `src-tauri/icons/mark.svg` | `tools/make-icons.py --write-svg` |
+| Mark (bare) | `assets/brand/brand-mark.png` | `tools/make-brand.py` |
 | Lockups | `assets/brand/lockups/` (PNG dark/light, SVG) | `tools/make-brand.py` |
-| Monogram | `assets/brand/monogram.png` | `tools/make-brand.py` |
 | Favicon | `assets/brand/favicon/` (`.ico`, 16/32/64) | `tools/make-brand.py` |
 | Hero banner | `assets/brand/hero.png` | `tools/make-brand.py` |
 | Sweep page | `assets/brand/preview.html` | `tools/make-brand.py` |
