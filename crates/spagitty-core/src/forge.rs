@@ -318,15 +318,13 @@ pub(crate) fn status_error(
         },
         403 => Error::ForgeUnauthorized {
             host: host.to_string(),
-            detail: host_message(body).unwrap_or_else(|| {
-                "the token does not have access to this repository.".into()
-            }),
+            detail: host_message(body)
+                .unwrap_or_else(|| "the token does not have access to this repository.".into()),
         },
         404 => Error::Forge {
             host: host.to_string(),
-            detail: host_message(body).unwrap_or_else(|| {
-                "no such repository, or the token cannot see it.".into()
-            }),
+            detail: host_message(body)
+                .unwrap_or_else(|| "no such repository, or the token cannot see it.".into()),
         },
         422 => Error::Forge {
             host: host.to_string(),
