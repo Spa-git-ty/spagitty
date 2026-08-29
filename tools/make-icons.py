@@ -207,7 +207,10 @@ def write_mark_svg(path: pathlib.Path, theme: dict, view: int = 512) -> None:
             f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{NODE_R * view:.2f}" fill="rgb{colour[:3]}"/>'
         )
     parts.append("</svg>")
-    path.write_text("\n".join(parts), encoding="utf-8")
+    text = "\n".join(parts) + "\n"
+    if path is None:
+        return text
+    path.write_text(text, encoding="utf-8")
 
 
 # --- The shipped set --------------------------------------------------------
@@ -282,6 +285,10 @@ def main(argv) -> int:
 
     if args.check:
         drift = check_set(ICON_DIR, DARK)
+        svg = write_mark_svg(None, DARK)
+        target = ICON_DIR / "mark.svg"
+        if not target.exists() or target.read_text() != svg:
+            drift.append("mark.svg: differs from the committed vector source")
         if drift:
             print("drift in the icon set:")
             for line in drift:

@@ -6,27 +6,27 @@
 
 ## What a human checks at the window
 
-Swift, per Amendment 4: the wheel stays with the author; the checklist is what
-verification the automated suite cannot run — how it actually *looks*.
+Swift, per Amendment 4: the wheel stays with the author. The whole identity is
+laid out on one page — open `assets/brand/preview.html` in a browser and walk
+the sections; the checklist below maps to them.
 
-1. **The app icon at every size.** `src-tauri/icons/icon.png` at 512, then
-   the window's taskbar/dock at 32 and 16. The tangle should read as
-   continuing beyond the frame, the lanes should be visibly two colours and
-   parallel below the waist, and the three nodes should survive intact to 16px.
-2. **The ground colour.** The plate should now match the app's own `--panel`
-   (`#181825` in the dark theme) rather than a colour the icon made up — the
-   icon should sit on the panels as if it grew there.
-3. **The lockups.** `assets/brand/lockups/lockup-ink-light.png` on a dark
-   surface and `lockup-ink-dark.png` on a light one: mark and wordmark should
-   sit on one optical centreline, with the wordmark's letterspacing reading as
-   deliberate rather than broken.
-4. **The monogram.** The single-strand S should read as the *same* mark
+1. **The mark.** The bare mark on dark and light plates: the tangle should
+   read as continuing beyond the frame, the lanes visibly two colours and
+   parallel below the waist.
+2. **The ground colour.** The app's icon (`src-tauri/icons/icon.png`) should
+   sit on its panel like the app's own `--panel` (`#181825`) — not a colour
+   the icon made up.
+3. **App icon sizes.** 16 → 512 in a row: the three nodes should survive
+   intact down to 16px.
+4. **The lockups.** On both surfaces: mark and wordmark on one optical
+   centreline; the wordmark's letterspacing deliberate, not broken.
+5. **The monogram.** The single-strand S should read as the *same* mark
    squeezed to one strand — same wheat, same node at the foot.
-5. **The hero.** `assets/brand/hero.png` at README width: mark left, wordmark
-   + tagline, faint lane columns right. No banding, no clipped text.
-6. **Tray/menubar.** `tray-white` on a dark tray, `tray-black` on a bright
-   one, `menubar-mono` in macOS; each should still show three nodes at 22px.
-7. **The prohibition.** The whole set must contain nothing that reads as the
+6. **The hero.** At README width: mark left, wordmark + tagline, faint lane
+   columns right. No banding, no clipped text.
+7. **Tray/menubar.** White on a dark tray, black on a bright one, monochrome
+   template in macOS; three nodes still visible at 22px.
+8. **The prohibition.** The whole set must contain nothing that reads as the
    Git project's mark or orange.
 
 ## What this sweep cannot say

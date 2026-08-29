@@ -107,6 +107,7 @@ the app's graphs and are not brand colours.
 | Monogram | `assets/brand/monogram.png` | `tools/make-brand.py` |
 | Favicon | `assets/brand/favicon/` (`.ico`, 16/32/64) | `tools/make-brand.py` |
 | Hero banner | `assets/brand/hero.png` | `tools/make-brand.py` |
+| Sweep page | `assets/brand/preview.html` | `tools/make-brand.py` |
 | Tray/menubar | `src-tauri/icons/{menubar-mono,tray-black,tray-white}` | `tools/make-brand.py` |
 | Wordmark face | `assets/brand/font/Inter.ttf` (OFL 1.1, `OFL.txt`) | bundled |
 
