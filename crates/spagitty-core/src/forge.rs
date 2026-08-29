@@ -344,13 +344,9 @@ fn host_message(body: &str) -> Option<String> {
             let error_details: Vec<String> = errors
                 .iter()
                 .filter_map(|e| {
-                    if let Some(s) = e.as_str() {
-                        Some(s.to_string())
-                    } else if let Some(m) = e["message"].as_str() {
-                        Some(m.to_string())
-                    } else {
-                        None
-                    }
+                    e.as_str()
+                        .map(str::to_string)
+                        .or_else(|| e["message"].as_str().map(str::to_string))
                 })
                 .collect();
             if !error_details.is_empty() {
