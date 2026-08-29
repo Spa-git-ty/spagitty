@@ -11,9 +11,9 @@ sweep, and how the fixture repository the sweeps assume is built.
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-npm run check          # svelte-kit sync && svelte-check
-npm test               # vitest
-npm run coverage       # vitest with the Amendment 10 floor enforced
+bun run check          # svelte-kit sync && svelte-check
+bun run test           # vitest, run through bun
+bun run coverage       # vitest with the Amendment 10 floor enforced
 ```
 
 Coverage of first-party code is measured on both sides and both must clear the
@@ -21,7 +21,7 @@ Amendment 10 floor of 70%:
 
 ```sh
 cargo llvm-cov --workspace --ignore-filename-regex '(fixture|testing)\.rs' --summary-only
-npm run coverage
+bun run coverage
 ```
 
 What counts, what does not, and which gate runs each command is in
@@ -186,7 +186,7 @@ git merge theirs || true    # stops with a conflict, which is the point
 The application is driven for real, not screenshotted from a mock.
 
 ```sh
-npm run tauri dev -- -- -- /tmp/spagitty-fixture
+bun run tauri dev -- -- -- /tmp/spagitty-fixture
 ```
 
 The trailing path is passed to the binary and read by the `launch_path`
@@ -220,7 +220,7 @@ the polite option — nothing steals focus from whatever is on screen:
 Xvfb :99 -screen 0 1600x1000x24 -nolisten tcp &
 
 env -u WAYLAND_DISPLAY DISPLAY=:99 GDK_BACKEND=x11 \
-    npm run tauri dev -- -- -- /tmp/spagitty-fixture
+bun run tauri dev -- -- -- /tmp/spagitty-fixture
 ```
 
 `-u WAYLAND_DISPLAY` is the part that is easy to miss: with it set, GTK prefers

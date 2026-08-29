@@ -14,6 +14,14 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Changed
+
+- **The frontend toolchain runs on bun (TASK-027).** `bun.lock` replaces
+  `package-lock.json`; the CI, build and release workflows install and run
+  through `oven-sh/setup-bun` and `bun` commands; and the bundled license list
+  in Settings reads the installed frontend tree instead of the npm lockfile.
+  npm and node are no longer needed by the project's own tooling.
+
 ## [0.1.0] - 2026-08-29
 
 The first release. Everything below is new, so it is one `Added` section rather

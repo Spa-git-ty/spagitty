@@ -3,15 +3,16 @@
 //! The dependency license list, generated at build time.
 //!
 //! GPL-3 asks that a user can see what the binary they are running is made of.
-//! Hand-typing that list guarantees it is wrong by the next `cargo update`, so
-//! it is generated from the two lockfiles — `Cargo.lock` by way of
-//! `cargo metadata`, and `package-lock.json` directly — and written into
-//! `OUT_DIR` for `src/commands.rs` to include.
+//! Hand-typing that list guarantees it is wrong by the next dependency change,
+//! so it is generated from the two sources of truth — `Cargo.lock` by way of
+//! `cargo metadata`, and the installed frontend tree reached from the
+//! production dependencies of `package.json` — and written into `OUT_DIR` for
+//! `src/about.rs` to include.
 //!
 //! **No new tool is required.** The plan was `cargo-about`; making every machine
 //! and every CI runner install a build tool is a cost this can avoid, since
-//! `cargo` itself reads the lockfile and npm's lockfile carries a `license`
-//! field for every entry.
+//! `cargo` itself reads the lockfile and the frontend list is read from the
+//! installed package manifests.
 //!
 //! **A list that cannot be generated degrades; it never fails the build.** A
 //! checkout with no `node_modules`, an environment where `cargo metadata` cannot
@@ -21,9 +22,12 @@
 //!
 //! Only what is *linked* is listed. `cargo metadata` reports build and
 //! development dependencies too, and neither is distributed: `tauri-build` and
-//! `tempfile` are not in the binary, and listing them would misdescribe it.
+//! `tempfile` are not in the binary, and listing them would misdescribe it. The
+//! frontend half walks only the production dependencies declared in the root
+//! `package.json`, so the bundler and the test runner are reached by no edge
+//! and are listed by none.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -204,67 +208,111 @@ fn linked_from(metadata: &Value, members: &BTreeSet<&str>) -> BTreeSet<String> {
     linked
 }
 
-/// Every npm package that ships in the built frontend, with its license.
+/// Every JS package that ships in the built frontend, with its license.
 ///
-/// `package-lock.json` marks development-only entries with `"dev": true`, and
-/// those are the test runner, the type checker and the bundler — none of which
-/// is in the application. It also carries a `license` for each entry, so the
-/// package's own `package.json` is only consulted where the lockfile has none.
+/// The production tree is what the root `package.json` `dependencies` and
+/// `optionalDependencies` reach through the installed `node_modules` tree.
+/// Development-only packages — the test runner, the type checker, the bundler —
+/// are not part of the closure, exactly as `"dev": true` was refused for the
+/// old lockfile. Each package's manifest is read at its installed path, so the
+/// list reflects what is actually linked rather than what a lockfile promised.
+///
+/// Hoisted and nested installs are both resolved: bun (like npm) hoists the
+/// common version to the root and nests a conflicting version under the package
+/// that needs it, which is Node's own resolution walk.
 fn npm_dependencies(manifest_dir: &Path) -> Result<Vec<Dependency>, String> {
     let root = manifest_dir
         .parent()
         .ok_or_else(|| "the project root could not be found".to_string())?;
 
-    let text = std::fs::read_to_string(root.join("package-lock.json"))
-        .map_err(|error| format!("package-lock.json could not be read ({error})"))?;
-    let lock: Value = serde_json::from_str(&text)
-        .map_err(|error| format!("package-lock.json was not readable ({error})"))?;
+    let root_manifest = read_manifest(&root.join("package.json"))?;
 
-    let packages = lock["packages"]
-        .as_object()
-        .ok_or_else(|| "package-lock.json carried no packages".to_string())?;
-
-    let mut dependencies: Vec<Dependency> = packages
-        .iter()
-        // The empty key is the project itself, which is Spagitty rather than
-        // something Spagitty depends on.
-        .filter(|(path, entry)| !path.is_empty() && entry["dev"] != json!(true))
-        .map(|(path, entry)| Dependency {
-            name: package_name(path),
-            version: entry["version"].as_str().unwrap_or("").to_string(),
-            license: license_of(entry)
-                .map(str::to_string)
-                .or_else(|| license_from_package_json(&root.join(path))),
-        })
+    let mut resolved: BTreeMap<String, Dependency> = BTreeMap::new();
+    let mut visited: BTreeSet<PathBuf> = BTreeSet::new();
+    let mut pending: VecDeque<(String, PathBuf)> = dependency_names(&root_manifest)
+        .into_iter()
+        .map(|name| (name, root.to_owned()))
         .collect();
 
+    while let Some((name, from)) = pending.pop_front() {
+        let directory = resolve_in_tree(&from, &name)
+            .ok_or_else(|| format!("{name} is not present in the installed tree"))?;
+        if !visited.insert(directory.clone()) {
+            continue;
+        }
+
+        let manifest = read_manifest(&directory.join("package.json"))?;
+        let version = manifest["version"].as_str().unwrap_or("").to_string();
+        let license = license_from_manifest(&manifest);
+        resolved.insert(
+            format!("{name}@{version}"),
+            Dependency {
+                name,
+                version,
+                license,
+            },
+        );
+
+        pending.extend(
+            dependency_names(&manifest)
+                .into_iter()
+                .map(|child| (child, directory.clone())),
+        );
+    }
+
+    let mut dependencies: Vec<Dependency> = resolved.into_values().collect();
     dependencies.sort_by(|a, b| (&a.name, &a.version).cmp(&(&b.name, &b.version)));
     Ok(dependencies)
 }
 
-/// The package name from a lockfile path.
+/// The dependencies that ship, by name.
 ///
-/// Nested installs appear as `node_modules/a/node_modules/b`, and the package is
-/// the last segment after the final `node_modules/` — scope included.
-fn package_name(path: &str) -> String {
-    path.rsplit_once("node_modules/")
-        .map(|(_, name)| name)
-        .unwrap_or(path)
-        .to_string()
+/// `optionalDependencies` ship like ordinary ones — a platform-gated package
+/// that is present is part of the build — so both objects contribute. What is
+/// actually present is decided by the installed tree, never by the ranges: the
+/// manifests are the source of version and license.
+fn dependency_names(manifest: &Value) -> Vec<String> {
+    let mut names: Vec<String> = manifest["dependencies"]
+        .as_object()
+        .into_iter()
+        .flat_map(|dependencies| dependencies.keys().cloned())
+        .collect();
+    if let Some(optional) = manifest["optionalDependencies"].as_object() {
+        names.extend(optional.keys().cloned());
+    }
+    names
 }
 
-fn license_of(entry: &Value) -> Option<&str> {
-    entry["license"].as_str()
+/// The directory a package is installed in, reached the way Node resolves it.
+///
+/// From a package's own directory, its dependencies live in that package's
+/// `node_modules`, then in each ancestor's. The walk ascends one directory at a
+/// time, which is Node's own rule: a nested conflicting version resolves
+/// closest to the package that needs it, a hoisted one at the root
+/// `node_modules`.
+fn resolve_in_tree(from: &Path, name: &str) -> Option<PathBuf> {
+    let mut directory = from.to_path_buf();
+    loop {
+        let candidate = directory.join("node_modules").join(name);
+        if candidate.join("package.json").is_file() {
+            return Some(candidate);
+        }
+        directory = directory.parent()?.to_path_buf();
+    }
 }
 
-/// A package's own declaration, for the entries the lockfile has none for.
+fn read_manifest(path: &Path) -> Result<Value, String> {
+    let text =
+        std::fs::read_to_string(path).map_err(|error| format!("{} ({error})", path.display()))?;
+    serde_json::from_str(&text)
+        .map_err(|error| format!("{} was not readable ({error})", path.display()))
+}
+
+/// A package's own declaration of what it is licensed under.
 ///
 /// npm has published both `"license": "MIT"` and the older
 /// `"license": { "type": "MIT" }`, so both are read.
-fn license_from_package_json(directory: &Path) -> Option<String> {
-    let text = std::fs::read_to_string(directory.join("package.json")).ok()?;
-    let manifest: Value = serde_json::from_str(&text).ok()?;
-
+fn license_from_manifest(manifest: &Value) -> Option<String> {
     manifest["license"]
         .as_str()
         .map(str::to_string)
@@ -278,7 +326,8 @@ pub fn rerun_triggers(manifest_dir: &Path) -> Vec<PathBuf> {
     let mut triggers = vec![manifest_dir.join("Cargo.toml")];
     if let Some(root) = root {
         triggers.push(root.join("Cargo.lock"));
-        triggers.push(root.join("package-lock.json"));
+        triggers.push(root.join("bun.lock"));
+        triggers.push(root.join("package.json"));
     }
     triggers
 }

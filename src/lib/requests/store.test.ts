@@ -171,7 +171,7 @@ describe('load', () => {
 	});
 
 	it('does nothing at all outside the application', async () => {
-		// `npm run dev` in a plain browser has no backend to ask.
+		// The dev server in a plain browser has no backend to ask.
 		vi.mocked(api.inTauri).mockReturnValueOnce(false);
 
 		await requests.load();

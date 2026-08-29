@@ -173,6 +173,7 @@ of its own.
 | [TASK-024](items/TASK-024-the-glass-reads-as-glass.md) | The glass reads as glass again | all | Open |
 | [TASK-025](items/TASK-025-release-lane-amendment-20.md) | The release lane obeys Amendment 20 | — | Open |
 | [TASK-026](items/TASK-026-remove-every-remaining-shadow.md) | Remove every remaining shadow | all | Open |
+| [TASK-027](items/TASK-027-migrate-the-js-toolchain-to-bun.md) | Migrate the JS toolchain to bun | — | Open |
 
 ## Skipped identifiers
 

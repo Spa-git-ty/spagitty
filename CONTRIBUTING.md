@@ -107,7 +107,7 @@ These come from the design handoff and hold across every screen:
 ## Code style
 
 - Rust: `cargo fmt` and `cargo clippy` clean.
-- Frontend: `npm run check` (svelte-check) and `npm run lint` clean.
+- Frontend: `bun run check` (svelte-check) clean.
 - Don't reimplement in Rust what `shell.rs` should shell out to `git` for
   (interactive rebase execution, hooks, LFS, submodule recursion, credential
   helpers). If you need a new one of those, add it to `shell.rs` with a comment

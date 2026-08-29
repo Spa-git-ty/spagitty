@@ -52,16 +52,15 @@ jobs:
         with:
           command: check licenses bans sources
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
+          bun-version: 1.4.0
 
-      - run: npm ci
+      - run: bun install --frozen-lockfile
 
-      - name: npm dependency licenses
+      - name: JS dependency licenses
         run: |
-          npx --yes license-checker-rseidelsohn@4 \
+          bunx license-checker-rseidelsohn@4 \
             --production \
             --onlyAllow "MIT;ISC;BSD-2-Clause;BSD-3-Clause;Apache-2.0;0BSD;CC0-1.0;Unlicense;BlueOak-1.0.0;Python-2.0" \
             --excludePrivatePackages
@@ -82,12 +81,11 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run check
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run check
 
   # --- Gate 3 -------------------------------------------------------------
   tests:
@@ -103,6 +101,14 @@ jobs:
       - uses: taiki-e/install-action@cargo-llvm-cov
       - uses: ./.github/actions/linux-deps
 
+      # The About screen's dependency list (src-tauri/licenses.rs) reads the
+      # installed frontend tree, so the JS install comes before the Rust
+      # coverage run.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+
       - name: Rust tests and coverage
         run: |
           cargo llvm-cov --workspace \
@@ -110,16 +116,10 @@ jobs:
             --fail-under-lines "$COVERAGE_FLOOR" \
             --summary-only
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-
       # The thresholds live in vite.config.ts, so the same floor applies
       # locally and here.
       - name: Frontend tests and coverage
-        run: npm run coverage
+        run: bun run coverage
 
   # --- Gate 4 -------------------------------------------------------------
   security:
@@ -139,13 +139,12 @@ jobs:
         with:
           command: check advisories
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - name: npm advisories
-        run: npm audit --audit-level=high
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: JS advisories
+        run: bun audit
 
       # gitleaks itself, not gitleaks-action.
       #
@@ -186,13 +185,12 @@ jobs:
       - uses: ./.github/actions/linux-deps
         if: matrix.os == 'ubuntu-latest'
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
 
-      - run: npm run tauri build
+      - run: bun run tauri build
 
       - uses: actions/upload-artifact@v4
         with:
@@ -219,10 +217,14 @@ jobs:
         with:
           path: artifacts
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
       - name: Read the version out of the manifest
         id: version
         run: |
-          version=$(node -p "require('./package.json').version")
+          version=$(bun -e "console.log(require('./package.json').version)")
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
@@ -240,7 +242,7 @@ jobs:
       # before anything is tagged, which is the right order to fail in.
       - name: Read the notes out of the changelog
         run: |
-          node tools/release-notes.mjs "${{ steps.version.outputs.version }}" > notes.md
+          bun tools/release-notes.mjs "${{ steps.version.outputs.version }}" > notes.md
           cat notes.md
 
       # The runner has no git identity of its own, and an annotated tag needs

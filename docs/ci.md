@@ -29,13 +29,13 @@ they are given.
 
 | # | Gate | Runs | Proves |
 | --- | --- | --- | --- |
-| 1 | License | `cargo deny check licenses bans sources`, `license-checker-rseidelsohn` over the npm production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with Spagitty shipping under GPL-3 |
-| 2 | Code quality | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `npm run check` | Formatting, lints and types across both languages |
-| 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `npm run coverage` | The suite passes and first-party coverage meets the Amendment 10 floor of 70% |
-| 4 | Security | `cargo deny check advisories`, `npm audit --audit-level=high`, `gitleaks` over the diff | No known-vulnerable dependency, no secret in the change |
-| 5 | Build | `npm run tauri build` on Linux, macOS and Windows | The release build works on every target, not only the one the author uses |
+| 1 | License | `cargo deny check licenses bans sources`, `bunx license-checker-rseidelsohn@4` over the JS production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with Spagitty shipping under GPL-3 |
+| 2 | Code quality | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `bun run check` | Formatting, lints and types across both languages |
+| 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `bun run coverage` | The suite passes and first-party coverage meets the Amendment 10 floor of 70% |
+| 4 | Security | `cargo deny check advisories`, `bun audit`, `gitleaks` over the diff | No known-vulnerable dependency, no secret in the change |
+| 5 | Build | `bun run tauri build` on Linux, macOS and Windows | The release build works on every target, not only the one the author uses |
 
-| 6 | Release | tag, artifacts, notes read from `CHANGELOG.md` by `tools/release-notes.mjs` | The build is published, carries its changelog section as notes (Amendment 20), and is traceable to a commit |
+| 6 | Release | tag, artifacts, notes read from `CHANGELOG.md` by `bun tools/release-notes.mjs` | The build is published, carries its changelog section as notes (Amendment 20), and is traceable to a commit |
 
 Cheapest and most certain first, so an obvious failure never burns a full build.
 
@@ -85,7 +85,7 @@ and the draft lane together, not to one of them.
   the right place — it does not get bolted onto whichever job is convenient.
 - The coverage floor is defined once per language: `COVERAGE_FLOOR` in the
   workflow for Rust, `test.coverage.thresholds` in `vite.config.ts` for the
-  frontend. They are the same number, and `npm run coverage` fails locally for
+  frontend. They are the same number, and `bun run coverage` fails locally for
   the same reason it fails in CI.
 - Tags are never moved. Gate 6 refuses to publish over a tag that already
   exists and tells you to bump the version instead.
@@ -107,14 +107,15 @@ inflate the number nor deflate it.
 Gates 1 to 3 are what a change is checked against before it is committed:
 
 ```sh
+bun install --frozen-lockfile              # the dependencies, locked
 cargo deny check licenses bans sources     # gate 1, needs cargo-deny
 cargo fmt --all --check                    # gate 2
 cargo clippy --workspace --all-targets -- -D warnings
-npm run check
+bun run check
 cargo llvm-cov --workspace --ignore-filename-regex '(fixture|testing)\.rs' --summary-only
-npm run coverage                           # gate 3
+bun run coverage                           # gate 3
 cargo deny check advisories                # gate 4
-npm audit --audit-level=high
+bun audit
 ```
 
 `cargo-deny` and `cargo-llvm-cov` are installed with

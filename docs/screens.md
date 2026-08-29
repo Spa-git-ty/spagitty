@@ -666,14 +666,15 @@ version, the license, the commit stamped in at build time, and the trademark
 notice were in the stub's footer from the first commit. They moved into this
 section rather than disappearing while it was rebuilt.
 
-The dependency license list is **generated at build time from the two
-lockfiles**, not typed — a hand-written list is wrong by the next update.
-`src-tauri/licenses.rs` reads `cargo metadata` for the Rust half and
-`package-lock.json` for the npm half, and lists only what is *linked*: build and
-development dependencies are not distributed, so describing them as part of the
-binary would be wrong. `cargo-about` was the plan and was dropped — requiring a
-build tool on every machine and every CI runner is a cost this avoids, since
-cargo already reads the lockfile.
+The dependency license list is **generated at build time**, not typed — a
+hand-written list is wrong by the next update. `src-tauri/licenses.rs` reads
+`cargo metadata` for the Rust half and the installed frontend tree for the JS
+half, walking the production dependencies of the root `package.json` through
+`node_modules` (what `bun.lock` pins), and lists only what is *linked*: build
+and development dependencies are not distributed, so describing them as part of
+the binary would be wrong. `cargo-about` was the plan and was dropped —
+requiring a build tool on every machine and every CI runner is a cost this
+avoids, since cargo already reads the lockfile.
 
 A list that cannot be generated **degrades rather than failing the build**. A
 checkout with no `node_modules`, or an environment where `cargo metadata` cannot

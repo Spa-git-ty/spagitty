@@ -152,7 +152,7 @@ describe('the command log', () => {
 	});
 
 	it('asks the backend for nothing when there is no backend', async () => {
-		// `npm run dev` in a plain browser: the panel is inert rather than
+		// The dev server in a plain browser: the panel is inert rather than
 		// throwing on every open.
 		inBrowserOnly = true;
 		// The shared setup runs with a backend present, so its own calls are
