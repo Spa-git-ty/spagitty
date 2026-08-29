@@ -24,6 +24,13 @@ stays backward-compatible.
   replies and resolving change requests — and draft comments that persist in
   `localStorage` until a batch review is published. A flat shimmer replaces the
   old side panel while PRs load.
+- **Spagitty, with a face: the brand (FEAT-060).** The app icon is now drawn
+  in the app's own tokens with a full size set (16/32/128/256/512/1024 plus
+  `@2x`, `.ico`, `.icns`) and a vector source, and a new `tools/make-brand.py`
+  generates the wordmark lockups, single-strand monogram, favicon set, README
+  hero, and tray/menubar marks from that one source. `docs/branding.md` is the
+  reference; gate 2 refuses drift between the generators and the committed
+  files. The README, previously empty, now ships the hero and the story.
 
 ### Changed
 

@@ -15,3 +15,4 @@ THIRD-PARTY-LICENSES.md
 run_claude_job.sh
 .claude/
 .idea/
+__pycache__/
