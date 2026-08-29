@@ -2,7 +2,8 @@
 
 # TASK-027 — Migrate the JS toolchain to bun
 
-**Status:** Open on `task/TASK-027-migrate-to-bun`.
+**Status:** Done — merged into `dev` by direct push at the author's explicit
+permission (Amendment 14 waived for this item).
 **Screens:** —.
 **Raised by:** the author, by instruction: the machine standardises on bun, and
 the frontend toolchain was the last stack still on node/npm.
