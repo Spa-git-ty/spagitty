@@ -6,7 +6,14 @@ import type { ForgeRepo, PullRequest } from '$lib/types';
 vi.mock('$lib/api', () => ({
 	inTauri: vi.fn(() => true),
 	forgeRepo: vi.fn(),
-	pullRequests: vi.fn()
+	forgeAccounts: vi.fn(() => Promise.resolve([])),
+	pullRequests: vi.fn(),
+	pullRequestFiles: vi.fn(),
+	pullRequestCommits: vi.fn(),
+	pullRequestComments: vi.fn(),
+	commitFiles: vi.fn(),
+	submitReview: vi.fn(),
+	replyComment: vi.fn()
 }));
 
 import * as api from '$lib/api';
@@ -27,6 +34,7 @@ function request(overrides: Partial<PullRequest> = {}): PullRequest {
 		id: 'PR_1',
 		number: 412,
 		title: 'Give the graph a footer',
+		body: 'PR body markdown',
 		authorName: 'grace',
 		updated: 1_787_650_200,
 		sourceBranch: 'feature/footer',

@@ -372,7 +372,7 @@
 		height: var(--toolbar-h);
 		flex: none;
 		display: grid;
-		grid-template-columns: 1fr auto 1fr;
+		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 		align-items: center;
 		gap: 16px;
 		padding: 0 12px;
@@ -383,6 +383,7 @@
 		box-shadow: none;
 		position: relative;
 		z-index: 2;
+		overflow: hidden;
 	}
 
 	/* The command log toggle rides in the third track, at its right edge. */
@@ -396,6 +397,7 @@
 		align-items: center;
 		gap: 8px;
 		min-width: 0;
+		overflow: hidden;
 	}
 
 	.repo {
@@ -403,6 +405,7 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		flex: none;
 	}
 
 	/* git's own progress line, which can be long. It gets whatever room is
@@ -421,6 +424,7 @@
 
 	.sep {
 		color: var(--muted);
+		flex: none;
 	}
 
 	/*
@@ -450,6 +454,7 @@
 		background: var(--sunken);
 		box-shadow: none;
 		min-width: 0;
+		max-width: 260px;
 		transition:
 			border-color var(--t-fast) var(--ease),
 			background var(--t-fast) var(--ease);
@@ -494,7 +499,11 @@
 
 	.actions {
 		display: flex;
+		flex-direction: row;
 		align-items: center;
 		gap: 16px;
+		flex-wrap: nowrap;
+		flex-shrink: 0;
+		min-width: max-content;
 	}
 </style>

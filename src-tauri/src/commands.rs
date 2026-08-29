@@ -1226,13 +1226,36 @@ pub async fn pull_request_files<R: Runtime>(
     off_thread(move || forge::review::pull_request_files(&repo, &token, number)).await
 }
 
-/// Leave a review on a pull request.
-///
-/// The one thing in Spagitty that writes to somebody else's server, and it is
-/// not undoable from here: a submitted review is visible to everybody watching
-/// the pull request the moment it lands. The confirmation belongs to the
-/// screen; what this does is refuse to send a verdict the host would reject,
-/// so the reader is told what is missing rather than shown a 422.
+#[tauri::command]
+pub async fn pull_request_commits<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+) -> Result<Vec<forge::review::PullRequestCommit>> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::pull_request_commits(&repo, &token, number)).await
+}
+
+#[tauri::command]
+pub async fn commit_files<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    sha: String,
+) -> Result<Vec<FileDiff>> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::commit_files(&repo, &token, &sha)).await
+}
+
+#[tauri::command]
+pub async fn pull_request_comments<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+) -> Result<Vec<forge::review::PullRequestComment>> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::pull_request_comments(&repo, &token, number)).await
+}
+
 #[tauri::command]
 pub async fn submit_review<R: Runtime>(
     app: AppHandle<R>,
@@ -1240,9 +1263,28 @@ pub async fn submit_review<R: Runtime>(
     number: u64,
     verdict: ReviewVerdict,
     comment: String,
+    draft_comments: Option<Vec<forge::review::DraftComment>>,
 ) -> Result<()> {
     let (repo, token, _) = forge_credentials(&app, state)?;
-    off_thread(move || forge::review::submit_review(&repo, &token, number, verdict, &comment)).await
+    let drafts = draft_comments.unwrap_or_default();
+    off_thread(move || {
+        forge::review::submit_review_with_comments(
+            &repo, &token, number, verdict, &comment, &drafts,
+        )
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn reply_comment<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+    comment_id: u64,
+    body: String,
+) -> Result<forge::review::PullRequestComment> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::reply_comment(&repo, &token, number, comment_id, &body)).await
 }
 
 /// Is there a newer Spagitty than this one?

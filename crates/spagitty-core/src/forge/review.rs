@@ -81,6 +81,40 @@ impl ReviewVerdict {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PullRequestCommit {
+    pub sha: String,
+    pub short: String,
+    pub summary: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub time: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PullRequestComment {
+    pub id: u64,
+    pub in_reply_to: Option<u64>,
+    pub path: String,
+    pub line: Option<u32>,
+    pub side: String,
+    pub body: String,
+    pub author: String,
+    pub created_at: i64,
+    pub resolved: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DraftComment {
+    pub path: String,
+    pub line: u32,
+    pub side: String,
+    pub body: String,
+}
+
 /// `{api_base}/repos/{owner}/{name}/pulls/{number}` — everything here hangs
 /// off it.
 fn pull_url(repo: &Repo, number: u64) -> String {
@@ -117,8 +151,6 @@ pub fn pull_request_files(repo: &Repo, token: &str, number: u64) -> Result<Vec<F
         let full = batch.len() == PER_PAGE;
         files.extend(batch);
 
-        // A short page is the last page. Asking for the next one would be a
-        // request that can only come back empty.
         if !full {
             break;
         }
@@ -127,31 +159,309 @@ pub fn pull_request_files(repo: &Repo, token: &str, number: u64) -> Result<Vec<F
     Ok(files)
 }
 
-/// Leave a review on a pull request.
-///
-/// Returns nothing: the host's answer describes the review that was created,
-/// and the screen re-reads the list rather than trusting a local copy of what
-/// it thinks changed.
-pub fn submit_review(
+/// The commits in one pull request.
+pub fn pull_request_commits(
+    repo: &Repo,
+    token: &str,
+    number: u64,
+) -> Result<Vec<PullRequestCommit>> {
+    let mut commits = Vec::new();
+
+    for page in 1..=MAX_PAGES {
+        let url = format!(
+            "{}/commits?per_page={PER_PAGE}&page={page}",
+            pull_url(repo, number)
+        );
+        let response = http::get_json(&url, token, &repo.host)?;
+
+        if response.status < 200 || response.status >= 300 {
+            return Err(status_error(
+                &repo.host,
+                response.status,
+                &response.body,
+                response.retry_after.as_deref(),
+            ));
+        }
+
+        let batch = read_commits(&response.body, &repo.host)?;
+        let full = batch.len() == PER_PAGE;
+        commits.extend(batch);
+
+        if !full {
+            break;
+        }
+    }
+
+    Ok(commits)
+}
+
+/// Parse commits response from host.
+pub fn read_commits(body: &str, host: &str) -> Result<Vec<PullRequestCommit>> {
+    let json: Value = serde_json::from_str(body).map_err(|_| Error::Forge {
+        host: host.to_string(),
+        detail: "sent something that is not JSON".into(),
+    })?;
+
+    let Some(entries) = json.as_array() else {
+        return Err(Error::Forge {
+            host: host.to_string(),
+            detail: match json["message"].as_str() {
+                Some(msg) => msg.to_string(),
+                None => "did not send a list of commits".into(),
+            },
+        });
+    };
+
+    Ok(entries
+        .iter()
+        .filter_map(|e| {
+            let sha = e["sha"].as_str()?.to_string();
+            let short = if sha.len() >= 7 {
+                sha[..7].to_string()
+            } else {
+                sha.clone()
+            };
+            let commit = &e["commit"];
+            let raw_msg = commit["message"].as_str().unwrap_or("");
+            let summary = raw_msg.lines().next().unwrap_or("").to_string();
+            let author_obj = &commit["author"];
+            let author_name = author_obj["name"]
+                .as_str()
+                .or_else(|| e["author"]["login"].as_str())
+                .unwrap_or("Unknown")
+                .to_string();
+            let author_email = author_obj["email"].as_str().unwrap_or("").to_string();
+            let time = super::github::timestamp(author_obj["date"].as_str());
+
+            Some(PullRequestCommit {
+                sha,
+                short,
+                summary,
+                author_name,
+                author_email,
+                time,
+            })
+        })
+        .collect())
+}
+
+/// Read the files changed by one specific commit.
+pub fn commit_files(repo: &Repo, token: &str, sha: &str) -> Result<Vec<FileDiff>> {
+    let url = format!(
+        "{}/repos/{}/{}/commits/{}",
+        repo.kind.api_base(&repo.host),
+        repo.owner,
+        repo.name,
+        sha
+    );
+    let response = http::get_json(&url, token, &repo.host)?;
+
+    if response.status < 200 || response.status >= 300 {
+        return Err(status_error(
+            &repo.host,
+            response.status,
+            &response.body,
+            response.retry_after.as_deref(),
+        ));
+    }
+
+    read_commit_files(&response.body, &repo.host)
+}
+
+/// Parse commit details for its changed files.
+pub fn read_commit_files(body: &str, host: &str) -> Result<Vec<FileDiff>> {
+    let json: Value = serde_json::from_str(body).map_err(|_| Error::Forge {
+        host: host.to_string(),
+        detail: "sent something that is not JSON".into(),
+    })?;
+
+    if let Some(files) = json["files"].as_array() {
+        return Ok(files.iter().filter_map(file).collect());
+    }
+
+    if let Some(msg) = json["message"].as_str() {
+        return Err(Error::Forge {
+            host: host.to_string(),
+            detail: msg.to_string(),
+        });
+    }
+
+    Ok(Vec::new())
+}
+
+/// Read inline review comments on a pull request.
+pub fn pull_request_comments(
+    repo: &Repo,
+    token: &str,
+    number: u64,
+) -> Result<Vec<PullRequestComment>> {
+    let mut comments = Vec::new();
+
+    for page in 1..=MAX_PAGES {
+        let url = format!(
+            "{}/comments?per_page={PER_PAGE}&page={page}",
+            pull_url(repo, number)
+        );
+        let response = http::get_json(&url, token, &repo.host)?;
+
+        if response.status < 200 || response.status >= 300 {
+            return Err(status_error(
+                &repo.host,
+                response.status,
+                &response.body,
+                response.retry_after.as_deref(),
+            ));
+        }
+
+        let batch = read_comments(&response.body, &repo.host)?;
+        let full = batch.len() == PER_PAGE;
+        comments.extend(batch);
+
+        if !full {
+            break;
+        }
+    }
+
+    Ok(comments)
+}
+
+/// Parse review comments from JSON body.
+pub fn read_comments(body: &str, host: &str) -> Result<Vec<PullRequestComment>> {
+    let json: Value = serde_json::from_str(body).map_err(|_| Error::Forge {
+        host: host.to_string(),
+        detail: "sent something that is not JSON".into(),
+    })?;
+
+    let Some(entries) = json.as_array() else {
+        return Err(Error::Forge {
+            host: host.to_string(),
+            detail: match json["message"].as_str() {
+                Some(msg) => msg.to_string(),
+                None => "did not send a list of comments".into(),
+            },
+        });
+    };
+
+    Ok(entries.iter().filter_map(comment_item).collect())
+}
+
+fn comment_item(entry: &Value) -> Option<PullRequestComment> {
+    let id = entry["id"].as_u64()?;
+    let path = entry["path"].as_str()?.to_string();
+    let body = entry["body"].as_str().unwrap_or("").to_string();
+    let author = entry["user"]["login"].as_str().unwrap_or("").to_string();
+    let in_reply_to = entry["in_reply_to_id"].as_u64();
+    let line = entry["line"]
+        .as_u64()
+        .or_else(|| entry["original_line"].as_u64())
+        .map(|l| l as u32);
+    let side = entry["side"].as_str().unwrap_or("RIGHT").to_string();
+    let created_at = super::github::timestamp(entry["created_at"].as_str());
+
+    Some(PullRequestComment {
+        id,
+        in_reply_to,
+        path,
+        line,
+        side,
+        body,
+        author,
+        created_at,
+        resolved: false,
+    })
+}
+
+/// Reply to an existing review comment.
+pub fn reply_comment(
+    repo: &Repo,
+    token: &str,
+    number: u64,
+    comment_id: u64,
+    body: &str,
+) -> Result<PullRequestComment> {
+    if body.trim().is_empty() {
+        return Err(Error::Forge {
+            host: repo.host.clone(),
+            detail: "reply comment cannot be empty".into(),
+        });
+    }
+
+    let payload = serde_json::json!({ "body": body }).to_string();
+    let response = http::post_json(
+        &format!("{}/comments/{}/replies", pull_url(repo, number), comment_id),
+        token,
+        &repo.host,
+        &payload,
+    )?;
+
+    if response.status < 200 || response.status >= 300 {
+        return Err(status_error(
+            &repo.host,
+            response.status,
+            &response.body,
+            response.retry_after.as_deref(),
+        ));
+    }
+
+    read_comment(&response.body, &repo.host)
+}
+
+/// Parse a single comment from JSON response.
+pub fn read_comment(body: &str, host: &str) -> Result<PullRequestComment> {
+    let json: Value = serde_json::from_str(body).map_err(|_| Error::Forge {
+        host: host.to_string(),
+        detail: "sent something that is not JSON".into(),
+    })?;
+
+    comment_item(&json).ok_or_else(|| Error::Forge {
+        host: host.to_string(),
+        detail: "failed to parse comment from response".into(),
+    })
+}
+
+/// Leave a review on a pull request with optional draft comments.
+pub fn submit_review_with_comments(
     repo: &Repo,
     token: &str,
     number: u64,
     verdict: ReviewVerdict,
     comment: &str,
+    draft_comments: &[DraftComment],
 ) -> Result<()> {
-    if verdict.needs_a_comment() && comment.trim().is_empty() {
+    if verdict.needs_a_comment() && comment.trim().is_empty() && draft_comments.is_empty() {
         return Err(Error::Forge {
             host: repo.host.clone(),
-            detail: "this review needs a comment to go with it".into(),
+            detail: "this review needs a comment or inline change request to go with it".into(),
         });
     }
 
-    let body = serde_json::json!({ "event": verdict.event(), "body": comment }).to_string();
+    let raw_comments: Vec<Value> = draft_comments
+        .iter()
+        .map(|c| {
+            serde_json::json!({
+                "path": c.path,
+                "line": c.line,
+                "side": c.side,
+                "body": c.body
+            })
+        })
+        .collect();
+
+    let mut map = serde_json::Map::new();
+    map.insert("event".into(), Value::String(verdict.event().into()));
+    if !comment.trim().is_empty() {
+        map.insert("body".into(), Value::String(comment.to_string()));
+    }
+    if !raw_comments.is_empty() {
+        map.insert("comments".into(), Value::Array(raw_comments));
+    }
+
+    let payload = Value::Object(map).to_string();
     let response = http::post_json(
         &format!("{}/reviews", pull_url(repo, number)),
         token,
         &repo.host,
-        &body,
+        &payload,
     )?;
 
     if response.status < 200 || response.status >= 300 {
@@ -164,6 +474,17 @@ pub fn submit_review(
     }
 
     Ok(())
+}
+
+/// Leave a review on a pull request.
+pub fn submit_review(
+    repo: &Repo,
+    token: &str,
+    number: u64,
+    verdict: ReviewVerdict,
+    comment: &str,
+) -> Result<()> {
+    submit_review_with_comments(repo, token, number, verdict, comment, &[])
 }
 
 /// Turn the host's file list into the shape the Diff screen already renders.
@@ -570,5 +891,124 @@ mod tests {
             pull_url(&repo(), 7),
             "https://api.github.com/repos/spa-git-ty/spagitty/pulls/7"
         );
+    }
+    #[test]
+    fn read_commits_parses_json_response() {
+        let json = r#"[
+            {
+                "sha": "1234567890abcdef",
+                "commit": {
+                    "message": "fix: update parser\n\nMore details",
+                    "author": { "name": "Grace", "email": "grace@example.com", "date": "2026-08-25T09:30:00Z" }
+                }
+            }
+        ]"#;
+        let commits = read_commits(json, "github.com").expect("commits");
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].sha, "1234567890abcdef");
+        assert_eq!(commits[0].short, "1234567");
+        assert_eq!(commits[0].summary, "fix: update parser");
+        assert_eq!(commits[0].author_name, "Grace");
+        assert_eq!(commits[0].author_email, "grace@example.com");
+        assert_eq!(commits[0].time, 1_787_650_200);
+    }
+
+    #[test]
+    fn read_commit_files_parses_files_array() {
+        let json = r#"{
+            "sha": "1234567890abcdef",
+            "files": [
+                {
+                    "filename": "src/main.rs",
+                    "status": "modified",
+                    "additions": 5,
+                    "deletions": 2,
+                    "patch": "@@ -1,2 +1,5 @@\n a\n+b\n+c\n+d\n"
+                }
+            ]
+        }"#;
+        let files = read_commit_files(json, "github.com").expect("commit files");
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "src/main.rs");
+        assert_eq!(files[0].added, 5);
+        assert_eq!(files[0].removed, 2);
+    }
+
+    #[test]
+    fn read_comments_parses_inline_review_comments() {
+        let json = r#"[
+            {
+                "id": 9988,
+                "in_reply_to_id": null,
+                "path": "src/lib.rs",
+                "line": 42,
+                "side": "RIGHT",
+                "body": "Check this condition",
+                "user": { "login": "reviewer1" },
+                "created_at": "2026-08-25T09:30:00Z"
+            },
+            {
+                "id": 9989,
+                "in_reply_to_id": 9988,
+                "path": "src/lib.rs",
+                "line": 42,
+                "side": "RIGHT",
+                "body": "Addressed in latest commit",
+                "user": { "login": "author1" },
+                "created_at": "2026-08-25T10:00:00Z"
+            }
+        ]"#;
+        let comments = read_comments(json, "github.com").expect("comments");
+        assert_eq!(comments.len(), 2);
+        assert_eq!(comments[0].id, 9988);
+        assert_eq!(comments[0].in_reply_to, None);
+        assert_eq!(comments[0].path, "src/lib.rs");
+        assert_eq!(comments[0].line, Some(42));
+        assert_eq!(comments[0].author, "reviewer1");
+        assert_eq!(comments[1].in_reply_to, Some(9988));
+        assert_eq!(comments[1].author, "author1");
+    }
+
+    #[test]
+    fn read_comment_parses_single_reply() {
+        let json = r#"{
+            "id": 9990,
+            "in_reply_to_id": 9988,
+            "path": "src/lib.rs",
+            "line": 42,
+            "side": "RIGHT",
+            "body": "Looks good now",
+            "user": { "login": "reviewer1" },
+            "created_at": "2026-08-25T10:30:00Z"
+        }"#;
+        let comment = read_comment(json, "github.com").expect("single comment");
+        assert_eq!(comment.id, 9990);
+        assert_eq!(comment.in_reply_to, Some(9988));
+        assert_eq!(comment.body, "Looks good now");
+    }
+
+    #[test]
+    fn submit_review_with_draft_comments_allows_empty_top_level_body() {
+        // A review with inline comments doesn't strictly need a top-level body
+        let draft = DraftComment {
+            path: "src/main.rs".into(),
+            line: 10,
+            side: "RIGHT".into(),
+            body: "Need change here".into(),
+        };
+        // Should not reject if draft_comments is non-empty even if comment is empty
+        // (will hit network error in test without real server, but doesn't error on validation)
+        let res = submit_review_with_comments(
+            &repo(),
+            "token",
+            1,
+            ReviewVerdict::RequestChanges,
+            "",
+            &[draft],
+        );
+        assert!(res.is_err());
+        if let Err(Error::Forge { detail, .. }) = res {
+            assert!(!detail.contains("needs a comment or inline change request"));
+        }
     }
 }

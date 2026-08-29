@@ -14,13 +14,26 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Added
+
+- **The PR review workspace (FEAT-059).** Clicking a pull request opens a
+  dedicated full-window workspace: a header with the title (auto-scrolling on
+  hover), author, timestamps, checks, commit count and review status; a
+  collapsible left pane of all changed files and commits; a rendered CHANGELOG
+  view of the PR description; an interactive diff with inline comment threads —
+  replies and resolving change requests — and draft comments that persist in
+  `localStorage` until a batch review is published. A flat shimmer replaces the
+  old side panel while PRs load.
+
 ### Changed
 
 - **The frontend toolchain runs on bun (TASK-027).** `bun.lock` replaces
   `package-lock.json`; the CI, build and release workflows install and run
   through `oven-sh/setup-bun` and `bun` commands; and the bundled license list
   in Settings reads the installed frontend tree instead of the npm lockfile.
-  npm and node are no longer needed by the project's own tooling.
+  npm and node are no longer needed by the project's own tooling. Gate 4 audits
+  JS advisories at `--audit-level=high`, matching the pre-bun `npm audit`
+  policy.
 
 ## [0.1.0] - 2026-08-29
 

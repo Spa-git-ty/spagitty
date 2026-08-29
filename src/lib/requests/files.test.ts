@@ -22,9 +22,14 @@ vi.mock('$lib/ui/dialog.svelte', () => ({
 vi.mock('$lib/api', () => ({
 	inTauri: vi.fn(() => true),
 	forgeRepo: vi.fn(),
+	forgeAccounts: vi.fn(() => Promise.resolve([])),
 	pullRequests: vi.fn(),
 	pullRequestFiles: vi.fn(),
-	submitReview: vi.fn()
+	pullRequestCommits: vi.fn(),
+	pullRequestComments: vi.fn(),
+	commitFiles: vi.fn(),
+	submitReview: vi.fn(),
+	replyComment: vi.fn()
 }));
 
 import * as api from '$lib/api';
@@ -50,6 +55,7 @@ function request(overrides: Partial<PullRequest> = {}): PullRequest {
 		id: 'PR_1',
 		number: 412,
 		title: 'Give the graph a footer',
+		body: 'PR body description',
 		authorName: 'grace',
 		updated: 1_787_650_200,
 		sourceBranch: 'feature/footer',

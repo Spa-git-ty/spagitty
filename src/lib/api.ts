@@ -20,6 +20,7 @@ import type {
 	ConflictSides,
 	ConflictState,
 	DiffSide,
+	DraftComment,
 	ExecutedCommand,
 	FileDiff,
 	Identity,
@@ -29,6 +30,9 @@ import type {
 	OpenResult,
 	Integration,
 	PullMode,
+	PullRequest,
+	PullRequestComment,
+	PullRequestCommit,
 	RebaseEdit,
 	RebasePreview,
 	RebaseProgress,
@@ -43,7 +47,6 @@ import type {
 	ForgeAccount,
 	ForgeKind,
 	ForgeRepo,
-	PullRequest,
 	ReviewVerdict,
 	Settings,
 	Signing,
@@ -465,8 +468,23 @@ export function pullRequestFiles(number: number): Promise<FileDiff[]> {
 	return invoke('pull_request_files', { number });
 }
 
+/** The commits belonging to a pull request (FEAT-059). */
+export function pullRequestCommits(number: number): Promise<PullRequestCommit[]> {
+	return invoke('pull_request_commits', { number });
+}
+
+/** Files changed in one specific commit (FEAT-059). */
+export function commitFiles(sha: string): Promise<FileDiff[]> {
+	return invoke('commit_files', { sha });
+}
+
+/** Inline review comments for a pull request (FEAT-059). */
+export function pullRequestComments(number: number): Promise<PullRequestComment[]> {
+	return invoke('pull_request_comments', { number });
+}
+
 /**
- * Leave a review on a pull request (FEAT-058).
+ * Leave a review on a pull request with optional draft comments (FEAT-058 / FEAT-059).
  *
  * Outward-facing and not undoable from here: a submitted review is visible to
  * everybody watching the pull request as soon as it lands. The screen confirms
@@ -475,9 +493,24 @@ export function pullRequestFiles(number: number): Promise<FileDiff[]> {
 export function submitReview(
 	number: number,
 	verdict: ReviewVerdict,
-	comment: string
+	comment: string,
+	draftComments?: DraftComment[]
 ): Promise<void> {
-	return invoke('submit_review', { number, verdict, comment });
+	return invoke('submit_review', {
+		number,
+		verdict,
+		comment,
+		draftComments: draftComments && draftComments.length > 0 ? draftComments : undefined
+	});
+}
+
+/** Reply to an existing inline review comment thread (FEAT-059). */
+export function replyComment(
+	number: number,
+	commentId: number,
+	body: string
+): Promise<PullRequestComment> {
+	return invoke('reply_comment', { number, commentId, body });
 }
 
 /**

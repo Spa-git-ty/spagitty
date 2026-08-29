@@ -32,7 +32,7 @@ they are given.
 | 1 | License | `cargo deny check licenses bans sources`, `bunx license-checker-rseidelsohn@4` over the JS production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with Spagitty shipping under GPL-3 |
 | 2 | Code quality | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `bun run check` | Formatting, lints and types across both languages |
 | 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `bun run coverage` | The suite passes and first-party coverage meets the Amendment 10 floor of 70% |
-| 4 | Security | `cargo deny check advisories`, `bun audit`, `gitleaks` over the diff | No known-vulnerable dependency, no secret in the change |
+| 4 | Security | `cargo deny check advisories`, `bun audit --audit-level=high`, `gitleaks` over the diff | No known-vulnerable dependency at the high level or above, no secret in the change |
 | 5 | Build | `bun run tauri build` on Linux, macOS and Windows | The release build works on every target, not only the one the author uses |
 
 | 6 | Release | tag, artifacts, notes read from `CHANGELOG.md` by `bun tools/release-notes.mjs` | The build is published, carries its changelog section as notes (Amendment 20), and is traceable to a commit |
@@ -115,7 +115,7 @@ bun run check
 cargo llvm-cov --workspace --ignore-filename-regex '(fixture|testing)\.rs' --summary-only
 bun run coverage                           # gate 3
 cargo deny check advisories                # gate 4
-bun audit
+bun audit --audit-level=high
 ```
 
 `cargo-deny` and `cargo-llvm-cov` are installed with
