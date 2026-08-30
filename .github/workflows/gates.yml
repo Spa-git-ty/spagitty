@@ -87,6 +87,17 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
 
+      # The app icon and the brand collateral are generated from a fixed
+      # geometry by Pillow scripts. If the committed bytes drift from what the
+      # scripts produce, the identity has been hand-edited or the generator
+      # broken — a drift error, not a warning, because a mangled icon ships in
+      # every build from here on. docs/branding.md has the full tree.
+      - name: Brand and icon assets are current
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 tools/make-icons.py --check
+          python3 tools/make-brand.py --check
+
   # --- Gate 3 -------------------------------------------------------------
   tests:
     name: 3 · tests and coverage

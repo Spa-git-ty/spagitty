@@ -30,7 +30,7 @@ they are given.
 | # | Gate | Runs | Proves |
 | --- | --- | --- | --- |
 | 1 | License | `cargo deny check licenses bans sources`, `bunx license-checker-rseidelsohn@4` over the JS production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with Spagitty shipping under GPL-3 |
-| 2 | Code quality | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `bun run check` | Formatting, lints and types across both languages |
+| 2 | Code quality | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `bun run check`, plus `tools/make-icons.py --check` and `tools/make-brand.py --check` (Pillow) | Formatting, lints and types across both languages, and no drift between the brand generators and the committed art |
 | 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `bun run coverage` | The suite passes and first-party coverage meets the Amendment 10 floor of 70% |
 | 4 | Security | `cargo deny check advisories`, `bun audit --audit-level=high`, `gitleaks` over the diff | No known-vulnerable dependency at the high level or above, no secret in the change |
 | 5 | Build | `bun run tauri build` on Linux, macOS and Windows | The release build works on every target, not only the one the author uses |
@@ -112,6 +112,8 @@ cargo deny check licenses bans sources     # gate 1, needs cargo-deny
 cargo fmt --all --check                    # gate 2
 cargo clippy --workspace --all-targets -- -D warnings
 bun run check
+python3 tools/make-icons.py --check        # gate 2 — brand drift (needs Pillow)
+python3 tools/make-brand.py --check
 cargo llvm-cov --workspace --ignore-filename-regex '(fixture|testing)\.rs' --summary-only
 bun run coverage                           # gate 3
 cargo deny check advisories                # gate 4
