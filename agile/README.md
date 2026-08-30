@@ -115,7 +115,7 @@ rather than an audit.
 | [FEAT-058](items/FEAT-058-pull-request-files-and-review.md) | A pull request you can read and answer | 1H | Done |
 | [FEAT-059](items/FEAT-059-pull-request-review-workspace.md) | Dedicated pull request review workspace | 1H | Done |
 | [FEAT-060](items/FEAT-060-spagitty-brand.md) | Spagitty, with a face: the brand | brand | Done |
-| [FEAT-061](items/FEAT-061-brand-guide-and-showcase.md) | Brand guide and interactive showcase | brand | Open |
+| [FEAT-061](items/FEAT-061-brand-guide-and-showcase.md) | Brand guide and interactive showcase | brand | Done |
 
 ## Bugs
 

@@ -2,7 +2,7 @@
 
 # FEAT-061 — Brand Guide & Interactive Showcase
 
-**Status:** Open on `feature/FEAT-061-brand-guide-and-showcase`.
+**Status:** Done — merged into `dev` by direct push at the author's explicit instruction (Amendment 14 waived for this item per Appendix A).
 **Screens:** `assets/brand/preview.html`, `docs/branding.md`.
 **Raised by:** the author: "this branding page is awful can you make another one , move this to trashbin and rewrite full guide of branding for me and for agents".
 

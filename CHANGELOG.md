@@ -36,6 +36,12 @@ stays backward-compatible.
   surfaces, darkened to `#976317` on light ones). Gate 2 refuses drift between
   the generators and the committed art. The README, previously empty, now
   ships the hero and the story.
+- **Brand guide, interactive showcase, and UI identity integration (FEAT-061).**
+  A complete brand authority guide was authored in `docs/branding.md`, and
+  `assets/brand/preview.html` was rebuilt as an interactive offline showcase with
+  theme toggling, click-to-copy tokens, clearspace visualizer, and platform tray
+  simulators. The `BrandMark` vector component is integrated directly into the
+  window TitleBar, All Repositories empty state, and Settings About section.
 
 ### Changed
 
