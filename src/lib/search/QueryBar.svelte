@@ -44,6 +44,10 @@
 			<span class="note">path</span>
 			<input bind:value={search.path} placeholder="a file the commit changed" />
 		</label>
+		<label class="field wide">
+			<span class="note">diff content</span>
+			<input bind:value={search.diffContent} placeholder="text in added/removed lines" />
+		</label>
 		<label class="field">
 			<span class="note">since</span>
 			<input bind:value={search.since} placeholder="YYYY-MM-DD" />

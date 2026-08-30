@@ -37,6 +37,10 @@ stays backward-compatible.
   horizontal swipe split sliders, and opacity onion-skin overlays with transparency
   checkerboard backgrounds for PNG, JPEG, SVG, WebP, GIF, ICO, and AVIF images.
   Non-image binaries display formatted previous/new file sizes and byte deltas.
+- **Diff content search (FEAT-066).** Search inside added and removed patch lines
+  directly from Log search (screen 1I, `/search`). Extends `search::walk` with tree
+  diff line inspection (`diff_content` query filter), supports combined filtering
+  with author, message, path, and date ranges, and provides removable query chips.
 
 
 ## [0.2.0] - 2026-08-30

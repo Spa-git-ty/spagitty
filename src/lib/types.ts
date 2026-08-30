@@ -499,6 +499,8 @@ export interface SearchQuery {
 	message?: string | null;
 	/** A path the commit changed, like `git log -- <path>`. */
 	path?: string | null;
+	/** Search within added/removed patch lines (FEAT-066). */
+	diffContent?: string | null;
 	/** Seconds since the unix epoch, like `--since`. */
 	since?: number | null;
 	/** Seconds since the unix epoch, like `--until`. */

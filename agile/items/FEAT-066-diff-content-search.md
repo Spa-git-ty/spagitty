@@ -2,7 +2,7 @@
 
 # FEAT-066 — Diff content search
 
-**Status:** Backlog
+**Status:** Done.
 **Screens:** Log search (1I).
 **Raised by:** gap analysis in `docs/analysis/gitkraken-gap.md`.
 

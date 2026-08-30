@@ -39,6 +39,8 @@ pub struct Query {
     pub message: Option<String>,
     /// A path the commit changed, like `git log -- <path>`.
     pub path: Option<String>,
+    /// Matched against added and removed diff content (FEAT-066).
+    pub diff_content: Option<String>,
     /// Commits at or after this time. Seconds since the unix epoch, like
     /// `--since`.
     pub since: Option<i64>,
@@ -53,6 +55,7 @@ impl Query {
         self.text(&self.author).is_none()
             && self.text(&self.message).is_none()
             && self.text(&self.path).is_none()
+            && self.text(&self.diff_content).is_none()
             && self.since.is_none()
             && self.until.is_none()
     }
@@ -70,6 +73,9 @@ impl Query {
     /// then an author, then a date. Naming one is a guess, and it is a better
     /// guess than "no results".
     pub fn narrowest(&self) -> Option<String> {
+        if let Some(diff) = self.text(&self.diff_content) {
+            return Some(format!("diff:{diff}"));
+        }
         if let Some(path) = self.text(&self.path) {
             return Some(format!("path:{path}"));
         }
@@ -135,6 +141,7 @@ where
     let author = query.text(&query.author).map(str::to_lowercase);
     let message = query.text(&query.message).map(str::to_lowercase);
     let path = query.text(&query.path).map(str::to_string);
+    let diff_content = query.text(&query.diff_content).map(str::to_string);
 
     let mut matched = 0usize;
     let mut initials_cache: HashMap<String, String> = HashMap::new();
@@ -191,6 +198,11 @@ where
                 continue;
             }
         }
+        if let Some(wanted) = &diff_content {
+            if !touches_diff_content(repo, &commit, wanted)? {
+                continue;
+            }
+        }
 
         let summary = commit
             .message()
@@ -243,6 +255,109 @@ fn touches_path(repo: &gix::Repository, commit: &gix::Commit<'_>, path: &str) ->
         }
     }
     Ok(true)
+}
+
+/// Did this commit change lines containing `query_str` in any file (FEAT-066)?
+fn touches_diff_content(
+    repo: &gix::Repository,
+    commit: &gix::Commit<'_>,
+    query_str: &str,
+) -> Result<bool> {
+    use gix::object::tree::diff::Change;
+
+    let query_lower = query_str.to_lowercase();
+    let current_tree = commit.tree().map_err(walk_err)?;
+
+    let parent_tree = match commit.parent_ids().next() {
+        Some(pid) => {
+            let parent = repo.find_commit(pid.detach()).map_err(walk_err)?;
+            parent.tree().map_err(walk_err)?
+        }
+        None => repo.empty_tree(),
+    };
+
+    let mut changes: Vec<(Option<ObjectId>, Option<ObjectId>)> = Vec::new();
+
+    parent_tree
+        .changes()
+        .map_err(walk_err)?
+        .for_each_to_obtain_tree(&current_tree, |change| {
+            let mode = match &change {
+                Change::Addition { entry_mode, .. }
+                | Change::Deletion { entry_mode, .. }
+                | Change::Modification { entry_mode, .. }
+                | Change::Rewrite { entry_mode, .. } => *entry_mode,
+            };
+            if !mode.is_blob_or_symlink() {
+                return Ok(std::ops::ControlFlow::Continue(()));
+            }
+
+            match change {
+                Change::Addition { id, .. } => {
+                    changes.push((None, Some(id.detach())));
+                }
+                Change::Deletion { id, .. } => {
+                    changes.push((Some(id.detach()), None));
+                }
+                Change::Modification {
+                    previous_id, id, ..
+                } => {
+                    changes.push((Some(previous_id.detach()), Some(id.detach())));
+                }
+                Change::Rewrite {
+                    source_id, id, ..
+                } => {
+                    changes.push((Some(source_id.detach()), Some(id.detach())));
+                }
+            }
+            Ok::<_, Error>(std::ops::ControlFlow::Continue(()))
+        })
+        .map_err(walk_err)?;
+
+    let mut found = false;
+    for (old_id, new_id) in changes {
+        let old_bytes = match old_id {
+            Some(id) => match repo.find_object(id) {
+                Ok(obj) => Some(obj.data.to_vec()),
+                Err(_) => None,
+            },
+            None => None,
+        };
+        let new_bytes = match new_id {
+            Some(id) => match repo.find_object(id) {
+                Ok(obj) => Some(obj.data.to_vec()),
+                Err(_) => None,
+            },
+            None => None,
+        };
+
+        let old_text = old_bytes.as_deref().unwrap_or(b"");
+        let new_text = new_bytes.as_deref().unwrap_or(b"");
+
+        let old_str = String::from_utf8_lossy(old_text);
+        let new_str = String::from_utf8_lossy(new_text);
+
+        for line in new_str.lines() {
+            if line.to_lowercase().contains(&query_lower) && !old_str.contains(line) {
+                found = true;
+                break;
+            }
+        }
+        if found {
+            break;
+        }
+        for line in old_str.lines() {
+            if line.to_lowercase().contains(&query_lower) && !new_str.contains(line) {
+                found = true;
+                break;
+            }
+        }
+        if found {
+            break;
+        }
+    }
+
+    Ok(found)
 }
 
 /// The blob id at `path` in the commit `id` points at, or `None` when nothing
@@ -669,5 +784,32 @@ mod tests {
             Some("path:core.txt".to_string()),
             "a path is the most specific thing anyone types"
         );
+    }
+
+    #[test]
+    fn diff_content_filter_matches_commits_modifying_matching_lines() {
+        let fixture = Fixture::woven();
+        let repo = fixture.open();
+        let refs = RefIndex::build(&repo).expect("refs");
+        let tips = all_tips(&repo).expect("tips");
+
+        let mut rows = Vec::new();
+        walk(
+            &repo,
+            tips,
+            &refs,
+            &Query {
+                diff_content: Some("LINE THREE".into()),
+                ..query()
+            },
+            |row| {
+                rows.push(row);
+                Flow::Continue
+            },
+        )
+        .expect("walk");
+
+        assert!(!rows.is_empty());
+        assert!(rows.iter().any(|r| r.summary == "Rewrite line 3"));
     }
 }
