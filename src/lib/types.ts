@@ -927,6 +927,22 @@ export interface Submodule {
 	describe: string | null;
 }
 
+/** Known external diff/merge tool information (FEAT-068). */
+export interface ExternalToolInfo {
+	id: string;
+	name: string;
+	command: string;
+	isInstalled: boolean;
+}
+
+/** External tools configuration state (FEAT-068). */
+export interface ExternalToolsConfig {
+	diffTool: string | null;
+	mergeTool: string | null;
+	availableDiffTools: ExternalToolInfo[];
+	availableMergeTools: ExternalToolInfo[];
+}
+
 /** Which side of a conflict to keep. */
 export type ConflictSideName = 'ours' | 'theirs';
 

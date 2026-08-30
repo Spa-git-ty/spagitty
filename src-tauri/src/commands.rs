@@ -35,6 +35,7 @@ use spagitty_core::update;
 use spagitty_core::work;
 use spagitty_core::submodules::{self, Submodule};
 use spagitty_core::worktrees::{self, Worktree};
+use spagitty_core::tools::{self, ExternalToolsConfig};
 use spagitty_core::{Error, Result};
 use tauri::{AppHandle, Manager, Runtime, State};
 
@@ -969,6 +970,64 @@ pub fn submodule_deinit(
 ) -> Result<String> {
     state.with_session(|session| {
         submodules::deinit(&session.repo.to_thread_local(), &path, force)
+    })
+}
+
+/// Read configured and available external diff/merge tools (FEAT-068).
+#[tauri::command]
+pub fn external_tools_config(state: State<'_, AppState>) -> Result<ExternalToolsConfig> {
+    state.with_session(|session| tools::get_config(&session.repo.to_thread_local()))
+}
+
+/// Set configured external tool (FEAT-068).
+#[tauri::command]
+pub fn set_external_tool(
+    state: State<'_, AppState>,
+    tool_type: String,
+    tool_name: Option<String>,
+    global: bool,
+) -> Result<()> {
+    state.with_session(|session| {
+        tools::set_tool(
+            &session.repo.to_thread_local(),
+            &tool_type,
+            tool_name.as_deref(),
+            global,
+        )
+    })
+}
+
+/// Launch external diff tool (FEAT-068).
+#[tauri::command]
+pub fn launch_external_diff(
+    state: State<'_, AppState>,
+    path: String,
+    tool: Option<String>,
+    commit: Option<String>,
+) -> Result<()> {
+    state.with_session(|session| {
+        tools::launch_diff(
+            &session.repo.to_thread_local(),
+            &path,
+            tool.as_deref(),
+            commit.as_deref(),
+        )
+    })
+}
+
+/// Launch external merge tool (FEAT-068).
+#[tauri::command]
+pub fn launch_external_merge(
+    state: State<'_, AppState>,
+    path: String,
+    tool: Option<String>,
+) -> Result<()> {
+    state.with_session(|session| {
+        tools::launch_merge(
+            &session.repo.to_thread_local(),
+            &path,
+            tool.as_deref(),
+        )
     })
 }
 

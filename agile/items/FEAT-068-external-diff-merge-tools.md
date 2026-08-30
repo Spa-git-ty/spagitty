@@ -2,7 +2,7 @@
 
 # FEAT-068 — External diff and merge tool launchers
 
-**Status:** Backlog
+**Status:** Done.
 **Screens:** Settings (1K), Diff screen (1B), Conflicts (1D), context menus.
 **Raised by:** gap analysis in `docs/analysis/gitkraken-gap.md`.
 

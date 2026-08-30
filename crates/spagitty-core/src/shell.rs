@@ -404,6 +404,82 @@ pub fn unset_config(repo: &Path, scope: &str, key: &str) -> Result<()> {
     }
 }
 
+/// Read a git config key (FEAT-068).
+pub fn get_config(repo: &Path, key: &str) -> Result<Option<String>> {
+    match run(repo, &["config", "--get", key]) {
+        Ok(val) => {
+            let trimmed = val.trim().to_string();
+            if trimmed.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(trimmed))
+            }
+        }
+        Err(Error::Git { .. }) => Ok(None),
+        Err(other) => Err(other),
+    }
+}
+
+/// Launch git difftool for a file or revision without blocking (FEAT-068).
+pub fn launch_difftool(
+    repo: &Path,
+    path: &str,
+    tool: Option<&str>,
+    commit: Option<&str>,
+) -> Result<()> {
+    let mut args = vec!["difftool", "--no-prompt", "-y"];
+    if let Some(t) = tool {
+        if !t.is_empty() {
+            args.push("-t");
+            args.push(t);
+        }
+    }
+    if let Some(c) = commit {
+        if !c.is_empty() {
+            args.push(c);
+        }
+    }
+    args.push("--");
+    args.push(path);
+
+    let mut cmd = command(repo, &args);
+    cmd.stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    let _ = cmd.spawn().map_err(|e| Error::Git {
+        command: format!("git {}", args.join(" ")),
+        stderr: e.to_string(),
+    })?;
+    Ok(())
+}
+
+/// Launch git mergetool for a conflicted path without blocking (FEAT-068).
+pub fn launch_mergetool(
+    repo: &Path,
+    path: &str,
+    tool: Option<&str>,
+) -> Result<()> {
+    let mut args = vec!["mergetool", "--no-prompt", "-y"];
+    if let Some(t) = tool {
+        if !t.is_empty() {
+            args.push("-t");
+            args.push(t);
+        }
+    }
+    args.push("--");
+    args.push(path);
+
+    let mut cmd = command(repo, &args);
+    cmd.stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    let _ = cmd.spawn().map_err(|e| Error::Git {
+        command: format!("git {}", args.join(" ")),
+        stderr: e.to_string(),
+    })?;
+    Ok(())
+}
+
 /// Start a clone and hand the caller the running process.
 ///
 /// The one function here that does not wait for git to finish. A clone can take

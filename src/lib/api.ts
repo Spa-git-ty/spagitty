@@ -22,6 +22,8 @@ import type {
 	ConflictState,
 	DiffSide,
 	DraftComment,
+	ExternalToolInfo,
+	ExternalToolsConfig,
 	ExecutedCommand,
 	FileDiff,
 	Identity,
@@ -634,6 +636,41 @@ export function submoduleSync(recursive = true): Promise<string> {
 /** De-initialize a submodule (FEAT-067). */
 export function submoduleDeinit(path: string, force = false): Promise<string> {
 	return invoke('submodule_deinit', { path, force });
+}
+
+/** Read configured external diff/merge tools (FEAT-068). */
+export function externalToolsConfig(): Promise<ExternalToolsConfig> {
+	return invoke('external_tools_config');
+}
+
+/** Set configured external tool (FEAT-068). */
+export function setExternalTool(
+	toolType: 'diff' | 'merge',
+	toolName: string | null,
+	global = false
+): Promise<void> {
+	return invoke('set_external_tool', { toolType, toolName, global });
+}
+
+/** Launch external diff tool (FEAT-068). */
+export function launchExternalDiff(
+	path: string,
+	tool?: string | null,
+	commit?: string | null
+): Promise<void> {
+	return invoke('launch_external_diff', {
+		path,
+		tool: tool || undefined,
+		commit: commit || undefined
+	});
+}
+
+/** Launch external merge tool (FEAT-068). */
+export function launchExternalMerge(path: string, tool?: string | null): Promise<void> {
+	return invoke('launch_external_merge', {
+		path,
+		tool: tool || undefined
+	});
 }
 
 /** Store the behaviour toggles. Rejects when the write did not reach the disk. */

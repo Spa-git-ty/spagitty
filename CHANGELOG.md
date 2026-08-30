@@ -45,6 +45,11 @@ stays backward-compatible.
   actions. Users can view all submodules with their sync status, URLs, and recorded
   commit SHAs from the sidebar rail footer or command palette, perform recursive
   updates/clones, synchronize configured remote URLs, and de-initialize submodules.
+- **External diff and merge tool launchers (FEAT-068).** Added configuration and
+  launch triggers for external 2-way diff and 3-way merge tools (VS Code, Meld,
+  Beyond Compare, KDiff3, Sublime, Vimdiff). Settings (screen 1K) provides tool
+  auto-discovery from `$PATH` and `diff.tool`/`merge.tool` configuration, while
+  diff file lists provide right-click context menu triggers to launch external tools.
 
 
 ## [0.2.0] - 2026-08-30

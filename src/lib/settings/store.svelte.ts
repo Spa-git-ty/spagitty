@@ -27,13 +27,14 @@ import type {
 	Update
 } from '../types';
 
-export type Section = 'you' | 'accounts' | 'remotes' | 'behaviour' | 'appearance' | 'license';
+export type Section = 'you' | 'accounts' | 'remotes' | 'tools' | 'behaviour' | 'appearance' | 'license';
 
 /** The chip index, in the order it is shown. */
 export const SECTIONS: { id: Section; label: string }[] = [
 	{ id: 'you', label: 'You' },
 	{ id: 'accounts', label: 'Accounts' },
 	{ id: 'remotes', label: 'Remotes' },
+	{ id: 'tools', label: 'External Tools' },
 	{ id: 'behaviour', label: 'Behaviour' },
 	{ id: 'appearance', label: 'Appearance' },
 	{ id: 'license', label: 'License' }
