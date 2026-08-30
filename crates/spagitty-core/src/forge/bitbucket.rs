@@ -87,24 +87,30 @@ pub fn create_pull_request(
     }
 
     let json: Value = serde_json::from_str(&response.body).map_err(|e| json_err(&repo.host, e))?;
-    parse_single_pr(&json, "")
-        .ok_or_else(|| Error::Forge {
-            host: repo.host.clone(),
-            detail: "Could not parse created Bitbucket pull request".into(),
-        })
+    parse_single_pr(&json, "").ok_or_else(|| Error::Forge {
+        host: repo.host.clone(),
+        detail: "Could not parse created Bitbucket pull request".into(),
+    })
 }
 
 pub fn parse_pull_requests(json: &Value, me: &str) -> Vec<PullRequest> {
     let Some(array) = json.get("values").and_then(Value::as_array) else {
         return Vec::new();
     };
-    array.iter().filter_map(|node| parse_single_pr(node, me)).collect()
+    array
+        .iter()
+        .filter_map(|node| parse_single_pr(node, me))
+        .collect()
 }
 
 fn parse_single_pr(node: &Value, me: &str) -> Option<PullRequest> {
     let number = node.get("id")?.as_u64()?;
     let title = node.get("title")?.as_str()?.to_string();
-    let body = node.get("description").and_then(Value::as_str).unwrap_or_default().to_string();
+    let body = node
+        .get("description")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
     let author_name = node
         .get("author")
         .and_then(|a| a.get("display_name").or_else(|| a.get("username")))

@@ -30,12 +30,12 @@ use spagitty_core::shell::PullMode;
 use spagitty_core::signing::{self, Signing};
 use spagitty_core::stash::{self, StashEntry};
 use spagitty_core::status::{self, RepoCounts, WorkingCopy};
+use spagitty_core::submodules::{self, Submodule};
 use spagitty_core::tags;
+use spagitty_core::tools::{self, ExternalToolsConfig};
 use spagitty_core::update;
 use spagitty_core::work;
-use spagitty_core::submodules::{self, Submodule};
 use spagitty_core::worktrees::{self, Worktree};
-use spagitty_core::tools::{self, ExternalToolsConfig};
 use spagitty_core::{Error, Result};
 use tauri::{AppHandle, Manager, Runtime, State};
 
@@ -296,9 +296,8 @@ pub fn binary_file_diff(
     id: String,
     path: String,
 ) -> Result<diff::BinaryDiff> {
-    state.with_session(|session| {
-        diff::binary_file_diff(&session.repo.to_thread_local(), &id, &path)
-    })
+    state
+        .with_session(|session| diff::binary_file_diff(&session.repo.to_thread_local(), &id, &path))
 }
 
 /// Detailed binary / image diff metadata for working copy (FEAT-065).
@@ -964,14 +963,8 @@ pub fn submodule_sync(state: State<'_, AppState>, recursive: bool) -> Result<Str
 
 /// De-initialize a submodule (FEAT-067).
 #[tauri::command]
-pub fn submodule_deinit(
-    state: State<'_, AppState>,
-    path: String,
-    force: bool,
-) -> Result<String> {
-    state.with_session(|session| {
-        submodules::deinit(&session.repo.to_thread_local(), &path, force)
-    })
+pub fn submodule_deinit(state: State<'_, AppState>, path: String, force: bool) -> Result<String> {
+    state.with_session(|session| submodules::deinit(&session.repo.to_thread_local(), &path, force))
 }
 
 /// Read configured and available external diff/merge tools (FEAT-068).
@@ -1024,11 +1017,7 @@ pub fn launch_external_merge(
     tool: Option<String>,
 ) -> Result<()> {
     state.with_session(|session| {
-        tools::launch_merge(
-            &session.repo.to_thread_local(),
-            &path,
-            tool.as_deref(),
-        )
+        tools::launch_merge(&session.repo.to_thread_local(), &path, tool.as_deref())
     })
 }
 
@@ -1072,11 +1061,7 @@ pub fn worktree_add(
 
 /// Remove a worktree (FEAT-062).
 #[tauri::command]
-pub fn worktree_remove(
-    state: State<'_, AppState>,
-    path: String,
-    force: bool,
-) -> Result<()> {
+pub fn worktree_remove(state: State<'_, AppState>, path: String, force: bool) -> Result<()> {
     state.with_session(|session| {
         worktrees::remove(
             &session.repo.to_thread_local(),
@@ -1104,15 +1089,9 @@ pub fn worktree_lock(
 
 /// Unlock a locked worktree (FEAT-062).
 #[tauri::command]
-pub fn worktree_unlock(
-    state: State<'_, AppState>,
-    path: String,
-) -> Result<()> {
+pub fn worktree_unlock(state: State<'_, AppState>, path: String) -> Result<()> {
     state.with_session(|session| {
-        worktrees::unlock(
-            &session.repo.to_thread_local(),
-            std::path::Path::new(&path),
-        )
+        worktrees::unlock(&session.repo.to_thread_local(), std::path::Path::new(&path))
     })
 }
 

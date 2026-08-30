@@ -32,8 +32,8 @@
 //! it. A second host is a second module and a second arm of [`Kind`], and
 //! nothing above this line changes.
 
-pub mod github;
 pub mod bitbucket;
+pub mod github;
 pub mod gitlab;
 pub mod http;
 pub mod keychain;

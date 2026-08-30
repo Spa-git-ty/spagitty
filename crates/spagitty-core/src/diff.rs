@@ -809,11 +809,12 @@ fn header_start(start: u32, lines: u32) -> u32 {
     }
 }
 
-const BASE64_ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const BASE64_ALPHABET: &[u8; 64] =
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /// Pure-Rust standard Base64 encoder (FEAT-065).
 pub fn encode_base64(data: &[u8]) -> String {
-    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    let mut result = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as usize;
         let b1 = chunk.get(1).copied().unwrap_or(0) as usize;
@@ -881,11 +882,7 @@ pub struct BinaryDiff {
 const MAX_IMAGE_BASE64_BYTES: usize = 10 * 1024 * 1024;
 
 /// Read binary / image diff for a single file in a commit (FEAT-065).
-pub fn binary_file_diff(
-    repo: &gix::Repository,
-    commit_id: &str,
-    path: &str,
-) -> Result<BinaryDiff> {
+pub fn binary_file_diff(repo: &gix::Repository, commit_id: &str, path: &str) -> Result<BinaryDiff> {
     let (mime, is_image) = detect_mime(path);
     let commit = repo
         .rev_parse_single(commit_id)
@@ -944,11 +941,7 @@ pub fn binary_file_diff(
 }
 
 /// Read binary / image diff for working copy (FEAT-065).
-pub fn binary_working_diff(
-    repo: &gix::Repository,
-    path: &str,
-    side: Side,
-) -> Result<BinaryDiff> {
+pub fn binary_working_diff(repo: &gix::Repository, path: &str, side: Side) -> Result<BinaryDiff> {
     let (mime, is_image) = detect_mime(path);
     let (old_bytes, new_bytes) = match side {
         Side::Staged => (head_blob(repo, path)?, index_bytes(repo, path)?),
@@ -1089,7 +1082,10 @@ mod tests {
     #[test]
     fn binary_diff_extracts_base64_for_images() {
         let fixture = crate::fixture::Fixture::woven();
-        fixture.write_bytes("image.png", &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+        fixture.write_bytes(
+            "image.png",
+            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
+        );
         fixture.git(&["add", "-A"]);
         let id = fixture.commit("Add test image");
         let diff = binary_file_diff(&fixture.open(), &id, "image.png").expect("binary diff");

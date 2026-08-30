@@ -5,7 +5,6 @@
 //! Exposes listing submodule status, recursive initialization and updates,
 //! syncing URLs, and de-initializing submodules.
 
-
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;

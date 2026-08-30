@@ -454,11 +454,7 @@ pub fn launch_difftool(
 }
 
 /// Launch git mergetool for a conflicted path without blocking (FEAT-068).
-pub fn launch_mergetool(
-    repo: &Path,
-    path: &str,
-    tool: Option<&str>,
-) -> Result<()> {
+pub fn launch_mergetool(repo: &Path, path: &str, tool: Option<&str>) -> Result<()> {
     let mut args = vec!["mergetool", "--no-prompt", "-y"];
     if let Some(t) = tool {
         if !t.is_empty() {

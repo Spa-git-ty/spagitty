@@ -304,9 +304,7 @@ fn touches_diff_content(
                 } => {
                     changes.push((Some(previous_id.detach()), Some(id.detach())));
                 }
-                Change::Rewrite {
-                    source_id, id, ..
-                } => {
+                Change::Rewrite { source_id, id, .. } => {
                     changes.push((Some(source_id.detach()), Some(id.detach())));
                 }
             }

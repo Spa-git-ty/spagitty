@@ -179,11 +179,7 @@ pub fn launch_diff(
 }
 
 /// Launch external merge tool for a conflicted path.
-pub fn launch_merge(
-    repo: &gix::Repository,
-    path: &str,
-    tool: Option<&str>,
-) -> Result<()> {
+pub fn launch_merge(repo: &gix::Repository, path: &str, tool: Option<&str>) -> Result<()> {
     let dir = workdir(repo)?;
     shell::launch_mergetool(dir, path, tool)
 }

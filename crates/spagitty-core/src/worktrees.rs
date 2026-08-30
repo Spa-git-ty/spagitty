@@ -178,13 +178,17 @@ pub fn add(
     let dir = workdir(repo)?;
     shell::worktree_add(dir, target_path, branch, new_branch, detach)?;
     let all = list(repo)?;
-    let target_canonical = target_path.canonicalize().unwrap_or_else(|_| target_path.to_path_buf());
+    let target_canonical = target_path
+        .canonicalize()
+        .unwrap_or_else(|_| target_path.to_path_buf());
     let target_str = target_canonical.to_string_lossy();
-    
+
     // Find newly added worktree by matching path
     all.into_iter()
         .find(|w| {
-            let p = Path::new(&w.path).canonicalize().unwrap_or_else(|_| PathBuf::from(&w.path));
+            let p = Path::new(&w.path)
+                .canonicalize()
+                .unwrap_or_else(|_| PathBuf::from(&w.path));
             p == target_canonical || w.path == target_str
         })
         .ok_or_else(|| Error::Git {
@@ -283,14 +287,7 @@ prunable gitdir does not exist
         assert!(initial[0].is_main);
 
         // 2. Add linked worktree with a new branch
-        let added = add(
-            &repo,
-            &wt_path,
-            None,
-            Some("wt-branch"),
-            false,
-        )
-        .expect("add worktree");
+        let added = add(&repo, &wt_path, None, Some("wt-branch"), false).expect("add worktree");
         assert_eq!(added.branch.as_deref(), Some("wt-branch"));
         assert!(!added.is_main);
 

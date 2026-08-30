@@ -93,25 +93,31 @@ pub fn create_merge_request(
     }
 
     let json: Value = serde_json::from_str(&response.body).map_err(|e| json_err(&repo.host, e))?;
-    parse_single_mr(&json, "")
-        .ok_or_else(|| Error::Forge {
-            host: repo.host.clone(),
-            detail: "Could not parse created merge request".into(),
-        })
+    parse_single_mr(&json, "").ok_or_else(|| Error::Forge {
+        host: repo.host.clone(),
+        detail: "Could not parse created merge request".into(),
+    })
 }
 
 pub fn parse_merge_requests(json: &Value, me: &str) -> Vec<PullRequest> {
     let Some(array) = json.as_array() else {
         return Vec::new();
     };
-    array.iter().filter_map(|node| parse_single_mr(node, me)).collect()
+    array
+        .iter()
+        .filter_map(|node| parse_single_mr(node, me))
+        .collect()
 }
 
 fn parse_single_mr(node: &Value, me: &str) -> Option<PullRequest> {
     let iid = node.get("iid")?.as_u64()?;
     let id = node.get("id")?.to_string();
     let title = node.get("title")?.as_str()?.to_string();
-    let body = node.get("description").and_then(Value::as_str).unwrap_or_default().to_string();
+    let body = node
+        .get("description")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
     let author_name = node
         .get("author")
         .and_then(|a| a.get("username"))
@@ -122,9 +128,20 @@ fn parse_single_mr(node: &Value, me: &str) -> Option<PullRequest> {
     let updated_str = node.get("updated_at").and_then(Value::as_str);
     let updated = timestamp(updated_str);
 
-    let source_branch = node.get("source_branch").and_then(Value::as_str).unwrap_or_default().to_string();
-    let target_branch = node.get("target_branch").and_then(Value::as_str).unwrap_or_default().to_string();
-    let draft = node.get("work_in_progress").and_then(Value::as_bool).unwrap_or(false)
+    let source_branch = node
+        .get("source_branch")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let target_branch = node
+        .get("target_branch")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let draft = node
+        .get("work_in_progress")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
         || title.starts_with("Draft:")
         || title.starts_with("WIP:");
 
@@ -153,7 +170,10 @@ fn parse_single_mr(node: &Value, me: &str) -> Option<PullRequest> {
         } else {
             None
         },
-        changed_files: node.get("changes_count").and_then(Value::as_u64).unwrap_or(0),
+        changed_files: node
+            .get("changes_count")
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
         added: 0,
         removed: 0,
         mergeable,
