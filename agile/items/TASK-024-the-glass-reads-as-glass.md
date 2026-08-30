@@ -2,7 +2,7 @@
 
 # TASK-024 — The glass reads as glass again
 
-**Status:** Open on `task/TASK-024-the-glass-reads-as-glass`.
+**Status:** Done.
 **Screens:** all — every menu, dialog, palette, toast and command log.
 **Raised by:** the author: "fix liquidglass menu bar still look just
 transparent ! and the otherway of doing it was lowiring the fps dramateclty".

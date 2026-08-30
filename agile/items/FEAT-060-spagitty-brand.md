@@ -2,7 +2,7 @@
 
 # FEAT-060 — Spagitty, with a face: the brand
 
-**Status:** Open — branch `feature/FEAT-060-spagitty-brand` in flight.
+**Status:** Done.
 **Screens:** the app icon everywhere it ships; the backend repo's README.
 **Raised by:** the author, by instruction — the icon predates Spagitty's name
 and has never been given an identity to match it.

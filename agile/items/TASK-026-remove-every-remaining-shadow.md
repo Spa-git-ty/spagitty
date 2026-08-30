@@ -2,7 +2,7 @@
 
 # TASK-026 — Remove every remaining shadow
 
-**Status:** Open on `task/TASK-026-polish-pass`.
+**Status:** Done.
 **Screens:** all.
 **Raised by:** the author, for the second time: "remove all shadows i want it
 all flat dont bring back shadows". The first time was TASK-023 — "ok also

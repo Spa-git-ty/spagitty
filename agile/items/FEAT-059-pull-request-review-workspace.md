@@ -2,7 +2,7 @@
 
 # FEAT-059 — Dedicated Pull Request Workspace View (Reviewer & Developer Modes)
 
-**Status:** Open on `feature/FEAT-059-pull-request-review-workspace`.
+**Status:** Done.
 **Screen:** 1H — Pull requests.
 **Raised by:** the author: "on PR tab i want it to open when i click the pr on a new view (inside same window ofcourse)... Reviewer view and Developer view".
 
