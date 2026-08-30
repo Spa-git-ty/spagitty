@@ -10,6 +10,8 @@
 	import * as api from '$lib/api';
 	import CloneModal from '$lib/clone/CloneModal.svelte';
 	import { clone } from '$lib/clone/store.svelte';
+	import WorktreesModal from '$lib/worktrees/WorktreesModal.svelte';
+	import AddWorktreeModal from '$lib/worktrees/AddWorktreeModal.svelte';
 	import { network } from '$lib/network/store.svelte';
 	import { rebase } from '$lib/rebase/store.svelte';
 	import CommandLog from '$lib/commandlog/CommandLog.svelte';
@@ -283,6 +285,8 @@
 	navigates, and a modal owned by a screen would go with it.
 -->
 <CloneModal />
+<WorktreesModal />
+<AddWorktreeModal />
 
 <!-- Reaches every command from every screen, so it belongs to the shell. -->
 <Palette />

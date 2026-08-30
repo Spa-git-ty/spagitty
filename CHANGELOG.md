@@ -13,6 +13,15 @@ Spagitty is at `0.x`: the surface is not yet stable, MINOR may break, PATCH
 stays backward-compatible.
 
 ## [Unreleased]
+### Added
+
+- **Worktrees management (FEAT-062).** Complete lifecycle support for git
+  worktrees. Users can view all linked working trees from the repository tabs
+  menu or command palette, add new worktrees (with new branches, existing
+  branches, or detached HEADs), switch active tabs to linked worktrees, lock
+  and unlock worktrees with custom reasons, and remove or prune stale working
+  trees.
+
 
 ## [0.2.0] - 2026-08-30
 

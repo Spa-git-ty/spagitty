@@ -116,7 +116,7 @@ rather than an audit.
 | [FEAT-059](items/FEAT-059-pull-request-review-workspace.md) | Dedicated pull request review workspace | 1H | Done |
 | [FEAT-060](items/FEAT-060-spagitty-brand.md) | Spagitty, with a face: the brand | brand | Done |
 | [FEAT-061](items/FEAT-061-brand-guide-and-showcase.md) | Brand guide and interactive showcase | brand | Done |
-| [FEAT-062](items/FEAT-062-worktrees-management.md) | Worktrees management | 1J, chrome | Backlog |
+| [FEAT-062](items/FEAT-062-worktrees-management.md) | Worktrees management | 1J, chrome | Done |
 | [FEAT-063](items/FEAT-063-file-history-and-blame.md) | File history and blame view | 1I, new view | Backlog |
 | [FEAT-064](items/FEAT-064-diff-syntax-highlighting.md) | Diff syntax highlighting | 1B, 1C, 1G, 1H | Backlog |
 | [FEAT-065](items/FEAT-065-image-and-binary-diffs.md) | Image and binary diffs | 1B, 1C, 1G | Backlog |

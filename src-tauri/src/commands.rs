@@ -33,6 +33,7 @@ use spagitty_core::status::{self, RepoCounts, WorkingCopy};
 use spagitty_core::tags;
 use spagitty_core::update;
 use spagitty_core::work;
+use spagitty_core::worktrees::{self, Worktree};
 use spagitty_core::{Error, Result};
 use tauri::{AppHandle, Manager, Runtime, State};
 
@@ -909,6 +910,84 @@ pub fn remote_remove(state: State<'_, AppState>, name: String) -> Result<()> {
 #[tauri::command]
 pub fn remote_set_url(state: State<'_, AppState>, name: String, url: String) -> Result<()> {
     state.with_session(|session| remotes::set_url(&session.repo.to_thread_local(), &name, &url))
+}
+
+/// List all worktrees for the open repository (FEAT-062).
+#[tauri::command]
+pub fn worktrees(state: State<'_, AppState>) -> Result<Vec<Worktree>> {
+    state.with_session(|session| worktrees::list(&session.repo.to_thread_local()))
+}
+
+/// Add a new linked worktree (FEAT-062).
+#[tauri::command]
+pub fn worktree_add(
+    state: State<'_, AppState>,
+    path: String,
+    branch: Option<String>,
+    new_branch: Option<String>,
+    detach: bool,
+) -> Result<Worktree> {
+    state.with_session(|session| {
+        worktrees::add(
+            &session.repo.to_thread_local(),
+            std::path::Path::new(&path),
+            branch.as_deref(),
+            new_branch.as_deref(),
+            detach,
+        )
+    })
+}
+
+/// Remove a worktree (FEAT-062).
+#[tauri::command]
+pub fn worktree_remove(
+    state: State<'_, AppState>,
+    path: String,
+    force: bool,
+) -> Result<()> {
+    state.with_session(|session| {
+        worktrees::remove(
+            &session.repo.to_thread_local(),
+            std::path::Path::new(&path),
+            force,
+        )
+    })
+}
+
+/// Lock a worktree against pruning (FEAT-062).
+#[tauri::command]
+pub fn worktree_lock(
+    state: State<'_, AppState>,
+    path: String,
+    reason: Option<String>,
+) -> Result<()> {
+    state.with_session(|session| {
+        worktrees::lock(
+            &session.repo.to_thread_local(),
+            std::path::Path::new(&path),
+            reason.as_deref(),
+        )
+    })
+}
+
+/// Unlock a locked worktree (FEAT-062).
+#[tauri::command]
+pub fn worktree_unlock(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<()> {
+    state.with_session(|session| {
+        worktrees::unlock(
+            &session.repo.to_thread_local(),
+            std::path::Path::new(&path),
+        )
+    })
+}
+
+/// Prune stale worktrees (FEAT-062).
+#[tauri::command]
+pub fn worktree_prune(state: State<'_, AppState>) -> Result<()> {
+    state.with_session(|session| worktrees::prune(&session.repo.to_thread_local()))
 }
 
 /// Every remembered repository, as a card.

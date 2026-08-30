@@ -45,6 +45,7 @@ pub mod status;
 pub mod tags;
 pub mod update;
 pub mod work;
+pub mod worktrees;
 
 /// Repository fixtures, shared by the tests of every module that reads one,
 /// and by the Tauri layer's tests behind the `fixture` feature.
@@ -61,3 +62,4 @@ pub use graph::{GraphRow, LaneEdge, LaneState, ROW_PITCH};
 pub use refs::{RefChip, RefIndex, RefKind};
 pub use repo::{HeadInfo, RepoInfo};
 pub use status::{StatusEntry, WorkingCopy};
+pub use worktrees::Worktree;

@@ -867,6 +867,30 @@ export interface Remote {
 	refs: number;
 }
 
+/** One linked working tree attached to a git repository (FEAT-062). */
+export interface Worktree {
+	/** Absolute filesystem path to the working tree. */
+	path: string;
+	/** Display name (trailing directory component). */
+	name: string;
+	/** HEAD commit object ID (full hex SHA). */
+	head: string;
+	/** Short 7-character commit hash for display. */
+	headShort: string;
+	/** Short branch name if on a branch, or null if detached. */
+	branch: string | null;
+	/** True if this is the main / root repository working tree. */
+	isMain: boolean;
+	/** True if the working tree is bare. */
+	isBare: boolean;
+	/** True if HEAD is detached (not on any named branch). */
+	isDetached: boolean;
+	/** Optional lock reason if locked against pruning. */
+	lockedReason: string | null;
+	/** Optional prunable reason if the worktree gitdir is orphaned or missing. */
+	prunableReason: string | null;
+}
+
 /** Which side of a conflict to keep. */
 export type ConflictSideName = 'ours' | 'theirs';
 

@@ -53,6 +53,7 @@ import type {
 	Update,
 	Snapshot,
 	StashEntry,
+	Worktree,
 	WorkingCopy
 } from './types';
 
@@ -551,6 +552,46 @@ export function checkUpdate(): Promise<Update> {
 /** Spagitty's own behaviour toggles. */
 export function settings(): Promise<Settings> {
 	return invoke('settings');
+}
+
+/** Every linked worktree for the open repository (FEAT-062). */
+export function worktrees(): Promise<Worktree[]> {
+	return invoke('worktrees');
+}
+
+/** Add a new linked worktree (FEAT-062). */
+export function worktreeAdd(
+	path: string,
+	branch?: string | null,
+	newBranch?: string | null,
+	detach?: boolean
+): Promise<Worktree> {
+	return invoke('worktree_add', {
+		path,
+		branch: branch || undefined,
+		newBranch: newBranch || undefined,
+		detach: detach ?? false
+	});
+}
+
+/** Remove a worktree (FEAT-062). */
+export function worktreeRemove(path: string, force = false): Promise<void> {
+	return invoke('worktree_remove', { path, force });
+}
+
+/** Lock a worktree against pruning (FEAT-062). */
+export function worktreeLock(path: string, reason?: string | null): Promise<void> {
+	return invoke('worktree_lock', { path, reason: reason || undefined });
+}
+
+/** Unlock a locked worktree (FEAT-062). */
+export function worktreeUnlock(path: string): Promise<void> {
+	return invoke('worktree_unlock', { path });
+}
+
+/** Prune stale worktrees (FEAT-062). */
+export function worktreePrune(): Promise<void> {
+	return invoke('worktree_prune');
 }
 
 /** Store the behaviour toggles. Rejects when the write did not reach the disk. */

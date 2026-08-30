@@ -1010,6 +1010,92 @@ fn push_args<'a>(remote: &'a str, refspec: &'a str, force: bool) -> Vec<&'a str>
     args
 }
 
+/// List linked worktrees in porcelain format (FEAT-062).
+pub fn worktree_list(repo: &Path) -> Result<String> {
+    run(repo, &["worktree", "list", "--porcelain"])
+}
+
+/// Add a worktree pointing to a branch or path (FEAT-062).
+pub fn worktree_add(
+    repo: &Path,
+    target: &Path,
+    branch: Option<&str>,
+    new_branch: Option<&str>,
+    detach: bool,
+) -> Result<()> {
+    let target_str = target.to_str().ok_or_else(|| Error::Git {
+        command: "worktree add".into(),
+        stderr: "target path is not valid utf-8".into(),
+    })?;
+    let mut args = vec!["worktree", "add"];
+    if detach {
+        args.push("--detach");
+    }
+    if let Some(nb) = new_branch {
+        if !nb.is_empty() {
+            args.push("-b");
+            args.push(nb);
+        }
+    }
+    args.push(target_str);
+    if let Some(b) = branch {
+        if !b.is_empty() {
+            args.push(b);
+        }
+    }
+    run(repo, &args)?;
+    Ok(())
+}
+
+/// Remove a worktree (FEAT-062).
+pub fn worktree_remove(repo: &Path, target: &Path, force: bool) -> Result<()> {
+    let target_str = target.to_str().ok_or_else(|| Error::Git {
+        command: "worktree remove".into(),
+        stderr: "target path is not valid utf-8".into(),
+    })?;
+    let mut args = vec!["worktree", "remove"];
+    if force {
+        args.push("--force");
+    }
+    args.push(target_str);
+    run(repo, &args)?;
+    Ok(())
+}
+
+/// Lock a worktree against pruning (FEAT-062).
+pub fn worktree_lock(repo: &Path, target: &Path, reason: Option<&str>) -> Result<()> {
+    let target_str = target.to_str().ok_or_else(|| Error::Git {
+        command: "worktree lock".into(),
+        stderr: "target path is not valid utf-8".into(),
+    })?;
+    let mut args = vec!["worktree", "lock"];
+    if let Some(r) = reason {
+        if !r.is_empty() {
+            args.push("--reason");
+            args.push(r);
+        }
+    }
+    args.push(target_str);
+    run(repo, &args)?;
+    Ok(())
+}
+
+/// Unlock a locked worktree (FEAT-062).
+pub fn worktree_unlock(repo: &Path, target: &Path) -> Result<()> {
+    let target_str = target.to_str().ok_or_else(|| Error::Git {
+        command: "worktree unlock".into(),
+        stderr: "target path is not valid utf-8".into(),
+    })?;
+    run(repo, &["worktree", "unlock", target_str])?;
+    Ok(())
+}
+
+/// Prune stale worktree administrative metadata (FEAT-062).
+pub fn worktree_prune(repo: &Path) -> Result<()> {
+    run(repo, &["worktree", "prune"])?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

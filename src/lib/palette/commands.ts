@@ -24,6 +24,8 @@ import { repo } from '$lib/repo.svelte';
 import { scale } from '$lib/scale.svelte';
 import { settings } from '$lib/settings/store.svelte';
 import { theme } from '$lib/theme.svelte';
+import { worktrees } from '$lib/worktrees/store.svelte';
+import { worktreeModal } from '$lib/worktrees/modal.svelte';
 
 /** The modifier as this platform writes it. Display only. */
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -207,7 +209,26 @@ function repository(): Command[] {
 			group: 'Repository',
 			keywords: ['reload', 'rescan'],
 			run: () => repo.refresh()
-		})
+		}),
+		repoCommand({
+			id: 'repo.worktrees',
+			title: 'Worktrees…',
+			group: 'Repository',
+			keywords: ['worktree', 'linked', 'switch'],
+			run: () => {
+				void worktrees.fetch();
+				worktreeModal.showManager();
+			}
+		}),
+		repoCommand({
+			id: 'repo.worktree_add',
+			title: 'Add worktree…',
+			group: 'Repository',
+			keywords: ['worktree', 'create', 'new'],
+			run: () => {
+				worktreeModal.showAdd();
+			}
+		}),
 	];
 }
 

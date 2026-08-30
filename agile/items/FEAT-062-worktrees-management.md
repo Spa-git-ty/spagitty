@@ -2,7 +2,7 @@
 
 # FEAT-062 — Worktrees management
 
-**Status:** Backlog
+**Status:** Done.
 **Screens:** All repositories (1J), chrome (repository tabs / switcher).
 **Raised by:** gap analysis in `docs/analysis/gitkraken-gap.md`.
 
