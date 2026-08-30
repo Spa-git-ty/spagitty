@@ -3,6 +3,10 @@
 	import type { DiffView } from '$lib/diff/store.svelte';
 	import { splitRows } from '$lib/diff/split';
 	import type { DiffLine, FileDiff } from '$lib/types';
+	import ImageDiff from '$lib/diff/ImageDiff.svelte';
+	import BinaryDiffView from '$lib/diff/BinaryDiff.svelte';
+	import * as api from '$lib/api';
+	import type { BinaryDiff, DiffSide } from '$lib/types';
 	import { detectLanguage, highlightLine } from '$lib/diff/highlight';
 
 	/**
@@ -27,10 +31,51 @@
 		view: DiffView;
 		/** Index of the hunk to bring into view. Driven by `j` / `k`. */
 		focus?: number;
+		binaryDiff?: BinaryDiff | null;
+		commitId?: string | null;
+		side?: DiffSide | null;
 	}
 
-	let { file, path, error, loading, view, focus = 0 }: Props = $props();
+	let {
+		file,
+		path,
+		error,
+		loading,
+		view,
+		focus = 0,
+		binaryDiff = null,
+		commitId = null,
+		side = null
+	}: Props = $props();
 	const language = $derived(detectLanguage(path));
+
+	let binaryData = $state<BinaryDiff | null>(null);
+	let binaryLoading = $state(false);
+
+	$effect(() => {
+		if (file?.binary && path) {
+			if (binaryDiff) {
+				binaryData = binaryDiff;
+				return;
+			}
+			binaryLoading = true;
+			if (commitId) {
+				void api.binaryFileDiff(commitId, path)
+					.then((res) => { binaryData = res; })
+					.catch(() => { binaryData = null; })
+					.finally(() => { binaryLoading = false; });
+			} else if (side) {
+				void api.binaryWorkingDiff(path, side)
+					.then((res) => { binaryData = res; })
+					.catch(() => { binaryData = null; })
+					.finally(() => { binaryLoading = false; });
+			} else {
+				binaryLoading = false;
+			}
+		} else {
+			binaryData = null;
+		}
+	});
 
 	let hunkEls: HTMLElement[] = [];
 
@@ -55,7 +100,15 @@
 	{:else if file === null}
 		<div class="pad note">{loading ? 'Reading…' : ''}</div>
 	{:else if file.binary}
-		<div class="pad note">Binary file. There are no lines to show.</div>
+		{#if binaryData?.isImage}
+			<ImageDiff diff={binaryData} />
+		{:else if binaryData}
+			<BinaryDiffView diff={binaryData} />
+		{:else if binaryLoading}
+			<div class="pad note">Reading binary metadata…</div>
+		{:else}
+			<div class="pad note">Binary file. There are no lines to show.</div>
+		{/if}
 	{:else if file.tooLarge}
 		<div class="pad note">This file is too large to diff.</div>
 	{:else if file.hunks.length === 0}

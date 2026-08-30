@@ -286,6 +286,30 @@ pub fn working_diff(state: State<'_, AppState>, path: String, side: Side) -> Res
     })
 }
 
+/// Detailed binary / image diff metadata for a commit file (FEAT-065).
+#[tauri::command]
+pub fn binary_file_diff(
+    state: State<'_, AppState>,
+    id: String,
+    path: String,
+) -> Result<diff::BinaryDiff> {
+    state.with_session(|session| {
+        diff::binary_file_diff(&session.repo.to_thread_local(), &id, &path)
+    })
+}
+
+/// Detailed binary / image diff metadata for working copy (FEAT-065).
+#[tauri::command]
+pub fn binary_working_diff(
+    state: State<'_, AppState>,
+    path: String,
+    side: Side,
+) -> Result<diff::BinaryDiff> {
+    state.with_session(|session| {
+        diff::binary_working_diff(&session.repo.to_thread_local(), &path, side)
+    })
+}
+
 #[tauri::command]
 pub fn stage(state: State<'_, AppState>, paths: Vec<String>) -> Result<()> {
     state.with_session(|session| work::stage(&session.repo.to_thread_local(), &paths))

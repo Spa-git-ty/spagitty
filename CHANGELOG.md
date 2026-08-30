@@ -32,6 +32,11 @@ stays backward-compatible.
   requests 1H, and File history 1O). Features fast, memory-safe tokenization for
   Rust, TypeScript/JavaScript, Python, Go, C++, HTML, CSS, JSON, TOML, YAML,
   Shell, and SQL with automatic theme adaptation across all light and dark palettes.
+- **Image and binary diffs (FEAT-065).** Rich visual image comparisons and binary
+  delta inspection across all diff views. Supports 2-up (side-by-side) comparison,
+  horizontal swipe split sliders, and opacity onion-skin overlays with transparency
+  checkerboard backgrounds for PNG, JPEG, SVG, WebP, GIF, ICO, and AVIF images.
+  Non-image binaries display formatted previous/new file sizes and byte deltas.
 
 
 ## [0.2.0] - 2026-08-30

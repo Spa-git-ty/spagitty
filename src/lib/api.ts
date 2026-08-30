@@ -10,6 +10,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
 	About,
+	BinaryDiff,
 	Blame,
 	CommitDetail,
 	BranchRow,
@@ -105,6 +106,11 @@ export function fileDiff(id: string, path: string): Promise<FileDiff> {
 	return invoke('file_diff', { id, path });
 }
 
+/** Detailed binary / image diff metadata for a commit file (FEAT-065). */
+export function binaryFileDiff(id: string, path: string): Promise<BinaryDiff> {
+	return invoke('binary_file_diff', { id, path });
+}
+
 /** The staged, unstaged and conflicted lists. One call per refresh. */
 export function workingCopy(): Promise<WorkingCopy> {
 	return invoke('working_copy');
@@ -113,6 +119,11 @@ export function workingCopy(): Promise<WorkingCopy> {
 /** One working-copy file's hunks, on either side of the index. */
 export function workingDiff(path: string, side: DiffSide): Promise<FileDiff> {
 	return invoke('working_diff', { path, side });
+}
+
+/** Detailed binary / image diff metadata for working copy (FEAT-065). */
+export function binaryWorkingDiff(path: string, side: DiffSide): Promise<BinaryDiff> {
+	return invoke('binary_working_diff', { path, side });
 }
 
 export function stage(paths: string[]): Promise<void> {

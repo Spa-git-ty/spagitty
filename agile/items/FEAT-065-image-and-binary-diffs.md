@@ -2,7 +2,7 @@
 
 # FEAT-065 — Image and binary diffs
 
-**Status:** Backlog
+**Status:** Done.
 **Screens:** Diff screen (1B), Working copy (1C), Stash (1G), Pull requests (1H).
 **Raised by:** gap analysis in `docs/analysis/gitkraken-gap.md`.
 

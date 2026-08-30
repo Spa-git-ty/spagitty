@@ -186,6 +186,17 @@ export interface FileDiff {
 	hunks: Hunk[];
 }
 
+/** Detailed binary / image diff inspection payload (FEAT-065). */
+export interface BinaryDiff {
+	path: string;
+	isImage: boolean;
+	mime: string;
+	oldSize: number | null;
+	newSize: number | null;
+	oldBase64: string | null;
+	newBase64: string | null;
+}
+
 // --- Working copy ---------------------------------------------------------
 
 /** Which two sides of the working copy a diff compares. */

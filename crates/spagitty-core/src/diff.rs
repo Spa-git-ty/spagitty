@@ -809,6 +809,182 @@ fn header_start(start: u32, lines: u32) -> u32 {
     }
 }
 
+const BASE64_ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/// Pure-Rust standard Base64 encoder (FEAT-065).
+pub fn encode_base64(data: &[u8]) -> String {
+    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    for chunk in data.chunks(3) {
+        let b0 = chunk[0] as usize;
+        let b1 = chunk.get(1).copied().unwrap_or(0) as usize;
+        let b2 = chunk.get(2).copied().unwrap_or(0) as usize;
+
+        let triple = (b0 << 16) | (b1 << 8) | b2;
+
+        result.push(BASE64_ALPHABET[(triple >> 18) & 0x3F] as char);
+        result.push(BASE64_ALPHABET[(triple >> 12) & 0x3F] as char);
+
+        if chunk.len() > 1 {
+            result.push(BASE64_ALPHABET[(triple >> 6) & 0x3F] as char);
+        } else {
+            result.push('=');
+        }
+
+        if chunk.len() > 2 {
+            result.push(BASE64_ALPHABET[triple & 0x3F] as char);
+        } else {
+            result.push('=');
+        }
+    }
+    result
+}
+
+/// Detect MIME type and image status from path extension (FEAT-065).
+pub fn detect_mime(path: &str) -> (String, bool) {
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_ascii_lowercase())
+        .unwrap_or_default();
+
+    match ext.as_str() {
+        "png" => ("image/png".into(), true),
+        "jpg" | "jpeg" => ("image/jpeg".into(), true),
+        "gif" => ("image/gif".into(), true),
+        "webp" => ("image/webp".into(), true),
+        "svg" => ("image/svg+xml".into(), true),
+        "ico" => ("image/x-icon".into(), true),
+        "avif" => ("image/avif".into(), true),
+        "bmp" => ("image/bmp".into(), true),
+        "pdf" => ("application/pdf".into(), false),
+        "zip" => ("application/zip".into(), false),
+        "wasm" => ("application/wasm".into(), false),
+        "tar" | "gz" | "tgz" => ("application/gzip".into(), false),
+        _ => ("application/octet-stream".into(), false),
+    }
+}
+
+/// Detailed binary or image diff metadata (FEAT-065).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BinaryDiff {
+    pub path: String,
+    pub is_image: bool,
+    pub mime: String,
+    pub old_size: Option<usize>,
+    pub new_size: Option<usize>,
+    pub old_base64: Option<String>,
+    pub new_base64: Option<String>,
+}
+
+/// Maximum payload size for base64 data transfer (10 MB).
+const MAX_IMAGE_BASE64_BYTES: usize = 10 * 1024 * 1024;
+
+/// Read binary / image diff for a single file in a commit (FEAT-065).
+pub fn binary_file_diff(
+    repo: &gix::Repository,
+    commit_id: &str,
+    path: &str,
+) -> Result<BinaryDiff> {
+    let (mime, is_image) = detect_mime(path);
+    let commit = repo
+        .rev_parse_single(commit_id)
+        .map_err(|_| Error::UnknownCommit(commit_id.to_string()))?
+        .object()
+        .map_err(|_| Error::UnknownCommit(commit_id.to_string()))?
+        .peel_to_commit()
+        .map_err(|_| Error::UnknownCommit(commit_id.to_string()))?;
+
+    let tree = commit.tree().map_err(|e| Error::Diff(e.to_string()))?;
+    let new_blob = blob_at(&tree, path)?;
+    let new_bytes = blob_bytes(repo, new_blob)?;
+
+    let old_bytes = match commit.parent_ids().next() {
+        Some(parent_id) => {
+            let parent = repo
+                .find_object(parent_id)
+                .map_err(|e| Error::Diff(e.to_string()))?
+                .peel_to_commit()
+                .map_err(|e| Error::Diff(e.to_string()))?;
+            let parent_tree = parent.tree().map_err(|e| Error::Diff(e.to_string()))?;
+            let old_blob = blob_at(&parent_tree, path)?;
+            blob_bytes(repo, old_blob)?
+        }
+        None => None,
+    };
+
+    let old_size = old_bytes.as_ref().map(|b| b.len());
+    let new_size = new_bytes.as_ref().map(|b| b.len());
+
+    let old_base64 = if is_image {
+        old_bytes
+            .filter(|b| b.len() <= MAX_IMAGE_BASE64_BYTES)
+            .map(|b| encode_base64(&b))
+    } else {
+        None
+    };
+
+    let new_base64 = if is_image {
+        new_bytes
+            .filter(|b| b.len() <= MAX_IMAGE_BASE64_BYTES)
+            .map(|b| encode_base64(&b))
+    } else {
+        None
+    };
+
+    Ok(BinaryDiff {
+        path: path.to_string(),
+        is_image,
+        mime,
+        old_size,
+        new_size,
+        old_base64,
+        new_base64,
+    })
+}
+
+/// Read binary / image diff for working copy (FEAT-065).
+pub fn binary_working_diff(
+    repo: &gix::Repository,
+    path: &str,
+    side: Side,
+) -> Result<BinaryDiff> {
+    let (mime, is_image) = detect_mime(path);
+    let (old_bytes, new_bytes) = match side {
+        Side::Staged => (head_blob(repo, path)?, index_bytes(repo, path)?),
+        Side::Unstaged => (index_bytes(repo, path)?, worktree_bytes(repo, path)?),
+    };
+
+    let old_size = old_bytes.as_ref().map(|b| b.len());
+    let new_size = new_bytes.as_ref().map(|b| b.len());
+
+    let old_base64 = if is_image {
+        old_bytes
+            .filter(|b| b.len() <= MAX_IMAGE_BASE64_BYTES)
+            .map(|b| encode_base64(&b))
+    } else {
+        None
+    };
+
+    let new_base64 = if is_image {
+        new_bytes
+            .filter(|b| b.len() <= MAX_IMAGE_BASE64_BYTES)
+            .map(|b| encode_base64(&b))
+    } else {
+        None
+    };
+
+    Ok(BinaryDiff {
+        path: path.to_string(),
+        is_image,
+        mime,
+        old_size,
+        new_size,
+        old_base64,
+        new_base64,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -890,6 +1066,37 @@ mod tests {
         let stats = line_stats(Some(b"text\n"), Some(b"bin\0ary"));
         assert!(stats.binary);
         assert_eq!((stats.added, stats.removed), (0, 0));
+    }
+
+    #[test]
+    fn base64_encoder_produces_standard_output() {
+        assert_eq!(encode_base64(b""), "");
+        assert_eq!(encode_base64(b"f"), "Zg==");
+        assert_eq!(encode_base64(b"fo"), "Zm8=");
+        assert_eq!(encode_base64(b"foo"), "Zm9v");
+        assert_eq!(encode_base64(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn detect_mime_identifies_images_and_binaries() {
+        assert_eq!(detect_mime("icon.png"), ("image/png".into(), true));
+        assert_eq!(detect_mime("photo.jpg"), ("image/jpeg".into(), true));
+        assert_eq!(detect_mime("vector.svg"), ("image/svg+xml".into(), true));
+        assert_eq!(detect_mime("data.pdf"), ("application/pdf".into(), false));
+        assert_eq!(detect_mime("lib.wasm"), ("application/wasm".into(), false));
+    }
+
+    #[test]
+    fn binary_diff_extracts_base64_for_images() {
+        let fixture = crate::fixture::Fixture::woven();
+        fixture.write_bytes("image.png", &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+        fixture.git(&["add", "-A"]);
+        let id = fixture.commit("Add test image");
+        let diff = binary_file_diff(&fixture.open(), &id, "image.png").expect("binary diff");
+        assert!(diff.is_image);
+        assert_eq!(diff.mime, "image/png");
+        assert_eq!(diff.new_size, Some(8));
+        assert!(diff.new_base64.is_some());
     }
 }
 
