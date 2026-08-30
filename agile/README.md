@@ -116,6 +116,15 @@ rather than an audit.
 | [FEAT-059](items/FEAT-059-pull-request-review-workspace.md) | Dedicated pull request review workspace | 1H | Done |
 | [FEAT-060](items/FEAT-060-spagitty-brand.md) | Spagitty, with a face: the brand | brand | Done |
 | [FEAT-061](items/FEAT-061-brand-guide-and-showcase.md) | Brand guide and interactive showcase | brand | Done |
+| [FEAT-062](items/FEAT-062-worktrees-management.md) | Worktrees management | 1J, chrome | Backlog |
+| [FEAT-063](items/FEAT-063-file-history-and-blame.md) | File history and blame view | 1I, new view | Backlog |
+| [FEAT-064](items/FEAT-064-diff-syntax-highlighting.md) | Diff syntax highlighting | 1B, 1C, 1G, 1H | Backlog |
+| [FEAT-065](items/FEAT-065-image-and-binary-diffs.md) | Image and binary diffs | 1B, 1C, 1G | Backlog |
+| [FEAT-066](items/FEAT-066-diff-content-search.md) | Diff content search | 1I | Backlog |
+| [FEAT-067](items/FEAT-067-submodules-management.md) | Submodules management | 1F, settings | Backlog |
+| [FEAT-068](items/FEAT-068-external-diff-merge-tools.md) | External diff and merge tool launchers | 1K | Backlog |
+| [FEAT-069](items/FEAT-069-multi-identity-profiles.md) | Multi-identity profiles | 1K, chrome | Backlog |
+| [FEAT-070](items/FEAT-070-extended-forge-integration.md) | Extended forge integration | 1H, 1K | Backlog |
 
 ## Bugs
 
@@ -178,6 +187,7 @@ of its own.
 | [TASK-026](items/TASK-026-remove-every-remaining-shadow.md) | Remove every remaining shadow | all | Done |
 | [TASK-027](items/TASK-027-migrate-the-js-toolchain-to-bun.md) | Migrate the JS toolchain to bun | — | Done |
 | [TASK-028](items/TASK-028-reconcile-working-record-and-docs.md) | Reconcile working record and docs | — | Done |
+| [TASK-029](items/TASK-029-candidate-feature-backlog.md) | Candidate feature backlog items | — | Done |
 
 ## Skipped identifiers
 

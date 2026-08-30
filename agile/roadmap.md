@@ -186,14 +186,19 @@ published behind a `fixture` feature so the Tauri layer walks a real repository,
 and seventeen tests over the graph worker's windowing, the watcher's debounce
 and the session. It found no bugs.
 
-### 15. The long tail
+### 15. The candidate feature backlog
 
-None of these have items, and none should get one until somebody asks:
-submodules UI, Git LFS awareness, worktree detection and add/remove, image and
-binary diffs, syntax highlighting in diffs, diff-content search (`-G`-style),
-a first-class file history and blame view, external diff and merge tool
-configuration, and profiles that switch identity and keys as a set.
+Formally specified and indexed as Backlog items under TASK-029:
 
+- **FEAT-062 — Worktrees management:** List, add, switch, and prune git worktrees via `git worktree` with workspace tabs integration.
+- **FEAT-063 — File history and blame view:** Dedicated file evolution timeline with line-by-line interactive blame gutter.
+- **FEAT-064 — Diff syntax highlighting:** Grammar-based syntax highlighting in diff view and merge editor across all themes.
+- **FEAT-065 — Image and binary diffs:** 2-up, swipe slider, and onion skin visual diffs for images plus binary delta metadata.
+- **FEAT-066 — Diff content search:** Regex and literal search inside commit patches using `git log -G` / `git log -S`.
+- **FEAT-067 — Submodules management:** Submodule tree status list, recursive init/update, and branch alignment indicators.
+- **FEAT-068 — External diff and merge tool launchers:** Tool discovery and launch triggers for external CLI/GUI diff/merge apps.
+- **FEAT-069 — Multi-identity profiles:** Identity profile switching for author names, emails, and signing keys per repository scope.
+- **FEAT-070 — Extended forge integration:** GitLab and Bitbucket API support, in-app PR creation, and issue tracking links.
 ## Deliberately not on this list
 
 Recorded so they do not resurface as gaps: dragging commits onto branches,
