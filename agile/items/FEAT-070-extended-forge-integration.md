@@ -2,7 +2,7 @@
 
 # FEAT-070 — Extended forge integration
 
-**Status:** Backlog
+**Status:** Done.
 **Screens:** Pull requests (1H), Settings (1K), Graph (1A).
 **Raised by:** gap analysis in `docs/analysis/gitkraken-gap.md`.
 

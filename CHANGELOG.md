@@ -54,6 +54,11 @@ stays backward-compatible.
   seamless switching between personal and work commit credentials (name, email,
   and signing keys). Includes a profile manager in Settings (screen 1K) and an
   active committer identity badge with a quick-switch dropdown in the status strip.
+- **Extended forge integration and in-app PR creation (FEAT-070).** Added support
+  for GitLab and Bitbucket Cloud forge remotes in addition to GitHub. Users can
+  connect accounts with personal access tokens / app passwords, view merge requests,
+  and create new pull requests / merge requests directly from the Pull requests
+  workspace with target branch selectors and draft toggles.
 
 
 ## [0.2.0] - 2026-08-30

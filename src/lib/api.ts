@@ -477,6 +477,17 @@ export function pullRequests(): Promise<PullRequest[]> {
 	return invoke('pull_requests');
 }
 
+/** Create a new pull request on the hosting forge (FEAT-070). */
+export function createPullRequest(
+	title: string,
+	body: string,
+	head: string,
+	base: string,
+	draft = false
+): Promise<PullRequest> {
+	return invoke('create_pull_request', { title, body, head, base, draft });
+}
+
 /**
  * The files one pull request changes, with the host's own diff of each
  * (FEAT-058).

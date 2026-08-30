@@ -343,6 +343,105 @@ fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     era * 146_097 + day_of_era - 719_468
 }
 
+/// Create a pull request on GitHub via REST API (FEAT-070).
+pub fn create_pull_request(
+    repo: &Repo,
+    token: &str,
+    title: &str,
+    body: &str,
+    head: &str,
+    base: &str,
+    draft: bool,
+) -> Result<PullRequest> {
+    let url = format!(
+        "{}/repos/{}/{}/pulls",
+        repo.kind.api_base(&repo.host),
+        repo.owner,
+        repo.name
+    );
+    let payload = serde_json::json!({
+        "title": title,
+        "body": body,
+        "head": head,
+        "base": base,
+        "draft": draft,
+    });
+
+    let response = http::post_json(&url, token, &repo.host, &payload.to_string())?;
+    if response.status < 200 || response.status >= 300 {
+        return Err(status_error(
+            &repo.host,
+            response.status,
+            &response.body,
+            response.retry_after.as_deref(),
+        ));
+    }
+
+    let json: Value = serde_json::from_str(&response.body).map_err(|e| Error::Forge {
+        host: repo.host.clone(),
+        detail: format!("JSON parsing error: {e}"),
+    })?;
+    let number = json.get("number").and_then(Value::as_u64).unwrap_or(0);
+    let id = json
+        .get("node_id")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let title = json
+        .get("title")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let body = json
+        .get("body")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let author_name = json
+        .get("user")
+        .and_then(|u| u.get("login"))
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let updated = timestamp(json.get("updated_at").and_then(Value::as_str));
+    let source_branch = json
+        .get("head")
+        .and_then(|h| h.get("ref"))
+        .and_then(Value::as_str)
+        .unwrap_or(head)
+        .to_string();
+    let target_branch = json
+        .get("base")
+        .and_then(|b| b.get("ref"))
+        .and_then(Value::as_str)
+        .unwrap_or(base)
+        .to_string();
+    let draft = json.get("draft").and_then(Value::as_bool).unwrap_or(draft);
+
+    Ok(PullRequest {
+        id,
+        number,
+        title,
+        body,
+        author_name,
+        updated,
+        source_branch,
+        target_branch,
+        draft,
+        review: ReviewState::NoReviewers,
+        checks: None,
+        needs_you: false,
+        needs_you_because: None,
+        changed_files: json
+            .get("changed_files")
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
+        added: json.get("additions").and_then(Value::as_u64).unwrap_or(0),
+        removed: json.get("deletions").and_then(Value::as_u64).unwrap_or(0),
+        mergeable: json.get("mergeable").and_then(Value::as_bool),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

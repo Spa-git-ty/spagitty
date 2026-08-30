@@ -137,6 +137,7 @@ pub fn run() {
             commands::forge_connect,
             commands::forge_disconnect,
             commands::pull_requests,
+            commands::create_pull_request,
             commands::pull_request_files,
             commands::pull_request_commits,
             commands::commit_files,

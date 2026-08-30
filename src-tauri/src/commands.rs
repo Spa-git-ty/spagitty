@@ -1474,6 +1474,24 @@ pub async fn pull_requests<R: Runtime>(
     off_thread(move || forge::pull_requests(&repo, &token, &user)).await
 }
 
+/// Create a new pull request on the configured forge (FEAT-070).
+#[tauri::command]
+pub async fn create_pull_request<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    title: String,
+    body: String,
+    head: String,
+    base: String,
+    draft: bool,
+) -> Result<PullRequest> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || {
+        forge::create_pull_request(&repo, &token, &title, &body, &head, &base, draft)
+    })
+    .await
+}
+
 /// The files one pull request changes, with the host's own diff of each.
 ///
 /// The diff is the host's, not a local one: the head branch of a pull request

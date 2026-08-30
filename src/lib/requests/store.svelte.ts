@@ -35,6 +35,9 @@ let repo = $state<ForgeRepo | null>(null);
 let loading = $state(false);
 let viewMode = $state<WorkspaceViewMode>('list');
 let currentUser = $state<string | null>(null);
+let isCreateModalOpen = $state(false);
+let creating = $state(false);
+let createError = $state<string | null>(null);
 
 /** Guards against a slow read landing after a newer one. */
 let seq = 0;
@@ -131,6 +134,47 @@ export const requests = {
 	},
 	get currentUser(): string | null {
 		return currentUser;
+	},
+	get isCreateModalOpen(): boolean {
+		return isCreateModalOpen;
+	},
+	get creating(): boolean {
+		return creating;
+	},
+	get createError(): string | null {
+		return createError;
+	},
+
+	openCreateModal(): void {
+		isCreateModalOpen = true;
+		createError = null;
+	},
+	closeCreateModal(): void {
+		isCreateModalOpen = false;
+		createError = null;
+	},
+
+	async create(
+		title: string,
+		body: string,
+		head: string,
+		base: string,
+		draft = false
+	): Promise<PullRequest> {
+		creating = true;
+		createError = null;
+		try {
+			const newPr = await api.createPullRequest(title, body, head, base, draft);
+			isCreateModalOpen = false;
+			await this.load();
+			this.select(newPr.id);
+			return newPr;
+		} catch (err) {
+			createError = err instanceof Error ? err.message : String(err);
+			throw err;
+		} finally {
+			creating = false;
+		}
 	},
 
 	/** What is waiting on the person using Spagitty. The screen leads with these. */

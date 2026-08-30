@@ -364,9 +364,8 @@ export interface DraftComment {
 	body: string;
 }
 
-/** Which hosting service a remote points at (FEAT-017). */
-export type ForgeKind = 'gitHub';
-
+/** Which hosting service a remote points at (FEAT-017, FEAT-070). */
+export type ForgeKind = 'gitHub' | 'gitLab' | 'bitbucket';
 /** A repository on a hosting service, identified from a git remote. */
 export interface ForgeRepo {
 	kind: ForgeKind;

@@ -6,6 +6,7 @@
 	import RequestRow from '$lib/requests/RequestRow.svelte';
 	import PRWorkspace from '$lib/requests/PRWorkspace.svelte';
 	import { requests } from '$lib/requests/store.svelte';
+	import CreatePRModal from '$lib/requests/CreatePRModal.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 
 	/**
@@ -55,6 +56,9 @@
 			</div>
 			<div class="right">
 				{#if requests.loading}<span class="note">Reading…</span>{/if}
+				{#if requests.connected}
+					<Btn primary onclick={() => requests.openCreateModal()}>+ Create PR</Btn>
+				{/if}
 				<Btn disabled={requests.loading} onclick={() => requests.load()}>Refresh</Btn>
 			</div>
 		</header>
@@ -135,6 +139,8 @@
 			</div>
 		</div>
 	</div>
+
+<CreatePRModal />
 {/if}
 
 <style>

@@ -33,6 +33,8 @@
 //! nothing above this line changes.
 
 pub mod github;
+pub mod bitbucket;
+pub mod gitlab;
 pub mod http;
 pub mod keychain;
 pub mod review;
@@ -49,19 +51,19 @@ use crate::{Error, Result};
 #[serde(rename_all = "camelCase")]
 pub enum Kind {
     GitHub,
+    GitLab,
+    Bitbucket,
 }
 
 impl Kind {
     /// The API root for this host.
-    ///
-    /// `github.com` is answered by `api.github.com`; a GitHub Enterprise
-    /// installation answers at `<host>/api/v3`. Both are the same code path
-    /// with a different base, which is the reason this is computed rather than
-    /// hard-coded.
     pub fn api_base(self, host: &str) -> String {
         match self {
             Kind::GitHub if host == "github.com" => "https://api.github.com".into(),
             Kind::GitHub => format!("https://{host}/api/v3"),
+            Kind::GitLab if host == "gitlab.com" => "https://gitlab.com/api/v4".into(),
+            Kind::GitLab => format!("https://{host}/api/v4"),
+            Kind::Bitbucket => "https://api.bitbucket.org/2.0".into(),
         }
     }
 
@@ -69,6 +71,8 @@ impl Kind {
     pub fn label(self) -> &'static str {
         match self {
             Kind::GitHub => "GitHub",
+            Kind::GitLab => "GitLab",
+            Kind::Bitbucket => "Bitbucket",
         }
     }
 }
@@ -238,6 +242,12 @@ fn kind_of(host: &str) -> Option<Kind> {
     if host == "github.com" || host.starts_with("github.") {
         return Some(Kind::GitHub);
     }
+    if host == "gitlab.com" || host.starts_with("gitlab.") {
+        return Some(Kind::GitLab);
+    }
+    if host == "bitbucket.org" || host.starts_with("bitbucket.") {
+        return Some(Kind::Bitbucket);
+    }
     None
 }
 
@@ -248,17 +258,34 @@ fn kind_of(host: &str) -> Option<Kind> {
 pub fn pull_requests(repo: &Repo, token: &str, me: &str) -> Result<Vec<PullRequest>> {
     match repo.kind {
         Kind::GitHub => github::pull_requests(repo, token, me),
+        Kind::GitLab => gitlab::pull_requests(repo, token, me),
+        Kind::Bitbucket => bitbucket::pull_requests(repo, token, me),
+    }
+}
+
+/// Create a pull request on the host (FEAT-070).
+pub fn create_pull_request(
+    repo: &Repo,
+    token: &str,
+    title: &str,
+    body: &str,
+    head: &str,
+    base: &str,
+    draft: bool,
+) -> Result<PullRequest> {
+    match repo.kind {
+        Kind::GitHub => github::create_pull_request(repo, token, title, body, head, base, draft),
+        Kind::GitLab => gitlab::create_merge_request(repo, token, title, body, head, base, draft),
+        Kind::Bitbucket => bitbucket::create_pull_request(repo, token, title, body, head, base),
     }
 }
 
 /// Who a token belongs to, asked of the host.
-///
-/// Used when connecting an account: it proves the token works and gets the
-/// login in one request, rather than asking the user to type a name that would
-/// then be theirs to get wrong.
 pub fn whoami(kind: Kind, host: &str, token: &str) -> Result<String> {
     match kind {
         Kind::GitHub => github::whoami(host, token),
+        Kind::GitLab => gitlab::whoami(host, token),
+        Kind::Bitbucket => bitbucket::whoami(host, token),
     }
 }
 
@@ -445,12 +472,27 @@ mod tests {
         for url in [
             "/srv/git/repo.git",
             "file:///srv/git/repo.git",
-            "git@gitlab.com:owner/repo.git",
+            "git@customhost.invalid:owner/repo.git",
             "https://example.com/owner/repo.git",
             "",
         ] {
             assert!(identify(url).is_none(), "expected nothing for {url}");
         }
+    }
+
+    #[test]
+    fn gitlab_and_bitbucket_remotes_are_identified() {
+        let gitlab = identify("git@gitlab.com:owner/repo.git").expect("gitlab repo");
+        assert_eq!(gitlab.kind, Kind::GitLab);
+        assert_eq!(gitlab.host, "gitlab.com");
+        assert_eq!(gitlab.owner, "owner");
+        assert_eq!(gitlab.name, "repo");
+
+        let bitbucket = identify("https://bitbucket.org/team/project.git").expect("bitbucket repo");
+        assert_eq!(bitbucket.kind, Kind::Bitbucket);
+        assert_eq!(bitbucket.host, "bitbucket.org");
+        assert_eq!(bitbucket.owner, "team");
+        assert_eq!(bitbucket.name, "project");
     }
 
     #[test]
