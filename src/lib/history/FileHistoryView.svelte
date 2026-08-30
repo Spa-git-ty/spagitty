@@ -5,6 +5,7 @@
 	import { relativeTime } from '$lib/format';
 	import { goto } from '$app/navigation';
 	import { notice } from '$lib/ui/notice.svelte';
+	import { detectLanguage, highlightLine } from '$lib/diff/highlight';
 	import Btn from '$lib/ui/Btn.svelte';
 
 	let { onclose }: { onclose?: () => void } = $props();
@@ -13,6 +14,7 @@
 	const entries = $derived(fileHistory.entries);
 	const blame = $derived(fileHistory.blame);
 	const loading = $derived(fileHistory.loading);
+	const language = $derived(detectLanguage(path));
 	const error = $derived(fileHistory.error);
 	const highlighted = $derived(fileHistory.highlightedCommit);
 
@@ -119,7 +121,7 @@
 									<span class="meta-sha">{line.short}</span>
 									<span class="meta-time">{relativeTime(line.time)}</span>
 								</div>
-								<div class="code-line">{line.text}</div>
+								<div class="code-line">{@html highlightLine(line.text, language)}</div>
 							</div>
 						{/each}
 					</div>

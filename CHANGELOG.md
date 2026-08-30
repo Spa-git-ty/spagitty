@@ -27,6 +27,11 @@ stays backward-compatible.
   on the left, alongside a line-by-line blame gutter with author portraits, commit
   hashes, and relative timestamps on the right. Hovering commits highlights all
   contributed lines, and commit chips link directly into the commit graph.
+- **Diff syntax highlighting (FEAT-064).** Grammar-based code syntax highlighting
+  across all diff views (Diff screen 1B, Working copy 1C, Stashes 1G, Pull
+  requests 1H, and File history 1O). Features fast, memory-safe tokenization for
+  Rust, TypeScript/JavaScript, Python, Go, C++, HTML, CSS, JSON, TOML, YAML,
+  Shell, and SQL with automatic theme adaptation across all light and dark palettes.
 
 
 ## [0.2.0] - 2026-08-30

@@ -920,3 +920,38 @@ input[type='radio'] {
 		scroll-behavior: auto !important;
 	}
 }
+
+/* Syntax highlighting tokens (FEAT-064) */
+.tok-keyword {
+	color: var(--lane-3, #d20f39);
+	font-weight: 500;
+}
+
+.tok-string {
+	color: var(--ok, #2e7d1f);
+}
+
+.tok-number {
+	color: var(--warn, #bc6a00);
+}
+
+.tok-comment {
+	color: var(--muted, rgba(76, 79, 105, 0.72));
+	font-style: italic;
+}
+
+.tok-fn {
+	color: var(--lane-1, #1e66f5);
+}
+
+.tok-type {
+	color: var(--lane-2, #8839ef);
+}
+
+.tok-operator {
+	color: var(--lane-4, #179299);
+}
+
+.tok-punctuation {
+	color: var(--muted, rgba(76, 79, 105, 0.6));
+}

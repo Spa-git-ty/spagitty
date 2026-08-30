@@ -3,6 +3,7 @@
 	import type { DiffView } from '$lib/diff/store.svelte';
 	import { splitRows } from '$lib/diff/split';
 	import type { DiffLine, FileDiff } from '$lib/types';
+	import { detectLanguage, highlightLine } from '$lib/diff/highlight';
 
 	/**
 	 * The hunks of the selected file, unified or side by side.
@@ -29,6 +30,7 @@
 	}
 
 	let { file, path, error, loading, view, focus = 0 }: Props = $props();
+	const language = $derived(detectLanguage(path));
 
 	let hunkEls: HTMLElement[] = [];
 
@@ -67,7 +69,7 @@
 						<span class="num">{line.old ?? ''}</span>
 						<span class="num">{line.new ?? ''}</span>
 						<span class="sign">{sign(line)}</span>
-						<span class="text">{line.text}</span>
+						<span class="text">{@html highlightLine(line.text, language)}</span>
 					</div>
 				{/each}
 			</section>
@@ -85,13 +87,13 @@
 						<div class="side {row.left?.origin ?? 'blank'}">
 							{#if row.left}
 								<span class="num">{row.left.old ?? ''}</span>
-								<span class="text">{row.left.text}</span>
+								<span class="text">{@html highlightLine(row.left.text, language)}</span>
 							{/if}
 						</div>
 						<div class="side {row.right?.origin ?? 'blank'}">
 							{#if row.right}
 								<span class="num">{row.right.new ?? ''}</span>
-								<span class="text">{row.right.text}</span>
+								<span class="text">{@html highlightLine(row.right.text, language)}</span>
 							{/if}
 						</div>
 					</div>

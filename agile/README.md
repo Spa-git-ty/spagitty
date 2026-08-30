@@ -118,7 +118,7 @@ rather than an audit.
 | [FEAT-061](items/FEAT-061-brand-guide-and-showcase.md) | Brand guide and interactive showcase | brand | Done |
 | [FEAT-062](items/FEAT-062-worktrees-management.md) | Worktrees management | 1J, chrome | Done |
 | [FEAT-063](items/FEAT-063-file-history-and-blame.md) | File history and blame view | 1I, 1O | Done |
-| [FEAT-064](items/FEAT-064-diff-syntax-highlighting.md) | Diff syntax highlighting | 1B, 1C, 1G, 1H | Backlog |
+| [FEAT-064](items/FEAT-064-diff-syntax-highlighting.md) | Diff syntax highlighting | 1B, 1C, 1G, 1H | Done |
 | [FEAT-065](items/FEAT-065-image-and-binary-diffs.md) | Image and binary diffs | 1B, 1C, 1G | Backlog |
 | [FEAT-066](items/FEAT-066-diff-content-search.md) | Diff content search | 1I | Backlog |
 | [FEAT-067](items/FEAT-067-submodules-management.md) | Submodules management | 1F, settings | Backlog |
