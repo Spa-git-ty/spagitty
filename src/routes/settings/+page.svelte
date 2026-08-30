@@ -10,6 +10,7 @@
 	import SigningSection from '$lib/settings/SigningSection.svelte';
 	import UpdateSection from '$lib/settings/UpdateSection.svelte';
 	import ExternalToolsSection from '$lib/settings/ExternalToolsSection.svelte';
+	import ProfilesSection from '$lib/settings/ProfilesSection.svelte';
 	import { SECTIONS, settings } from '$lib/settings/store.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 
@@ -64,7 +65,7 @@
 		{#if settings.section === 'you'}
 			<IdentitySection />
 			<SigningSection />
-		{:else if settings.section === 'accounts'}
+			<ProfilesSection />
 			<AccountsSection />
 		{:else if settings.section === 'remotes'}
 			<RemotesSection />

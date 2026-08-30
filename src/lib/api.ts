@@ -26,6 +26,7 @@ import type {
 	ExternalToolsConfig,
 	ExecutedCommand,
 	FileDiff,
+	IdentityProfile,
 	Identity,
 	FileHistoryEntry,
 	IdentityKey,
@@ -671,6 +672,26 @@ export function launchExternalMerge(path: string, tool?: string | null): Promise
 		path,
 		tool: tool || undefined
 	});
+}
+
+/** Read all saved identity profiles (FEAT-069). */
+export function identityProfiles(): Promise<IdentityProfile[]> {
+	return invoke('identity_profiles');
+}
+
+/** Save an identity profile (FEAT-069). */
+export function saveIdentityProfile(profile: IdentityProfile): Promise<void> {
+	return invoke('save_identity_profile', { profile });
+}
+
+/** Delete an identity profile (FEAT-069). */
+export function deleteIdentityProfile(id: string): Promise<void> {
+	return invoke('delete_identity_profile', { id });
+}
+
+/** Apply an identity profile to current repository or globally (FEAT-069). */
+export function applyIdentityProfile(profile: IdentityProfile, global = false): Promise<Identity> {
+	return invoke('apply_identity_profile', { profile, global });
 }
 
 /** Store the behaviour toggles. Rejects when the write did not reach the disk. */

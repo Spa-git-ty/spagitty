@@ -123,7 +123,7 @@ rather than an audit.
 | [FEAT-066](items/FEAT-066-diff-content-search.md) | Diff content search | 1I | Done |
 | [FEAT-067](items/FEAT-067-submodules-management.md) | Submodules management | 1F, settings | Done |
 | [FEAT-068](items/FEAT-068-external-diff-merge-tools.md) | External diff and merge tool launchers | 1K | Done |
-| [FEAT-069](items/FEAT-069-multi-identity-profiles.md) | Multi-identity profiles | 1K, chrome | Backlog |
+| [FEAT-069](items/FEAT-069-multi-identity-profiles.md) | Multi-identity profiles | 1K, chrome | Done |
 | [FEAT-070](items/FEAT-070-extended-forge-integration.md) | Extended forge integration | 1H, 1K | Backlog |
 
 ## Bugs

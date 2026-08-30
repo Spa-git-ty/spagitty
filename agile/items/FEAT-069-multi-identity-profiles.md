@@ -2,7 +2,7 @@
 
 # FEAT-069 — Multi-identity profiles
 
-**Status:** Backlog
+**Status:** Done.
 **Screens:** Settings (1K), Status bar / Chrome.
 **Raised by:** gap analysis in `docs/analysis/gitkraken-gap.md`.
 

@@ -50,6 +50,10 @@ stays backward-compatible.
   Beyond Compare, KDiff3, Sublime, Vimdiff). Settings (screen 1K) provides tool
   auto-discovery from `$PATH` and `diff.tool`/`merge.tool` configuration, while
   diff file lists provide right-click context menu triggers to launch external tools.
+- **Multi-identity profiles (FEAT-069).** Added author identity profiles allowing
+  seamless switching between personal and work commit credentials (name, email,
+  and signing keys). Includes a profile manager in Settings (screen 1K) and an
+  active committer identity badge with a quick-switch dropdown in the status strip.
 
 
 ## [0.2.0] - 2026-08-30

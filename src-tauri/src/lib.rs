@@ -14,6 +14,7 @@ mod commands;
 mod graph_worker;
 mod network_worker;
 mod platform;
+mod profiles;
 mod rebase_worker;
 mod recents;
 mod search_worker;
@@ -127,6 +128,10 @@ pub fn run() {
             commands::licenses,
             commands::identity,
             commands::set_identity,
+            commands::identity_profiles,
+            commands::save_identity_profile,
+            commands::delete_identity_profile,
+            commands::apply_identity_profile,
             commands::forge_repo,
             commands::forge_accounts,
             commands::forge_connect,

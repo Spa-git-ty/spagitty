@@ -1025,6 +1025,15 @@ export interface Identity {
 	repository: boolean;
 }
 
+/** One saved identity profile (FEAT-069). */
+export interface IdentityProfile {
+	id: string;
+	name: string;
+	authorName: string;
+	authorEmail: string;
+	signingKey: string | null;
+}
+
 /** Spagitty's own behaviour toggles, stored in its config directory. */
 export interface Settings {
 	/**

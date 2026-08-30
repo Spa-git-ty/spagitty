@@ -44,6 +44,7 @@ use crate::accounts;
 use crate::clone_worker::{self, CloneWorker};
 use crate::graph_worker::{self, GraphWorker};
 use crate::network_worker::{self, NetworkWorker};
+use crate::profiles;
 use crate::rebase_worker::{self, RebaseWorker};
 use crate::recents;
 use crate::search_worker::{self, SearchWorker};
@@ -1278,6 +1279,58 @@ pub fn set_identity(
     };
 
     identity::write(&directory, scope, key, &value)?;
+    identity(state)
+}
+
+/// Read all saved identity profiles (FEAT-069).
+#[tauri::command]
+pub fn identity_profiles<R: Runtime>(app: AppHandle<R>) -> Vec<identity::IdentityProfile> {
+    profiles::load(&app)
+}
+
+/// Save an identity profile (FEAT-069).
+#[tauri::command]
+pub fn save_identity_profile<R: Runtime>(
+    app: AppHandle<R>,
+    profile: identity::IdentityProfile,
+) -> Result<()> {
+    profiles::save(&app, profile);
+    Ok(())
+}
+
+/// Delete an identity profile (FEAT-069).
+#[tauri::command]
+pub fn delete_identity_profile<R: Runtime>(app: AppHandle<R>, id: String) -> Result<()> {
+    profiles::delete(&app, &id);
+    Ok(())
+}
+
+/// Apply an identity profile to the current repository or globally (FEAT-069).
+#[tauri::command]
+pub fn apply_identity_profile(
+    state: State<'_, AppState>,
+    profile: identity::IdentityProfile,
+    global: bool,
+) -> Result<Identity> {
+    let scope = if global {
+        identity::Scope::Global
+    } else {
+        identity::Scope::Local
+    };
+    let open = state
+        .session
+        .lock()
+        .expect("session lock")
+        .as_ref()
+        .map(|session| session.path.clone());
+
+    let directory = match (scope, open) {
+        (_, Some(path)) => path,
+        (identity::Scope::Local, None) => return Err(Error::NoRepository),
+        (identity::Scope::Global, None) => std::env::current_dir()?,
+    };
+
+    identity::apply_profile(&directory, scope, &profile)?;
     identity(state)
 }
 
