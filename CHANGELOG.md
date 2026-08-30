@@ -14,6 +14,8 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-30
+
 ### Added
 
 - **The PR review workspace (FEAT-059).** Clicking a pull request opens a
