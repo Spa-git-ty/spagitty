@@ -44,7 +44,8 @@ export type ScreenCode =
 	| '1K'
 	| '1L'
 	| '1M'
-	| '1N';
+	| '1N'
+	| '1O';
 
 export interface NavItem {
 	code: ScreenCode;
@@ -82,7 +83,8 @@ export const NAV_ITEMS: NavItem[] = [
 
 /** Screens that exist but are not reachable from the rail. */
 export const OFF_RAIL: Record<string, { code: ScreenCode; label: string }> = {
-	'/diff': { code: '1B', label: 'Diff' }
+	'/diff': { code: '1B', label: 'Diff' },
+	'/history': { code: '1O', label: 'File history' }
 };
 
 /** Routes that are screens but are not reachable from the rail. */

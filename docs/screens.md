@@ -26,6 +26,7 @@ under Amendment 11.
 | 1L | Clone | modal | no | Built | FEAT-012 |
 | 1M | Reflog | `/reflog` | yes | Built | FEAT-050 |
 | 1N | Tags | `/tags` | yes | Built | FEAT-051 |
+| 1O | File history | `/history` | no | Built | FEAT-063 |
 
 **Every screen in the handoff is built**, and 1A–1L is the whole of it. 1M and
 1N were not in the handoff at all: the Reflog and Tags came out of the GitKraken
@@ -728,3 +729,11 @@ it.
 **A failed clone leaves no entry in the repository list**, and that falls out of
 the existing design rather than needing a rule: the list is written by opening a
 repository, and the clone offers to open only what succeeded.
+
+## 1O — File history
+
+A dedicated view for inspecting a single file's commit evolution and line attribution (FEAT-063).
+
+**The commit timeline follows renames.** `history::file_commits` walks commits touching the selected path via `git log --follow`, displaying author name, time, summary, and short hash.
+
+**Interactive line attribution.** The right pane renders line-by-line blame metadata (author name, commit SHA, timestamp) alongside file content. Hovering a commit in the timeline or blame gutter highlights every line introduced by that commit.

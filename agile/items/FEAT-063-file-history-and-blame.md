@@ -2,7 +2,7 @@
 
 # FEAT-063 — File history and blame view
 
-**Status:** Backlog
+**Status:** Done.
 **Screens:** Log search (1I), Diff screen (1B), new File History rail item.
 **Raised by:** gap analysis in `docs/analysis/gitkraken-gap.md`.
 

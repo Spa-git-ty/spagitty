@@ -24,6 +24,7 @@ import type {
 	ExecutedCommand,
 	FileDiff,
 	Identity,
+	FileHistoryEntry,
 	IdentityKey,
 	IdentityScope,
 	Licenses,
@@ -220,6 +221,11 @@ export function searchStop(): Promise<void> {
 /** Who last touched each line. An empty revision means HEAD. */
 export function blame(path: string, revision: string): Promise<Blame> {
 	return invoke('blame', { path, revision });
+}
+
+/** Read commit history for a single file path (FEAT-063). */
+export function fileHistory(path: string, limit = 100): Promise<FileHistoryEntry[]> {
+	return invoke('file_history', { path, limit });
 }
 
 /** What is in progress and what is conflicted. Reads only; nothing is written. */

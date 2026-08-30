@@ -21,6 +21,12 @@ stays backward-compatible.
   branches, or detached HEADs), switch active tabs to linked worktrees, lock
   and unlock worktrees with custom reasons, and remove or prune stale working
   trees.
+- **File history and interactive blame view (FEAT-063).** Added a dedicated file
+  history view (screen 1O, `/history`) and interactive blame inspector. The view
+  renders the file's commit evolution timeline with rename following (`--follow`)
+  on the left, alongside a line-by-line blame gutter with author portraits, commit
+  hashes, and relative timestamps on the right. Hovering commits highlights all
+  contributed lines, and commit chips link directly into the commit graph.
 
 
 ## [0.2.0] - 2026-08-30

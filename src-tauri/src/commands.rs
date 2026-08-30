@@ -740,6 +740,16 @@ pub fn blame(state: State<'_, AppState>, path: String, revision: String) -> Resu
     state.with_session(|session| blame::file(&session.repo.to_thread_local(), &path, &revision))
 }
 
+/// Read commit history for a single file path (FEAT-063).
+#[tauri::command]
+pub fn file_history(
+    state: State<'_, AppState>,
+    path: String,
+    limit: usize,
+) -> Result<Vec<blame::FileHistoryEntry>> {
+    state.with_session(|session| blame::history(&session.repo.to_thread_local(), &path, limit))
+}
+
 /// What operation is in progress, and every conflicted path.
 ///
 /// Reads only. Taking a side, editing the merged result and marking a file

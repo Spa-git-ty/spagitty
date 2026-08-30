@@ -1096,6 +1096,22 @@ pub fn worktree_prune(repo: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Read commit history touching a single path, following renames (FEAT-063).
+pub fn file_history(repo: &Path, path: &str, limit: usize) -> Result<String> {
+    let limit_str = format!("-{}", limit.max(1));
+    run(
+        repo,
+        &[
+            "log",
+            "--follow",
+            &limit_str,
+            "--format=%H%x00%h%x00%an%x00%ae%x00%at%x00%s",
+            "--",
+            path,
+        ],
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -77,6 +77,7 @@ pub fn run() {
             commands::search_start,
             commands::search_stop,
             commands::blame,
+            commands::file_history,
             commands::conflicts,
             commands::conflict_sides,
             commands::conflict_regions,

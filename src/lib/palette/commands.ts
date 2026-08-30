@@ -58,6 +58,7 @@ const SCREENS: { id: string; title: string; path: string; keywords: string[] }[]
 	{ id: 'go.conflicts', title: 'Go to Conflicts', path: '/conflicts', keywords: ['merge'] },
 	{ id: 'go.rebase', title: 'Go to Interactive rebase', path: '/rebase', keywords: ['reorder', 'squash'] },
 	{ id: 'go.repos', title: 'Go to Repositories', path: '/repos', keywords: ['open', 'clone', 'recent'] },
+	{ id: 'go.history', title: 'Go to File history', path: '/history', keywords: ['blame', 'file', 'evolution'] },
 	{ id: 'go.settings', title: 'Go to Settings', path: '/settings', keywords: ['preferences', 'options'] }
 ];
 

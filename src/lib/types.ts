@@ -551,6 +551,16 @@ export interface Blame {
 	refused: NotBlamable | null;
 }
 
+/** One commit in a file's evolution history (FEAT-063). */
+export interface FileHistoryEntry {
+	commit: string;
+	short: string;
+	authorName: string;
+	authorEmail: string;
+	time: number;
+	summary: string;
+}
+
 // --- Conflicts ------------------------------------------------------------
 
 /**
