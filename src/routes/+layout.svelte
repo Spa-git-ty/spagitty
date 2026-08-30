@@ -12,6 +12,7 @@
 	import { clone } from '$lib/clone/store.svelte';
 	import WorktreesModal from '$lib/worktrees/WorktreesModal.svelte';
 	import AddWorktreeModal from '$lib/worktrees/AddWorktreeModal.svelte';
+	import SubmodulesModal from '$lib/submodules/SubmodulesModal.svelte';
 	import { network } from '$lib/network/store.svelte';
 	import { rebase } from '$lib/rebase/store.svelte';
 	import CommandLog from '$lib/commandlog/CommandLog.svelte';
@@ -287,6 +288,7 @@
 <CloneModal />
 <WorktreesModal />
 <AddWorktreeModal />
+<SubmodulesModal />
 
 <!-- Reaches every command from every screen, so it belongs to the shell. -->
 <Palette />

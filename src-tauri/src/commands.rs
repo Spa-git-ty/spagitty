@@ -33,6 +33,7 @@ use spagitty_core::status::{self, RepoCounts, WorkingCopy};
 use spagitty_core::tags;
 use spagitty_core::update;
 use spagitty_core::work;
+use spagitty_core::submodules::{self, Submodule};
 use spagitty_core::worktrees::{self, Worktree};
 use spagitty_core::{Error, Result};
 use tauri::{AppHandle, Manager, Runtime, State};
@@ -932,6 +933,43 @@ pub fn remote_add(state: State<'_, AppState>, name: String, url: String) -> Resu
 #[tauri::command]
 pub fn remote_rename(state: State<'_, AppState>, from: String, to: String) -> Result<()> {
     state.with_session(|session| remotes::rename(&session.repo.to_thread_local(), &from, &to))
+}
+
+/// List all submodules for the open repository (FEAT-067).
+#[tauri::command]
+pub fn submodules(state: State<'_, AppState>) -> Result<Vec<Submodule>> {
+    state.with_session(|session| submodules::list(&session.repo.to_thread_local()))
+}
+
+/// Update submodules recursively (FEAT-067).
+#[tauri::command]
+pub fn submodule_update(
+    state: State<'_, AppState>,
+    paths: Vec<String>,
+    init: bool,
+    recursive: bool,
+) -> Result<String> {
+    state.with_session(|session| {
+        submodules::update(&session.repo.to_thread_local(), &paths, init, recursive)
+    })
+}
+
+/// Sync submodule URLs from .gitmodules (FEAT-067).
+#[tauri::command]
+pub fn submodule_sync(state: State<'_, AppState>, recursive: bool) -> Result<String> {
+    state.with_session(|session| submodules::sync(&session.repo.to_thread_local(), recursive))
+}
+
+/// De-initialize a submodule (FEAT-067).
+#[tauri::command]
+pub fn submodule_deinit(
+    state: State<'_, AppState>,
+    path: String,
+    force: bool,
+) -> Result<String> {
+    state.with_session(|session| {
+        submodules::deinit(&session.repo.to_thread_local(), &path, force)
+    })
 }
 
 /// Remove a remote, its tracking refs, and the upstreams pointing at it.

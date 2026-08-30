@@ -8,6 +8,8 @@
 	import { repo } from '$lib/repo.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
+	import { submodules } from '$lib/submodules/store.svelte';
+	import { submoduleModal } from '$lib/submodules/modal.svelte';
 
 	/**
 	 * Collapsed, the rail is a strip of glyphs. Everything stays where it was —

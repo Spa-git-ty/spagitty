@@ -914,6 +914,19 @@ export interface Worktree {
 	prunableReason: string | null;
 }
 
+/** One git submodule in a repository (FEAT-067). */
+export interface Submodule {
+	name: string;
+	path: string;
+	url: string;
+	headCommit: string | null;
+	headShort: string | null;
+	initialized: boolean;
+	inSync: boolean;
+	hasConflict: boolean;
+	describe: string | null;
+}
+
 /** Which side of a conflict to keep. */
 export type ConflictSideName = 'ours' | 'theirs';
 

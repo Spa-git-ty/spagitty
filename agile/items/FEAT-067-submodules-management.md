@@ -2,7 +2,7 @@
 
 # FEAT-067 — Submodules management
 
-**Status:** Backlog
+**Status:** Done.
 **Screens:** Branches screen (1F), Settings (1K), Rail footer.
 **Raised by:** gap analysis in `docs/analysis/gitkraken-gap.md`.
 

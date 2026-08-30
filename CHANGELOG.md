@@ -41,6 +41,10 @@ stays backward-compatible.
   directly from Log search (screen 1I, `/search`). Extends `search::walk` with tree
   diff line inspection (`diff_content` query filter), supports combined filtering
   with author, message, path, and date ranges, and provides removable query chips.
+- **Submodules management (FEAT-067).** Added submodules lifecycle inspection and
+  actions. Users can view all submodules with their sync status, URLs, and recorded
+  commit SHAs from the sidebar rail footer or command palette, perform recursive
+  updates/clones, synchronize configured remote URLs, and de-initialize submodules.
 
 
 ## [0.2.0] - 2026-08-30

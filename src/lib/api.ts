@@ -54,6 +54,7 @@ import type {
 	Signing,
 	Update,
 	Snapshot,
+	Submodule,
 	StashEntry,
 	Worktree,
 	WorkingCopy
@@ -609,6 +610,30 @@ export function worktreeUnlock(path: string): Promise<void> {
 /** Prune stale worktrees (FEAT-062). */
 export function worktreePrune(): Promise<void> {
 	return invoke('worktree_prune');
+}
+
+/** List all submodules for the open repository (FEAT-067). */
+export function submodules(): Promise<Submodule[]> {
+	return invoke('submodules');
+}
+
+/** Update submodules recursively (FEAT-067). */
+export function submoduleUpdate(
+	paths: string[] = [],
+	init = true,
+	recursive = true
+): Promise<string> {
+	return invoke('submodule_update', { paths, init, recursive });
+}
+
+/** Sync submodule URLs from .gitmodules (FEAT-067). */
+export function submoduleSync(recursive = true): Promise<string> {
+	return invoke('submodule_sync', { recursive });
+}
+
+/** De-initialize a submodule (FEAT-067). */
+export function submoduleDeinit(path: string, force = false): Promise<string> {
+	return invoke('submodule_deinit', { path, force });
 }
 
 /** Store the behaviour toggles. Rejects when the write did not reach the disk. */

@@ -26,6 +26,8 @@ import { settings } from '$lib/settings/store.svelte';
 import { theme } from '$lib/theme.svelte';
 import { worktrees } from '$lib/worktrees/store.svelte';
 import { worktreeModal } from '$lib/worktrees/modal.svelte';
+import { submodules } from '$lib/submodules/store.svelte';
+import { submoduleModal } from '$lib/submodules/modal.svelte';
 
 /** The modifier as this platform writes it. Display only. */
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -228,6 +230,16 @@ function repository(): Command[] {
 			keywords: ['worktree', 'create', 'new'],
 			run: () => {
 				worktreeModal.showAdd();
+			}
+		}),
+		repoCommand({
+			id: 'repo.submodules',
+			title: 'Submodules…',
+			group: 'Repository',
+			keywords: ['submodule', 'nested', 'gitmodules'],
+			run: () => {
+				void submodules.fetch();
+				submoduleModal.show();
 			}
 		}),
 	];

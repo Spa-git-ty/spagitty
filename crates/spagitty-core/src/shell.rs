@@ -1112,6 +1112,51 @@ pub fn file_history(repo: &Path, path: &str, limit: usize) -> Result<String> {
     )
 }
 
+/// Read submodule status (FEAT-067).
+pub fn submodule_status(repo: &Path) -> Result<String> {
+    run(repo, &["submodule", "status"])
+}
+
+/// Update submodules recursively (FEAT-067).
+pub fn submodule_update(
+    repo: &Path,
+    paths: &[String],
+    init: bool,
+    recursive: bool,
+) -> Result<String> {
+    let mut args = vec!["submodule", "update"];
+    if init {
+        args.push("--init");
+    }
+    if recursive {
+        args.push("--recursive");
+    }
+    for p in paths {
+        args.push(p.as_str());
+    }
+    run(repo, &args)
+}
+
+/// Sync submodule URLs from .gitmodules (FEAT-067).
+pub fn submodule_sync(repo: &Path, recursive: bool) -> Result<String> {
+    let mut args = vec!["submodule", "sync"];
+    if recursive {
+        args.push("--recursive");
+    }
+    run(repo, &args)
+}
+
+/// De-initialize a submodule (FEAT-067).
+pub fn submodule_deinit(repo: &Path, path: &str, force: bool) -> Result<String> {
+    let mut args = vec!["submodule", "deinit"];
+    if force {
+        args.push("-f");
+    }
+    args.push("--");
+    args.push(path);
+    run(repo, &args)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
