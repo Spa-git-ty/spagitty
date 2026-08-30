@@ -215,106 +215,661 @@ def _table(title: str, rows: list) -> str:
 
 
 def brand_preview_html() -> str:
-    friendly = (238, 176, 77)           # #EEB04D dark accent
-    accent_light = (151, 99, 23)        # #976317 light accent
-    css = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-    css += "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-    css += "<title>Spagitty — brand</title><style>"
-    css += """
-body{font-family:system-ui,sans-serif;margin:0;background:#181825;color:#cdd6f4;
-line-height:1.5}
-header{padding:48px 64px;display:flex;align-items:center;gap:32px;border-bottom:1px
-solid rgba(205,214,244,.15)}
-header h1{margin:0;font-size:28px;font-weight:660;letter-spacing:1.5px}
-header p{margin:4px 0 0;color:#8f9ab7}
-.wrap{max-width:1080px;margin:0 auto;padding:32px 64px 96px}
-section{margin-top:48px}
-h2{font-size:20px;border-bottom:1px solid rgba(205,214,244,.15);padding-bottom:8px}
-h3{font-size:15px;margin:0 0 8px;color:#8f9ab7;font-weight:600}
-.gallery{display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap}
-.tile{text-align:center}
-.tile img{background:#181825;border:1px solid rgba(205,214,244,.12);border-radius:12px}
-.tile small{display:block;color:#8f9ab7;margin-top:8px}
-.plate-dark{background:#181825;padding:24px;border-radius:12px}
-.plate-light{background:#eff1f5;padding:24px;border-radius:12px}
-.pair{display:flex;gap:32px;flex-wrap:wrap}
-.pair>div{flex:1;min-width:280px}
-table{border-collapse:collapse;width:100%;max-width:560px}
-td{padding:8px 12px;border-bottom:1px solid rgba(205,214,244,.1);font-size:14px}
-td code{color:#cdd6f4}
-.chip{display:inline-flex;align-items:center;gap:8px;padding:2px 8px;border-radius:6px}
-.hero-demo{overflow:hidden;border-radius:12px;border:1px solid rgba(205,214,244,.12)}
-.hero-demo img{display:block;width:100%}
-mark.donot{background:#f38ba8;color:#17060a;padding:0 4px;border-radius:3px}
-mark.do{background:#2e7d1f;color:#f5fff5}
-footer{margin:64px 0 0;color:#8f9ab7;font-size:13px}
+    html = """<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spagitty — Brand & Design System</title>
+<style>
+:root {
+  --bg: #11111b;
+  --surface-0: #181825;
+  --surface-1: #1e1e2e;
+  --surface-2: #242438;
+  --border: rgba(205, 214, 244, 0.12);
+  --border-active: rgba(238, 176, 77, 0.4);
+  --text: #cdd6f4;
+  --text-muted: #8f9ab7;
+  --brand-amber: #eeb04d;
+  --brand-ink: #454447;
+  --accent: #eeb04d;
+  --accent-on: #11111b;
+  --success: #a6e3a1;
+  --danger: #f38ba8;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+html[data-theme="light"] {
+  --bg: #eff1f5;
+  --surface-0: #e6e9ef;
+  --surface-1: #dce0e8;
+  --surface-2: #ccd0da;
+  --border: rgba(69, 68, 71, 0.14);
+  --border-active: rgba(151, 99, 23, 0.4);
+  --text: #4c4f69;
+  --text-muted: #6c6f85;
+  --accent: #976317;
+  --accent-on: #ffffff;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* Header */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(24, 24, 37, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+html[data-theme="light"] header {
+  background: rgba(230, 233, 239, 0.85);
+}
+
+.brand-lead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.brand-lead img {
+  width: 40px;
+  height: 40px;
+}
+.brand-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  margin: 0;
+  color: var(--text);
+}
+.brand-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: rgba(238, 176, 77, 0.15);
+  color: var(--brand-amber);
+  border: 1px solid rgba(238, 176, 77, 0.3);
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-toggle {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+.theme-toggle:hover {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+/* Layout */
+.container {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 40px 32px 120px;
+}
+
+section {
+  margin-top: 56px;
+}
+
+.section-header {
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.section-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-desc {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* Cards & Grids */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: var(--surface-0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.card:hover {
+  border-color: var(--border-active);
+}
+
+/* Hero Banner Container */
+.hero-container {
+  background: var(--surface-0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+}
+.hero-container img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Mark showcase */
+.mark-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: var(--surface-1);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  position: relative;
+}
+.mark-display img {
+  max-width: 240px;
+  height: auto;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+}
+.mark-tag {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Lockups */
+.lockup-panel {
+  border-radius: var(--radius-md);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  position: relative;
+}
+.lockup-panel.dark {
+  background: #181825;
+  border: 1px solid rgba(205, 214, 244, 0.15);
+}
+.lockup-panel.light {
+  background: #eff1f5;
+  border: 1px solid rgba(69, 68, 71, 0.15);
+}
+.lockup-panel img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Clearspace box */
+.clearspace-box {
+  position: relative;
+  border: 2px dashed rgba(238, 176, 77, 0.4);
+  padding: 32px;
+  border-radius: 8px;
+  background: rgba(238, 176, 77, 0.03);
+}
+.clearspace-label {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 11px;
+  color: var(--brand-amber);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* Swatches */
+.swatch-card {
+  background: var(--surface-0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+.swatch-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.swatch-preview {
+  height: 72px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+.swatch-title {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.swatch-meta {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+}
+.badge-contrast {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(166, 227, 161, 0.2);
+  color: var(--success);
+}
+
+/* Platform Mockups */
+.mockup-bar {
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.mockup-bar.macos-dark {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.mockup-bar.macos-light {
+  background: #f5f5f7;
+  color: #1d1d1f;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+.mockup-tray {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* App Icons Matrix */
+.icon-matrix {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+  background: var(--surface-0);
+  padding: 32px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+.icon-cell {
+  text-align: center;
+}
+.icon-cell img {
+  border-radius: 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+.icon-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+/* Do and Don't cards */
+.rules-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 768px) {
+  .rules-grid { grid-template-columns: 1fr; }
+}
+.rule-card {
+  border-radius: var(--radius-md);
+  padding: 24px;
+  border: 1px solid var(--border);
+}
+.rule-card.do {
+  background: rgba(166, 227, 161, 0.05);
+  border-color: rgba(166, 227, 161, 0.3);
+}
+.rule-card.dont {
+  background: rgba(243, 139, 168, 0.05);
+  border-color: rgba(243, 139, 168, 0.3);
+}
+.rule-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.rule-tag.do { background: #2e7d1f; color: #ffffff; }
+.rule-tag.dont { background: #c53030; color: #ffffff; }
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  background: var(--accent);
+  color: var(--accent-on);
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 999;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+footer {
+  margin-top: 96px;
+  border-top: 1px solid var(--border);
+  padding-top: 32px;
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand-lead">
+    <img src="brand-mark.png" alt="Spagitty mark">
+    <h1 class="brand-title">spagitty</h1>
+    <span class="brand-badge">Brand Authority</span>
+  </div>
+  <div class="nav-actions">
+    <button class="theme-toggle" onclick="toggleTheme()">
+      <span id="theme-icon">☀️</span> <span id="theme-label">Switch Theme</span>
+    </button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Hero Showcase -->
+  <div class="hero-container">
+    <img src="hero.png" alt="Spagitty README Hero Banner">
+  </div>
+
+  <!-- 1. The Mark -->
+  <section id="mark">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">The Mark</h2>
+        <p class="section-desc">The author's hand-drawn amber plate and four dark strands. Settled vector truth.</p>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="mark-display">
+        <img src="brand-mark.png" alt="Spagitty bare mark">
+        <span class="mark-tag">512 × 512 Raster Master</span>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Anatomy &amp; Metaphor</h3>
+        <p>A repository without structured histories is a plate of tangled pasta. Spagitty straightens the pasta bowl into clear, reliable strands of intent.</p>
+        <ul style="padding-left:20px; font-size:14px;">
+          <li><strong>Amber Plate (<code>#EEB04D</code>):</strong> Rounded base ground plate.</li>
+          <li><strong>Four Strands (<code>#454447</code>):</strong> Tangled at top, flowing straight down.</li>
+          <li><strong>Strict Flat Design:</strong> No gradients, shadows, or redrawing.</li>
+        </ul>
+        <button class="theme-toggle" style="margin-top:12px;" onclick="copyCode('assets/brand/mark.svg')">Copy SVG Source Path</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Lockups & Clearspace -->
+  <section id="lockups">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Lockups &amp; Clearspace</h2>
+        <p class="section-desc">Mark paired with the Inter lowercase wordmark along the optical center.</p>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="lockup-panel dark">
+        <div class="clearspace-box">
+          <span class="clearspace-label">1X SAFETY ZONE</span>
+          <img src="lockups/lockup-ink-light.png" alt="Lockup for dark surfaces">
+        </div>
+        <span class="mark-tag">Dark Surface Lockup (<code>#CDD6F4</code> ink)</span>
+      </div>
+      <div class="lockup-panel light">
+        <div class="clearspace-box">
+          <span class="clearspace-label">1X SAFETY ZONE</span>
+          <img src="lockups/lockup-ink-dark.png" alt="Lockup for light surfaces">
+        </div>
+        <span class="mark-tag">Light Surface Lockup (<code>#454447</code> ink)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Color Tokens -->
+  <section id="colors">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Color System &amp; Design Tokens</h2>
+        <p class="section-desc">Click any swatch to copy its HEX or CSS variable to clipboard.</p>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="swatch-card" onclick="copyToken('--brand-amber', '#EEB04D')">
+        <div class="swatch-preview" style="background:#EEB04D;"></div>
+        <div class="swatch-title">Brand Amber <span class="badge-contrast">AAA Pass</span></div>
+        <div class="swatch-meta"><span>--brand-amber</span><span>#EEB04D</span></div>
+      </div>
+      <div class="swatch-card" onclick="copyToken('--brand-ink', '#454447')">
+        <div class="swatch-preview" style="background:#454447;"></div>
+        <div class="swatch-title">Strand Charcoal <span class="badge-contrast">Core</span></div>
+        <div class="swatch-meta"><span>--brand-ink</span><span>#454447</span></div>
+      </div>
+      <div class="swatch-card" onclick="copyToken('--accent-dark', '#EEB04D')">
+        <div class="swatch-preview" style="background:#EEB04D;"></div>
+        <div class="swatch-title">Dark Accent <span class="badge-contrast">>7:1 AAA</span></div>
+        <div class="swatch-meta"><span>var(--accent)</span><span>#EEB04D</span></div>
+      </div>
+      <div class="swatch-card" onclick="copyToken('--accent-light', '#976317')">
+        <div class="swatch-preview" style="background:#976317;"></div>
+        <div class="swatch-title">Light Accent <span class="badge-contrast">4.6:1 AA</span></div>
+        <div class="swatch-meta"><span>var(--accent)</span><span>#976317</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. System Tray & Menu Bar Simulator -->
+  <section id="tray">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">System Tray &amp; Menu Bar Simulation</h2>
+        <p class="section-desc">Monochrome template and high-contrast tray icons on live OS bars.</p>
+      </div>
+    </div>
+    <div class="mockup-bar macos-dark">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <strong></strong> <span>Spagitty</span> <span>File</span> <span>Edit</span> <span>Repository</span> <span>Branch</span>
+      </div>
+      <div class="mockup-tray">
+        <img src="../../src-tauri/icons/menubar-mono.png" alt="macOS menubar" style="filter:invert(1);">
+        <span>100%</span> <span>Mon 20:30</span>
+      </div>
+    </div>
+    <div class="mockup-bar macos-light">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <strong></strong> <span>Spagitty</span> <span>File</span> <span>Edit</span> <span>Repository</span> <span>Branch</span>
+      </div>
+      <div class="mockup-tray">
+        <img src="../../src-tauri/icons/menubar-mono.png" alt="macOS menubar">
+        <span>100%</span> <span>Mon 20:30</span>
+      </div>
+    </div>
+    <div class="card-grid" style="margin-top:16px;">
+      <div class="card" style="display:flex; align-items:center; gap:16px;">
+        <img src="../../src-tauri/icons/tray-white.png" style="background:#181825; padding:8px; border-radius:6px;" alt="tray white">
+        <div><strong>Dark Tray (<code>tray-white.png</code>)</strong><br><small style="color:var(--text-muted)">Windows &amp; Linux dark taskbars (22×22)</small></div>
+      </div>
+      <div class="card" style="display:flex; align-items:center; gap:16px;">
+        <img src="../../src-tauri/icons/tray-black.png" style="background:#eff1f5; padding:8px; border-radius:6px;" alt="tray black">
+        <div><strong>Light Tray (<code>tray-black.png</code>)</strong><br><small style="color:var(--text-muted)">Windows &amp; Linux bright taskbars (22×22)</small></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. App Icon Matrix -->
+  <section id="icons">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Application Icon Matrix</h2>
+        <p class="section-desc">Pixel-perfect downscaling from 512px down to 16px favicon.</p>
+      </div>
+    </div>
+    <div class="icon-matrix">
+      <div class="icon-cell"><img src="../../src-tauri/icons/16x16.png" width="16" height="16" alt="16x16"><div class="icon-label">16px</div></div>
+      <div class="icon-cell"><img src="../../src-tauri/icons/32x32.png" width="32" height="32" alt="32x32"><div class="icon-label">32px</div></div>
+      <div class="icon-cell"><img src="favicon/favicon-64.png" width="64" height="64" alt="64x64"><div class="icon-label">64px</div></div>
+      <div class="icon-cell"><img src="../../src-tauri/icons/128x128.png" width="96" height="96" alt="128x128"><div class="icon-label">128px</div></div>
+      <div class="icon-cell"><img src="../../src-tauri/icons/256x256.png" width="128" height="128" alt="256x256"><div class="icon-label">256px</div></div>
+      <div class="icon-cell"><img src="../../src-tauri/icons/512x512.png" width="160" height="160" alt="512x512"><div class="icon-label">512px</div></div>
+    </div>
+  </section>
+
+  <!-- 6. Do's and Don'ts -->
+  <section id="rules">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Brand Rules &amp; Agent Directives</h2>
+        <p class="section-desc">Strict invariants governing brand implementation across the client and web.</p>
+      </div>
+    </div>
+    <div class="rules-grid">
+      <div class="rule-card do">
+        <span class="rule-tag do">DO</span>
+        <ul style="padding-left:20px; font-size:14px; margin:0;">
+          <li>Always use the master vector <code>assets/brand/mark.svg</code>.</li>
+          <li>Always use semantic CSS variables (<code>var(--accent)</code>) in UI code.</li>
+          <li>Preserve the 1X clearspace perimeter on all four margins.</li>
+          <li>Use monochrome template strands for macOS menu bar integrations.</li>
+        </ul>
+      </div>
+      <div class="rule-card dont">
+        <span class="rule-tag dont">NEVER</span>
+        <ul style="padding-left:20px; font-size:14px; margin:0;">
+          <li><strong>NEVER</strong> borrow or display the Git diamond logo or Git orange (<code>#F05133</code>).</li>
+          <li><strong>NEVER</strong> apply drop shadows, 3D embossing, or gradients to brand assets.</li>
+          <li><strong>NEVER</strong> redraw or approximate the mark with procedural noodles.</li>
+          <li><strong>NEVER</strong> place the mark on busy, low-contrast photographic backgrounds.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div>
+      Spagitty is licensed under <strong>GPL-3.0-or-later</strong>. Inter typeface is <strong>SIL OFL 1.1</strong>.
+    </div>
+    <div>
+      Authoritative reference: <code>docs/branding.md</code>
+    </div>
+  </footer>
+
+</div>
+
+<div id="toast">Copied to clipboard!</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function copyToken(token, hex) {
+  navigator.clipboard.writeText(hex);
+  showToast(`Copied ${token}: ${hex}`);
+}
+
+function copyCode(text) {
+  navigator.clipboard.writeText(text);
+  showToast(`Copied: ${text}`);
+}
+</script>
+</body>
+</html>
 """
-    css += "</style></head><body>"
-    body = [
-        "<header>",
-        '<img src="brand-mark.png" width="64" height="64" alt="Spagitty mark">',
-        "<div><h1>spagitty</h1><p>the identity, at a glance — generated by "
-        "<code>tools/make-brand.py</code></p></div></header>",
-        '<div class="wrap">',
-        "<section><h2>The mark</h2><div class='gallery'>",
-        '<div class="tile plate-dark"><img src="brand-mark.png" width="256" '
-        'alt="the author mark"><small>the mark · amber plate</small></div>',
-        '<div class="tile"><img src="../../src-tauri/icons/32x32.png" '
-        'alt="app icon, 32"><small>app icon · 32</small></div>',
-        '<div class="tile"><img src="../../src-tauri/icons/128x128.png" '
-        'alt="app icon, 128"><small>app icon · 128</small></div>',
-        '<div class="tile"><img src="../../src-tauri/icons/mark.svg" width="196" '
-        'alt="vector source"><small>vector source</small></div>',
-        "</div></section>",
-        "<section><h2>Lockups</h2><div class=\"pair\">",
-        '<div class="plate-dark"><img src="lockups/lockup-ink-light.png" '
-        'style="max-width:100%" alt="lockup for dark surfaces"><small>for dark '
-        "surfaces</small></div>",
-        '<div class="plate-light"><img src="lockups/lockup-ink-dark.png" '
-        'style="max-width:100%" alt="lockup for light surfaces"><small>for light '
-        "surfaces</small></div>",
-        "</div></section>",
-        "<section><h2>Favicon</h2><div class=\"gallery\">",
-        '<div class="tile"><img src="favicon/favicon-16.png" width="48" '
-        'alt="favicon 16"><small>16</small></div>',
-        '<div class="tile"><img src="favicon/favicon-32.png" width="48" '
-        'alt="favicon 32"><small>32</small></div>',
-        '<div class="tile"><img src="favicon/favicon-64.png" width="48" '
-        'alt="favicon 64"><small>64</small></div>',
-        "</div></section>",
-        "<section><h2>Tray &amp; menubar</h2><div class=\"pair\">",
-        '<div class="plate-dark"><img src="../../src-tauri/icons/tray-white.png" '
-        'alt="tray white"><small>tray-white · dark tray</small></div>',
-        '<div class="plate-light"><img src="../../src-tauri/icons/tray-black.png" '
-        'alt="tray black"><small>tray-black · bright tray</small></div>',
-        '<div><img src="../../src-tauri/icons/menubar-mono.png" alt="menubar mono">'
-        "<small>menubar-mono · macOS template</small></div>",
-        "</div></section>",
-        '<section><h2>Hero — the README banner</h2>',
-        '<div class="hero-demo"><img src="hero.png" alt="README hero"></div></section>',
-        "<section><h2>Accent palette</h2>",
-        _table("Dark (default)", [
-            ("--accent", friendly, "links, active UI, on dark surfaces"),
-            ("--warn", (243, 139, 168, 255), "--warn sits ~1.0–1.5:1 vs accent (accepted)"),
-        ]),
-        _table("Light", [
-            ("--accent", accent_light, "links, active UI, on light surfaces"),
-            ("--warn", (243, 139, 168, 255), "--warn ~1.09–1.35:1 vs accent (accepted)"),
-        ]),
-        "</section>",
-        "<section><h2>Rules</h2>",
-        "<output><h3>Always</h3><p><mark class=\"do\">DO</mark> use the "
-        "generated art; keep the mark's amber plate and dark strands; put the "
-        "mark on a panel or neutral ground.</p>"
-        "<h3>Never</h3><p><mark class=\"donot\">NEVER</mark> the Git project's "
-        "mark, logo, or orange; no shadows or gradients; no redrawing.</p>"
-        "</output></section>",
-        "<footer>Spagitty is GPL-3.0-or-later. The wordmark face, Inter, is SIL "
-        "Open Font License 1.1 (<code>font/OFL.txt</code>). Full reference: "
-        "<code>docs/branding.md</code>.</footer>",
-        "</div></body></html>",
-    ]
-    return css + "".join(body) + "\n"
+    return html
 
 
 def build_all() -> dict:
