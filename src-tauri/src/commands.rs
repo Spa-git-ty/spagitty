@@ -15,7 +15,7 @@ use spagitty_core::clone::{self, Plan};
 use spagitty_core::conflicts::{self, ConflictSides, ConflictState};
 use spagitty_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
 use spagitty_core::forge::review::ReviewVerdict;
-use spagitty_core::forge::{self, Account, Kind, PullRequest, Repo};
+use spagitty_core::forge::{self, Account, Kind, MergeMethod, PullRequest, Repo};
 use spagitty_core::graph::ROW_PITCH;
 use spagitty_core::identity::{self, Identity, Key, Scope};
 use spagitty_core::ops::{self, Integration, ResetMode, StashAction};
@@ -1545,6 +1545,56 @@ pub async fn reply_comment<R: Runtime>(
 ) -> Result<forge::review::PullRequestComment> {
     let (repo, token, _) = forge_credentials(&app, state)?;
     off_thread(move || forge::review::reply_comment(&repo, &token, number, comment_id, &body)).await
+}
+
+/// Merge a pull request on the configured forge (FEAT-071).
+#[tauri::command]
+pub async fn merge_pull_request<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+    method: MergeMethod,
+    commit_title: Option<String>,
+    commit_message: Option<String>,
+) -> Result<()> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || {
+        forge::review::merge_pull_request(
+            &repo,
+            &token,
+            number,
+            method,
+            commit_title.as_deref(),
+            commit_message.as_deref(),
+        )
+    })
+    .await
+}
+
+/// Close / reject a pull request without merging (FEAT-071).
+#[tauri::command]
+pub async fn close_pull_request<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+) -> Result<()> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::close_pull_request(&repo, &token, number)).await
+}
+
+/// Toggle draft / ready-for-review status on a pull request (FEAT-071).
+#[tauri::command]
+pub async fn set_pr_draft<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+    id: String,
+    title: String,
+    draft: bool,
+) -> Result<()> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::set_draft_status(&repo, &token, number, &id, &title, draft))
+        .await
 }
 
 /// Is there a newer Spagitty than this one?

@@ -33,6 +33,7 @@ import type {
 	IdentityScope,
 	Licenses,
 	OpenResult,
+	MergeMethod,
 	Integration,
 	PullMode,
 	PullRequest,
@@ -544,6 +545,37 @@ export function replyComment(
 	body: string
 ): Promise<PullRequestComment> {
 	return invoke('reply_comment', { number, commentId, body });
+}
+
+/** Merge a pull request on the configured forge (FEAT-071). */
+export function mergePullRequest(
+	number: number,
+	method: MergeMethod,
+	commitTitle?: string,
+	commitMessage?: string
+): Promise<void> {
+	return invoke('merge_pull_request', { number, method, commitTitle, commitMessage });
+}
+
+/** Close / reject a pull request without merging (FEAT-071). */
+export function closePullRequest(number: number): Promise<void> {
+	return invoke('close_pull_request', { number });
+}
+
+/**
+ * Toggle draft / ready-for-review status on a pull request (FEAT-071).
+ *
+ * Both an `id` and a `number`, because the hosts disagree about which one
+ * addresses a pull request: GitHub converts draft state over GraphQL and needs
+ * the node id, GitLab rewrites the title on the numbered merge request.
+ */
+export function setPrDraft(
+	number: number,
+	id: string,
+	title: string,
+	draft: boolean
+): Promise<void> {
+	return invoke('set_pr_draft', { number, id, title, draft });
 }
 
 /**

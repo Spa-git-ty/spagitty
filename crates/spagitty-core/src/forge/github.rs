@@ -140,6 +140,62 @@ pub fn whoami(host: &str, token: &str) -> Result<String> {
         })
 }
 
+/// Move a pull request in or out of draft (FEAT-071).
+///
+/// GitHub's REST update accepts a `draft` field and silently does nothing with
+/// it — converting is a mutation, and it is addressed by the pull request's
+/// node id rather than by its number. The id is already on every row (see
+/// [`row`]), so nothing extra has to be fetched to send this.
+pub fn set_draft(host: &str, token: &str, id: &str, draft: bool) -> Result<()> {
+    if id.is_empty() {
+        return Err(Error::Forge {
+            host: host.to_string(),
+            detail: "no identifier for that pull request".into(),
+        });
+    }
+
+    let response = http::post_json(&graphql_url(host), token, host, &draft_mutation(id, draft))?;
+
+    if response.status < 200 || response.status >= 300 {
+        return Err(status_error(
+            host,
+            response.status,
+            &response.body,
+            response.retry_after.as_deref(),
+        ));
+    }
+
+    let json: Value = serde_json::from_str(&response.body).map_err(|_| Error::Forge {
+        host: host.to_string(),
+        detail: "sent something that is not JSON".into(),
+    })?;
+
+    // A refused mutation comes back as a 200 with an `errors` array, exactly
+    // as a refused query does.
+    if let Some(message) = graphql_error(&json) {
+        return Err(Error::Forge {
+            host: host.to_string(),
+            detail: message,
+        });
+    }
+
+    Ok(())
+}
+
+/// The mutation body that converts a pull request, one way or the other.
+///
+/// Two mutations rather than one with a flag, because that is what GitHub
+/// offers. Built separately from the sending so the choice is testable.
+fn draft_mutation(id: &str, draft: bool) -> String {
+    let mutation = if draft {
+        "mutation($id: ID!) { convertPullRequestToDraft(input: { pullRequestId: $id }) { clientMutationId } }"
+    } else {
+        "mutation($id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: $id }) { clientMutationId } }"
+    };
+
+    serde_json::json!({ "query": mutation, "variables": { "id": id } }).to_string()
+}
+
 /// Turn a GraphQL answer into rows. Makes no request.
 pub fn read_pull_requests(body: &str, me: &str, host: &str) -> Result<Vec<PullRequest>> {
     let json: Value = serde_json::from_str(body).map_err(|_| Error::Forge {
@@ -725,5 +781,45 @@ mod tests {
         // Read-only, by decision. A mutation here would be a write nobody
         // reviewed.
         assert!(!QUERY.contains("mutation"));
+    }
+
+    #[test]
+    fn converting_to_draft_and_back_are_two_different_mutations() {
+        // GitHub offers no flag: draft and ready are separate mutations, and
+        // sending the wrong one moves the pull request the wrong way.
+        let to_draft = draft_mutation("PR_kwDO", true);
+        let to_ready = draft_mutation("PR_kwDO", false);
+
+        assert!(to_draft.contains("convertPullRequestToDraft"));
+        assert!(!to_draft.contains("markPullRequestReadyForReview"));
+        assert!(to_ready.contains("markPullRequestReadyForReview"));
+        assert!(!to_ready.contains("convertPullRequestToDraft"));
+    }
+
+    #[test]
+    fn the_draft_mutation_addresses_the_pull_request_by_node_id() {
+        // Its number is not an `ID!`. A mutation given one is refused with a
+        // type error rather than doing anything.
+        let body: Value = serde_json::from_str(&draft_mutation("PR_kwDO", true))
+            .expect("the mutation body is JSON");
+
+        assert_eq!(body["variables"]["id"], "PR_kwDO");
+        assert!(body["query"]
+            .as_str()
+            .unwrap()
+            .contains("pullRequestId: $id"));
+    }
+
+    #[test]
+    fn a_pull_request_with_no_node_id_is_refused_before_anything_is_sent() {
+        // `row` defaults a missing id to an empty string rather than dropping
+        // the row, so this is reachable — and an empty `ID!` is a 422 that
+        // says nothing useful.
+        let refused = set_draft("github.com", "token", "", true);
+
+        match refused {
+            Err(Error::Forge { detail, .. }) => assert!(detail.contains("no identifier")),
+            other => panic!("expected a refusal, got {other:?}"),
+        }
     }
 }

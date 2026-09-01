@@ -20,7 +20,10 @@ vi.mock('$lib/api', () => ({
 	pullRequestComments: vi.fn(),
 	commitFiles: vi.fn(),
 	submitReview: vi.fn(),
-	replyComment: vi.fn()
+	replyComment: vi.fn(),
+	mergePullRequest: vi.fn(),
+	closePullRequest: vi.fn(),
+	setPrDraft: vi.fn()
 }));
 
 import * as api from '$lib/api';
@@ -37,6 +40,9 @@ const pullRequestComments = vi.mocked(api.pullRequestComments);
 const commitFiles = vi.mocked(api.commitFiles);
 const submitReview = vi.mocked(api.submitReview);
 const replyComment = vi.mocked(api.replyComment);
+const mergePullRequest = vi.mocked(api.mergePullRequest);
+const closePullRequest = vi.mocked(api.closePullRequest);
+const setPrDraft = vi.mocked(api.setPrDraft);
 
 const REPO: ForgeRepo = {
 	kind: 'gitHub',
@@ -250,6 +256,77 @@ describe('PR workspace store flow', () => {
 
 		requests.present([request({ authorName: 'grace' })]);
 		expect(requests.role).toBe('reviewer');
+	});
+
+	it('merges a pull request via store (FEAT-071)', async () => {
+		requests.present([request()]);
+		mergePullRequest.mockResolvedValueOnce(undefined);
+		pullRequests.mockResolvedValue([]);
+
+		const ok = await requests.merge('squash', 'My title', 'My message');
+		expect(ok).toBe(true);
+		expect(mergePullRequest).toHaveBeenCalledWith(412, 'squash', 'My title', 'My message');
+	});
+
+	it('closes a pull request via store (FEAT-071)', async () => {
+		requests.present([request()]);
+		closePullRequest.mockResolvedValueOnce(undefined);
+		pullRequests.mockResolvedValue([]);
+
+		const ok = await requests.close();
+		expect(ok).toBe(true);
+		expect(closePullRequest).toHaveBeenCalledWith(412);
+	});
+
+	it('toggles draft status via store (FEAT-071)', async () => {
+		await requests.load();
+		requests.present([request({ draft: false })]);
+		setPrDraft.mockResolvedValueOnce(undefined);
+		pullRequests.mockResolvedValue([request({ draft: true })]);
+
+		const ok = await requests.toggleDraft();
+		expect(ok).toBe(true);
+		// The node id travels with the number: GitHub converts draft state over
+		// GraphQL and cannot address a pull request by its number.
+		expect(setPrDraft).toHaveBeenCalledWith(412, 'PR_1', 'Workspace review overhaul', true);
+	});
+
+	it('offers no draft toggle on Bitbucket (FEAT-071)', async () => {
+		// Bitbucket Cloud has no draft pull request. Writing `Draft:` into the
+		// title would leave a state the host does not know it is in.
+		forgeRepo.mockResolvedValue({ ...REPO, kind: 'bitbucket', host: 'bitbucket.org' });
+		await requests.load();
+
+		expect(requests.canDraft).toBe(false);
+		expect(await requests.toggleDraft()).toBe(false);
+		expect(setPrDraft).not.toHaveBeenCalled();
+
+		requests.select('PR_1');
+		const view = render(PRWorkspace, {});
+		const draftBtn = view
+			.all('button')
+			.find((b) => b.textContent?.trim() === 'Draft' || b.textContent?.trim() === 'Mark Ready');
+		expect(draftBtn).toBeUndefined();
+	});
+
+	it('offers the draft toggle on GitHub (FEAT-071)', async () => {
+		// The other half of the check above: the control disappears because the
+		// host has no draft, not because the markup stopped rendering it.
+		await requests.load();
+		requests.select('PR_1');
+
+		const view = render(PRWorkspace, {});
+		const draftBtn = view.all('button').find((b) => b.textContent?.trim() === 'Draft');
+		expect(draftBtn).toBeDefined();
+	});
+
+	it('reports merge error without crashing (FEAT-071)', async () => {
+		requests.present([request()]);
+		mergePullRequest.mockRejectedValueOnce(new Error('not mergeable'));
+
+		const ok = await requests.merge('merge');
+		expect(ok).toBe(false);
+		expect(requests.mergeError).toContain('not mergeable');
 	});
 });
 

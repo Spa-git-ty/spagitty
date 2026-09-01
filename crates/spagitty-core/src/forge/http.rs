@@ -104,6 +104,44 @@ pub fn get_json(url: &str, token: &str, host: &str) -> Result<Response> {
 /// answer, an unanswered request is an error. GraphQL is a POST even though it
 /// reads nothing, which is the protocol's choice rather than this module's.
 pub fn post_json(url: &str, token: &str, host: &str, body: &str) -> Result<Response> {
+    send_json(Verb::Post, url, token, host, body)
+}
+
+/// `PUT url` with a bearer token and a JSON body.
+///
+/// The same rules and the same reporting as [`post_json`]. A separate verb
+/// rather than a flag on one function because the forges are specific about it:
+/// GitHub merges with `PUT` and GitLab updates a merge request with `PUT`, and
+/// a `POST` to either is answered with a method error rather than the change.
+pub fn put_json(url: &str, token: &str, host: &str, body: &str) -> Result<Response> {
+    send_json(Verb::Put, url, token, host, body)
+}
+
+/// `PATCH url` with a bearer token and a JSON body.
+///
+/// The same rules and the same reporting as [`post_json`]. GitHub updates a
+/// pull request — closing it, retitling it — with `PATCH`.
+pub fn patch_json(url: &str, token: &str, host: &str, body: &str) -> Result<Response> {
+    send_json(Verb::Patch, url, token, host, body)
+}
+
+/// Which verb a body-carrying request goes out with.
+///
+/// Not public: a caller picks a verb by picking a function, so this stays an
+/// implementation detail of the three that share [`send_json`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Verb {
+    Post,
+    Put,
+    Patch,
+}
+
+/// The one body-carrying request, whichever verb it goes out with.
+///
+/// The `https` guard, the bearer header, and the reading of the answer are the
+/// same for all three verbs, and are written here once so that a change to any
+/// of them cannot apply to two of the three.
+fn send_json(verb: Verb, url: &str, token: &str, host: &str, body: &str) -> Result<Response> {
     if !url.starts_with("https://") {
         return Err(Error::Forge {
             host: host.to_string(),
@@ -111,8 +149,14 @@ pub fn post_json(url: &str, token: &str, host: &str, body: &str) -> Result<Respo
         });
     }
 
-    let sent = agent()
-        .post(url)
+    let agent = agent();
+    let request = match verb {
+        Verb::Post => agent.post(url),
+        Verb::Put => agent.put(url),
+        Verb::Patch => agent.patch(url),
+    };
+
+    let sent = request
         .header("Authorization", &format!("Bearer {token}"))
         .header("Content-Type", "application/json")
         .send(body);
@@ -258,6 +302,22 @@ mod tests {
         match refused {
             Err(Error::Forge { detail, .. }) => assert!(detail.contains("unencrypted")),
             other => panic!("expected a refusal, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn the_other_body_carrying_verbs_refuse_plaintext_too() {
+        // The guard lives in `send_json`, so all three share it — asserted per
+        // verb because a future caller reaches for the function, not the
+        // helper, and a verb that skipped the check would leak a token.
+        for refused in [
+            put_json("http://github.com/x", "secret", "github.com", "{}"),
+            patch_json("http://github.com/x", "secret", "github.com", "{}"),
+        ] {
+            match refused {
+                Err(Error::Forge { detail, .. }) => assert!(detail.contains("unencrypted")),
+                other => panic!("expected a refusal, got {other:?}"),
+            }
         }
     }
 

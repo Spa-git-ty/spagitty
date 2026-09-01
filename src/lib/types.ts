@@ -333,6 +333,9 @@ export type ReviewState = 'awaitingReview' | 'changesRequested' | 'approved' | '
  */
 export type ReviewVerdict = 'approve' | 'requestChanges' | 'comment';
 
+/** Merge strategies supported across forges (FEAT-071). */
+export type MergeMethod = 'merge' | 'squash' | 'rebase';
+
 /** A commit belonging to a pull request (FEAT-059). */
 export interface PullRequestCommit {
 	sha: string;
