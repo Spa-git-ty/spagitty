@@ -7,7 +7,39 @@
 
 ## 1. Brand Concept & Story
 
-Spagitty is a cross-platform, local-first desktop Git client engineered for speed, clarity, and deep Git workflows.
+Spagitty is a cross-platform, local-first desktop Git client for repositories
+where people and coding agents commit side by side.
+
+### The Words We Lead With
+
+These are the approved forms. They exist because a product describes itself the
+same way everywhere or it does not have a description at all.
+
+| Use | Text |
+| --- | --- |
+| **Tagline** | Untangle the work — yours, and your agents'. |
+| **One-line descriptor** | A local-first desktop Git client for repositories where people and coding agents commit side by side. |
+| **Short descriptor** | A desktop Git client built for the review that follows fast work. |
+| **Category** | Desktop Git client. |
+
+Rules that the wording has to keep:
+
+- **"Agents" are named as collaborators, never as a product we sell.** Spagitty
+  does not run agents; it is where the work they did is read, reviewed and
+  landed. A tagline that promises orchestration describes software that does not
+  exist, and the first person to open the application would find that out.
+- **Never "AI-powered".** Nothing in Spagitty is a model. Saying otherwise
+  trades the one thing a local-first tool has, which is that you can tell what
+  it is doing.
+- **The possessive is on the agents, not the user.** "yours, and your agents'"
+  — plural possessive, apostrophe after the s. It is the most commonly
+  mistyped part of the tagline.
+- **The em dash is an em dash**, not a hyphen, and the tagline ends in a full
+  stop. It is a sentence.
+- **Keep the metaphor literal.** Tangled and straightened, pasta and strands.
+  Do not extend it into cooking, chefs or kitchens in product copy — that
+  register belongs to the delight layer, where it is deliberately a joke, and
+  mixing the two makes the serious claims read as jokes too.
 
 ### The Name & Metaphor
 The name **Spagitty** (*spa-gi-ty*) is a deliberate portmanteau of **spaghetti** and **Git**. 
