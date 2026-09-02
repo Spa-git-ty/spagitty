@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Collect the files a person downloads, and nothing else.
+#
+# This exists because of how the v0.2.0 release died. Gate 5 uploaded
+# `target/release/bundle/**` whole, and gate 6 attached every file under it
+# with `find artifacts -type f`. A bundle tree is not a list of downloads — it
+# carries the application's own resources, and the macOS lane alone produces
+# `icon.icns` twice (once inside `spagitty.app/Contents/Resources`, once in the
+# .dmg staging directory beside it). A GitHub release asset is keyed by its
+# basename, so the second upload came back
+#
+#     HTTP 422  ReleaseAsset.name already exists
+#
+# after all five gates had passed and, worse, after the tag had been pushed.
+# Amendment 14 forbids moving a tag, so v0.2.0 can never be released: the only
+# way out is a version bump.
+#
+# draft-release.yml had always collected only the installers, which is why that
+# lane never hit this. The correct version now lives here, once, so the three
+# lanes cannot drift apart again — that drift is the whole reason two of them
+# were broken and one was not.
+name: Collect the release assets
+description: Copy the installers and executables out of the build tree into ./out
+
+inputs:
+  suffix:
+    description: >
+      Appended to each collected filename, before the extension. Needed where
+      two runners produce the same name — the two macOS architectures both
+      build `Spagitty_0.3.0_.dmg`, and only one of them could be attached.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Collect what is worth downloading
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p out
+
+        # Tauri has put the bundle under both `target/` and `src-tauri/target/`
+        # across versions, so this searches rather than guessing. `-prune` on
+        # node_modules keeps it from walking a tree that cannot contain a
+        # bundle and is the largest thing in the checkout.
+        find . -path ./node_modules -prune -o \
+               \( -name '*.AppImage' \
+               -o -name '*.deb' \
+               -o -name '*.rpm' \
+               -o -name '*-setup.exe' \
+               -o -name '*.msi' \
+               -o -name '*.dmg' \) \
+               -print -exec cp -n {} out/ \;
+
+        # The bare executable, for anyone who would rather not run an
+        # installer. Named for its platform, because `spagitty.exe` says
+        # nothing about which download it is.
+        if [ "${RUNNER_OS}" = "Windows" ]; then
+          find . -path ./node_modules -prune -o \
+                 -name 'spagitty.exe' -path '*release*' -print -quit \
+            | xargs -r -I {} cp {} out/spagitty-windows-x86_64.exe
+        fi
+
+        # Disambiguate before the files ever reach a release, rather than
+        # discovering the clash from GitHub after a tag has been pushed.
+        if [ -n "${SUFFIX}" ]; then
+          for file in out/*; do
+            [ -e "$file" ] || continue
+            case "$file" in
+              *"-${SUFFIX}."*) continue ;;
+            esac
+            base=${file%.*}
+            extension=${file##*.}
+            mv "$file" "${base}-${SUFFIX}.${extension}"
+          done
+        fi
+
+        if [ -z "$(ls -A out)" ]; then
+          echo "::error::the build produced nothing that can be released"
+          exit 1
+        fi
+        ls -l out
+      env:
+        SUFFIX: ${{ inputs.suffix }}

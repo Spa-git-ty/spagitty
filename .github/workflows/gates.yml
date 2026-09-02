@@ -203,13 +203,18 @@ jobs:
 
       - run: bun run tauri build
 
+      # Only the downloads, never the whole bundle tree — see the action for
+      # what uploading the tree did to the v0.2.0 release.
+      - uses: ./.github/actions/release-assets
+
       - uses: actions/upload-artifact@v4
         with:
           name: spagitty-${{ matrix.os }}
-          path: |
-            target/release/bundle/**
-            src-tauri/target/release/bundle/**
-          if-no-files-found: warn
+          path: out/**
+          # A build that produced nothing used to pass this step with a
+          # warning, and gate 6 would then publish a release with no downloads
+          # in it. A build that bundles nothing is a failed build.
+          if-no-files-found: error
 
   # --- Gate 6 -------------------------------------------------------------
   release:
@@ -256,6 +261,28 @@ jobs:
           bun tools/release-notes.mjs "${{ steps.version.outputs.version }}" > notes.md
           cat notes.md
 
+      # Everything that can be checked is checked before the tag is pushed,
+      # because a pushed tag cannot be taken back (Amendment 14) and a version
+      # whose tag exists can never be released. v0.2.0 is tagged and has no
+      # release for exactly this reason: the asset upload failed *after* the
+      # push, and there is no second attempt at a version.
+      - name: The assets can actually be attached
+        id: assets
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find artifacts -type f | sort)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::gate 5 uploaded no artifacts, so there is nothing to release"
+            exit 1
+          fi
+          clashes=$(basename -a "${files[@]}" | sort | uniq -d)
+          if [ -n "$clashes" ]; then
+            echo "::error::these names appear more than once, and a release can hold each only once: $(echo $clashes | tr '\n' ' ')"
+            exit 1
+          fi
+          printf '%s\n' "${files[@]}"
+          echo "files=${files[*]}" >> "$GITHUB_OUTPUT"
+
       # The runner has no git identity of its own, and an annotated tag needs
       # one — this failed the first main release with "empty ident name".
       # The bot identity is scoped to this repository, not set globally.
@@ -263,6 +290,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${{ steps.version.outputs.tag }}" -m "Spagitty ${{ steps.version.outputs.tag }}"
@@ -270,4 +298,4 @@ jobs:
           gh release create "${{ steps.version.outputs.tag }}" \
             --title "Spagitty ${{ steps.version.outputs.tag }}" \
             --notes-file notes.md \
-            $(find artifacts -type f | tr '\n' ' ')
+            ${{ steps.assets.outputs.files }}

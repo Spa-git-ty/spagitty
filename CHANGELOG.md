@@ -13,6 +13,9 @@ Spagitty is at `0.x`: the surface is not yet stable, MINOR may break, PATCH
 stays backward-compatible.
 
 ## [Unreleased]
+
+## [0.3.0] - 2026-09-02
+
 ### Added
 
 - **Worktrees management (FEAT-062).** Complete lifecycle support for git

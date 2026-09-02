@@ -168,32 +168,15 @@ jobs:
           # knows it has no release to be behind.
           SPAGITTY_RELEASE: ${{ needs.tag.outputs.tag }}
 
-      - name: Collect what is worth downloading
-        shell: bash
-        run: |
-          mkdir -p out
-          # Tauri has put the bundle under both paths across versions; take
-          # whichever exists rather than guessing.
-          find . -path ./node_modules -prune -o \
-                 \( -name '*.AppImage' -o -name '*-setup.exe' -o -name '*.dmg' \) -print \
-            -exec cp {} out/ \;
-          # A .dmg is named from the product name and version, which is the same
-          # on both Mac runners — so the two would collide as they arrive at the
-          # release. The architecture goes in the filename here.
-          if [ "${{ runner.os }}" = "macOS" ]; then
-            for image in out/*.dmg; do
-              [ -e "$image" ] || continue
-              mv "$image" "${image%.dmg}-${{ matrix.name }}.dmg"
-            done
-          fi
-          # The bare executable, for anyone who would rather not run an
-          # installer. Named per-platform so the two runners cannot collide.
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            find . -path ./node_modules -prune -o \
-                   -name 'spagitty.exe' -path '*release*' -print -quit \
-              | xargs -r -I {} cp {} out/spagitty-windows-x86_64.exe
-          fi
-          ls -l out
+      # This lane always collected only the installers, which is why it never
+      # hit the clash that killed v0.2.0. That collection now lives in a shared
+      # action so gates.yml and prerelease.yml cannot drift away from it again.
+      #
+      # The suffix is what stops the two Mac runners colliding: a .dmg is named
+      # from the product name and version, which is identical on both.
+      - uses: ./.github/actions/release-assets
+        with:
+          suffix: ${{ runner.os == 'macOS' && matrix.name || '' }}
 
       - uses: actions/upload-artifact@v4
         with:
