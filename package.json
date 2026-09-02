@@ -1,7 +1,7 @@
 {
   "name": "spagitty",
   "version": "0.3.0",
-  "description": "A cross-platform desktop Git client",
+  "description": "Your gateway to a Git-managed agent farm — a local-first desktop Git client",
   "license": "GPL-3.0-or-later",
   "private": true,
   "type": "module",

@@ -24,9 +24,11 @@ stays backward-compatible.
 
 ### Changed
 
-- **README rewritten** for humans and agents: what Spagitty is and is not, the
-  full feature surface, every screen code, architecture in brief, and where the
-  working record lives.
+- **README rewritten** in the Quiblo style: centered mark, badges, short pitch,
+  a features table that covers the whole surface, and a "learn from this
+  repository" section for humans and agents — instead of a handbook dump.
+  Leads with the product description (gateway to a Git-managed agent farm),
+  and names the farm as still being planned.
 - **Gates 5 and 6 stay off for documentation.** A merge into `main` that only
   touches the README, `docs/`, `agile/` or brand collateral no longer rebuilds
   three platforms or tries to re-tag the current version. Application code,
