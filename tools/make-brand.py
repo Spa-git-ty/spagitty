@@ -98,12 +98,25 @@ def wordmark_width(font: ImageFont.FreeTypeFont, text: str, tracking: float) -> 
     return sum(font.getlength(c) for c in text) + tracking * (len(text) - 1)
 
 
+def wordmark_baseline(font: ImageFont.FreeTypeFont, text: str, center_y: float) -> float:
+    """The baseline that puts the ink's optical centre on `center_y`.
+
+    Pillow's default text origin is the top-left of the em box, not the
+    baseline — treating a centreline as a baseline dropped the wordmark a full
+    ascender below the mark. Anchor at the baseline and centre on the ink.
+    """
+    probe = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    _l, top, _r, bottom = probe.textbbox((0, 0), text, font=font, anchor="ls")
+    return center_y - (top + bottom) / 2
+
+
 def draw_wordmark(image: Image.Image, font: ImageFont.FreeTypeFont, text: str,
-                  start_x: float, baseline_y: float, tracking: float, fill) -> float:
+                  start_x: float, center_y: float, tracking: float, fill) -> float:
     draw = ImageDraw.Draw(image)
+    baseline = wordmark_baseline(font, text, center_y)
     x = start_x
     for c in text:
-        draw.text((round(x), round(baseline_y)), c, font=font, fill=fill)
+        draw.text((round(x), round(baseline)), c, font=font, fill=fill, anchor="ls")
         x += font.getlength(c) + tracking
     return x
 
@@ -140,8 +153,9 @@ def compose_lockup(ink: tuple, wordmark: str = "spagitty") -> Image.Image:
     canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     mark = render_bare_mark(mark_h)
     canvas.alpha_composite(mark, (margin, margin))
-    baseline = margin + mark_h // 2 + em * 0.36
-    draw_wordmark(canvas, font, wordmark, margin + mark_h + gap, baseline, tracking, ink)
+    # Shared optical centreline with the mark — brand guide §4.2.
+    center_y = margin + mark_h / 2
+    draw_wordmark(canvas, font, wordmark, margin + mark_h + gap, center_y, tracking, ink)
     return canvas
 
 
@@ -162,6 +176,12 @@ def lockup_svg_bytes(ink: tuple, wordmark: str = "spagitty", view: int = 1200) -
     scale = view / max(total_w, mark_h + 2 * margin)
     mh = mark_h * scale
     mw = VIEW_W / VIEW_H * mh
+    # SVG <text> y is the baseline. Centre the ink on the mark the same way
+    # the PNG lockup does, using the font's own bbox.
+    probe = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    _l, top, _r, bottom = probe.textbbox((0, 0), wordmark, font=font, anchor="ls")
+    mark_center = margin * scale + mh / 2
+    text_y = mark_center - ((top + bottom) / 2) * scale
 
     mark_svg = (REPO / "assets" / "brand" / "mark.svg").read_text(encoding="utf-8")
     inner = re.sub(r'<\?xml[^>]*\?>', '', mark_svg)
@@ -176,7 +196,7 @@ def lockup_svg_bytes(ink: tuple, wordmark: str = "spagitty", view: int = 1200) -
     ]
     tx = (margin + mark_h + gap) * scale
     parts.append(
-        f'<text x="{tx:.1f}" y="{round(mh / 2)}" font-size="{round(mh * 0.34)}" '
+        f'<text x="{tx:.1f}" y="{text_y:.1f}" font-size="{round(em * scale)}" '
         f'fill="{hexc(ink)}" letter-spacing="{round(tracking * scale, 1)}">'
         f'{wordmark}</text>'
     )
@@ -187,18 +207,40 @@ def lockup_svg_bytes(ink: tuple, wordmark: str = "spagitty", view: int = 1200) -
 # --- Hero ---------------------------------------------------------------------
 
 def hero_banner(ss: int = 2) -> Image.Image:
+    """README banner: mark + wordmark on one centreline, approved tagline under.
+
+    The short descriptor used to sit where the wordmark should have been
+    centred, which is how the name ended up a whole row below the plate.
+    """
     w, h = 1600, 400
-    base = Image.new("RGBA", (w * ss, h * ss), (0, 0, 0, 0))
+    canvas_w, canvas_h = w * ss, h * ss
+    base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(base)
-    mark = render_mark(300, ss=ss)
-    base.alpha_composite(mark, (70 * ss, 50 * ss))
-    font = load_wordmark_font(88 * ss)
-    tracking = 88 * ss * 0.045
-    draw_wordmark(base, font, "spagitty", 470 * ss, 150 * ss + 88 * ss * 0.36,
-                  tracking, INK_LIGHT)
-    tagline = load_wordmark_font(30 * ss)
-    draw.text((round(470 * ss), round(285 * ss)), "a desktop Git client",
-              font=tagline, fill=(143, 154, 183, 255))
+
+    # Sizes are in supersampled canvas pixels; render_mark returns that many px.
+    mark_px = 280 * ss
+    mark_x = 72 * ss
+    mark_y = round((canvas_h - mark_px) / 2) - 10 * ss
+    base.alpha_composite(render_mark(mark_px, ss=ss), (mark_x, mark_y))
+
+    word = "spagitty"
+    em = 92 * ss
+    font = load_wordmark_font(em)
+    tracking = em * 0.045
+    gap = round(em * 1.1)
+    text_x = mark_x + mark_px + gap
+    center_y = mark_y + mark_px / 2
+    draw_wordmark(base, font, word, text_x, center_y, tracking, INK_LIGHT)
+
+    # Approved tagline from docs/branding.md — under the wordmark, left-aligned
+    # with it, not competing for the mark's centreline.
+    tagline = "Untangle the work — yours, and your agents'."
+    tag_font = load_wordmark_font(24 * ss)
+    _l, top, _r, bottom = draw.textbbox((0, 0), word, font=font, anchor="ls")
+    word_bottom = center_y - (top + bottom) / 2 + bottom
+    tag_y = word_bottom + 16 * ss
+    draw.text((round(text_x), round(tag_y)), tagline, font=tag_font,
+              fill=(143, 154, 183, 255), anchor="lt")
     return base.resize((w, h), Image.LANCZOS)
 
 

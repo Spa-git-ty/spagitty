@@ -3,9 +3,12 @@
 # The pipeline, as six ordered gates. A gate that fails stops everything
 # downstream — that is what `needs:` buys here, and it is the point.
 #
-#   1 license -> 2 quality -> 3 tests -> 4 security -> 5 build -> 6 release
+#   0 scope -> 1 license -> 2 quality -> 3 tests -> 4 security -> 5 build -> 6 release
 #
-# `main` runs all six: a merge into main is a publish.
+# `main` runs 1 to 4 on every push. Gates 5 and 6 run only when the change
+# ships in the application — a merge into main is a publish *of a release*,
+# not of every README edit. Documentation, agile records and brand collateral
+# land without rebuilding or tagging; they ride the next version.
 # `dev` runs 1 to 4 and stops. Producing a dev build is a manual action, in
 # .github/workflows/prerelease.yml.
 #
@@ -29,10 +32,72 @@ env:
   COVERAGE_FLOOR: 70
 
 jobs:
+  # --- Scope --------------------------------------------------------------
+  # Decide whether this change is something people download. Gates 5 and 6
+  # read the answer; gates 1 to 4 always run so a docs edit that breaks the
+  # brand check or the licence files still fails.
+  scope:
+    name: 0 · scope
+    runs-on: ubuntu-latest
+    outputs:
+      ship: ${{ steps.classify.outputs.ship }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify whether this change ships
+        id: classify
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags origin "${{ github.base_ref }}"
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            before="${{ github.event.before }}"
+            # A brand-new branch has no previous tip; treat it as shipping so
+            # the first push cannot slip past a release by accident.
+            if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+              echo "ship=true" >> "$GITHUB_OUTPUT"
+              echo "no previous tip — treating as a shipping change"
+              exit 0
+            fi
+            range="$before...${{ github.sha }}"
+          fi
+
+          mapfile -t files < <(git diff --name-only "$range")
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "ship=false" >> "$GITHUB_OUTPUT"
+            echo "no files changed"
+            exit 0
+          fi
+
+          printf 'changed:\n'
+          printf '  %s\n' "${files[@]}"
+
+          ship=false
+          for f in "${files[@]}"; do
+            case "$f" in
+              src/*|src-tauri/*|crates/*) ship=true ;;
+              package.json|Cargo.toml|Cargo.lock|bun.lock|bun.lockb) ship=true ;;
+              vite.config.ts|vite.config.js|svelte.config.js|svelte.config.ts|tsconfig.json) ship=true ;;
+              */Cargo.toml) ship=true ;;
+            esac
+          done
+
+          echo "ship=$ship" >> "$GITHUB_OUTPUT"
+          if [ "$ship" = true ]; then
+            echo "shipping change — gates 5 and 6 will run on main"
+          else
+            echo "documentation / record / collateral only — gates 5 and 6 stay off"
+          fi
+
   # --- Gate 1 -------------------------------------------------------------
   # Cheapest and most certain first, so an obvious failure never burns a build.
   license:
     name: 1 · licenses
+    needs: scope
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -176,11 +241,17 @@ jobs:
           ./gitleaks detect --source . --redact --verbose --exit-code 1
 
   # --- Gate 5 -------------------------------------------------------------
-  # main only. `dev` stops after gate 4; its build is triggered by hand.
+  # main only, and only when the change ships in the application. `dev` stops
+  # after gate 4; its build is triggered by hand. A README or agile edit is not
+  # a release — rebuilding three platforms and failing on an already-tagged
+  # version is the wrong response to documentation.
   build:
     name: 5 · build
-    needs: security
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [security, scope]
+    if: >
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      needs.scope.outputs.ship == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -219,8 +290,11 @@ jobs:
   # --- Gate 6 -------------------------------------------------------------
   release:
     name: 6 · release
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [build, scope]
+    if: >
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      needs.scope.outputs.ship == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write

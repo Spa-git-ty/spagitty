@@ -149,7 +149,7 @@ All platform assets are generated automatically from `mark.svg` by `tools/make-i
 | Output Target | File Path | Dimensions | Treatment |
 | --- | --- | --- | --- |
 | **Master Mark** | `assets/brand/brand-mark.png` | 512 × 512 | Standalone full-res amber plate + strands |
-| **README Banner** | `assets/brand/hero.png` | 1600 × 400 | Amber mark + wordmark + tagline banner |
+| **README Banner** | `assets/brand/hero.png` | 1600 × 400 | Amber mark + wordmark on one centreline, approved tagline under |
 | **App Icon (PNG)** | `src-tauri/icons/{16,32,128,256,512}x{...}.png` | 16² to 1024² | High-DPI app icon set with `@2x` assets |
 | **Windows Icon** | `src-tauri/icons/icon.ico` | Multi-size ICO | Embedded 16, 32, 48, 64, 128, 256 px frames |
 | **macOS Icon** | `src-tauri/icons/icon.icns` | Multi-size ICNS | Apple standard icon bundle |

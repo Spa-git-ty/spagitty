@@ -29,13 +29,13 @@ they are given.
 
 | # | Gate | Runs | Proves |
 | --- | --- | --- | --- |
+| 0 | Scope | `git diff` of the push / PR against the previous tip | Whether the change ships in the application. Gates 5 and 6 read this; documentation alone is not a release |
 | 1 | License | `cargo deny check licenses bans sources`, `bunx license-checker-rseidelsohn@4` over the JS production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with Spagitty shipping under GPL-3 |
 | 2 | Code quality | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `bun run check`, plus `tools/make-icons.py --check` and `tools/make-brand.py --check` (Pillow) | Formatting, lints and types across both languages, and no drift between the brand generators and the committed art |
 | 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `bun run coverage` | The suite passes and first-party coverage meets the Amendment 10 floor of 70% |
 | 4 | Security | `cargo deny check advisories`, `bun audit --audit-level=high`, `gitleaks` over the diff | No known-vulnerable dependency at the high level or above, no secret in the change |
-| 5 | Build | `bun run tauri build` on Linux, macOS and Windows | The release build works on every target, not only the one the author uses |
-
-| 6 | Release | tag, artifacts, notes read from `CHANGELOG.md` by `bun tools/release-notes.mjs` | The build is published, carries its changelog section as notes (Amendment 20), and is traceable to a commit |
+| 5 | Build | `bun run tauri build` on Linux, macOS and Windows — **main, shipping changes only** | The release build works on every target, not only the one the author uses |
+| 6 | Release | tag, artifacts, notes read from `CHANGELOG.md` by `bun tools/release-notes.mjs` — **main, shipping changes only** | The build is published, carries its changelog section as notes (Amendment 20), and is traceable to a commit |
 
 Cheapest and most certain first, so an obvious failure never burns a full build.
 
@@ -55,9 +55,13 @@ and the draft lane together, not to one of them.
 
 ## What runs where
 
-- **`main`** — all six, automatically, on every merge. Passing gate 6 publishes
-  the release. A merge into `main` is a publish; anything that must not ship yet
-  does not land there.
+- **`main`** — gates 1 to 4 on every push. Gates 5 and 6 run only when the
+  change *ships*: something under `src/`, `src-tauri/`, `crates/`, or a
+  version / lockfile / frontend config that the built application depends on.
+  Passing gate 6 publishes the release. A merge of application code into `main`
+  is a publish; a README, `docs/`, `agile/` or brand-collateral edit is not —
+  those land without rebuilding three platforms or tagging, and ride the next
+  version. The scope job (`0 · scope`) is what makes that call.
 - **`dev`** — gates 1 to 4, automatically, then the pipeline stops. Building and
   publishing an alpha from `dev` is a manual action: run the `prerelease`
   workflow and give it an alpha number. It produces `vX.Y.Z-alpha.N`, which is
