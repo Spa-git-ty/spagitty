@@ -10,6 +10,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
 	About,
+	BinaryDiff,
 	Blame,
 	CommitDetail,
 	BranchRow,
@@ -21,13 +22,18 @@ import type {
 	ConflictState,
 	DiffSide,
 	DraftComment,
+	ExternalToolInfo,
+	ExternalToolsConfig,
 	ExecutedCommand,
 	FileDiff,
+	IdentityProfile,
 	Identity,
+	FileHistoryEntry,
 	IdentityKey,
 	IdentityScope,
 	Licenses,
 	OpenResult,
+	MergeMethod,
 	Integration,
 	PullMode,
 	PullRequest,
@@ -52,7 +58,9 @@ import type {
 	Signing,
 	Update,
 	Snapshot,
+	Submodule,
 	StashEntry,
+	Worktree,
 	WorkingCopy
 } from './types';
 
@@ -103,6 +111,11 @@ export function fileDiff(id: string, path: string): Promise<FileDiff> {
 	return invoke('file_diff', { id, path });
 }
 
+/** Detailed binary / image diff metadata for a commit file (FEAT-065). */
+export function binaryFileDiff(id: string, path: string): Promise<BinaryDiff> {
+	return invoke('binary_file_diff', { id, path });
+}
+
 /** The staged, unstaged and conflicted lists. One call per refresh. */
 export function workingCopy(): Promise<WorkingCopy> {
 	return invoke('working_copy');
@@ -111,6 +124,11 @@ export function workingCopy(): Promise<WorkingCopy> {
 /** One working-copy file's hunks, on either side of the index. */
 export function workingDiff(path: string, side: DiffSide): Promise<FileDiff> {
 	return invoke('working_diff', { path, side });
+}
+
+/** Detailed binary / image diff metadata for working copy (FEAT-065). */
+export function binaryWorkingDiff(path: string, side: DiffSide): Promise<BinaryDiff> {
+	return invoke('binary_working_diff', { path, side });
 }
 
 export function stage(paths: string[]): Promise<void> {
@@ -219,6 +237,11 @@ export function searchStop(): Promise<void> {
 /** Who last touched each line. An empty revision means HEAD. */
 export function blame(path: string, revision: string): Promise<Blame> {
 	return invoke('blame', { path, revision });
+}
+
+/** Read commit history for a single file path (FEAT-063). */
+export function fileHistory(path: string, limit = 100): Promise<FileHistoryEntry[]> {
+	return invoke('file_history', { path, limit });
 }
 
 /** What is in progress and what is conflicted. Reads only; nothing is written. */
@@ -455,6 +478,17 @@ export function pullRequests(): Promise<PullRequest[]> {
 	return invoke('pull_requests');
 }
 
+/** Create a new pull request on the hosting forge (FEAT-070). */
+export function createPullRequest(
+	title: string,
+	body: string,
+	head: string,
+	base: string,
+	draft = false
+): Promise<PullRequest> {
+	return invoke('create_pull_request', { title, body, head, base, draft });
+}
+
 /**
  * The files one pull request changes, with the host's own diff of each
  * (FEAT-058).
@@ -513,6 +547,37 @@ export function replyComment(
 	return invoke('reply_comment', { number, commentId, body });
 }
 
+/** Merge a pull request on the configured forge (FEAT-071). */
+export function mergePullRequest(
+	number: number,
+	method: MergeMethod,
+	commitTitle?: string,
+	commitMessage?: string
+): Promise<void> {
+	return invoke('merge_pull_request', { number, method, commitTitle, commitMessage });
+}
+
+/** Close / reject a pull request without merging (FEAT-071). */
+export function closePullRequest(number: number): Promise<void> {
+	return invoke('close_pull_request', { number });
+}
+
+/**
+ * Toggle draft / ready-for-review status on a pull request (FEAT-071).
+ *
+ * Both an `id` and a `number`, because the hosts disagree about which one
+ * addresses a pull request: GitHub converts draft state over GraphQL and needs
+ * the node id, GitLab rewrites the title on the numbered merge request.
+ */
+export function setPrDraft(
+	number: number,
+	id: string,
+	title: string,
+	draft: boolean
+): Promise<void> {
+	return invoke('set_pr_draft', { number, id, title, draft });
+}
+
 /**
  * Commit signing as git would resolve it: `commit.gpgsign` and everything that
  * decides whether it can work (FEAT-019).
@@ -551,6 +616,125 @@ export function checkUpdate(): Promise<Update> {
 /** Spagitty's own behaviour toggles. */
 export function settings(): Promise<Settings> {
 	return invoke('settings');
+}
+
+/** Every linked worktree for the open repository (FEAT-062). */
+export function worktrees(): Promise<Worktree[]> {
+	return invoke('worktrees');
+}
+
+/** Add a new linked worktree (FEAT-062). */
+export function worktreeAdd(
+	path: string,
+	branch?: string | null,
+	newBranch?: string | null,
+	detach?: boolean
+): Promise<Worktree> {
+	return invoke('worktree_add', {
+		path,
+		branch: branch || undefined,
+		newBranch: newBranch || undefined,
+		detach: detach ?? false
+	});
+}
+
+/** Remove a worktree (FEAT-062). */
+export function worktreeRemove(path: string, force = false): Promise<void> {
+	return invoke('worktree_remove', { path, force });
+}
+
+/** Lock a worktree against pruning (FEAT-062). */
+export function worktreeLock(path: string, reason?: string | null): Promise<void> {
+	return invoke('worktree_lock', { path, reason: reason || undefined });
+}
+
+/** Unlock a locked worktree (FEAT-062). */
+export function worktreeUnlock(path: string): Promise<void> {
+	return invoke('worktree_unlock', { path });
+}
+
+/** Prune stale worktrees (FEAT-062). */
+export function worktreePrune(): Promise<void> {
+	return invoke('worktree_prune');
+}
+
+/** List all submodules for the open repository (FEAT-067). */
+export function submodules(): Promise<Submodule[]> {
+	return invoke('submodules');
+}
+
+/** Update submodules recursively (FEAT-067). */
+export function submoduleUpdate(
+	paths: string[] = [],
+	init = true,
+	recursive = true
+): Promise<string> {
+	return invoke('submodule_update', { paths, init, recursive });
+}
+
+/** Sync submodule URLs from .gitmodules (FEAT-067). */
+export function submoduleSync(recursive = true): Promise<string> {
+	return invoke('submodule_sync', { recursive });
+}
+
+/** De-initialize a submodule (FEAT-067). */
+export function submoduleDeinit(path: string, force = false): Promise<string> {
+	return invoke('submodule_deinit', { path, force });
+}
+
+/** Read configured external diff/merge tools (FEAT-068). */
+export function externalToolsConfig(): Promise<ExternalToolsConfig> {
+	return invoke('external_tools_config');
+}
+
+/** Set configured external tool (FEAT-068). */
+export function setExternalTool(
+	toolType: 'diff' | 'merge',
+	toolName: string | null,
+	global = false
+): Promise<void> {
+	return invoke('set_external_tool', { toolType, toolName, global });
+}
+
+/** Launch external diff tool (FEAT-068). */
+export function launchExternalDiff(
+	path: string,
+	tool?: string | null,
+	commit?: string | null
+): Promise<void> {
+	return invoke('launch_external_diff', {
+		path,
+		tool: tool || undefined,
+		commit: commit || undefined
+	});
+}
+
+/** Launch external merge tool (FEAT-068). */
+export function launchExternalMerge(path: string, tool?: string | null): Promise<void> {
+	return invoke('launch_external_merge', {
+		path,
+		tool: tool || undefined
+	});
+}
+
+/** Read all saved identity profiles (FEAT-069). */
+export function identityProfiles(): Promise<IdentityProfile[]> {
+	return invoke('identity_profiles');
+}
+
+/** Save an identity profile (FEAT-069). */
+export function saveIdentityProfile(profile: IdentityProfile): Promise<void> {
+	return invoke('save_identity_profile', { profile });
+}
+
+/** Delete an identity profile (FEAT-069). */
+export function deleteIdentityProfile(id: string): Promise<void> {
+	return invoke('delete_identity_profile', { id });
+}
+
+/** Apply an identity profile to current repository or globally (FEAT-069). */
+export function applyIdentityProfile(profile: IdentityProfile, global = false): Promise<Identity> {
+	return invoke('apply_identity_profile', { profile, global });
 }
 
 /** Store the behaviour toggles. Rejects when the write did not reach the disk. */

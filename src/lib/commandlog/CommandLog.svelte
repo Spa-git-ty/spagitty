@@ -116,11 +116,11 @@
 		/* Only the top edge is on screen — the panel is anchored to the bottom
 		   and runs off both sides — so the lit edge is the whole edge (TASK-024). */
 		border-top: 1px solid var(--glass-edge);
-		border-radius: var(--r-panel) var(--r-panel) 0 0;
+		border-radius: var(--r-floating) var(--r-floating) 0 0;
 		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
 		/* It slides up over whatever screen is open, so it takes the floating
 		   shadow — cast upward, which is the direction it came from. */
-		box-shadow: none;
+		box-shadow: 0 -10px 30px color-mix(in srgb, var(--umbra) 14%, transparent);
 	}
 
 	.bar {

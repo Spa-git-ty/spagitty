@@ -10,7 +10,7 @@
 		requests,
 		type UserReviewRole
 	} from '$lib/requests/store.svelte';
-	import type { ReviewVerdict } from '$lib/types';
+	import type { MergeMethod, ReviewVerdict } from '$lib/types';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -20,6 +20,8 @@
 	const commits = $derived(requests.commits);
 	const comments = $derived(requests.comments);
 	const draftComments = $derived(requests.draftComments);
+	/** Not every host has a draft pull request, so it gets no toggle there (FEAT-071). */
+	const canDraft = $derived(requests.canDraft);
 	const openPath = $derived(requests.openPath);
 	const openFile = $derived(requests.openFile);
 
@@ -66,6 +68,37 @@
 			reviewSummary = '';
 		}
 	}
+
+	/** Merge modal state (FEAT-071). */
+	let mergeModalOpen = $state(false);
+	let mergeMethod = $state<MergeMethod>('merge');
+	let mergeTitle = $state('');
+	let mergeMessage = $state('');
+
+	/** Close confirmation state (FEAT-071). */
+	let closeConfirmOpen = $state(false);
+
+	async function handleMerge() {
+		const title = mergeTitle.trim() || undefined;
+		const message = mergeMessage.trim() || undefined;
+		const ok = await requests.merge(mergeMethod, title, message);
+		if (ok) {
+			mergeModalOpen = false;
+			mergeTitle = '';
+			mergeMessage = '';
+		}
+	}
+
+	async function handleClose() {
+		const ok = await requests.close();
+		if (ok) {
+			closeConfirmOpen = false;
+		}
+	}
+
+	async function handleToggleDraft() {
+		await requests.toggleDraft();
+	}
 </script>
 
 {#if request}
@@ -103,18 +136,52 @@
 				</div>
 			</div>
 
-			<div class="head-right">
-				<div class="role-badge-container">
-					<span class="role-label note">Mode:</span>
-					<button
-						class="role-toggle-btn mono"
-						title="Click to toggle reviewer / developer preview mode"
-						onclick={() => (roleOverride = activeRole === 'reviewer' ? 'developer' : 'reviewer')}
+		<div class="head-right">
+			<div class="pr-actions">
+				{#if canDraft}
+					<Btn
+						onclick={handleToggleDraft}
+						disabled={requests.togglingDraft}
+						title={request.draft
+							? 'Mark this PR as ready for review'
+							: 'Convert this PR to draft'}
 					>
-						{activeRole === 'reviewer' ? 'Reviewer View' : 'Developer View'}
-					</button>
-				</div>
+						{#if requests.togglingDraft}
+							…
+						{:else}
+							{request.draft ? 'Mark Ready' : 'Draft'}
+						{/if}
+					</Btn>
+				{/if}
+
+			<Btn
+				onclick={() => (mergeModalOpen = true)}
+				disabled={requests.merging}
+				title="Merge this pull request"
+			>
+				Merge
+			</Btn>
+
+				<Btn
+					onclick={() => (closeConfirmOpen = true)}
+					disabled={requests.closing}
+					title="Close this pull request without merging"
+				>
+					Close
+				</Btn>
 			</div>
+
+			<div class="role-badge-container">
+				<span class="role-label note">Mode:</span>
+				<button
+					class="role-toggle-btn mono"
+					title="Click to toggle reviewer / developer preview mode"
+					onclick={() => (roleOverride = activeRole === 'reviewer' ? 'developer' : 'reviewer')}
+				>
+					{activeRole === 'reviewer' ? 'Reviewer View' : 'Developer View'}
+				</button>
+			</div>
+		</div>
 		</header>
 
 		<!-- Workspace Body: Left Accordion Pane + Center Diff Pane -->
@@ -457,6 +524,149 @@
 				</div>
 			</div>
 		{/if}
+
+	<!-- Merge Modal (FEAT-071) -->
+	{#if mergeModalOpen}
+		<div
+			class="modal-backdrop"
+			onclick={() => (mergeModalOpen = false)}
+			onkeydown={(e) => {
+				if (e.key === 'Escape') mergeModalOpen = false;
+			}}
+			role="presentation"
+		>
+			<div
+				class="review-modal"
+				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => e.stopPropagation()}
+				role="dialog"
+				aria-modal="true"
+				tabindex="-1"
+			>
+				<h2 class="modal-title">Merge Pull Request #{request.number}</h2>
+
+				<div class="verdict-options">
+					<label class="verdict-option" class:selected={mergeMethod === 'merge'}>
+						<input
+							type="radio"
+							name="merge-method"
+							value="merge"
+							checked={mergeMethod === 'merge'}
+							onchange={() => (mergeMethod = 'merge')}
+						/>
+						<div class="verdict-info">
+							<strong>Create a merge commit</strong>
+							<span class="note">All commits will be added with a merge commit.</span>
+						</div>
+					</label>
+
+					<label class="verdict-option" class:selected={mergeMethod === 'squash'}>
+						<input
+							type="radio"
+							name="merge-method"
+							value="squash"
+							checked={mergeMethod === 'squash'}
+							onchange={() => (mergeMethod = 'squash')}
+						/>
+						<div class="verdict-info">
+							<strong>Squash and merge</strong>
+							<span class="note">Commits will be squashed into one commit.</span>
+						</div>
+					</label>
+
+					<label class="verdict-option" class:selected={mergeMethod === 'rebase'}>
+						<input
+							type="radio"
+							name="merge-method"
+							value="rebase"
+							checked={mergeMethod === 'rebase'}
+							onchange={() => (mergeMethod = 'rebase')}
+						/>
+						<div class="verdict-info">
+							<strong>Rebase and merge</strong>
+							<span class="note">Commits will be rebased onto the base branch.</span>
+						</div>
+					</label>
+				</div>
+
+				{#if mergeMethod !== 'rebase'}
+					<div class="modal-field">
+						<label for="merge-title" class="field-label">Commit title (optional):</label>
+						<input
+							id="merge-title"
+							class="summary-input"
+							type="text"
+							placeholder="Merge pull request #{request.number}"
+							bind:value={mergeTitle}
+						/>
+					</div>
+
+					<div class="modal-field">
+						<label for="merge-message" class="field-label">Commit message (optional):</label>
+						<textarea
+							id="merge-message"
+							class="summary-textarea"
+							rows="3"
+							placeholder="Add extra details…"
+							bind:value={mergeMessage}
+						></textarea>
+					</div>
+				{/if}
+
+				{#if requests.mergeError}
+					<div class="modal-error note error">
+						{requests.mergeError}
+					</div>
+				{/if}
+
+				<div class="modal-actions">
+					<Btn onclick={() => (mergeModalOpen = false)}>Cancel</Btn>
+					<Btn primary disabled={requests.merging} onclick={handleMerge}>
+						{requests.merging ? 'Merging…' : 'Confirm Merge'}
+					</Btn>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Close Confirmation Modal (FEAT-071) -->
+	{#if closeConfirmOpen}
+		<div
+			class="modal-backdrop"
+			onclick={() => (closeConfirmOpen = false)}
+			onkeydown={(e) => {
+				if (e.key === 'Escape') closeConfirmOpen = false;
+			}}
+			role="presentation"
+		>
+			<div
+				class="review-modal"
+				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => e.stopPropagation()}
+				role="dialog"
+				aria-modal="true"
+				tabindex="-1"
+			>
+				<h2 class="modal-title">Close Pull Request #{request.number}?</h2>
+				<p class="close-warning">
+					This will close the pull request without merging. The branch will not be deleted.
+				</p>
+
+				{#if requests.closeError}
+					<div class="modal-error note error">
+						{requests.closeError}
+					</div>
+				{/if}
+
+				<div class="modal-actions">
+					<Btn onclick={() => (closeConfirmOpen = false)}>Cancel</Btn>
+					<Btn primary disabled={requests.closing} onclick={handleClose}>
+						{requests.closing ? 'Closing…' : 'Close Pull Request'}
+					</Btn>
+				</div>
+			</div>
+		</div>
+	{/if}
 	</div>
 {/if}
 
@@ -1026,5 +1236,34 @@
 		justify-content: flex-end;
 		gap: 8px;
 		margin-top: 4px;
+	}
+
+	.pr-actions {
+		display: flex;
+		gap: 6px;
+		align-items: center;
+	}
+
+	.summary-input {
+		width: 100%;
+		padding: 6px 8px;
+		font: inherit;
+		font-size: var(--fs-body);
+		background: var(--bg);
+		color: var(--text);
+		border: 1px solid var(--line);
+		border-radius: var(--r-panel);
+		outline: none;
+	}
+
+	.summary-input:focus {
+		border-color: var(--accent);
+	}
+
+	.close-warning {
+		margin: 0;
+		font-size: var(--fs-body);
+		color: var(--text-secondary);
+		line-height: 1.5;
 	}
 </style>

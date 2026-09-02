@@ -34,8 +34,27 @@
 use serde_json::Value;
 
 use crate::diff::{DiffLine, FileDiff, FileStatus, Hunk, LineOrigin};
-use crate::forge::{http, status_error, Repo};
+use crate::forge::{github, http, status_error, Kind, Repo};
 use crate::{Error, Result};
+
+/// Merge strategies supported across forges (FEAT-071).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MergeMethod {
+    Merge,
+    Squash,
+    Rebase,
+}
+
+impl MergeMethod {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            MergeMethod::Merge => "merge",
+            MergeMethod::Squash => "squash",
+            MergeMethod::Rebase => "rebase",
+        }
+    }
+}
 
 /// Files per page, and the most GitHub will answer with.
 const PER_PAGE: usize = 100;
@@ -485,6 +504,247 @@ pub fn submit_review(
     comment: &str,
 ) -> Result<()> {
     submit_review_with_comments(repo, token, number, verdict, comment, &[])
+}
+
+/// What a lifecycle call sends, worked out before anything is sent (FEAT-071).
+///
+/// Merging, closing, and un-drafting are three actions across three forges, and
+/// what differs between them is only the verb, the path, and the payload — the
+/// part that is easy to get wrong and impossible to check by reading. Building
+/// that separately from sending it is what lets a test assert the exact request
+/// each host would receive without a network.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Request {
+    verb: Verb,
+    url: String,
+    body: String,
+}
+
+/// The verb a lifecycle request goes out with.
+///
+/// The forges are specific: GitHub merges with `PUT` and edits with `PATCH`,
+/// GitLab does both with `PUT`, and only Bitbucket's two endpoints are `POST`.
+/// A wrong verb is answered with a method error rather than the change, which
+/// is why this is carried in the request rather than assumed at the call.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Verb {
+    Post,
+    Put,
+    Patch,
+}
+
+/// Send a built request and read its status as an outcome.
+///
+/// The status check is here once rather than at each of the nine places a
+/// lifecycle request is built.
+fn send(request: &Request, token: &str, host: &str) -> Result<()> {
+    let response = match request.verb {
+        Verb::Post => http::post_json(&request.url, token, host, &request.body)?,
+        Verb::Put => http::put_json(&request.url, token, host, &request.body)?,
+        Verb::Patch => http::patch_json(&request.url, token, host, &request.body)?,
+    };
+
+    if response.status < 200 || response.status >= 300 {
+        return Err(status_error(
+            host,
+            response.status,
+            &response.body,
+            response.retry_after.as_deref(),
+        ));
+    }
+
+    Ok(())
+}
+
+/// GitLab addresses a project by its URL-encoded path rather than by owner and
+/// name, so the slash between them is escaped.
+fn project_path(repo: &Repo) -> String {
+    format!("{}%2F{}", repo.owner, repo.name)
+}
+
+/// The request that merges a pull request on `repo`'s host (FEAT-071).
+fn merge_request(
+    repo: &Repo,
+    number: u64,
+    method: MergeMethod,
+    commit_title: Option<&str>,
+    commit_message: Option<&str>,
+) -> Request {
+    let base = repo.kind.api_base(&repo.host);
+
+    match repo.kind {
+        Kind::GitHub => {
+            let mut payload = serde_json::json!({ "merge_method": method.as_str() });
+            // A blank title or message is the caller saying "let the host
+            // decide", which is what omitting the field means. Sending an empty
+            // string instead would set an empty commit subject.
+            if let Some(title) = commit_title.map(str::trim).filter(|t| !t.is_empty()) {
+                payload["commit_title"] = serde_json::json!(title);
+            }
+            if let Some(message) = commit_message.map(str::trim).filter(|m| !m.is_empty()) {
+                payload["commit_message"] = serde_json::json!(message);
+            }
+
+            Request {
+                verb: Verb::Put,
+                url: format!(
+                    "{base}/repos/{}/{}/pulls/{number}/merge",
+                    repo.owner, repo.name
+                ),
+                body: payload.to_string(),
+            }
+        }
+        Kind::GitLab => Request {
+            verb: Verb::Put,
+            url: format!(
+                "{base}/projects/{}/merge_requests/{number}/merge",
+                project_path(repo)
+            ),
+            // GitLab has no rebase-on-merge over the API, so a rebase request
+            // merges without squashing rather than failing: the strategies it
+            // offers are merge and squash.
+            body: serde_json::json!({ "squash": method == MergeMethod::Squash }).to_string(),
+        },
+        Kind::Bitbucket => Request {
+            verb: Verb::Post,
+            url: format!(
+                "{base}/repositories/{}/{}/pullrequests/{number}/merge",
+                repo.owner, repo.name
+            ),
+            body: serde_json::json!({
+                "merge_strategy": match method {
+                    MergeMethod::Merge => "merge_commit",
+                    MergeMethod::Squash => "squash",
+                    MergeMethod::Rebase => "fast_forward",
+                }
+            })
+            .to_string(),
+        },
+    }
+}
+
+/// The request that closes a pull request without merging it (FEAT-071).
+fn close_request(repo: &Repo, number: u64) -> Request {
+    let base = repo.kind.api_base(&repo.host);
+
+    match repo.kind {
+        Kind::GitHub => Request {
+            verb: Verb::Patch,
+            url: format!("{base}/repos/{}/{}/pulls/{number}", repo.owner, repo.name),
+            body: serde_json::json!({ "state": "closed" }).to_string(),
+        },
+        Kind::GitLab => Request {
+            verb: Verb::Put,
+            url: format!(
+                "{base}/projects/{}/merge_requests/{number}",
+                project_path(repo)
+            ),
+            body: serde_json::json!({ "state_event": "close" }).to_string(),
+        },
+        Kind::Bitbucket => Request {
+            verb: Verb::Post,
+            url: format!(
+                "{base}/repositories/{}/{}/pullrequests/{number}/decline",
+                repo.owner, repo.name
+            ),
+            body: "{}".into(),
+        },
+    }
+}
+
+/// The title with any draft marker taken off the front.
+///
+/// GitLab has no draft flag: a merge request is a draft when its title starts
+/// with `Draft:`, case-insensitively, and `WIP:` is the older spelling it still
+/// honours. Stripping in a loop means a title that already carries one — or
+/// two, from a title edited by hand — does not gain another.
+fn without_draft_prefix(title: &str) -> &str {
+    let mut text = title.trim();
+
+    loop {
+        let stripped = ["Draft:", "draft:", "WIP:", "wip:"]
+            .iter()
+            .find_map(|marker| text.strip_prefix(marker));
+
+        match stripped {
+            Some(rest) => text = rest.trim_start(),
+            None => return text,
+        }
+    }
+}
+
+/// The request that moves a GitLab merge request in or out of draft (FEAT-071).
+///
+/// GitLab only — GitHub converts draft state over GraphQL, and Bitbucket has no
+/// draft at all. Both are decided in [`set_draft_status`] rather than here.
+fn gitlab_draft_request(repo: &Repo, number: u64, title: &str, draft: bool) -> Request {
+    let cleaned = without_draft_prefix(title);
+    let new_title = if draft {
+        format!("Draft: {cleaned}")
+    } else {
+        cleaned.to_string()
+    };
+
+    Request {
+        verb: Verb::Put,
+        url: format!(
+            "{}/projects/{}/merge_requests/{number}",
+            repo.kind.api_base(&repo.host),
+            project_path(repo)
+        ),
+        body: serde_json::json!({ "title": new_title }).to_string(),
+    }
+}
+
+/// Merge a pull request (FEAT-071).
+pub fn merge_pull_request(
+    repo: &Repo,
+    token: &str,
+    number: u64,
+    method: MergeMethod,
+    commit_title: Option<&str>,
+    commit_message: Option<&str>,
+) -> Result<()> {
+    let request = merge_request(repo, number, method, commit_title, commit_message);
+    send(&request, token, &repo.host)
+}
+
+/// Close / reject a pull request without merging (FEAT-071).
+pub fn close_pull_request(repo: &Repo, token: &str, number: u64) -> Result<()> {
+    let request = close_request(repo, number);
+    send(&request, token, &repo.host)
+}
+
+/// Set draft / ready-for-review status on a pull request (FEAT-071).
+///
+/// `id` is the host's own identifier for the pull request, which GitHub needs
+/// and the others ignore; `title` is what GitLab rewrites and the others
+/// ignore. Each host is given the one it can act on.
+pub fn set_draft_status(
+    repo: &Repo,
+    token: &str,
+    number: u64,
+    id: &str,
+    title: &str,
+    draft: bool,
+) -> Result<()> {
+    match repo.kind {
+        // GitHub's REST update accepts a `draft` field and does nothing with
+        // it; converting is a GraphQL mutation on the pull request's node id.
+        Kind::GitHub => github::set_draft(&repo.host, token, id, draft),
+        Kind::GitLab => send(
+            &gitlab_draft_request(repo, number, title, draft),
+            token,
+            &repo.host,
+        ),
+        // Bitbucket Cloud has no draft pull request. The workspace hides the
+        // control, and this refuses rather than faking the state with a title
+        // prefix that Bitbucket would treat as ordinary text.
+        Kind::Bitbucket => Err(Error::Forge {
+            host: repo.host.clone(),
+            detail: "Bitbucket has no draft pull requests".into(),
+        }),
+    }
 }
 
 /// Turn the host's file list into the shape the Diff screen already renders.
@@ -1009,6 +1269,260 @@ mod tests {
         assert!(res.is_err());
         if let Err(Error::Forge { detail, .. }) = res {
             assert!(!detail.contains("needs a comment or inline change request"));
+        }
+    }
+
+    // FEAT-071 — the lifecycle requests.
+    //
+    // Asserted on the built request rather than on a live call: the verb and
+    // the path are exactly what a host rejects when they are wrong, and a
+    // mocked command layer above this cannot see either of them.
+
+    fn repo_on(kind: Kind, host: &str) -> Repo {
+        Repo {
+            kind,
+            host: host.into(),
+            owner: "spa-git-ty".into(),
+            name: "spagitty".into(),
+        }
+    }
+
+    fn payload(request: &Request) -> Value {
+        serde_json::from_str(&request.body).expect("a request body is JSON")
+    }
+
+    #[test]
+    fn github_merges_with_put_because_a_post_is_answered_with_a_method_error() {
+        let request = merge_request(&repo(), 412, MergeMethod::Squash, None, None);
+
+        assert_eq!(request.verb, Verb::Put);
+        assert_eq!(
+            request.url,
+            "https://api.github.com/repos/spa-git-ty/spagitty/pulls/412/merge"
+        );
+        assert_eq!(
+            payload(&request),
+            serde_json::json!({ "merge_method": "squash" })
+        );
+    }
+
+    #[test]
+    fn a_blank_commit_title_is_omitted_rather_than_sent_empty() {
+        // An empty `commit_title` is not "no title" to GitHub — it is a commit
+        // with no subject. Omitting the field is how the host is left to pick.
+        let request = merge_request(&repo(), 412, MergeMethod::Merge, Some("   "), Some(""));
+
+        assert_eq!(
+            payload(&request),
+            serde_json::json!({ "merge_method": "merge" })
+        );
+    }
+
+    #[test]
+    fn a_commit_title_and_message_travel_trimmed() {
+        let request = merge_request(
+            &repo(),
+            412,
+            MergeMethod::Merge,
+            Some("  Land the workspace  "),
+            Some("  Closes #7  "),
+        );
+
+        assert_eq!(
+            payload(&request),
+            serde_json::json!({
+                "merge_method": "merge",
+                "commit_title": "Land the workspace",
+                "commit_message": "Closes #7",
+            })
+        );
+    }
+
+    #[test]
+    fn an_enterprise_host_is_addressed_at_its_own_api_path() {
+        let request = merge_request(
+            &repo_on(Kind::GitHub, "git.example.com"),
+            412,
+            MergeMethod::Merge,
+            None,
+            None,
+        );
+
+        assert_eq!(
+            request.url,
+            "https://git.example.com/api/v3/repos/spa-git-ty/spagitty/pulls/412/merge"
+        );
+    }
+
+    #[test]
+    fn gitlab_merges_with_put_on_a_url_encoded_project_path() {
+        let request = merge_request(
+            &repo_on(Kind::GitLab, "gitlab.com"),
+            412,
+            MergeMethod::Squash,
+            None,
+            None,
+        );
+
+        assert_eq!(request.verb, Verb::Put);
+        assert_eq!(
+            request.url,
+            "https://gitlab.com/api/v4/projects/spa-git-ty%2Fspagitty/merge_requests/412/merge"
+        );
+        assert_eq!(payload(&request), serde_json::json!({ "squash": true }));
+    }
+
+    #[test]
+    fn only_a_squash_sets_gitlabs_squash_flag() {
+        for method in [MergeMethod::Merge, MergeMethod::Rebase] {
+            let request = merge_request(
+                &repo_on(Kind::GitLab, "gitlab.com"),
+                412,
+                method,
+                None,
+                None,
+            );
+
+            assert_eq!(payload(&request), serde_json::json!({ "squash": false }));
+        }
+    }
+
+    #[test]
+    fn bitbucket_merges_with_post_and_its_own_strategy_names() {
+        let strategies = [
+            (MergeMethod::Merge, "merge_commit"),
+            (MergeMethod::Squash, "squash"),
+            (MergeMethod::Rebase, "fast_forward"),
+        ];
+
+        for (method, expected) in strategies {
+            let request = merge_request(
+                &repo_on(Kind::Bitbucket, "bitbucket.org"),
+                412,
+                method,
+                None,
+                None,
+            );
+
+            assert_eq!(request.verb, Verb::Post);
+            assert_eq!(
+                request.url,
+                "https://api.bitbucket.org/2.0/repositories/spa-git-ty/spagitty/pullrequests/412/merge"
+            );
+            assert_eq!(
+                payload(&request),
+                serde_json::json!({ "merge_strategy": expected })
+            );
+        }
+    }
+
+    #[test]
+    fn github_closes_with_patch_on_the_pull_request_itself() {
+        let request = close_request(&repo(), 412);
+
+        assert_eq!(request.verb, Verb::Patch);
+        assert_eq!(
+            request.url,
+            "https://api.github.com/repos/spa-git-ty/spagitty/pulls/412"
+        );
+        assert_eq!(payload(&request), serde_json::json!({ "state": "closed" }));
+    }
+
+    #[test]
+    fn gitlab_closes_with_a_state_event_and_bitbucket_declines() {
+        let gitlab = close_request(&repo_on(Kind::GitLab, "gitlab.com"), 412);
+        assert_eq!(gitlab.verb, Verb::Put);
+        assert_eq!(
+            gitlab.url,
+            "https://gitlab.com/api/v4/projects/spa-git-ty%2Fspagitty/merge_requests/412"
+        );
+        assert_eq!(
+            payload(&gitlab),
+            serde_json::json!({ "state_event": "close" })
+        );
+
+        let bitbucket = close_request(&repo_on(Kind::Bitbucket, "bitbucket.org"), 412);
+        assert_eq!(bitbucket.verb, Verb::Post);
+        assert_eq!(
+            bitbucket.url,
+            "https://api.bitbucket.org/2.0/repositories/spa-git-ty/spagitty/pullrequests/412/decline"
+        );
+    }
+
+    #[test]
+    fn gitlab_marks_a_draft_by_prefixing_the_title() {
+        let request = gitlab_draft_request(
+            &repo_on(Kind::GitLab, "gitlab.com"),
+            412,
+            "Workspace review overhaul",
+            true,
+        );
+
+        assert_eq!(request.verb, Verb::Put);
+        assert_eq!(
+            request.url,
+            "https://gitlab.com/api/v4/projects/spa-git-ty%2Fspagitty/merge_requests/412"
+        );
+        assert_eq!(
+            payload(&request),
+            serde_json::json!({ "title": "Draft: Workspace review overhaul" })
+        );
+    }
+
+    #[test]
+    fn a_title_that_is_already_a_draft_does_not_gain_a_second_prefix() {
+        let request = gitlab_draft_request(
+            &repo_on(Kind::GitLab, "gitlab.com"),
+            412,
+            "Draft: Workspace review overhaul",
+            true,
+        );
+
+        assert_eq!(
+            payload(&request),
+            serde_json::json!({ "title": "Draft: Workspace review overhaul" })
+        );
+    }
+
+    #[test]
+    fn marking_ready_takes_every_spelling_of_the_marker_off() {
+        // GitLab reads the marker case-insensitively and still honours `WIP:`,
+        // so a title edited by hand can carry either, or both.
+        let cases = [
+            "Draft: Workspace review overhaul",
+            "draft: Workspace review overhaul",
+            "WIP: Workspace review overhaul",
+            "Draft: WIP: Workspace review overhaul",
+        ];
+
+        for title in cases {
+            let request =
+                gitlab_draft_request(&repo_on(Kind::GitLab, "gitlab.com"), 412, title, false);
+
+            assert_eq!(
+                payload(&request),
+                serde_json::json!({ "title": "Workspace review overhaul" }),
+                "started from {title}"
+            );
+        }
+    }
+
+    #[test]
+    fn bitbucket_refuses_a_draft_rather_than_faking_one_in_the_title() {
+        // Bitbucket Cloud has no draft pull request. Writing `Draft:` into the
+        // title would leave a state the host does not know it is in.
+        let refused = set_draft_status(
+            &repo_on(Kind::Bitbucket, "bitbucket.org"),
+            "token",
+            412,
+            "PR_kwDO",
+            "Workspace review overhaul",
+            true,
+        );
+
+        match refused {
+            Err(Error::Forge { detail, .. }) => assert!(detail.contains("no draft")),
+            other => panic!("expected a refusal, got {other:?}"),
         }
     }
 }

@@ -25,10 +25,63 @@
 
 use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Deserializer, Serialize};
 use tauri::{AppHandle, Manager, Runtime};
 
 const FILE: &str = "settings.json";
+
+/// How much personality Spagitty is allowed to show (FEAT-072).
+///
+/// The delight layer is opt-in *intensity*, never opt-in existence: badges are
+/// earned at every level and the badge screen works at every level. What this
+/// changes is how loudly an unlock arrives — a line in the corner, a reward
+/// moment, or the full thing with the jokes and the Hall of Shame.
+///
+/// `Balanced` is the default because a tool with no acknowledgement at all is
+/// the thing this feature exists to fix, and because the level that respects
+/// concentration is one step away rather than the starting point.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Personality {
+    /// Badges, quietly. No reward moment, no jokes, no Hall of Shame.
+    Professional,
+    #[default]
+    Balanced,
+    /// Everything, including the anti-badges and the easter eggs.
+    FullSpagitty,
+}
+
+/// How loud, if at all (FEAT-072).
+///
+/// `Off` by default, and that is not a hedge. Every other preference in this
+/// file that changes what the application *does* is off until somebody asks for
+/// it, and a desktop application that makes a noise the first time it is used
+/// gets muted at the operating system — which would lose the sounds worth
+/// having along with the one that annoyed somebody.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SoundLevel {
+    #[default]
+    Off,
+    Subtle,
+    Full,
+}
+
+/// Read a value that has a default, falling back rather than failing.
+///
+/// A hand-edited `"personality": "loud"` must cost the personality, not every
+/// other setting in the file. Without this the whole object fails to parse and
+/// [`parse`] hands back the defaults for everything — so one typo would silently
+/// undo an unrelated toggle somebody had set months earlier.
+fn lenient<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Default + DeserializeOwned,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(T::deserialize(value).unwrap_or_default())
+}
 
 /// The behaviour toggles on the Settings screen.
 ///
@@ -59,6 +112,12 @@ pub struct Settings {
     /// thing Amendment 6 exists to stop — it was passed on every fetch before
     /// this was added.
     pub prune_on_fetch: bool,
+    /// How much personality the delight layer shows (FEAT-072).
+    #[serde(deserialize_with = "lenient")]
+    pub personality: Personality,
+    /// Whether Spagitty makes a sound, and how loud (FEAT-072).
+    #[serde(deserialize_with = "lenient")]
+    pub sound: SoundLevel,
 }
 
 impl Default for Settings {
@@ -78,6 +137,12 @@ impl Default for Settings {
             // A branch that vanishes from the graph because a fetch pruned it
             // is a surprise, and one nobody asked for.
             prune_on_fetch: false,
+            // The middle setting: an unlock is acknowledged, and nothing
+            // blocks or interrupts. See the type for why this one is not off.
+            personality: Personality::Balanced,
+            // Silent until asked, like every other preference here that
+            // changes what the application does.
+            sound: SoundLevel::Off,
         }
     }
 }
@@ -160,6 +225,40 @@ mod tests {
     }
 
     #[test]
+    fn the_delight_layer_is_balanced_and_silent_until_it_is_asked_otherwise() {
+        // Badges are earned at every level; what defaults here is how loudly
+        // one arrives. Sound is the one that must never start on.
+        assert_eq!(Settings::default().personality, Personality::Balanced);
+        assert_eq!(Settings::default().sound, SoundLevel::Off);
+    }
+
+    #[test]
+    fn the_personality_levels_are_stored_as_the_names_the_screen_uses() {
+        let text = serde_json::to_string(&Settings {
+            personality: Personality::FullSpagitty,
+            sound: SoundLevel::Subtle,
+            ..Settings::default()
+        })
+        .expect("serialising");
+
+        assert!(text.contains("\"personality\":\"fullSpagitty\""), "{text}");
+        assert!(text.contains("\"sound\":\"subtle\""), "{text}");
+    }
+
+    #[test]
+    fn a_personality_this_build_does_not_know_costs_only_the_personality() {
+        // The file invites hand-editing, and a bad enum value used to fail the
+        // whole object — which would quietly undo every other setting in it.
+        let settings = parse(r#"{"personality": "loud", "showGitCommands": true}"#);
+
+        assert_eq!(settings.personality, Personality::Balanced);
+        assert!(
+            settings.show_git_commands,
+            "an unreadable personality must not cost an unrelated toggle"
+        );
+    }
+
+    #[test]
     fn a_key_the_build_does_not_know_is_ignored_rather_than_fatal() {
         // Going back a version must not cost the settings that still apply.
         // `signCommits` is one such key now: it lived here until FEAT-019 moved
@@ -178,6 +277,8 @@ mod tests {
             confirm_history_rewrite: false,
             show_git_commands: true,
             prune_on_fetch: true,
+            personality: Personality::FullSpagitty,
+            sound: SoundLevel::Full,
         };
         let text = serde_json::to_string_pretty(&written).expect("serialising");
 
@@ -194,6 +295,8 @@ mod tests {
         assert!(text.contains("confirmHistoryRewrite"), "{text}");
         assert!(text.contains("showGitCommands"), "{text}");
         assert!(text.contains("pruneOnFetch"), "{text}");
+        assert!(text.contains("personality"), "{text}");
+        assert!(text.contains("sound"), "{text}");
         // And the one that left: writing it again would recreate a second
         // switch for a preference `commit.gpgsign` already holds.
         assert!(!text.contains("signCommits"), "{text}");

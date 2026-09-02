@@ -13,6 +13,8 @@
 	import { notice } from '$lib/ui/notice.svelte';
 	import { workspace } from '$lib/workspace.svelte';
 	import type { RepoSummary } from '$lib/types';
+	import { worktrees } from '$lib/worktrees/store.svelte';
+	import { worktreeModal } from '$lib/worktrees/modal.svelte';
 
 	/**
 	 * The repositories open as tabs.
@@ -98,6 +100,17 @@
 			{ id: 'open', label: 'Open repository…', run: () => void repo.choose() },
 			{ id: 'clone', label: 'Clone…', run: () => clone.show() }
 		];
+
+		if (repo.info) {
+			items.push({
+				id: 'worktrees',
+				label: 'Worktrees…',
+				run: () => {
+					void worktrees.fetch();
+					worktreeModal.showManager();
+				}
+			});
+		}
 
 		// Only the ones not already open: a menu offering to open the tab you are
 		// looking at teaches nothing.

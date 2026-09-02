@@ -49,13 +49,15 @@ jobs:
 
       - run: bun run tauri build
 
+      # Only the downloads, never the whole bundle tree. Attaching the tree is
+      # what killed the v0.2.0 release; the action carries the account of it.
+      - uses: ./.github/actions/release-assets
+
       - uses: actions/upload-artifact@v4
         with:
           name: spagitty-alpha-${{ matrix.os }}
-          path: |
-            target/release/bundle/**
-            src-tauri/target/release/bundle/**
-          if-no-files-found: warn
+          path: out/**
+          if-no-files-found: error
 
   publish:
     name: publish the alpha
@@ -96,11 +98,33 @@ jobs:
           bun tools/release-notes.mjs Unreleased > notes.md
           cat notes.md
 
+      # Checked before the tag is pushed, for the same reason gate 6 checks it:
+      # a release asset is keyed by its basename, and finding that out from
+      # GitHub's 422 after the push leaves an alpha number burnt with nothing
+      # published under it.
+      - name: The assets can actually be attached
+        id: assets
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find artifacts -type f | sort)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::the build uploaded no artifacts, so there is nothing to publish"
+            exit 1
+          fi
+          clashes=$(basename -a "${files[@]}" | sort | uniq -d)
+          if [ -n "$clashes" ]; then
+            echo "::error::these names appear more than once, and a release can hold each only once: $(echo $clashes | tr '\n' ' ')"
+            exit 1
+          fi
+          printf '%s\n' "${files[@]}"
+          echo "files=${files[*]}" >> "$GITHUB_OUTPUT"
+
       # The runner has no git identity; an annotated tag needs one.
       - name: Tag and publish as a pre-release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${{ steps.version.outputs.tag }}" -m "Spagitty ${{ steps.version.outputs.tag }}"
@@ -109,4 +133,4 @@ jobs:
             --title "Spagitty ${{ steps.version.outputs.tag }}" \
             --prerelease \
             --notes-file notes.md \
-            $(find artifacts -type f | tr '\n' ' ')
+            ${{ steps.assets.outputs.files }}

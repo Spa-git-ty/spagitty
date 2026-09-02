@@ -201,35 +201,34 @@ describe('done', () => {
 });
 
 /**
- * FEAT-040 — what the graph's footer is allowed to say.
+ * FEAT-040 — what the workspace status area is allowed to say.
  *
  * The two lines it used to carry told the user how to operate the screen they
  * were already operating, which is the copy TASK-007 and TASK-009 removed
  * everywhere else. The assertions read the screen's source because the footer is
  * markup in a route, and a route is not a component this suite mounts.
  */
-describe('the graph footer', () => {
-	const page = readFileSync('src/routes/+page.svelte', 'utf8');
-	const footer = page.slice(page.indexOf('<footer'), page.indexOf('</footer>'));
+describe('the workspace status area', () => {
+	const rail = readFileSync('src/lib/chrome/NavRail.svelte', 'utf8');
 
 	it('no longer explains the screen to the person using it', () => {
-		expect(footer).not.toMatch(/drag a branch|right-click a row|double-click a row/i);
+		expect(rail).not.toMatch(/drag a branch|right-click a row|double-click a row/i);
 	});
 
 	it('says how much is changed, when it refreshed, and when it was fetched', () => {
-		expect(footer).toMatch(/changed file/);
-		expect(footer).toMatch(/refreshed \{refreshed\}/);
-		expect(footer).toMatch(/\{fetched\}/);
+		expect(rail).toMatch(/changed.*file/);
+		expect(rail).toMatch(/refreshed.*relativeTime/);
+		expect(rail).toMatch(/fetched.*relativeTime/);
 	});
 
 	it('has a word for a repository that has never been fetched', () => {
 		// An empty time, or a time invented for a fetch that never happened, is
 		// the thing this must not do.
-		expect(page).toMatch(/never fetched/);
+		expect(rail).toMatch(/never fetched/);
 	});
 
 	it('has a word for a working copy that has not been read', () => {
-		expect(footer).toMatch(/working copy not read yet/);
+		expect(rail).toMatch(/working copy not read yet/);
 	});
 });
 

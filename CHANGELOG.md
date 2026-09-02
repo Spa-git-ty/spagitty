@@ -14,6 +14,92 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-02
+
+### Added
+
+- **Worktrees management (FEAT-062).** Complete lifecycle support for git
+  worktrees. Users can view all linked working trees from the repository tabs
+  menu or command palette, add new worktrees (with new branches, existing
+  branches, or detached HEADs), switch active tabs to linked worktrees, lock
+  and unlock worktrees with custom reasons, and remove or prune stale working
+  trees.
+- **File history and interactive blame view (FEAT-063).** Added a dedicated file
+  history view (screen 1O, `/history`) and interactive blame inspector. The view
+  renders the file's commit evolution timeline with rename following (`--follow`)
+  on the left, alongside a line-by-line blame gutter with author portraits, commit
+  hashes, and relative timestamps on the right. Hovering commits highlights all
+  contributed lines, and commit chips link directly into the commit graph.
+- **Diff syntax highlighting (FEAT-064).** Grammar-based code syntax highlighting
+  across all diff views (Diff screen 1B, Working copy 1C, Stashes 1G, Pull
+  requests 1H, and File history 1O). Features fast, memory-safe tokenization for
+  Rust, TypeScript/JavaScript, Python, Go, C++, HTML, CSS, JSON, TOML, YAML,
+  Shell, and SQL with automatic theme adaptation across all light and dark palettes.
+- **Image and binary diffs (FEAT-065).** Rich visual image comparisons and binary
+  delta inspection across all diff views. Supports 2-up (side-by-side) comparison,
+  horizontal swipe split sliders, and opacity onion-skin overlays with transparency
+  checkerboard backgrounds for PNG, JPEG, SVG, WebP, GIF, ICO, and AVIF images.
+  Non-image binaries display formatted previous/new file sizes and byte deltas.
+- **Diff content search (FEAT-066).** Search inside added and removed patch lines
+  directly from Log search (screen 1I, `/search`). Extends `search::walk` with tree
+  diff line inspection (`diff_content` query filter), supports combined filtering
+  with author, message, path, and date ranges, and provides removable query chips.
+- **Submodules management (FEAT-067).** Added submodules lifecycle inspection and
+  actions. Users can view all submodules with their sync status, URLs, and recorded
+  commit SHAs from the sidebar rail footer or command palette, perform recursive
+  updates/clones, synchronize configured remote URLs, and de-initialize submodules.
+- **External diff and merge tool launchers (FEAT-068).** Added configuration and
+  launch triggers for external 2-way diff and 3-way merge tools (VS Code, Meld,
+  Beyond Compare, KDiff3, Sublime, Vimdiff). Settings (screen 1K) provides tool
+  auto-discovery from `$PATH` and `diff.tool`/`merge.tool` configuration, while
+  diff file lists provide right-click context menu triggers to launch external tools.
+- **Multi-identity profiles (FEAT-069).** Added author identity profiles allowing
+  seamless switching between personal and work commit credentials (name, email,
+  and signing keys). Includes a profile manager in Settings (screen 1K) and an
+  active committer identity badge with a quick-switch dropdown in the status strip.
+- **Extended forge integration and in-app PR creation (FEAT-070).** Added support
+  for GitLab and Bitbucket Cloud forge remotes in addition to GitHub. Users can
+  connect accounts with personal access tokens / app passwords, view merge requests,
+  and create new pull requests / merge requests directly from the Pull requests
+  workspace with target branch selectors and draft toggles.
+- **Pull request lifecycle actions (FEAT-071).** Merge, close, reopen and mark
+  ready-for-review from inside the Pull requests workspace, with the merge
+  strategy (merge commit, squash, rebase) chosen per request and the forge's own
+  mergeability state shown before the action is offered.
+- **The Delight Layer (FEAT-072).** A badge, title and reward system that reads
+  what actually happened in the repository. Thirty-five badges across six
+  categories and five rarities, including evolution chains, secret badges and
+  anti-badges; a Badges screen (1P) with the collection, equipped title and a
+  shareable profile; per-actor attribution so agents earn separately from the
+  human driving them, with agent standings ranked by first-pass rate. Nothing is
+  awarded for merely using the application — every rule reads skill, discipline,
+  recovery or quality. A Personality setting (Professional, Balanced, Full
+  Spagitty) governs how loudly any of it speaks, and a Sound setting (off,
+  subtle, full) synthesises its cues rather than shipping audio assets.
+- **God mode (FEAT-072).** A Settings section that fires any delight event,
+  previews any badge, and grants or revokes them, so the reward moments can be
+  seen without waiting for the repository to produce them.
+
+### Fixed
+
+- **The Accounts chip in Settings opened the License section.** The section list
+  had eight chips and the screen had seven branches, so `accounts` fell through
+  to the `{:else}` catch-all. Account settings already live on the You section,
+  so the chip is gone, `#accounts` redirects to `you`, and the catch-all is
+  replaced by an explicit branch — a chip with no branch is now a test failure
+  rather than a silent redirect.
+- **Every `<select>` in the application was drawn by the operating system.**
+  `appearance` appeared nowhere in `app.css`, so WebKitGTK painted its own
+  widget and ignored the theme: a white field on a dark palette. All five
+  selects are now themed, with the chevron drawn in `currentcolor` so it follows
+  the palette.
+- **The External Tools section was themed against tokens that do not exist.**
+  `--fg`, `--dim` and `--bg-2` each fell through to a hard-coded dark fallback,
+  which meant the section was the wrong colour on every theme but one.
+- **The Open repository button pushed its label to the far edge** of the
+  navigation rail, because it inherited the rail item's `space-between`.
+
+
 ## [0.2.0] - 2026-08-30
 
 ### Added

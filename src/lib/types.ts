@@ -186,6 +186,17 @@ export interface FileDiff {
 	hunks: Hunk[];
 }
 
+/** Detailed binary / image diff inspection payload (FEAT-065). */
+export interface BinaryDiff {
+	path: string;
+	isImage: boolean;
+	mime: string;
+	oldSize: number | null;
+	newSize: number | null;
+	oldBase64: string | null;
+	newBase64: string | null;
+}
+
 // --- Working copy ---------------------------------------------------------
 
 /** Which two sides of the working copy a diff compares. */
@@ -322,6 +333,9 @@ export type ReviewState = 'awaitingReview' | 'changesRequested' | 'approved' | '
  */
 export type ReviewVerdict = 'approve' | 'requestChanges' | 'comment';
 
+/** Merge strategies supported across forges (FEAT-071). */
+export type MergeMethod = 'merge' | 'squash' | 'rebase';
+
 /** A commit belonging to a pull request (FEAT-059). */
 export interface PullRequestCommit {
 	sha: string;
@@ -353,9 +367,8 @@ export interface DraftComment {
 	body: string;
 }
 
-/** Which hosting service a remote points at (FEAT-017). */
-export type ForgeKind = 'gitHub';
-
+/** Which hosting service a remote points at (FEAT-017, FEAT-070). */
+export type ForgeKind = 'gitHub' | 'gitLab' | 'bitbucket';
 /** A repository on a hosting service, identified from a git remote. */
 export interface ForgeRepo {
 	kind: ForgeKind;
@@ -488,6 +501,8 @@ export interface SearchQuery {
 	message?: string | null;
 	/** A path the commit changed, like `git log -- <path>`. */
 	path?: string | null;
+	/** Search within added/removed patch lines (FEAT-066). */
+	diffContent?: string | null;
 	/** Seconds since the unix epoch, like `--since`. */
 	since?: number | null;
 	/** Seconds since the unix epoch, like `--until`. */
@@ -549,6 +564,16 @@ export interface Blame {
 	lines: BlameLine[];
 	/** Set when `lines` is empty for a reason worth stating. */
 	refused: NotBlamable | null;
+}
+
+/** One commit in a file's evolution history (FEAT-063). */
+export interface FileHistoryEntry {
+	commit: string;
+	short: string;
+	authorName: string;
+	authorEmail: string;
+	time: number;
+	summary: string;
 }
 
 // --- Conflicts ------------------------------------------------------------
@@ -867,6 +892,59 @@ export interface Remote {
 	refs: number;
 }
 
+/** One linked working tree attached to a git repository (FEAT-062). */
+export interface Worktree {
+	/** Absolute filesystem path to the working tree. */
+	path: string;
+	/** Display name (trailing directory component). */
+	name: string;
+	/** HEAD commit object ID (full hex SHA). */
+	head: string;
+	/** Short 7-character commit hash for display. */
+	headShort: string;
+	/** Short branch name if on a branch, or null if detached. */
+	branch: string | null;
+	/** True if this is the main / root repository working tree. */
+	isMain: boolean;
+	/** True if the working tree is bare. */
+	isBare: boolean;
+	/** True if HEAD is detached (not on any named branch). */
+	isDetached: boolean;
+	/** Optional lock reason if locked against pruning. */
+	lockedReason: string | null;
+	/** Optional prunable reason if the worktree gitdir is orphaned or missing. */
+	prunableReason: string | null;
+}
+
+/** One git submodule in a repository (FEAT-067). */
+export interface Submodule {
+	name: string;
+	path: string;
+	url: string;
+	headCommit: string | null;
+	headShort: string | null;
+	initialized: boolean;
+	inSync: boolean;
+	hasConflict: boolean;
+	describe: string | null;
+}
+
+/** Known external diff/merge tool information (FEAT-068). */
+export interface ExternalToolInfo {
+	id: string;
+	name: string;
+	command: string;
+	isInstalled: boolean;
+}
+
+/** External tools configuration state (FEAT-068). */
+export interface ExternalToolsConfig {
+	diffTool: string | null;
+	mergeTool: string | null;
+	availableDiffTools: ExternalToolInfo[];
+	availableMergeTools: ExternalToolInfo[];
+}
+
 /** Which side of a conflict to keep. */
 export type ConflictSideName = 'ours' | 'theirs';
 
@@ -949,6 +1027,15 @@ export interface Identity {
 	repository: boolean;
 }
 
+/** One saved identity profile (FEAT-069). */
+export interface IdentityProfile {
+	id: string;
+	name: string;
+	authorName: string;
+	authorEmail: string;
+	signingKey: string | null;
+}
+
 /** Spagitty's own behaviour toggles, stored in its config directory. */
 export interface Settings {
 	/**
@@ -969,7 +1056,23 @@ export interface Settings {
 	 * graph because a fetch quietly pruned it is a surprise nobody asked for.
 	 */
 	pruneOnFetch: boolean;
+	/**
+	 * How much personality the delight layer shows (FEAT-072).
+	 *
+	 * Opt-in intensity, never opt-in existence: badges are earned and the badge
+	 * screen works at every level. What this changes is how loudly an unlock
+	 * arrives.
+	 */
+	personality: Personality;
+	/** Whether Spagitty makes a sound, and how loud. Off until asked. */
+	sound: SoundLevel;
 }
+
+/** Mirrors `settings::Personality`. */
+export type Personality = 'professional' | 'balanced' | 'fullSpagitty';
+
+/** Mirrors `settings::SoundLevel`. */
+export type SoundLevel = 'off' | 'subtle' | 'full';
 
 /** Which signing machinery git is configured to use — `gpg.format`. */
 export type SigningFormat = 'openPgp' | 'ssh' | 'x509';

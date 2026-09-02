@@ -78,6 +78,51 @@ pub struct Blame {
     pub refused: Option<NotBlamable>,
 }
 
+/// One commit in a file's history (FEAT-063).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileHistoryEntry {
+    pub commit: String,
+    pub short: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub time: i64,
+    pub summary: String,
+}
+
+/// Parse null-delimited log entries into `FileHistoryEntry`.
+pub fn parse_file_history(raw: &str) -> Vec<FileHistoryEntry> {
+    let mut entries = Vec::new();
+    for line in raw.lines() {
+        let parts: Vec<&str> = line.split('\0').collect();
+        if parts.len() >= 6 {
+            let commit = parts[0].to_string();
+            let short = parts[1].to_string();
+            let author_name = parts[2].to_string();
+            let author_email = parts[3].to_string();
+            let time = parts[4].parse::<i64>().unwrap_or(0);
+            let summary = parts[5].to_string();
+
+            entries.push(FileHistoryEntry {
+                commit,
+                short,
+                author_name,
+                author_email,
+                time,
+                summary,
+            });
+        }
+    }
+    entries
+}
+
+/// Read the commit evolution history of a single file path (FEAT-063).
+pub fn history(repo: &gix::Repository, path: &str, limit: usize) -> Result<Vec<FileHistoryEntry>> {
+    let dir = workdir(repo)?;
+    let raw = shell::file_history(dir, path, limit)?;
+    Ok(parse_file_history(&raw))
+}
+
 /// Blame `path` as of `revision`.
 ///
 /// `revision` is anything `git rev-parse` would take — a branch name, a tag, a
@@ -532,5 +577,26 @@ mod tests {
 
         assert!(!is_binary(&late));
         assert!(is_binary(b"\0start"));
+    }
+
+    #[test]
+    fn parses_null_delimited_file_history_stream() {
+        let sample = "1a2b3c4d\x001a2b3c4\x00Ada Lovelace\x00ada@example.com\x001700000000\x00Initial commit\n2b3c4d5e\x002b3c4d5\x00Charles Babbage\x00charles@example.com\x001700000100\x00Second commit\n";
+        let entries = parse_file_history(sample);
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].commit, "1a2b3c4d");
+        assert_eq!(entries[0].author_name, "Ada Lovelace");
+        assert_eq!(entries[0].time, 1700000000);
+        assert_eq!(entries[0].summary, "Initial commit");
+        assert_eq!(entries[1].short, "2b3c4d5");
+    }
+
+    #[test]
+    fn file_history_walks_fixture_commits() {
+        let fixture = Fixture::woven();
+        let repo = fixture.open();
+        let entries = history(&repo, "core.txt", 10).expect("file history");
+        assert!(!entries.is_empty());
+        assert_eq!(entries[0].author_name, "Ada Lovelace");
     }
 }

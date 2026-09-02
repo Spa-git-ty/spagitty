@@ -137,9 +137,14 @@
 
 	.modal {
 		width: min(620px, calc(100vw - 40px));
-		background: var(--panel);
-		border: 1px solid var(--line);
-		border-radius: var(--r-field);
+		background: var(--glass-thick);
+		backdrop-filter: var(--blur-thick);
+		-webkit-backdrop-filter: var(--blur-thick);
+		border: var(--glass-edge-line);
+		border-top-color: var(--glass-edge);
+		border-radius: var(--r-floating);
+		box-shadow: var(--shadow-3);
+		animation: rise-in var(--t-enter) var(--spring);
 		display: flex;
 		flex-direction: column;
 		max-height: calc(100vh - 80px);

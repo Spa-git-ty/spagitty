@@ -2,12 +2,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { relativeTime } from '$lib/format';
 	import { graph } from '$lib/graph/store.svelte';
 	import { isActive, NAV_ITEMS } from '$lib/nav';
 	import { panels } from '$lib/panels.svelte';
 	import { repo } from '$lib/repo.svelte';
-	import Btn from '$lib/ui/Btn.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
+	import { submodules } from '$lib/submodules/store.svelte';
+	import { submoduleModal } from '$lib/submodules/modal.svelte';
 
 	/**
 	 * Collapsed, the rail is a strip of glyphs. Everything stays where it was —
@@ -32,6 +34,49 @@
 	const submodulesLabel = $derived(
 		counts.submodules === null ? '·' : String(counts.submodules)
 	);
+	const workingLabel = $derived(
+		counts.working === null
+			? 'working copy not read yet'
+			: counts.working === 0
+				? 'working copy clean'
+				: `${counts.working} changed ${counts.working === 1 ? 'file' : 'files'}`
+	);
+
+	/**
+	 * What the foot says (FEAT-040).
+	 *
+	 * The three things a person wants to know while looking at a repository —
+	 * how much is changed, when the walk last refreshed, and when the remote was
+	 * last heard from — each of them a fact the rail already has or can get
+	 * honestly. It lived on the Graph screen's own footer until the rail became
+	 * the place the workspace is described from.
+	 *
+	 * `now` is a signal so the ages re-read when anything else changes; nothing
+	 * here polls. A rail that ticked would draw the eye to its least important
+	 * row.
+	 */
+	let now = $state(Date.now());
+
+	const refreshed = $derived(
+		graph.refreshedAt === null ? 'not refreshed yet' : `refreshed ${relativeTime(graph.refreshedAt, now)}`
+	);
+
+	const fetched = $derived.by(() => {
+		if (!repo.info) return null;
+		const at = repo.info.lastFetched;
+		// An empty time, or a time invented for a fetch that never happened, is
+		// the thing this must not do.
+		return at === null ? 'never fetched' : `fetched ${relativeTime(at, now)}`;
+	});
+
+	// Re-read whenever the walk finishes or the counts move, which is every
+	// moment the numbers behind these could have changed.
+	$effect(() => {
+		void graph.refreshedAt;
+		void repo.counts.working;
+		void repo.info?.lastFetched;
+		now = Date.now();
+	});
 </script>
 
 <nav class="rail" class:collapsed aria-label="Screens">
@@ -45,19 +90,6 @@
 		>
 			<Icon name={collapsed ? 'chevron-right' : 'chevron-left'} size="1em" />
 		</button>
-		{#if !collapsed}
-			<!--
-				What the walk has found so far. One statement instead of the
-				three pieces of text this row used to carry — a glyph, a count
-				and the word "loading" — and the dot is what says it is still
-				running, so nothing has to move to say so.
-			-->
-			<span class="walk" class:running={!graph.complete}>
-				<span class="pulse" aria-hidden="true"></span>
-				<span class="mono">{graph.count}</span>
-				<span class="note">{graph.complete ? 'commits' : 'walking…'}</span>
-			</span>
-		{/if}
 	</div>
 
 	<!--
@@ -67,18 +99,28 @@
 		only duplicated the Log screen's own query bar and the Ctrl+F shortcut.
 	-->
 	<div class="open">
-		{#if collapsed}
-			<button
-				class="item"
-				title="Open repository…"
-				aria-label="Open repository…"
-				onclick={() => repo.choose()}
-			>
+		<button
+			class="item open-repository primary"
+			title="Open repository…"
+			aria-label="Open repository…"
+			onclick={() => repo.choose()}
+		>
+			<!--
+				The icon and the label in one `.name`, exactly as every other row
+				builds itself.
+
+				They were direct children, and `.item` lays its children out with
+				`space-between` so that a screen's count can sit at the far right.
+				With nothing to push apart but an icon and a word, that put the
+				icon against the left edge and the text against the right, with
+				the whole rail's width between them. Grouping them is what every
+				other row already does, and it is why every other row reads.
+			-->
+			<span class="name">
 				<Icon name="folder" size="1.2em" />
-			</button>
-		{:else}
-			<Btn primary onclick={() => repo.choose()}>Open repository…</Btn>
-		{/if}
+				{#if !collapsed}<span class="responsive-label">Open repository…</span>{/if}
+			</span>
+		</button>
 	</div>
 
 	{#each NAV_ITEMS as item (item.href)}
@@ -108,8 +150,14 @@
 
 	<div class="spacer"></div>
 
-	{#if !collapsed}
+	{#if !collapsed && repo.info}
 		<div class="foot">
+			<span class="walk" class:running={!graph.complete}>
+				<span class="pulse" aria-hidden="true"></span>
+				<span>{graph.complete ? 'Repository ready' : 'Loading history…'}</span>
+			</span>
+			<span class="note">{graph.count} commits · {workingLabel}</span>
+			<span class="note">{refreshed}{fetched ? ` · ${fetched}` : ''}</span>
 			<span class="note">Tags {tagsLabel} · Submodules {submodulesLabel}</span>
 		</div>
 	{/if}
@@ -233,6 +281,13 @@
 		padding: 8px 4px;
 	}
 
+	/* Collapsed, the group holds one glyph and must not claim the row's width,
+	   or the icon centres inside a stretched box instead of inside the pill. */
+	.rail.collapsed .open-repository .name {
+		justify-content: center;
+		width: 100%;
+	}
+
 	/* Label and icon travel together; the count is what the row's spare width
 	   belongs to. */
 	.name {
@@ -275,6 +330,25 @@
 	.open :global(.btn) {
 		width: 100%;
 		justify-content: center;
+	}
+
+	/*
+	 * The one item that is a button rather than a destination.
+	 *
+	 * No `justify-content` of its own: it inherits `.item`'s, and its icon and
+	 * label are grouped in a `.name` like every other row's, so the group sits
+	 * at the leading edge and the collapsed rule still centres it.
+	 */
+	.open-repository {
+		background: var(--accent);
+		color: var(--on-accent);
+		font-weight: 650;
+	}
+
+	.open-repository:hover {
+		background: var(--accent-lift);
+		color: var(--on-accent);
+		transform: none;
 	}
 
 	/*
@@ -342,5 +416,38 @@
 		gap: 6px;
 		padding: 8px;
 		align-items: flex-start;
+	}
+
+	/* A tiling compositor can make a window narrower than the application's
+	   requested minimum. Compact the chrome instead of squeezing the workspace. */
+	@media (max-width: 900px) {
+		.rail {
+			width: 48px;
+		}
+
+		.head {
+			justify-content: center;
+			padding: 8px 4px;
+		}
+
+		.walk,
+		.count,
+		.foot,
+		.name > span,
+		.responsive-label {
+			display: none;
+		}
+
+		.open {
+			padding: 8px 4px;
+		}
+
+		.item,
+		.open-repository {
+			justify-content: center;
+			width: calc(100% - 8px);
+			margin-inline: 4px;
+			padding-inline: 0;
+		}
 	}
 </style>

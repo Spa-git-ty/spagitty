@@ -11,6 +11,7 @@
 import * as api from '../api';
 import { repo } from '../repo.svelte';
 import type { BranchRow } from '../types';
+import { branchDeleted } from '$lib/delight/watch';
 
 /**
  * How long a branch has to sit untouched before it is "stale".
@@ -215,8 +216,10 @@ export const branches = {
 	 * depends on whether the branch is merged and on what it would take to get
 	 * it back.
 	 */
-	delete(name: string, force: boolean): Promise<boolean> {
-		return this.run(() => api.deleteBranch(name, force));
+	async delete(name: string, force: boolean): Promise<boolean> {
+		const gone = await this.run(() => api.deleteBranch(name, force));
+		if (gone) branchDeleted(name);
+		return gone;
 	},
 
 	/**

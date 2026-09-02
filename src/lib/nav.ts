@@ -29,6 +29,10 @@ export type CountKey = keyof RepoCounts;
  * were not in the design handoff. Both came out of the GitKraken gap analysis,
  * and they are numbered after the handoff's run rather than inserted into it so
  * that a code still says where a screen came from.
+ *
+ * 1P is Badges (FEAT-072), and it came from neither: it is the first screen
+ * that is not about the state of a repository but about what has been done in
+ * one, by whom.
  */
 export type ScreenCode =
 	| '1A'
@@ -44,7 +48,9 @@ export type ScreenCode =
 	| '1K'
 	| '1L'
 	| '1M'
-	| '1N';
+	| '1N'
+	| '1O'
+	| '1P';
 
 export interface NavItem {
 	code: ScreenCode;
@@ -76,13 +82,15 @@ export const NAV_ITEMS: NavItem[] = [
 	{ code: '1E', label: 'Rebase', href: '/rebase', icon: 'rebase' },
 	{ code: '1I', label: 'Log', href: '/search', icon: 'search' },
 	{ code: '1M', label: 'Reflog', href: '/reflog', icon: 'history' },
+	{ code: '1P', label: 'Badges', href: '/badges', icon: 'badge' },
 	{ code: '1J', label: 'All repositories', href: '/repos', dividerBefore: true, icon: 'folder' },
 	{ code: '1K', label: 'Settings', href: '/settings', icon: 'settings' }
 ];
 
 /** Screens that exist but are not reachable from the rail. */
 export const OFF_RAIL: Record<string, { code: ScreenCode; label: string }> = {
-	'/diff': { code: '1B', label: 'Diff' }
+	'/diff': { code: '1B', label: 'Diff' },
+	'/history': { code: '1O', label: 'File history' }
 };
 
 /** Routes that are screens but are not reachable from the rail. */

@@ -18,6 +18,7 @@ import type {
 	DraftComment,
 	FileDiff,
 	ForgeRepo,
+	MergeMethod,
 	PullRequest,
 	PullRequestComment,
 	PullRequestCommit,
@@ -35,6 +36,9 @@ let repo = $state<ForgeRepo | null>(null);
 let loading = $state(false);
 let viewMode = $state<WorkspaceViewMode>('list');
 let currentUser = $state<string | null>(null);
+let isCreateModalOpen = $state(false);
+let creating = $state(false);
+let createError = $state<string | null>(null);
 
 /** Guards against a slow read landing after a newer one. */
 let seq = 0;
@@ -70,6 +74,14 @@ let fileSeq = 0;
 /** In flight, or the host's refusal of the last attempt. */
 let reviewing = $state(false);
 let reviewError = $state<string | null>(null);
+
+/** In flight state for merge/close/draft (FEAT-071). */
+let merging = $state(false);
+let mergeError = $state<string | null>(null);
+let closing = $state(false);
+let closeError = $state<string | null>(null);
+let togglingDraft = $state(false);
+let draftError = $state<string | null>(null);
 
 function getDraftStorageKey(prNumber: number): string {
 	const slug = repo ? `${repo.owner}/${repo.name}` : 'global';
@@ -117,6 +129,17 @@ export const requests = {
 	get repo(): ForgeRepo | null {
 		return repo;
 	},
+
+	/**
+	 * Whether this host has draft pull requests at all (FEAT-071).
+	 *
+	 * One host carries a draft flag, another a `Draft:` title marker. A third
+	 * has neither, so the workspace offers no control rather than writing a
+	 * state that host does not know it is in.
+	 */
+	get canDraft(): boolean {
+		return repo !== null && repo.kind !== 'bitbucket';
+	},
 	get loading(): boolean {
 		return loading;
 	},
@@ -131,6 +154,47 @@ export const requests = {
 	},
 	get currentUser(): string | null {
 		return currentUser;
+	},
+	get isCreateModalOpen(): boolean {
+		return isCreateModalOpen;
+	},
+	get creating(): boolean {
+		return creating;
+	},
+	get createError(): string | null {
+		return createError;
+	},
+
+	openCreateModal(): void {
+		isCreateModalOpen = true;
+		createError = null;
+	},
+	closeCreateModal(): void {
+		isCreateModalOpen = false;
+		createError = null;
+	},
+
+	async create(
+		title: string,
+		body: string,
+		head: string,
+		base: string,
+		draft = false
+	): Promise<PullRequest> {
+		creating = true;
+		createError = null;
+		try {
+			const newPr = await api.createPullRequest(title, body, head, base, draft);
+			isCreateModalOpen = false;
+			await this.load();
+			this.select(newPr.id);
+			return newPr;
+		} catch (err) {
+			createError = err instanceof Error ? err.message : String(err);
+			throw err;
+		} finally {
+			creating = false;
+		}
 	},
 
 	/** What is waiting on the person using Spagitty. The screen leads with these. */
@@ -223,6 +287,24 @@ export const requests = {
 	},
 	get reviewError(): string | null {
 		return reviewError;
+	},
+	get merging(): boolean {
+		return merging;
+	},
+	get mergeError(): string | null {
+		return mergeError;
+	},
+	get closing(): boolean {
+		return closing;
+	},
+	get closeError(): string | null {
+		return closeError;
+	},
+	get togglingDraft(): boolean {
+		return togglingDraft;
+	},
+	get draftError(): string | null {
+		return draftError;
 	},
 
 	select(id: string | null): void {
@@ -482,6 +564,72 @@ export const requests = {
 			return false;
 		} finally {
 			reviewing = false;
+		}
+	},
+
+	/** Merge the open pull request (FEAT-071). */
+	async merge(
+		method: MergeMethod,
+		commitTitle?: string,
+		commitMessage?: string
+	): Promise<boolean> {
+		if (!api.inTauri()) return false;
+		const request = this.open;
+		if (request === null) return false;
+
+		merging = true;
+		mergeError = null;
+		try {
+			await api.mergePullRequest(request.number, method, commitTitle, commitMessage);
+			await this.load();
+			return true;
+		} catch (e) {
+			mergeError = String(e);
+			return false;
+		} finally {
+			merging = false;
+		}
+	},
+
+	/** Close / reject the open pull request without merging (FEAT-071). */
+	async close(): Promise<boolean> {
+		if (!api.inTauri()) return false;
+		const request = this.open;
+		if (request === null) return false;
+
+		closing = true;
+		closeError = null;
+		try {
+			await api.closePullRequest(request.number);
+			await this.load();
+			return true;
+		} catch (e) {
+			closeError = String(e);
+			return false;
+		} finally {
+			closing = false;
+		}
+	},
+
+	/** Toggle draft / ready-for-review status (FEAT-071). */
+	async toggleDraft(): Promise<boolean> {
+		if (!api.inTauri()) return false;
+		const request = this.open;
+		if (request === null) return false;
+
+		if (!this.canDraft) return false;
+
+		togglingDraft = true;
+		draftError = null;
+		try {
+			await api.setPrDraft(request.number, request.id, request.title, !request.draft);
+			await this.load();
+			return true;
+		} catch (e) {
+			draftError = String(e);
+			return false;
+		} finally {
+			togglingDraft = false;
 		}
 	},
 

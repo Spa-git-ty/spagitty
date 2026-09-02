@@ -2,6 +2,10 @@
 <script lang="ts">
 	import { statusGlyph } from '$lib/format';
 	import type { FileChange } from '$lib/types';
+	import Menu from '$lib/ui/Menu.svelte';
+	import type { MenuItem } from '$lib/ui/menu';
+	import * as api from '$lib/api';
+	import { notice } from '$lib/ui/notice.svelte';
 
 	/**
 	 * The files a commit touched, with what each one cost in lines.
@@ -39,6 +43,39 @@
 		label = 'Files in this commit',
 		empty = 'No file changes.'
 	}: Props = $props();
+
+	let menu = $state<{ x: number; y: number; path: string; anchor: HTMLElement } | null>(null);
+
+	function oncontextmenu(event: MouseEvent, filePath: string) {
+		event.preventDefault();
+		menu = {
+			x: event.clientX,
+			y: event.clientY,
+			path: filePath,
+			anchor: event.currentTarget as HTMLElement
+		};
+	}
+
+	async function openExternal(filePath: string) {
+		try {
+			await api.launchExternalDiff(filePath);
+			notice.ok('Launched external diff tool', filePath);
+		} catch (err) {
+			notice.failed('Could not launch external tool', err);
+		}
+	}
+
+	const menuItems = $derived.by((): MenuItem[] => {
+		if (!menu) return [];
+		const filePath = menu.path;
+		return [
+			{
+				id: 'ext-diff',
+				label: 'Open in External Diff Tool',
+				run: () => void openExternal(filePath)
+			}
+		];
+	});
 
 	/**
 	 * Arrow keys walk the list, Home and End reach its ends.
@@ -78,6 +115,7 @@
 			class="file"
 			class:selected={file.path === selected}
 			onclick={() => onselect(file.path)}
+			oncontextmenu={(e) => oncontextmenu(e, file.path)}
 			title={file.path}
 		>
 			<span class="mono glyph" class:added={file.status === 'added'}>
@@ -101,6 +139,17 @@
 		<div class="empty note">{empty}</div>
 	{/if}
 </nav>
+
+{#if menu}
+	<Menu
+		x={menu.x}
+		y={menu.y}
+		anchor={menu.anchor}
+		items={menuItems}
+		label="File actions"
+		onclose={() => (menu = null)}
+	/>
+{/if}
 
 <style>
 	.files {

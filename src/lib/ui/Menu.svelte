@@ -226,8 +226,8 @@
 		/* The pane's own edge, lit along the top (TASK-024). */
 		border: var(--glass-edge-line);
 		border-top-color: var(--glass-edge);
-		border-radius: var(--r-panel);
-		box-shadow: none;
+		border-radius: var(--r-floating);
+		box-shadow: var(--shadow-3);
 		outline: none;
 		/* It appears at the pointer, so it grows from where it was asked for
 		   rather than fading in from nowhere. */

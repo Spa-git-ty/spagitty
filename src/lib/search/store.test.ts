@@ -113,6 +113,7 @@ describe('the query', () => {
 			author: 'ada',
 			message: 'line',
 			path: null,
+			diffContent: null,
 			since: null,
 			until: null
 		});
@@ -145,6 +146,24 @@ describe('the query', () => {
 		expect(searchStart.mock.calls[0][0].since).toBeNull();
 	});
 
+
+	it('supports diff content patch search filter (FEAT-066)', async () => {
+		search.diffContent = 'calculate_total';
+
+		await search.run();
+
+		expect(searchStart).toHaveBeenCalledWith({
+			author: null,
+			message: null,
+			path: null,
+			diffContent: 'calculate_total',
+			since: null,
+			until: null
+		});
+		expect(search.chips).toEqual([
+			{ key: 'diffContent', label: 'diff:calculate_total' }
+		]);
+	});
 	it('shows one chip per filter, saying exactly what is applied', () => {
 		search.author = 'ada';
 		search.path = 'core.txt';
