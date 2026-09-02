@@ -153,6 +153,18 @@ server.
   **once, by the shell** — an operation started on the graph can finish after
   the user has navigated away, and a dialog owned by a screen would take the
   question with it.
+- `src/lib/delight/` is the achievement layer (FEAT-072), and it is
+  deliberately a **sink**: git actions push events into it and it pushes
+  nothing back. It holds no reference to `repo` — the shell tells it which
+  repository and which identity it belongs to — because almost everything that
+  reports a git operation is reachable from `repo`, and importing it back would
+  close a cycle through half the frontend. `engine.ts` is pure, so the rule set
+  is tested as a table rather than by driving the application, and nothing in
+  the directory can fail a git operation: every call site is `void`-ed and
+  `record` swallows its own failure. Its record lives in `localStorage`, keyed
+  by repository path, beside the theme and the column layouts — a lost record
+  is a record of badges, not of work, and git remains the only authority on
+  what actually happened.
 - `src/lib/palette/` is a registry, not a list. `commands.ts` contributes the
   shell's commands; a feature contributes its own next to itself, so no single
   file has to import every feature in order to name it.

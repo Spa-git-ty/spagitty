@@ -23,6 +23,8 @@ mod settings;
 mod testing;
 mod watch;
 
+use tauri::Manager;
+
 pub fn run() {
     // Before the builder, because the webview reads its environment as it
     // starts and this process is still single-threaded here.
@@ -158,6 +160,12 @@ pub fn run() {
             commands::clear_git_commands,
         ])
         .setup(|app| {
+            if let (Some(window), Some(icon)) =
+                (app.get_webview_window("main"), app.default_window_icon())
+            {
+                window.set_icon(icon.clone())?;
+            }
+
             // Registered before any command can run, so the first execution of
             // the session is already being forwarded.
             command_log::forward_to(app.handle().clone());

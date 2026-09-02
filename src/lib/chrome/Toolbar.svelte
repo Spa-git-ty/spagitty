@@ -338,17 +338,21 @@
 		sitting in the chrome of every session would be a second, quieter answer
 		to a question Settings already asks.
 	-->
-	{#if settings.settings.showGitCommands}
-		<span class="vr" style="height: 26px"></span>
-		<button
-			class="tool"
-			title="What Spagitty has run"
-			aria-pressed={commandLog.open}
-			onclick={() => commandLog.toggle()}
-		>
-			<span aria-hidden="true">≡</span><span>Commands</span>
+	<div class="trailing">
+		{#if settings.settings.showGitCommands}
+			<button
+				class="tool"
+				title="What Spagitty has run"
+				aria-pressed={commandLog.open}
+				onclick={() => commandLog.toggle()}
+			>
+				<span aria-hidden="true">≡</span><span>Commands</span>
+			</button>
+		{/if}
+		<button class="tool settings" title="Settings" aria-label="Settings" onclick={() => goto('/settings')}>
+			<Icon name="settings" size="1.25em" />
 		</button>
-	{/if}
+	</div>
 
 	<!--
 		No Commit button. Committing is the Working copy screen's job — it has the
@@ -387,9 +391,11 @@
 	}
 
 	/* The command log toggle rides in the third track, at its right edge. */
-	.toolbar > :global(.vr:last-of-type),
-	.toolbar > .tool {
+	.trailing {
 		justify-self: end;
+		display: flex;
+		align-items: center;
+		gap: 4px;
 	}
 
 	.location {
@@ -505,5 +511,34 @@
 		flex-wrap: nowrap;
 		flex-shrink: 0;
 		min-width: max-content;
+	}
+
+	@media (max-width: 900px) {
+		.toolbar {
+			grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+			gap: 6px;
+			padding-inline: 8px;
+		}
+
+		.actions {
+			gap: 4px;
+		}
+
+		.actions .vr {
+			display: none;
+		}
+
+		.tool {
+			min-width: 30px;
+			padding-inline: 4px;
+		}
+
+		.tool span:last-child {
+			display: none;
+		}
+
+		.trailing .tool:not(.settings) {
+			display: none;
+		}
 	}
 </style>

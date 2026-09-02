@@ -17,6 +17,7 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import * as api from '../api';
 import { repo } from '../repo.svelte';
+import { pushed } from '$lib/delight/watch';
 import { notice } from '../ui/notice.svelte';
 import { settings } from '../settings/store.svelte';
 import {
@@ -133,6 +134,10 @@ export const network = {
 				// transient state that the next operation overwrites, and a
 				// notice is what somebody looking at another screen sees.
 				notice.ok(what, summary);
+				// Spagitty never passes `--force-with-lease` from the UI today,
+				// so this is always the gentle kind. The flag is carried anyway
+				// so that the day it can, the badge is already wired (FEAT-072).
+				if (event.payload.operation === 'push') pushed(false);
 				// A fetch moves remote-tracking refs and a push moves the
 				// upstream; both change what every divergence on screen means.
 				void repo.refresh();

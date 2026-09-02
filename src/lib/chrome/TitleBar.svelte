@@ -2,7 +2,6 @@
 <script lang="ts">
 
 	import { appWindow } from '$lib/chrome/window';
-	import BrandMark from '$lib/ui/BrandMark.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 	import type { IconName } from '$lib/ui/icons';
 
@@ -50,7 +49,7 @@
 	-->
 	<span class="side" aria-hidden="true"></span>
 
-	<span class="name"><BrandMark size={14} />Spagitty</span>
+	<span class="name">Spagitty</span>
 
 	<!--
 		The tabs and the way back to every repository were both here. The tabs

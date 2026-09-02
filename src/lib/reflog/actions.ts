@@ -19,6 +19,7 @@
  * turns one mistake into two.
  */
 
+import { recovered } from '$lib/delight/watch';
 import { reflog } from '$lib/reflog/store.svelte';
 import { dialog } from '$lib/ui/dialog.svelte';
 import { notice } from '$lib/ui/notice.svelte';
@@ -41,7 +42,12 @@ export async function branchHere(entry: ReflogEntry): Promise<boolean> {
 	if (name === null || name.trim() === '') return false;
 
 	const made = await reflog.branchAt(name, entry.after);
-	if (made) notice.ok(`${name.trim()} is at ${entry.afterShort}`);
+	if (made) {
+		notice.ok(`${name.trim()} is at ${entry.afterShort}`);
+		// Reaching into the reflog for a commit nothing points at any more is
+		// the recovery this application exists to make ordinary (FEAT-072).
+		recovered('reflog');
+	}
 	else notice.failed('Could not create the branch', reflog.writeError);
 	return made;
 }
@@ -56,7 +62,10 @@ export async function checkoutHere(entry: ReflogEntry): Promise<boolean> {
 	if (!agreed) return false;
 
 	const done = await reflog.checkoutAt(entry.after);
-	if (done) notice.ok(`Detached at ${entry.afterShort}`);
+	if (done) {
+		notice.ok(`Detached at ${entry.afterShort}`);
+		recovered('reflog');
+	}
 	else notice.failed('Could not check it out', reflog.writeError);
 	return done;
 }
@@ -87,7 +96,10 @@ export async function resetHere(entry: ReflogEntry): Promise<boolean> {
 	if (!agreed) return false;
 
 	const done = await reflog.resetTo(entry.after);
-	if (done) notice.ok(`Reset to ${entry.afterShort}`);
+	if (done) {
+		notice.ok(`Reset to ${entry.afterShort}`);
+		recovered('reflog');
+	}
 	else notice.failed('Could not reset', reflog.writeError);
 	return done;
 }

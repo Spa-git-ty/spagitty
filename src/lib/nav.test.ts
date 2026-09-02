@@ -85,6 +85,11 @@ describe('NAV_ITEMS', () => {
 			// what is in history, and what was just done to it — and before the
 			// divider because both are about the open repository.
 			'/reflog',
+			// FEAT-072. Last of the repository screens, because it is the only
+			// one that is not about the repository's state — it is about what
+			// has been done in it, which is a question people ask after the
+			// ones above rather than instead of them.
+			'/badges',
 			'/repos',
 			'/settings'
 		]);

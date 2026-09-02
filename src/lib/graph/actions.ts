@@ -30,6 +30,8 @@ import { repo } from '../repo.svelte';
 import { settings } from '../settings/store.svelte';
 import { deleteBody } from '$lib/branches/actions';
 import { network } from '$lib/network/store.svelte';
+import { delight } from '$lib/delight/store.svelte';
+import { cherryPicked, merged, recovered, switchedBranch } from '$lib/delight/watch';
 import { dialog } from '../ui/dialog.svelte';
 import { notice } from '../ui/notice.svelte';
 import type { Integration, PullMode, ResetMode, StashAction } from '../types';
@@ -172,7 +174,10 @@ export async function cherryPick(ids: string[], labels: string[]): Promise<void>
 	});
 	if (!agreed) return;
 
-	await perform(`Cherry picked ${what}`, 'Could not cherry pick', () => api.cherryPick(ids));
+	const done = await perform(`Cherry picked ${what}`, 'Could not cherry pick', () =>
+		api.cherryPick(ids)
+	);
+	if (done) cherryPicked(ids.length);
 }
 
 /**
@@ -249,10 +254,28 @@ export async function checkoutCommit(id: string, short: string): Promise<void> {
 	);
 }
 
+/**
+ * Whether HEAD is detached right now.
+ *
+ * Read *before* a checkout rather than after, because the interesting fact is
+ * where the user was coming from: checking out a branch while detached is the
+ * escape, and afterwards there is nothing left to say it happened (FEAT-072).
+ */
+function detached(): boolean {
+	return repo.info?.head.detached ?? false;
+}
+
 // --- Branches --------------------------------------------------------------
 
 export async function checkoutBranch(name: string): Promise<void> {
-	await perform(`Switched to ${name}`, `Could not switch to ${name}`, () => api.checkout(name));
+	const wasDetached = detached();
+	const done = await perform(`Switched to ${name}`, `Could not switch to ${name}`, () =>
+		api.checkout(name)
+	);
+	if (!done) return;
+
+	switchedBranch();
+	if (wasDetached) recovered('detached');
 }
 
 /** What each way of integrating one branch into another does, for the menu. */
@@ -299,9 +322,17 @@ export async function integrate(source: string, target: string, how: Integration
 		if (!agreed) return;
 	}
 
-	await perform(`${entry.label}d ${source} into ${target}`, `Could not ${entry.label.toLowerCase()}`, () =>
-		api.integrate(source, how)
+	const done = await perform(
+		`${entry.label}d ${source} into ${target}`,
+		`Could not ${entry.label.toLowerCase()}`,
+		() => api.integrate(source, how)
 	);
+	if (!done) return;
+
+	// A rebase integration is a rebase, not a merge. Counting it as one would
+	// let Octopus be earned without ever folding two histories together.
+	if (how === 'rebase') delight.record({ kind: 'rebase', commits: 0, conflicts: 0, interactive: false });
+	else merged(how === 'fastForward');
 }
 
 export async function renameBranch(name: string): Promise<void> {

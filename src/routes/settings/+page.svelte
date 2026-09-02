@@ -7,6 +7,8 @@
 	import AppearanceSection from '$lib/settings/AppearanceSection.svelte';
 	import BehaviourSection from '$lib/settings/BehaviourSection.svelte';
 	import IdentitySection from '$lib/settings/IdentitySection.svelte';
+	import GodModeSection from '$lib/settings/GodModeSection.svelte';
+	import PersonalitySection from '$lib/settings/PersonalitySection.svelte';
 	import SigningSection from '$lib/settings/SigningSection.svelte';
 	import UpdateSection from '$lib/settings/UpdateSection.svelte';
 	import ExternalToolsSection from '$lib/settings/ExternalToolsSection.svelte';
@@ -25,6 +27,20 @@
 	 * Pull requests screen links to — lands on the right one, and so does going
 	 * back to it. `hashchange` is listened for as well as read on mount: a
 	 * fragment-only navigation from another screen does not remount this one.
+	 *
+	 * **Every chip has a branch, and there is no catch-all.** `accounts` was a
+	 * chip with no branch: it fell through to a closing `{:else}` that drew the
+	 * License section, while the accounts themselves were rendered under You the
+	 * whole time. Nothing failed and nothing warned, because a catch-all cannot
+	 * tell a section it does not know from the section it was written for.
+	 *
+	 * So the chip is gone — connecting a host is part of who you are, beside the
+	 * identity, the signing key and the profiles — and the `{:else}` is gone
+	 * with it. `Section` is a closed union and `showFromHash` guards what comes
+	 * in from a fragment, so every value reaching here has a branch; a future
+	 * section added without one draws nothing, loudly, instead of drawing
+	 * somebody else's screen. `sections.test.ts` reads this file and fails
+	 * first.
 	 *
 	 * Nothing here needs an open repository.
 	 */
@@ -74,9 +90,13 @@
 		{:else if settings.section === 'behaviour'}
 			<BehaviourSection />
 			<UpdateSection />
+		{:else if settings.section === 'personality'}
+			<PersonalitySection />
+		{:else if settings.section === 'godmode'}
+			<GodModeSection />
 		{:else if settings.section === 'appearance'}
 			<AppearanceSection />
-		{:else}
+		{:else if settings.section === 'license'}
 			<LicenseSection />
 		{/if}
 	</div>

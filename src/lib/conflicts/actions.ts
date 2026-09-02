@@ -18,6 +18,7 @@
  */
 
 import { conflicts } from '$lib/conflicts/store.svelte';
+import { conflictsResolved } from '$lib/delight/watch';
 import { dialog } from '$lib/ui/dialog.svelte';
 import { notice } from '$lib/ui/notice.svelte';
 import type { ConflictOperation } from '$lib/types';
@@ -71,8 +72,15 @@ export async function abortOperation(operation: ConflictOperation): Promise<bool
  * answer than a dialog guessing at one.
  */
 export async function continueOperation(operation: ConflictOperation): Promise<boolean> {
+	// Counted before the continue: afterwards the index has no conflicts left
+	// to count, which is the whole point of having continued (FEAT-072).
+	const fought = conflicts.files.length;
+
 	const ok = await conflicts.continue();
-	if (ok) notice.ok(`The ${label(operation)} finished`);
+	if (ok) {
+		notice.ok(`The ${label(operation)} finished`);
+		conflictsResolved(fought, operation);
+	}
 	else notice.failed(`Could not continue the ${label(operation)}`, conflicts.writeError);
 	return ok;
 }

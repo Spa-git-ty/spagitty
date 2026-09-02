@@ -408,7 +408,8 @@ const RADII: Record<string, number> = {
 	'r-field': 8,
 	'r-button': 11,
 	'r-row': 8,
-	'r-panel': 8
+	'r-panel': 14,
+	'r-floating': 18
 };
 
 /**

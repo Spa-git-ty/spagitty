@@ -55,15 +55,16 @@
 
 <section class="section" aria-label="External diff and merge tools">
 	<div class="row">
-		<h2 class="title">External Tools</h2>
+		<h2 class="heading">External Tools</h2>
 		<label class="scope-toggle">
 			<input type="checkbox" bind:checked={isGlobal} />
 			<span>Save changes to global git config (~/.gitconfig)</span>
 		</label>
 	</div>
 
-	<p class="desc">
-		Configure external 2-way diff and 3-way merge tools to launch from file context menus and conflict resolution screens.
+	<p class="note">
+		Configure external 2-way diff and 3-way merge tools to launch from file context menus and
+		conflict resolution screens.
 	</p>
 
 	{#if loading && !config}
@@ -118,7 +119,7 @@
 		</div>
 
 		<div class="catalogue-section">
-			<h3 class="sub-title">Detected Utilities on $PATH</h3>
+			<h3 class="sub">Detected utilities on $PATH</h3>
 			<div class="tools-grid">
 				{#each config.availableDiffTools as tool}
 					<div class="tool-pill" class:installed={tool.isInstalled}>
@@ -133,6 +134,25 @@
 </section>
 
 <style>
+	/*
+	 * Themed from the application's own tokens (FEAT-068, fixed under FEAT-072).
+	 *
+	 * This section was written against `--fg`, `--dim` and `--bg-2`, none of
+	 * which exist in `src/app.css`. Every one of them therefore fell through to
+	 * its hard-coded fallback — `#eee`, `#888`, `#141416` — which is a dark
+	 * palette nailed into the markup. On any light theme the whole section was
+	 * pale text on pale cards, and on a dark theme other than the default it was
+	 * simply the wrong dark.
+	 *
+	 * The tokens that do exist are `--ink`, `--muted`, `--surface`, `--sunken`,
+	 * `--line`, `--soft`, `--accent` and `--ok`, and none of them needs a
+	 * fallback: a token that is always defined does not have a second value, and
+	 * writing one is how the first set went unnoticed for a whole feature.
+	 *
+	 * The select is not styled here at all. `app.css` gives every input in the
+	 * application the same sunken well and the same accent focus ring, and a
+	 * screen that restates it is a screen that will drift from it.
+	 */
 	.section {
 		display: flex;
 		flex-direction: column;
@@ -148,34 +168,27 @@
 		flex-wrap: wrap;
 	}
 
-	.title {
+	.heading {
 		margin: 0;
-		font-size: 16px;
-		font-weight: 600;
-		color: var(--fg, #eee);
+		font-size: var(--fs-ui);
+		font-weight: inherit;
 	}
 
-	.sub-title {
+	.sub {
 		margin: 0;
-		font-size: 13px;
+		font-size: var(--fs-secondary);
 		font-weight: 600;
-		color: var(--dim, #aaa);
+		color: var(--muted);
+		letter-spacing: 0.06em;
 		text-transform: uppercase;
-	}
-
-	.desc {
-		margin: 0;
-		font-size: 13px;
-		color: var(--dim, #888);
-		line-height: 1.4;
 	}
 
 	.scope-toggle {
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		font-size: 12px;
-		color: var(--dim, #aaa);
+		font-size: var(--fs-secondary);
+		color: var(--muted);
 		cursor: pointer;
 	}
 
@@ -185,10 +198,12 @@
 		gap: 12px;
 	}
 
+	/* A raised surface with the panel's own hairline, like every other card in
+	   the application — not a hand-picked near-black. */
 	.field-card {
-		background: var(--panel, #18181a);
-		border: 1px solid var(--line, #28282c);
-		border-radius: var(--r-field, 6px);
+		background-color: var(--surface-veil);
+		border: 1px solid var(--soft);
+		border-radius: var(--r-panel);
 		padding: 14px 16px;
 		display: flex;
 		flex-direction: column;
@@ -198,18 +213,18 @@
 	.card-head {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: baseline;
+		gap: 10px;
 	}
 
 	.label {
-		font-size: 13px;
-		font-weight: 500;
-		color: var(--fg, #eee);
+		font-size: var(--fs-ui);
 	}
 
+	/* What is configured now. The accent, because it is the answer to the
+	   question the row is asking. */
 	.current {
-		font-size: 12px;
-		color: var(--accent, #eeb04d);
+		color: var(--accent);
 	}
 
 	.control-row {
@@ -219,17 +234,8 @@
 
 	.field-select {
 		flex: 1;
-		background: var(--bg-2, #141416);
-		border: 1px solid var(--line, #333);
-		border-radius: 4px;
-		padding: 6px 10px;
-		font-size: 13px;
-		color: var(--fg, #eee);
-		outline: none;
-	}
-
-	.field-select:focus {
-		border-color: var(--accent, #eeb04d);
+		min-width: 0;
+		font-size: var(--fs-ui);
 	}
 
 	.catalogue-section {
@@ -242,52 +248,50 @@
 	.tools-grid {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: 4px;
 	}
 
 	.tool-pill {
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		background: var(--bg-2, #141416);
-		border: 1px solid var(--line, #28282c);
-		border-radius: 4px;
-		padding: 6px 10px;
-		font-size: 12px;
+		background-color: var(--surface-veil);
+		border: 1px solid var(--soft);
+		border-radius: var(--r-field);
+		padding: 5px 10px;
+		font-size: var(--fs-secondary);
 	}
 
+	/* Present or absent, said with the palette's own green rather than a
+	   hard-coded one — the dot is the whole content of the column. */
 	.status-dot {
+		flex: none;
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: var(--dim, #666);
+		background: var(--muted);
+		opacity: 0.5;
 	}
 
 	.tool-pill.installed .status-dot {
-		background: var(--ok, #2e7d1f);
+		background: var(--ok);
+		opacity: 1;
 	}
 
 	.tool-name {
-		font-weight: 500;
-		color: var(--fg, #ddd);
 		width: 160px;
-	}
-
-	.tool-cmd {
-		color: var(--dim, #888);
-		font-size: 11px;
-		flex: 1;
+		flex: none;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.mono {
-		font-family: ui-monospace, SFMono-Regular, monospace;
-	}
-
-	.note {
-		font-size: 13px;
-		color: var(--dim, #888);
+	.tool-cmd {
+		color: var(--muted);
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 </style>

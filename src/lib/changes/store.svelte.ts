@@ -13,6 +13,7 @@
  */
 
 import * as api from '../api';
+import { commitLanded } from '$lib/delight/watch';
 import { repo } from '../repo.svelte';
 import type { DiffSide, FileDiff, Signing, StatusEntry, WorkingCopy } from '../types';
 
@@ -291,6 +292,9 @@ export const changes = {
 	async commit(): Promise<boolean> {
 		if (!this.canCommit) return false;
 
+		const message = [subject, body].filter(Boolean).join('\n\n');
+		const amended = amend;
+
 		const committed = await this.run(async () => {
 			await api.commit(subject, body, amend);
 		});
@@ -299,6 +303,10 @@ export const changes = {
 			subject = '';
 			body = '';
 			amend = false;
+			// Not awaited: the commit is done and the screen has already moved
+			// on. Reading the diff back to work out what kind of commit it was
+			// must not hold up the next thing the user does (FEAT-072).
+			void commitLanded(message, amended);
 		}
 		return committed;
 	},

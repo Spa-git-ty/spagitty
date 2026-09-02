@@ -1,8 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import Chip from '$lib/ui/Chip.svelte';
-	import type { Settings } from '$lib/types';
-	import { settings } from './store.svelte';
+	import { settings, type BooleanSetting } from './store.svelte';
 
 	/**
 	 * Spagitty's own preferences, stored in its config directory rather than in
@@ -19,7 +18,7 @@
 	 * looks, so it lives under **You** with the identity and is written with
 	 * `git config`.
 	 */
-	const TOGGLES: { key: keyof Settings; label: string; what: string; pending: string | null }[] = [
+	const TOGGLES: { key: BooleanSetting; label: string; what: string; pending: string | null }[] = [
 		{
 			key: 'confirmHistoryRewrite',
 			label: 'Ask before rewriting history',

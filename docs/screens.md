@@ -27,12 +27,16 @@ under Amendment 11.
 | 1M | Reflog | `/reflog` | yes | Built | FEAT-050 |
 | 1N | Tags | `/tags` | yes | Built | FEAT-051 |
 | 1O | File history | `/history` | no | Built | FEAT-063 |
+| 1P | Badges | `/badges` | yes | Built | FEAT-072 |
 
 **Every screen in the handoff is built**, and 1A–1L is the whole of it. 1M and
 1N were not in the handoff at all: the Reflog and Tags came out of the GitKraken
 gap analysis rather than the design, and they are numbered after the handoff's
 run rather than inserted into it, so that a code still says where a screen came
 from.
+
+1P came from neither. Every other screen here answers a question about the state
+of a repository; Badges answers what has been *done* in one, and by whom.
 
 What remains deferred is named on the screen that defers it, in place rather
 than being absent — a conflicted stash apply, and the forges Spagitty has no
@@ -583,11 +587,21 @@ and never the directory.
 
 **Built.** `src/routes/settings/+page.svelte`, `src/lib/settings/`.
 
-Five sections behind a chip index — You, Accounts, Behaviour, Appearance,
-License — because these are read rarely and changed rarely, and one route that
-says which part of itself is showing is easier to link to than five rail
-entries. The section is in the URL fragment, so `/settings#accounts` lands where
-the Pull requests screen points.
+Sections behind a chip index — You, Remotes, External Tools, Behaviour,
+Personality, God mode, Appearance, License — because these are read rarely and
+changed rarely, and one route that says which part of itself is showing is
+easier to link to than eight rail entries. The section is in the URL fragment,
+so `/settings#accounts` lands where the Pull requests screen points.
+
+**You holds everything about who you are**: the identity, the signing key, the
+saved profiles and the connected hosting accounts. Accounts was its own chip
+until it turned out to be a chip with no branch behind it — it fell through the
+screen's closing `{:else}` and drew the License section, while `AccountsSection`
+was being rendered under You the whole time. The chip is gone, `#accounts` now
+resolves to You so the two links the Pull requests screen carries still arrive
+at the accounts, and the screen has no catch-all left to hide the next one:
+every section is an explicit branch, and `sections.test.ts` reads the route and
+fails if a chip is ever added without one.
 
 The last section was called **Advanced** until TASK-007. It has only ever held
 the version, the build, the project's licence and its dependencies' licences, so
@@ -596,7 +610,22 @@ fragment and selects the renamed section, because a link written before the
 rename doing nothing at all is worse than one that is merely out of date.
 
 **Nothing here needs an open repository.** With none, the identity falls back to
-the global scope alone and every other section is unaffected.
+the global scope alone and every other section is unaffected. **God mode** is
+the one exception and says so: previews and sounds work without a repository,
+and everything that writes a badge record is disabled because there is nowhere
+to write it.
+
+**God mode** (FEAT-072) drives the delight layer by hand. Every other badge in
+Spagitty takes real work to see, which is the point of them and also the
+problem: nobody can check that Git Lord looks right without earning Git Lord,
+and nobody is going to resolve ten conflicts to find out whether a sound is too
+loud. Four groups, in order of what they cost — preview a card (writes
+nothing), fire an event the application really produces (through the real
+rules), grant or revoke straight into the record (the only writes in the
+application that bypass the engine), and whole-record operations. The
+grant/revoke writes live in `delight` rather than in the section that draws
+them, so they can be read against the code that awards the badges people
+earned.
 
 **Appearance is the only place the theme is set.** Four families — Catppuccin,
 Dracula, Tokyo Night, Gruvbox — each with a light and a dark variant, named the
@@ -737,3 +766,35 @@ A dedicated view for inspecting a single file's commit evolution and line attrib
 **The commit timeline follows renames.** `history::file_commits` walks commits touching the selected path via `git log --follow`, displaying author name, time, summary, and short hash.
 
 **Interactive line attribution.** The right pane renders line-by-line blame metadata (author name, commit SHA, timestamp) alongside file content. Hovering a commit in the timeline or blame gutter highlights every line introduced by that commit.
+
+## 1P — Badges
+
+**Built.** `src/routes/badges/+page.svelte`, `src/lib/delight/` (FEAT-072).
+
+What has been earned in this repository, and by whom. It is the one screen that
+is not about the state of a repository, which is also why it survives having
+none open with a sentence rather than a blank — "none of this has happened yet"
+is a real answer.
+
+**Per repository, and per actor.** A badge earned in one codebase says nothing
+about another, and an aggregate across all of them would flatter whoever has the
+most repositories. A human is keyed on their git email, so switching an identity
+profile (FEAT-069) switches record; an agent is keyed on its own slug and is
+credited from the `Co-authored-by` trailer its commits already carry.
+
+**A secret badge gives nothing away.** It is drawn as a slot with `???` in it —
+shown rather than omitted, because a list that simply ended would say the
+collection was complete. The header reads `n / m+?` for the same reason: a total
+that let the secrets be worked out by arithmetic would remove the point of
+having any.
+
+**The Hall of Shame is a section, not a verdict.** Committing straight to `main`
+is acknowledged, never celebrated: a shame badge gets no reward moment, cannot
+be equipped as a title, and is left out of the markdown that leaves the
+application. It is hidden entirely at the Professional personality.
+
+**The agent table has no human on it.** Ranking the person at the keyboard
+against the models they are supervising turns a useful comparison — which of
+these does well in *this* repository — into a productivity leaderboard, which is
+the thing the feature exists not to build. Agents are ordered by first-pass rate
+rather than by volume, because volume ranks whoever was given the most work.

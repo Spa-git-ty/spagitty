@@ -1056,7 +1056,23 @@ export interface Settings {
 	 * graph because a fetch quietly pruned it is a surprise nobody asked for.
 	 */
 	pruneOnFetch: boolean;
+	/**
+	 * How much personality the delight layer shows (FEAT-072).
+	 *
+	 * Opt-in intensity, never opt-in existence: badges are earned and the badge
+	 * screen works at every level. What this changes is how loudly an unlock
+	 * arrives.
+	 */
+	personality: Personality;
+	/** Whether Spagitty makes a sound, and how loud. Off until asked. */
+	sound: SoundLevel;
 }
+
+/** Mirrors `settings::Personality`. */
+export type Personality = 'professional' | 'balanced' | 'fullSpagitty';
+
+/** Mirrors `settings::SoundLevel`. */
+export type SoundLevel = 'off' | 'subtle' | 'full';
 
 /** Which signing machinery git is configured to use — `gpg.format`. */
 export type SigningFormat = 'openPgp' | 'ssh' | 'x509';

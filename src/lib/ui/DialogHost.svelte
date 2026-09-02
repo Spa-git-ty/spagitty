@@ -111,7 +111,7 @@
 		/* The pane's own edge, lit along the top (TASK-024). */
 		border: var(--glass-edge-line);
 		border-top-color: var(--glass-edge);
-		border-radius: var(--r-panel);
+		border-radius: var(--r-floating);
 		box-shadow: var(--shadow-3);
 		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
 	}

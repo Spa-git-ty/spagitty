@@ -91,7 +91,9 @@
 	 * `geometry()` measures the pane's computed radius, so the refraction ring
 	 * changes shape with the corner.
 	 */
-	--r-panel: 8px;
+	--r-panel: 14px;
+	/* Transient surfaces sit above the workspace and use the softest geometry. */
+	--r-floating: 18px;
 	/*
 	 * The window's own corner. Larger than a panel's, because it is read against
 	 * the whole screen rather than against the surface beside it — the same
@@ -241,12 +243,14 @@
 	 * radius — and a hover that changes a shadow re-runs it. Two layers still
 	 * give the contact-plus-height read that one cannot.
 	 */
-	--shadow-1: none;
-	--shadow-2: none;
-	--shadow-3: none;
+	--shadow-1: 0 1px 3px color-mix(in srgb, var(--umbra) 10%, transparent);
+	--shadow-2: 0 4px 12px color-mix(in srgb, var(--umbra) 12%, transparent);
+	--shadow-3:
+		0 10px 30px color-mix(in srgb, var(--umbra) 16%, transparent),
+		0 2px 8px color-mix(in srgb, var(--umbra) 10%, transparent);
 
 	/* The catch of light along the top edge of a raised surface. */
-	--sheen: none;
+	--sheen: inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent);
 
 	/* Accent derivatives. Its tints and its halo. */
 	--accent-lift: color-mix(in srgb, var(--accent) 90%, #fff);
@@ -314,10 +318,12 @@
 	 * Separation in the dark now comes from the surfaces themselves, which do
 	 * still step toward the theme's own ink, and from the borders TASK-023 kept.
 	 */
-	--shadow-1: none;
-	--shadow-2: none;
-	--shadow-3: none;
-	--sheen: none;
+	--shadow-1: 0 1px 4px color-mix(in srgb, #000 22%, transparent);
+	--shadow-2: 0 5px 14px color-mix(in srgb, #000 26%, transparent);
+	--shadow-3:
+		0 12px 32px color-mix(in srgb, #000 34%, transparent),
+		0 2px 8px color-mix(in srgb, #000 24%, transparent);
+	--sheen: inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent);
 
 	/* A light accent needs its border to *darken* far less, or the bottom edge
 	   goes muddy against pale text. */
@@ -641,7 +647,7 @@ a {
  * wireframe they *are*; depth reads as depth.
  */
 .card {
-	background-color: var(--surface-veil);
+	background-color: var(--surface);
 	border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
 	border-radius: var(--r-panel);
 	box-shadow: var(--glass-rim), var(--shadow-1);
@@ -664,7 +670,7 @@ a {
 	backdrop-filter: var(--blur-thick);
 	-webkit-backdrop-filter: var(--blur-thick);
 	border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
-	border-radius: var(--r-panel);
+	border-radius: var(--r-floating);
 	box-shadow: var(--glass-rim), var(--shadow-3);
 }
 
@@ -702,14 +708,66 @@ textarea,
 select {
 	font: inherit;
 	color: var(--ink);
-	background: var(--sunken);
+	/* `background-color`, not the `background` shorthand: the select below
+	   draws its chevron with `background-image`, and the shorthand would wipe
+	   it out on every hover and focus. */
+	background-color: var(--sunken);
 	border: 1px solid var(--line);
 	border-radius: var(--r-field);
 	padding: 4px 8px;
 	box-shadow: none;
 	transition:
 		border-color var(--t-fast) var(--ease),
-		background var(--t-fast) var(--ease);
+		background-color var(--t-fast) var(--ease);
+}
+
+/*
+ * A select is a native widget until it is told not to be.
+ *
+ * Everything above applies to an `<input>` and is quietly ignored by a
+ * `<select>`: WebKitGTK paints the platform's own control, which on this
+ * desktop is a **white** field with a grey label. The rule set said `--sunken`
+ * and the widget said otherwise, so the External Tools screen had two bright
+ * white boxes sitting in a dark window — and so did the branch picker in the
+ * worktree modal and both pickers in the pull-request modal, which nobody had
+ * noticed for the same reason nobody notices anything about a `<select>`.
+ *
+ * `appearance: none` gives the box back, and taking the box means drawing the
+ * arrow. It is two gradients rather than an SVG because a data URI cannot read
+ * a custom property: an inlined chevron would be one hard-coded colour in every
+ * theme, which is the exact defect this rule exists to fix.
+ */
+select {
+	appearance: none;
+	-webkit-appearance: none;
+	/* Room for the arrow, so a long option name never runs under it. */
+	padding-right: 26px;
+	background-image:
+		linear-gradient(45deg, transparent 50%, currentcolor 50%),
+		linear-gradient(135deg, currentcolor 50%, transparent 50%);
+	background-position:
+		right 13px center,
+		right 9px center;
+	background-size:
+		4px 4px,
+		4px 4px;
+	background-repeat: no-repeat;
+	/* The arrow is drawn in `currentcolor`, so it follows the field's ink
+	   rather than being a second colour to keep in step. Muted, because it is a
+	   control affordance and not part of the value. */
+	color: var(--ink);
+}
+
+/*
+ * The open list is drawn by the platform, not by the page.
+ *
+ * These two properties are the whole of what a webview will honour inside a
+ * native popup, and they are worth setting even though the result is not fully
+ * ours: without them the list is white on a dark theme.
+ */
+select option {
+	background-color: var(--panel);
+	color: var(--ink);
 }
 
 input:hover:not(:disabled),
@@ -723,7 +781,7 @@ textarea:focus,
 select:focus {
 	outline: none;
 	border-color: var(--accent);
-	background: color-mix(in srgb, var(--sunken) 82%, var(--accent) 4%);
+	background-color: color-mix(in srgb, var(--sunken) 82%, var(--accent) 4%);
 	box-shadow: 0 0 0 3px var(--ring);
 }
 
@@ -848,6 +906,15 @@ input[type='radio'] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+
 	.glow {
 		animation: none;
 		background: var(--accent);

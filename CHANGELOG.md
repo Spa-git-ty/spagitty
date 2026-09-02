@@ -59,6 +59,42 @@ stays backward-compatible.
   connect accounts with personal access tokens / app passwords, view merge requests,
   and create new pull requests / merge requests directly from the Pull requests
   workspace with target branch selectors and draft toggles.
+- **Pull request lifecycle actions (FEAT-071).** Merge, close, reopen and mark
+  ready-for-review from inside the Pull requests workspace, with the merge
+  strategy (merge commit, squash, rebase) chosen per request and the forge's own
+  mergeability state shown before the action is offered.
+- **The Delight Layer (FEAT-072).** A badge, title and reward system that reads
+  what actually happened in the repository. Thirty-five badges across six
+  categories and five rarities, including evolution chains, secret badges and
+  anti-badges; a Badges screen (1P) with the collection, equipped title and a
+  shareable profile; per-actor attribution so agents earn separately from the
+  human driving them, with agent standings ranked by first-pass rate. Nothing is
+  awarded for merely using the application — every rule reads skill, discipline,
+  recovery or quality. A Personality setting (Professional, Balanced, Full
+  Spagitty) governs how loudly any of it speaks, and a Sound setting (off,
+  subtle, full) synthesises its cues rather than shipping audio assets.
+- **God mode (FEAT-072).** A Settings section that fires any delight event,
+  previews any badge, and grants or revokes them, so the reward moments can be
+  seen without waiting for the repository to produce them.
+
+### Fixed
+
+- **The Accounts chip in Settings opened the License section.** The section list
+  had eight chips and the screen had seven branches, so `accounts` fell through
+  to the `{:else}` catch-all. Account settings already live on the You section,
+  so the chip is gone, `#accounts` redirects to `you`, and the catch-all is
+  replaced by an explicit branch — a chip with no branch is now a test failure
+  rather than a silent redirect.
+- **Every `<select>` in the application was drawn by the operating system.**
+  `appearance` appeared nowhere in `app.css`, so WebKitGTK painted its own
+  widget and ignored the theme: a white field on a dark palette. All five
+  selects are now themed, with the chevron drawn in `currentcolor` so it follows
+  the palette.
+- **The External Tools section was themed against tokens that do not exist.**
+  `--fg`, `--dim` and `--bg-2` each fell through to a hard-coded dark fallback,
+  which meant the section was the wrong colour on every theme but one.
+- **The Open repository button pushed its label to the far edge** of the
+  navigation rail, because it inherited the rail item's `space-between`.
 
 
 ## [0.2.0] - 2026-08-30

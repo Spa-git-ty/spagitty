@@ -27,15 +27,32 @@ import type {
 	Update
 } from '../types';
 
-export type Section = 'you' | 'accounts' | 'remotes' | 'tools' | 'behaviour' | 'appearance' | 'license';
+export type Section =
+	| 'you'
+	| 'remotes'
+	| 'tools'
+	| 'behaviour'
+	| 'personality'
+	| 'godmode'
+	| 'appearance'
+	| 'license';
+
+/** The settings that are a yes or a no, and so can be flipped. */
+export type BooleanSetting = {
+	[K in keyof Settings]: Settings[K] extends boolean ? K : never;
+}[keyof Settings];
+
+/** The settings that are one of several named values. */
+export type ChoiceSetting = Exclude<keyof Settings, BooleanSetting>;
 
 /** The chip index, in the order it is shown. */
 export const SECTIONS: { id: Section; label: string }[] = [
 	{ id: 'you', label: 'You' },
-	{ id: 'accounts', label: 'Accounts' },
 	{ id: 'remotes', label: 'Remotes' },
 	{ id: 'tools', label: 'External Tools' },
 	{ id: 'behaviour', label: 'Behaviour' },
+	{ id: 'personality', label: 'Personality' },
+	{ id: 'godmode', label: 'God mode' },
 	{ id: 'appearance', label: 'Appearance' },
 	{ id: 'license', label: 'License' }
 ];
@@ -51,7 +68,9 @@ const DEFAULTS: Settings = {
 	checkForUpdates: true,
 	confirmHistoryRewrite: true,
 	showGitCommands: false,
-	pruneOnFetch: false
+	pruneOnFetch: false,
+	personality: 'balanced',
+	sound: 'off'
 };
 
 function isSection(value: string): value is Section {
@@ -177,6 +196,15 @@ export const settings = {
 		// rename still lands somewhere sane rather than silently doing nothing.
 		if (name === 'advanced') {
 			section = 'license';
+			return;
+		}
+		// `accounts` was a chip of its own that never had a branch to render —
+		// pressing it landed on License, while the accounts themselves were
+		// drawn under You the whole time. The chip is gone and the fragment
+		// resolves to where the section actually lives, so the two links the
+		// Pull requests screen carries still arrive at the accounts.
+		if (name === 'accounts') {
+			section = 'you';
 			return;
 		}
 		if (isSection(name)) section = name;
@@ -364,10 +392,28 @@ export const settings = {
 	 * Optimistic, and put back if the write fails: a toggle that shows one state
 	 * and stored another is worse than one that visibly refuses.
 	 */
-	async toggle(key: keyof Settings): Promise<void> {
+	async toggle(key: BooleanSetting): Promise<void> {
 		if (busy) return;
+		await this.write({ ...stored, [key]: !stored[key] });
+	},
+
+	/**
+	 * Choose one of a setting's several values, and store it.
+	 *
+	 * The personality and the sound level are not toggles — three states each —
+	 * and giving them their own setter rather than widening `toggle` keeps
+	 * `toggle` unable to write a non-boolean, which is what stops a mistyped
+	 * key silently storing `false` over somebody's choice.
+	 */
+	async choose<K extends ChoiceSetting>(key: K, value: Settings[K]): Promise<void> {
+		if (busy || stored[key] === value) return;
+		await this.write({ ...stored, [key]: value });
+	},
+
+	/** Store a whole settings object, optimistically, putting it back on failure. */
+	async write(next: Settings): Promise<void> {
 		const previous = stored;
-		stored = { ...stored, [key]: !stored[key] };
+		stored = next;
 		busy = true;
 		writeError = null;
 		try {

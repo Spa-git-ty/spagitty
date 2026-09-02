@@ -122,11 +122,16 @@ describe('registerCommands', () => {
 	});
 
 	it('finds a command by its initials, which is the point of the palette', () => {
-		palette.setQuery('gtb');
-		expect(palette.active?.id).toBe('go.branches');
+		palette.setQuery('gtc');
+		expect(palette.active?.id).toBe('go.changes');
 
-		// Two commands share the same initials; the shorter title wins the tie,
-		// which is what makes the ranking predictable rather than arbitrary.
+		// Several commands share the same initials; the shorter title wins the
+		// tie, which is what makes the ranking predictable rather than
+		// arbitrary. `gtb` is Badges and Branches (FEAT-072), and `gts` is
+		// Search, Stashes and Settings.
+		palette.setQuery('gtb');
+		expect(palette.active?.id).toBe('go.badges');
+
 		palette.setQuery('gts');
 		expect(palette.active?.id).toBe('go.search');
 	});

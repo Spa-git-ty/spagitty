@@ -17,6 +17,8 @@
 	import { rebase } from '$lib/rebase/store.svelte';
 	import CommandLog from '$lib/commandlog/CommandLog.svelte';
 	import { commandLog } from '$lib/commandlog/store.svelte';
+	import RewardOverlay from '$lib/delight/RewardOverlay.svelte';
+	import { delight } from '$lib/delight/store.svelte';
 	import NavRail from '$lib/chrome/NavRail.svelte';
 	import ResizeEdges from '$lib/chrome/ResizeEdges.svelte';
 	import { appWindow } from '$lib/chrome/window';
@@ -219,6 +221,29 @@
 			graph.restart();
 		}
 	});
+
+	/*
+	 * The delight layer follows the open repository and the git identity
+	 * (FEAT-072).
+	 *
+	 * Both are pushed to it rather than read by it: the badge record must not
+	 * import the repository store, because almost everything that reports a git
+	 * operation is reachable from `repo` and importing it back would close a
+	 * cycle through half the frontend. The shell already knows both facts, so
+	 * the shell is where they are handed over.
+	 */
+	$effect(() => {
+		delight.bind(repo.info?.path ?? null);
+	});
+
+	$effect(() => {
+		const identity = settings.identity;
+		if (!identity) return;
+		delight.identify(
+			identity.name?.local ?? identity.name?.global ?? null,
+			identity.email?.local ?? identity.email?.global ?? null
+		);
+	});
 </script>
 
 <svelte:window onkeydown={shortcut} />
@@ -302,6 +327,14 @@
 <NoticeToast />
 
 <!--
+	The reward moment (FEAT-072). Mounted by the shell for the same reason as
+	the dialog and the notice: a rebase started on the Graph screen can finish
+	after the user has walked to Conflicts, and the badge it earns has to arrive
+	wherever they are.
+-->
+<RewardOverlay />
+
+<!--
 	The record of what Spagitty ran. Mounted by the shell for the same reason as
 	the dialog: a command started on one screen finishes wherever the user is.
 -->
@@ -343,7 +376,10 @@
 		border-radius: var(--r-window);
 		outline: 0.2px solid var(--window-edge);
 		outline-offset: -0.2px;
-		box-shadow: none;
+		box-shadow:
+			0 1px 2px var(--window-contact),
+			0 12px 30px var(--window-cast),
+			inset 0 1px 0 var(--window-sheen);
 	}
 
 	/*

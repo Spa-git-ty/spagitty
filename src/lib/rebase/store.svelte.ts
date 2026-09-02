@@ -18,6 +18,7 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import * as api from '../api';
 import { repo } from '../repo.svelte';
+import { rebaseFinished } from '$lib/delight/watch';
 import {
 	REBASE_DONE_EVENT,
 	REBASE_PROGRESS_EVENT,
@@ -44,6 +45,11 @@ let focused = $state<string | null>(null);
 
 /** Guards against a slow preview landing after a newer edit. */
 let previewSeq = 0;
+
+/** How many commits the run in flight was planned to replay (FEAT-072). */
+let planned = 0;
+/** How many times that run stopped on a conflict. */
+let stops = 0;
 
 /** The rebase running right now, by token. Null when none is. */
 let token = $state<number | null>(null);
@@ -217,6 +223,13 @@ export const rebase = {
 		runError = null;
 		progress = null;
 
+		// What this run is worth, for the delight layer (FEAT-072). Counted here
+		// because it is the only moment both facts are knowable: how many
+		// commits were planned, and that this is a fresh run rather than a
+		// continuation of one that stopped.
+		planned = plan.length;
+		stops = 0;
+
 		try {
 			token = await api.rebaseRun(plan);
 			return true;
@@ -256,6 +269,12 @@ export const rebase = {
 
 			outcome = event.payload.ok ? 'ran' : event.payload.stopped ? 'stopped' : 'failed';
 			runError = event.payload.error;
+
+			// A rebase that stopped will be continued; each stop is one fight
+			// with a conflict, and finishing after any of them is what Rebase
+			// Survivor is for.
+			if (outcome === 'stopped') stops += 1;
+			else if (outcome === 'ran') rebaseFinished(planned, stops, true);
 
 			// A rebase that finished has no state left to read, and one that
 			// stopped has the position it stopped at. Asked either way, because

@@ -670,6 +670,7 @@ describe('NavRail', () => {
 	});
 
 	it('shows tag and submodule counts in the footer', () => {
+		repoControl.setInfo(info());
 		repoControl.setCounts(counts({ tags: 2, submodules: 0 }));
 		const view = render(NavRail, {});
 		expect(view.get('.foot').textContent).toContain('Tags 2');
@@ -677,21 +678,26 @@ describe('NavRail', () => {
 		view.destroy();
 	});
 
-	it('says whether the walk is still running', () => {
-		// The words changed with the row — "walking…" and "commits" rather than
-		// "loading" and "all" — but the fact being reported has not: whether
-		// what the rail is counting is final.
+	it('gives one clear status while history loads and when the repository is ready', () => {
+		repoControl.setInfo(info());
 		graphControl.setComplete(false);
 		const loading = render(NavRail, {});
-		expect(loading.get('.head').textContent).toContain('walking');
+		expect(loading.get('.foot').textContent).toContain('Loading history…');
+		expect(loading.get('.foot').textContent).not.toContain('walking');
 		expect(loading.get('.walk').classList.contains('running')).toBe(true);
 		loading.destroy();
 
 		graphControl.setComplete(true);
 		const done = render(NavRail, {});
-		expect(done.get('.head').textContent).toContain('commits');
+		expect(done.get('.foot').textContent).toContain('Repository ready');
 		expect(done.get('.walk').classList.contains('running')).toBe(false);
 		done.destroy();
+	});
+
+	it('does not show repository status before a repository is open', () => {
+		const view = render(NavRail, {});
+		expect(view.all('.foot')).toHaveLength(0);
+		view.destroy();
 	});
 
 	it('navigates to the screen it names', () => {
@@ -741,6 +747,7 @@ describe('NavRail', () => {
 	});
 
 	it('leaves the foot holding the counts alone', () => {
+		repoControl.setInfo(info());
 		const view = render(NavRail, {});
 
 		const foot = view.get('.foot');

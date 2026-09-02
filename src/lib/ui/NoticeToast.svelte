@@ -47,7 +47,7 @@
 		/* The stripe says which kind of news this is, and it is the palette's own
 		   green or red rather than a graph lane, which was cyan on Dracula. */
 		border-left: 3px solid var(--ok);
-		border-radius: var(--r-panel);
+		border-radius: var(--r-floating);
 		box-shadow: var(--shadow-3);
 		/* It arrives from the corner it lives in. */
 		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);

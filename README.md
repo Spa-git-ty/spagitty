@@ -18,6 +18,11 @@ everything below is drawn from.
 - Commit graph with branch, tag, and lane rendering.
 - Pull-request review workspace with structured diffs and markdown panes.
 - Native tray/menubar presence with a brand sheen (monochrome on macOS).
+- A delight layer that keeps score of skilful work — badges, titles and a
+  reward moment — for people and for the agents committing beside them. It
+  rewards clean commits, survived rebases and recovered work, never time spent
+  in the application, and its intensity is a setting with a genuinely quiet
+  end.
 
 ## Getting started
 
