@@ -18,16 +18,18 @@ same way everywhere or it does not have a description at all.
 | Use | Text |
 | --- | --- |
 | **Tagline** | Untangle the work — yours, and your agents'. |
+| **Product description** | Spagitty your gateway to a Git managed agent farm. |
 | **One-line descriptor** | A local-first desktop Git client for repositories where people and coding agents commit side by side. |
 | **Short descriptor** | A desktop Git client built for the review that follows fast work. |
-| **Category** | Desktop Git client. |
+| **Category** | Desktop Git client — gateway to a Git-managed agent farm (farm in progress). |
 
 Rules that the wording has to keep:
 
-- **"Agents" are named as collaborators, never as a product we sell.** Spagitty
-  does not run agents; it is where the work they did is read, reviewed and
-  landed. A tagline that promises orchestration describes software that does not
-  exist, and the first person to open the application would find that out.
+- **"Agents" are collaborators today, and a farm tomorrow.** Spagitty today is
+  the gateway: it reads, reviews and lands work agents already commit. The
+  agent farm — running and shepherding them from inside Spagitty — is still
+  being planned. Do not write copy that claims the farm already ships; do not
+  write copy that pretends the gateway is all there will ever be.
 - **Never "AI-powered".** Nothing in Spagitty is a model. Saying otherwise
   trades the one thing a local-first tool has, which is that you can tell what
   it is doing.
