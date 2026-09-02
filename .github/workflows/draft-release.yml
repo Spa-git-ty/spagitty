@@ -37,13 +37,14 @@
 # only offers a dispatchable workflow that exists on the **default branch**,
 # and putting this on `main` means a push to `main`, which fires gate 6 — the
 # real, tagged, published release. So there is also a push trigger scoped to
-# `draft/**`: pushing `draft/0.1.0-preview` builds and drafts, and nothing
+# `draft/**`: pushing `draft/0.1.0-alpha` builds and drafts, and nothing
 # else in the repository reacts to a branch under that prefix.
 #
 # The tag is **computed, never typed**. It is the version in `package.json` with
-# the next preview number after the highest one already released — so two runs
+# the next alpha number after the highest one already released — so two runs
 # never collide, and nobody has to remember what the last one was. A pushed
-# build leaves a draft; a dispatch can publish outright.
+# build leaves a draft; a dispatch can publish outright. Releases stay alpha
+# until a deliberate choice is made to cut a beta or a public release.
 
 name: draft release
 
@@ -68,7 +69,7 @@ env:
 jobs:
   # Before the build, not after it. The binary is stamped with the tag it is
   # being cut as, and that is the only thing that tells a running Spagitty which
-  # release it is: `Cargo.toml` says 0.1.0 across every preview, so a version
+  # release it is: `Cargo.toml` says 0.1.0 across every alpha, so a version
   # number cannot answer it.
   tag:
     name: work out the tag
@@ -89,18 +90,18 @@ jobs:
           set -euo pipefail
           base=$(bun -e "console.log(require('./package.json').version)")
 
-          # The highest preview already cut for this version, or nothing.
-          # `sort -n` rather than lexical, or preview.10 would sort under
-          # preview.9 and the next release would try to reuse a tag.
-          last=$(git tag -l "v$base-preview.*" \
-            | sed "s/^v$base-preview\.//" \
+          # The highest alpha already cut for this version, or nothing.
+          # `sort -n` rather than lexical, or alpha.10 would sort under
+          # alpha.9 and the next release would try to reuse a tag.
+          last=$(git tag -l "v$base-alpha.*" \
+            | sed "s/^v$base-alpha\.//" \
             | grep -E '^[0-9]+$' \
             | sort -n \
             | tail -1 || true)
 
           next=$(( ${last:-0} + 1 ))
-          echo "tag=v$base-preview.$next" >> "$GITHUB_OUTPUT"
-          echo "Next tag: v$base-preview.$next (last was ${last:-none})"
+          echo "tag=v$base-alpha.$next" >> "$GITHUB_OUTPUT"
+          echo "Next tag: v$base-alpha.$next (last was ${last:-none})"
 
       # Amendment 14: a tag that exists is a release that happened, and moving
       # one is forbidden. The count above should make this unreachable; if it is
@@ -218,6 +219,7 @@ jobs:
 
           gh release create "$TAG" \
             $draft \
+            --prerelease \
             --target "$GITHUB_SHA" \
             --title "Spagitty $TAG" \
             --notes "Built from \`${GITHUB_REF_NAME}\` at \`${GITHUB_SHA}\`.
