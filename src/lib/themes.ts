@@ -85,7 +85,9 @@ const LATTE: Palette = {
 	line: 'rgba(76, 79, 105, 0.26)',
 	soft: 'rgba(76, 79, 105, 0.12)',
 	placeholder: 'rgba(76, 79, 105, 0.3)',
-	accent: '#1e66f5',
+	// The app's accent is the brand amber (#EEB04D) darkened for light
+	// surfaces, so the identity runs through the UI as well as the icon.
+	accent: '#976317',
 	onAccent: '#ffffff',
 	danger: '#d20f39',
 	// Latte's own yellow is #df8e1d, which sits at 2.3:1 on its background —
@@ -95,7 +97,7 @@ const LATTE: Palette = {
 	// Latte's green, darkened for the same reason and to the same shade its
 	// fifth lane already uses — one green in this palette, not two.
 	ok: '#2e7d1f',
-	selection: 'rgba(30, 102, 245, 0.14)',
+	selection: 'rgba(151, 99, 23, 0.14)',
 	stripe: 'rgba(76, 79, 105, 0.05)',
 	// Latte's pink, peach and yellow sit at 2.3–2.6:1 on its own background —
 	// invisible as a one-pixel lane. Blue, mauve, red and teal are Latte's own;
@@ -112,12 +114,12 @@ const MOCHA: Palette = {
 	line: 'rgba(205, 214, 244, 0.24)',
 	soft: 'rgba(205, 214, 244, 0.11)',
 	placeholder: 'rgba(205, 214, 244, 0.26)',
-	accent: '#89b4fa',
+	accent: '#eeb04d',
 	onAccent: '#1e1e2e',
 	danger: '#f38ba8',
 	warn: '#f9e2af',
 	ok: '#a6e3a1',
-	selection: 'rgba(137, 180, 250, 0.18)',
+	selection: 'rgba(238, 176, 77, 0.18)',
 	stripe: 'rgba(205, 214, 244, 0.05)',
 	lanes: ['#89b4fa', '#cba6f7', '#f5c2e7', '#fab387', '#a6e3a1']
 };
@@ -131,12 +133,12 @@ const ALUCARD: Palette = {
 	line: 'rgba(31, 31, 31, 0.24)',
 	soft: 'rgba(31, 31, 31, 0.1)',
 	placeholder: 'rgba(31, 31, 31, 0.28)',
-	accent: '#644ac9',
+	accent: '#976317',
 	onAccent: '#fffbeb',
 	danger: '#cb3a2a',
 	warn: '#a34d14',
 	ok: '#14710a',
-	selection: 'rgba(100, 74, 201, 0.14)',
+	selection: 'rgba(151, 99, 23, 0.14)',
 	stripe: 'rgba(31, 31, 31, 0.045)',
 	lanes: ['#644ac9', '#a3144d', '#cf6a00', '#14710a', '#036a96']
 };
@@ -150,12 +152,12 @@ const DRACULA: Palette = {
 	line: 'rgba(248, 248, 242, 0.24)',
 	soft: 'rgba(248, 248, 242, 0.11)',
 	placeholder: 'rgba(248, 248, 242, 0.26)',
-	accent: '#bd93f9',
+	accent: '#eeb04d',
 	onAccent: '#282a36',
 	danger: '#ff5555',
 	warn: '#ffb86c',
 	ok: '#50fa7b',
-	selection: 'rgba(189, 147, 249, 0.2)',
+	selection: 'rgba(238, 176, 77, 0.2)',
 	stripe: 'rgba(248, 248, 242, 0.05)',
 	lanes: ['#bd93f9', '#ff79c6', '#8be9fd', '#f1fa8c', '#50fa7b']
 };
@@ -174,12 +176,12 @@ const TOKYO_DAY: Palette = {
 	// Tokyo Night Day's own blue is #2e7de9, which is too light to put white
 	// text on — a filled primary button fails at 4.0:1. Darkened until it
 	// carries text at 5.8:1; the lighter original stays as the first lane.
-	accent: '#1c62c4',
+	accent: '#976317',
 	onAccent: '#ffffff',
 	danger: '#c64343',
 	warn: '#8f5e15',
 	ok: '#587539',
-	selection: 'rgba(28, 98, 196, 0.16)',
+	selection: 'rgba(151, 99, 23, 0.16)',
 	stripe: 'rgba(55, 96, 191, 0.06)',
 	lanes: ['#2e7de9', '#9854f1', '#b15c00', '#007197', '#587539']
 };
@@ -193,12 +195,12 @@ const TOKYO_NIGHT: Palette = {
 	line: 'rgba(192, 202, 245, 0.24)',
 	soft: 'rgba(192, 202, 245, 0.11)',
 	placeholder: 'rgba(192, 202, 245, 0.26)',
-	accent: '#7aa2f7',
+	accent: '#eeb04d',
 	onAccent: '#1a1b26',
 	danger: '#f7768e',
 	warn: '#e0af68',
 	ok: '#9ece6a',
-	selection: 'rgba(122, 162, 247, 0.18)',
+	selection: 'rgba(238, 176, 77, 0.18)',
 	stripe: 'rgba(192, 202, 245, 0.05)',
 	lanes: ['#7aa2f7', '#bb9af7', '#7dcfff', '#e0af68', '#9ece6a']
 };
@@ -212,12 +214,12 @@ const GRUVBOX_LIGHT: Palette = {
 	line: 'rgba(60, 56, 54, 0.28)',
 	soft: 'rgba(60, 56, 54, 0.13)',
 	placeholder: 'rgba(60, 56, 54, 0.3)',
-	accent: '#076678',
+	accent: '#976317',
 	onAccent: '#fbf1c7',
 	danger: '#9d0006',
 	warn: '#b57614',
 	ok: '#79740e',
-	selection: 'rgba(7, 102, 120, 0.14)',
+	selection: 'rgba(151, 99, 23, 0.14)',
 	stripe: 'rgba(60, 56, 54, 0.055)',
 	lanes: ['#076678', '#8f3f71', '#af3a03', '#79740e', '#b57614']
 };
@@ -231,12 +233,12 @@ const GRUVBOX_DARK: Palette = {
 	line: 'rgba(235, 219, 178, 0.26)',
 	soft: 'rgba(235, 219, 178, 0.12)',
 	placeholder: 'rgba(235, 219, 178, 0.28)',
-	accent: '#83a598',
+	accent: '#eeb04d',
 	onAccent: '#282828',
 	danger: '#fb4934',
 	warn: '#fabd2f',
 	ok: '#b8bb26',
-	selection: 'rgba(131, 165, 152, 0.2)',
+	selection: 'rgba(238, 176, 77, 0.2)',
 	stripe: 'rgba(235, 219, 178, 0.05)',
 	lanes: ['#83a598', '#d3869b', '#fe8019', '#b8bb26', '#fabd2f']
 };

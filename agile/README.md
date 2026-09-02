@@ -112,7 +112,10 @@ rather than an audit.
 | [FEAT-056](items/FEAT-056-hide-the-detail-panel.md) | The detail panel can be put away | 1A, 1H | Done |
 | [FEAT-055](items/FEAT-055-the-window-paints-on-the-path-that-works.md) | The window paints on the path that works | — | Done |
 | [FEAT-057](items/FEAT-057-liquid-glass.md) | Liquid glass: the pane that bends what is behind it | all | Done |
-| [FEAT-058](items/FEAT-058-pull-request-files-and-review.md) | A pull request you can read and answer | 1H | Open |
+| [FEAT-058](items/FEAT-058-pull-request-files-and-review.md) | A pull request you can read and answer | 1H | Done |
+| [FEAT-059](items/FEAT-059-pull-request-review-workspace.md) | Dedicated pull request review workspace | 1H | Done |
+| [FEAT-060](items/FEAT-060-spagitty-brand.md) | Spagitty, with a face: the brand | brand | Done |
+| [FEAT-061](items/FEAT-061-brand-guide-and-showcase.md) | Brand guide and interactive showcase | brand | Done |
 
 ## Bugs
 
@@ -170,9 +173,11 @@ of its own.
 | [TASK-021](items/TASK-021-centre-the-name-in-the-title-bar.md) | Centre the name in the title bar | chrome | Done |
 | [TASK-022](items/TASK-022-the-glass-goes-back-on-the-gpu.md) | The glass goes back on the GPU | all | Done |
 | [TASK-023](items/TASK-023-flat-ui-remove-gradients.md) | Flatten UI and remove gradients | all | Done |
-| [TASK-024](items/TASK-024-the-glass-reads-as-glass.md) | The glass reads as glass again | all | Open |
-| [TASK-025](items/TASK-025-release-lane-amendment-20.md) | The release lane obeys Amendment 20 | — | Open |
-| [TASK-026](items/TASK-026-remove-every-remaining-shadow.md) | Remove every remaining shadow | all | Open |
+| [TASK-024](items/TASK-024-the-glass-reads-as-glass.md) | The glass reads as glass again | all | Done |
+| [TASK-025](items/TASK-025-release-lane-amendment-20.md) | The release lane obeys Amendment 20 | — | Done |
+| [TASK-026](items/TASK-026-remove-every-remaining-shadow.md) | Remove every remaining shadow | all | Done |
+| [TASK-027](items/TASK-027-migrate-the-js-toolchain-to-bun.md) | Migrate the JS toolchain to bun | — | Done |
+| [TASK-028](items/TASK-028-reconcile-working-record-and-docs.md) | Reconcile working record and docs | — | Done |
 
 ## Skipped identifiers
 

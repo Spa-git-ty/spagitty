@@ -2,7 +2,7 @@
 
 # FEAT-058 — A pull request you can read and answer
 
-**Status:** Open on `feature/FEAT-058-pull-request-files-and-review`.
+**Status:** Done.
 **Screen:** 1H — Pull requests.
 **Raised by:** the author: "in PRs allow me to open it's files and view them and
 add review process to the PR tab".

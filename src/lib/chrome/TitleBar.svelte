@@ -2,6 +2,7 @@
 <script lang="ts">
 
 	import { appWindow } from '$lib/chrome/window';
+	import BrandMark from '$lib/ui/BrandMark.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 	import type { IconName } from '$lib/ui/icons';
 
@@ -49,7 +50,7 @@
 	-->
 	<span class="side" aria-hidden="true"></span>
 
-	<span class="name">Spagitty</span>
+	<span class="name"><BrandMark size={14} />Spagitty</span>
 
 	<!--
 		The tabs and the way back to every repository were both here. The tabs
@@ -176,6 +177,9 @@
 	/* Bold, because it is the one thing on this bar that is not a control: it
 	   says which program you are looking at, and everything else says state. */
 	.name {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
 		font-weight: 700;
 		letter-spacing: 0.01em;
 		white-space: nowrap;

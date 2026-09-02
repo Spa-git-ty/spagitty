@@ -56,6 +56,7 @@ query($owner: String!, $name: String!, $limit: Int!) {
         id
         number
         title
+        body
         isDraft
         updatedAt
         mergeable
@@ -197,6 +198,7 @@ fn row(node: &Value, me: &str) -> Option<PullRequest> {
         id: node["id"].as_str().unwrap_or("").to_string(),
         number,
         title: node["title"].as_str().unwrap_or("").to_string(),
+        body: node["body"].as_str().unwrap_or("").to_string(),
         author_name: if author.is_empty() {
             "a deleted account".into()
         } else {
@@ -308,7 +310,7 @@ fn needs_you(me: &str, author: &str, review: ReviewState, reviewers: &[String]) 
 /// is `YYYY-MM-DDTHH:MM:SSZ`, always UTC, and this crate has no date dependency
 /// to spend on reading one field. Anything that does not match is 0, which the
 /// screen renders as an unknown time rather than as a wrong one.
-fn timestamp(iso: Option<&str>) -> i64 {
+pub(crate) fn timestamp(iso: Option<&str>) -> i64 {
     let Some(text) = iso else { return 0 };
     let bytes = text.as_bytes();
     if bytes.len() < 20 || bytes[4] != b'-' || bytes[10] != b'T' {
@@ -351,6 +353,7 @@ mod tests {
             "id": "PR_kwDO",
             "number": 412,
             "title": "Give the graph a footer",
+            "body": "PR description markdown",
             "isDraft": false,
             "updatedAt": "2026-08-25T09:30:00Z",
             "mergeable": "MERGEABLE",

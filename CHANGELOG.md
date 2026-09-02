@@ -14,6 +14,45 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-30
+
+### Added
+
+- **The PR review workspace (FEAT-059).** Clicking a pull request opens a
+  dedicated full-window workspace: a header with the title (auto-scrolling on
+  hover), author, timestamps, checks, commit count and review status; a
+  collapsible left pane of all changed files and commits; a rendered CHANGELOG
+  view of the PR description; an interactive diff with inline comment threads —
+  replies and resolving change requests — and draft comments that persist in
+  `localStorage` until a batch review is published. A flat shimmer replaces the
+  old side panel while PRs load.
+- **Spagitty, with a face: the brand (FEAT-060).** The app identity is now the
+  author's own hand-drawn mark — an amber plate (`#EEB04D`) with four dark
+  strands — copied verbatim into `assets/brand/mark.svg` and shipped as the
+  app icon at 16/32/128/256/512/1024 (`@2x`, `.ico`, `.icns`) plus the
+  favicon, README hero, wordmark lockups and tray/menubar marks, all
+  regenerated from that one SVG. `docs/branding.md` is the reference, and the
+  app's interactive accent follows the brand amber (`#EEB04D` on dark
+  surfaces, darkened to `#976317` on light ones). Gate 2 refuses drift between
+  the generators and the committed art. The README, previously empty, now
+  ships the hero and the story.
+- **Brand guide, interactive showcase, and UI identity integration (FEAT-061).**
+  A complete brand authority guide was authored in `docs/branding.md`, and
+  `assets/brand/preview.html` was rebuilt as an interactive offline showcase with
+  theme toggling, click-to-copy tokens, clearspace visualizer, and platform tray
+  simulators. The `BrandMark` vector component is integrated directly into the
+  window TitleBar, All Repositories empty state, and Settings About section.
+
+### Changed
+
+- **The frontend toolchain runs on bun (TASK-027).** `bun.lock` replaces
+  `package-lock.json`; the CI, build and release workflows install and run
+  through `oven-sh/setup-bun` and `bun` commands; and the bundled license list
+  in Settings reads the installed frontend tree instead of the npm lockfile.
+  npm and node are no longer needed by the project's own tooling. Gate 4 audits
+  JS advisories at `--audit-level=high`, matching the pre-bun `npm audit`
+  policy.
+
 ## [0.1.0] - 2026-08-29
 
 The first release. Everything below is new, so it is one `Added` section rather

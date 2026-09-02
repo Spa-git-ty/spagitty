@@ -15,6 +15,7 @@ function request(overrides: Partial<PullRequest> = {}): PullRequest {
 		id: 'pr-1',
 		number: 412,
 		title: 'Split the diff view',
+		body: 'Description text',
 		authorName: 'Ada Lovelace',
 		updated: Math.floor(Date.now() / 1000) - 3600,
 		sourceBranch: 'feature/split-view',

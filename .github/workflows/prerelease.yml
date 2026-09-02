@@ -42,13 +42,12 @@ jobs:
       - uses: ./.github/actions/linux-deps
         if: matrix.os == 'ubuntu-latest'
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
 
-      - run: npm run tauri build
+      - run: bun run tauri build
 
       - uses: actions/upload-artifact@v4
         with:
@@ -73,10 +72,14 @@ jobs:
         with:
           path: artifacts
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
       - name: Compose the pre-release version
         id: version
         run: |
-          base=$(node -p "require('./package.json').version")
+          base=$(bun -e "console.log(require('./package.json').version)")
           echo "tag=v$base-alpha.${{ inputs.alpha }}" >> "$GITHUB_OUTPUT"
 
       - name: Refuse to move an existing tag
@@ -90,7 +93,7 @@ jobs:
       # an alpha is a preview of (Amendment 20). Empty Unreleased, no alpha.
       - name: Read the notes out of the changelog
         run: |
-          node tools/release-notes.mjs Unreleased > notes.md
+          bun tools/release-notes.mjs Unreleased > notes.md
           cat notes.md
 
       # The runner has no git identity; an annotated tag needs one.

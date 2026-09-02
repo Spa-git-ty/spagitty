@@ -128,6 +128,7 @@ pub struct PullRequest {
     /// The number people say out loud: "#412".
     pub number: u64,
     pub title: String,
+    pub body: String,
     pub author_name: String,
     /// Seconds since the unix epoch.
     pub updated: i64,
@@ -301,7 +302,9 @@ pub(crate) fn status_error(
     match status {
         401 => Error::ForgeUnauthorized {
             host: host.to_string(),
-            detail: "the token was refused. It may have expired or been revoked.".into(),
+            detail: host_message(body).unwrap_or_else(|| {
+                "the token was refused. It may have expired or been revoked.".into()
+            }),
         },
         // GitHub answers a spent rate limit with 403 or 429, and says so in the
         // body or the headers. A 403 that is *not* about the rate limit is a
@@ -315,17 +318,44 @@ pub(crate) fn status_error(
         },
         403 => Error::ForgeUnauthorized {
             host: host.to_string(),
-            detail: "the token does not have access to this repository.".into(),
+            detail: host_message(body)
+                .unwrap_or_else(|| "the token does not have access to this repository.".into()),
         },
         404 => Error::Forge {
             host: host.to_string(),
-            detail: "no such repository, or the token cannot see it.".into(),
+            detail: host_message(body)
+                .unwrap_or_else(|| "no such repository, or the token cannot see it.".into()),
+        },
+        422 => Error::Forge {
+            host: host.to_string(),
+            detail: host_message(body).unwrap_or_else(|| "the request was rejected (422)".into()),
         },
         other => Error::Forge {
             host: host.to_string(),
-            detail: format!("responded {other}"),
+            detail: host_message(body).unwrap_or_else(|| format!("responded {other}")),
         },
     }
+}
+
+fn host_message(body: &str) -> Option<String> {
+    let json: serde_json::Value = serde_json::from_str(body).ok()?;
+    if let Some(msg) = json["message"].as_str() {
+        if let Some(errors) = json["errors"].as_array() {
+            let error_details: Vec<String> = errors
+                .iter()
+                .filter_map(|e| {
+                    e.as_str()
+                        .map(str::to_string)
+                        .or_else(|| e["message"].as_str().map(str::to_string))
+                })
+                .collect();
+            if !error_details.is_empty() {
+                return Some(format!("{msg}: {}", error_details.join("; ")));
+            }
+        }
+        return Some(msg.to_string());
+    }
+    None
 }
 
 fn is_rate_limit(body: &str, retry_after: Option<&str>) -> bool {

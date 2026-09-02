@@ -2,7 +2,7 @@
 
 # TASK-025 — The release lane obeys Amendment 20
 
-**Status:** Open on `task/TASK-025-release-lane-amendment-20`.
+**Status:** Done.
 **Screen:** — (CI/CD and the repository root).
 **Raised by:** the author: "fix release ci on github according to our amendments".
 

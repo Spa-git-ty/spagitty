@@ -23,7 +23,7 @@
 </script>
 
 <li class="row" class:waiting class:open>
-	<button class="body" onclick={() => requests.select(request.id)}>
+	<button class="body" onclick={() => requests.openWorkspace(request.id)}>
 		<span class="number mono note">#{request.number}</span>
 		<span class="title" title={request.title}>{request.title}</span>
 
@@ -52,24 +52,17 @@
 		background-color: var(--surface-veil);
 		border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
 		border-radius: var(--r-panel);
-		box-shadow: var(--glass-rim), var(--shadow-1);
+		box-shadow: none;
 		padding: 5px 9px;
 		transition:
-			box-shadow var(--t-fast) var(--ease),
+			background-color var(--t-fast) var(--ease),
 			border-color var(--t-fast) var(--ease);
 	}
 
 	.row:hover {
-		box-shadow: var(--glass-rim), var(--shadow-2);
-		transform: translateY(-1px);
+		background-color: var(--hover);
 	}
 
-	/*
-	 * Waiting on somebody else. It used to be a dashed border — the wireframe's
-	 * word for "not settled" — which on a screen full of them read as a screen
-	 * full of unfinished boxes. It is a card that has not been lifted instead:
-	 * flat on the page, dimmed, no shadow.
-	 */
 	.row.waiting {
 		background: none;
 		box-shadow: none;
@@ -77,14 +70,14 @@
 	}
 
 	.row.waiting:hover {
-		box-shadow: var(--shadow-1);
+		background-color: var(--hover);
 	}
 
 	/* The one being read. */
 	.row.open {
 		background: var(--selection);
 		border-color: color-mix(in srgb, var(--accent) 45%, var(--soft));
-		box-shadow: var(--sheen), var(--shadow-1);
+		box-shadow: none;
 	}
 
 	.body {

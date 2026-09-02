@@ -288,6 +288,8 @@ export interface PullRequest {
 	/** The number people say out loud: "#412". */
 	number: number;
 	title: string;
+	/** Description / markdown changelog text. */
+	body: string;
 	/** Display name of whoever opened it. */
 	authorName: string;
 	/** Seconds since the unix epoch. */
@@ -319,6 +321,37 @@ export type ReviewState = 'awaitingReview' | 'changesRequested' | 'approved' | '
  * is: GitHub calls these `APPROVE`, `REQUEST_CHANGES` and `COMMENT`.
  */
 export type ReviewVerdict = 'approve' | 'requestChanges' | 'comment';
+
+/** A commit belonging to a pull request (FEAT-059). */
+export interface PullRequestCommit {
+	sha: string;
+	short: string;
+	summary: string;
+	authorName: string;
+	authorEmail: string;
+	time: number;
+}
+
+/** An inline review comment or thread reply (FEAT-059). */
+export interface PullRequestComment {
+	id: number;
+	inReplyTo: number | null;
+	path: string;
+	line: number | null;
+	side: string;
+	body: string;
+	author: string;
+	createdAt: number;
+	resolved: boolean;
+}
+
+/** A local draft inline comment waiting to be published with a review (FEAT-059). */
+export interface DraftComment {
+	path: string;
+	line: number;
+	side: string;
+	body: string;
+}
 
 /** Which hosting service a remote points at (FEAT-017). */
 export type ForgeKind = 'gitHub';

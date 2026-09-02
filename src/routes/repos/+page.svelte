@@ -4,6 +4,7 @@
 	import { clone } from '$lib/clone/store.svelte';
 	import RepoCard from '$lib/repos/RepoCard.svelte';
 	import { repos } from '$lib/repos/store.svelte';
+	import BrandMark from '$lib/ui/BrandMark.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 
 	/**
@@ -49,6 +50,10 @@
 			<p class="note">Reading…</p>
 		{:else if repos.cards.length === 0}
 			<div class="empty">
+				<div class="brand-hero">
+					<BrandMark size={48} />
+					<span class="hero-name">spagitty</span>
+				</div>
 				<p class="note">Spagitty has not been shown a repository yet.</p>
 				<p class="note">
 					It never goes looking for one. Open a directory and it will be remembered
@@ -179,10 +184,23 @@
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
-		gap: 8px;
-		max-width: 460px;
+		gap: 12px;
+		max-width: 480px;
+		padding: 16px 0;
 	}
 
+	.brand-hero {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-bottom: 4px;
+	}
+
+	.hero-name {
+		font-size: 24px;
+		font-weight: 700;
+		letter-spacing: 0.045em;
+	}
 	.empty p {
 		margin: 0;
 	}

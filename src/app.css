@@ -27,8 +27,8 @@
 	--line: rgba(76, 79, 105, 0.26);
 	--soft: rgba(76, 79, 105, 0.12);
 	--placeholder: rgba(76, 79, 105, 0.3);
-	--accent: #1e66f5;
-	--selection: rgba(30, 102, 245, 0.14);
+	--accent: #976317;
+	--selection: rgba(151, 99, 23, 0.14);
 	--stripe: rgba(76, 79, 105, 0.05);
 
 	/*
@@ -163,8 +163,8 @@
 	 */
 	--shadow-edge: rgba(205, 214, 244, 0.11);
 	--placeholder: rgba(205, 214, 244, 0.26);
-	--accent: #89b4fa;
-	--selection: rgba(137, 180, 250, 0.18);
+	--accent: #eeb04d;
+	--selection: rgba(238, 176, 77, 0.18);
 	--stripe: rgba(205, 214, 244, 0.05);
 	--on-accent: #1e1e2e;
 	--danger: #f38ba8;
@@ -566,6 +566,11 @@ body {
 #app,
 body > div {
 	height: 100%;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	padding: var(--window-gap);
 }
 
 /*
@@ -575,11 +580,6 @@ body > div {
  */
 :root {
 	--window-gap: 10px;
-}
-
-body > div {
-	padding: var(--window-gap);
-	box-sizing: border-box;
 }
 
 :root[data-window="maximized"] {
