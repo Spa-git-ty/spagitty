@@ -148,7 +148,13 @@ jobs:
           # one wanted; named on macOS so each runner builds for the
           # architecture it is being published as.
           targets: ${{ matrix.target || '' }}
+      # prefix-key bumps when a restored target tree lies about having built
+      # `tauri` (E0463 on the app crate). Do not reuse a key that already
+      # poisoned a runner.
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: draft-v1
+          shared-key: ${{ matrix.name }}
       - uses: ./.github/actions/linux-deps
         if: runner.os == 'Linux'
 
