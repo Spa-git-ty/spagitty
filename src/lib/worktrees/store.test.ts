@@ -124,3 +124,94 @@ describe('worktrees store', () => {
 		expect(apiPrune).toHaveBeenCalled();
 	});
 });
+
+/**
+ * The paths the FEAT-062 tests left out: every failure, and the guard that
+ * stops a slow list from overwriting a fast one (added under FEAT-072).
+ */
+describe('what happens when git says no', () => {
+	beforeEach(() => {
+		worktrees.reset();
+		vi.clearAllMocks();
+		apiList.mockResolvedValue([]);
+	});
+
+	it('keeps a failed listing’s reason instead of showing an empty list as fact', async () => {
+		apiList.mockRejectedValueOnce(new Error('not a git repository'));
+
+		await worktrees.fetch();
+
+		expect(worktrees.error).toBe('not a git repository');
+		expect(worktrees.loading).toBe(false);
+		// Never loaded: an empty list the user could mistake for "no worktrees".
+		expect(worktrees.loaded).toBe(false);
+	});
+
+	it('reports a thrown non-Error as itself rather than as [object Object]', async () => {
+		apiList.mockRejectedValueOnce('the backend went away');
+
+		await worktrees.fetch();
+
+		expect(worktrees.error).toBe('the backend went away');
+	});
+
+	it('ignores a slow listing that finished after a newer one', async () => {
+		// Two fetches race whenever the tab strip and the manager both ask.
+		// The older answer arriving last would show a list that is already
+		// wrong.
+		let releaseFirst: (value: Worktree[]) => void = () => {};
+		apiList.mockReturnValueOnce(new Promise((resolve) => (releaseFirst = resolve)));
+		const first = worktrees.fetch();
+
+		apiList.mockResolvedValueOnce([sampleWorktree('current')]);
+		await worktrees.fetch();
+
+		releaseFirst([sampleWorktree('stale')]);
+		await first;
+
+		expect(worktrees.list.map((w) => w.name)).toEqual(['current']);
+	});
+
+	it.each([
+		['add', () => worktrees.add('/tmp/wt'), apiAdd],
+		['remove', () => worktrees.remove('/tmp/wt'), apiRemove],
+		['lock', () => worktrees.lock('/tmp/wt'), apiLock],
+		['unlock', () => worktrees.unlock('/tmp/wt'), apiUnlock],
+		['prune', () => worktrees.prune(), apiPrune]
+	])(
+		'a failed %s reports why, clears busy, and still throws for the caller',
+		async (_name, call, mocked) => {
+			// The store records the reason for the screen; the throw is what
+			// stops the modal closing as though it had worked.
+			(mocked as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('worktree is locked'));
+
+			await expect(call()).rejects.toThrow('worktree is locked');
+
+			expect(worktrees.actionError).toBe('worktree is locked');
+			expect(worktrees.busy).toBe(false);
+		}
+	);
+
+	it('clears the previous failure when the next action starts', async () => {
+		apiPrune.mockRejectedValueOnce(new Error('first failure'));
+		await expect(worktrees.prune()).rejects.toThrow();
+
+		apiPrune.mockResolvedValueOnce(undefined);
+		await worktrees.prune();
+
+		expect(worktrees.actionError).toBeNull();
+	});
+
+	it('reset puts the store back to never having been asked', async () => {
+		apiList.mockResolvedValueOnce([sampleWorktree('one')]);
+		await worktrees.fetch();
+
+		worktrees.reset();
+
+		expect(worktrees.list).toEqual([]);
+		expect(worktrees.loaded).toBe(false);
+		expect(worktrees.count).toBe(0);
+		expect(worktrees.main).toBeUndefined();
+		expect(worktrees.linked).toEqual([]);
+	});
+});

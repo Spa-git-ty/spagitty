@@ -87,6 +87,28 @@ broke.
 | `draws the arrow in a colour that follows the theme` | `src/lib/ui/flat.test.ts` | Gradients in `currentcolor`, and explicitly **not** an inlined SVG — a data URI cannot read a custom property, so it would be one hard-coded colour in every theme. |
 | `never resets the field background with the shorthand` | `src/lib/ui/flat.test.ts` | `background:` on hover or focus would wipe the chevron out. Anchored at line start so `::selection` is not mistaken for a field rule. |
 
+## Tests that closed the coverage gap
+
+The Amendment 10 floor is seventy percent of branches. FEAT-072 landed under
+it; the suites below are the ones that brought it back over. Most of them cover
+work that was already Done — FEAT-047, FEAT-062, FEAT-065, FEAT-067, FEAT-068,
+FEAT-069, FEAT-019 — and are recorded here because that is the item that needed
+the floor held.
+
+| Test | Layer | What it asserts |
+| --- | --- | --- |
+| the mode / smart / pinning / persistence suites | `src/lib/graph/visibility.test.ts` | What the backend is told when the three buttons change, and that a selection survives a restart under the repository it belongs to. |
+| the mounted External Tools section | `src/lib/settings/ExternalToolsSection.test.ts` | What the section draws. The older suite called the api and never mounted it, which is how three missing CSS tokens shipped without a failure. |
+| the mounted Signing section | `src/lib/settings/SigningSection.test.ts` | Signing that is on and will not work — missing program, no key for the format, editing a file that is not the one deciding. |
+| `trims what it saves, and derives a stable id from the trimmed label` | `src/lib/settings/ProfilesSection.test.ts` | The id comes from the trimmed label, not the raw one. Deriving it from what was typed gave `  Work Laptop ` the id `--work-laptop-`. |
+| `gives two labels differing only in punctuation two different ids` | `src/lib/settings/ProfilesSection.test.ts` | One dash per run; `Work (laptop)` does not leave a trailing dash. |
+| the rest of the Profiles section mount | `src/lib/settings/ProfilesSection.test.ts` | Refusal, apply-to-repo vs global, and surviving a failed save without throwing the form away. |
+| sizes and deltas of a binary file | `src/lib/diff/BinaryDiff.test.ts` | Every direction of the size arithmetic, including a file whose bytes changed but whose size did not. |
+| `what happens when git says no` | `src/lib/worktrees/store.test.ts` | Every failure path FEAT-062 left out, and that a slow listing cannot overwrite a newer one. |
+| `what happens when git says no` | `src/lib/submodules/store.test.ts` | The same for FEAT-067: report, clear busy, and still throw so a modal does not close as though it worked. |
+| the worktree dialog stack | `src/lib/worktrees/modal.test.ts` | Opening the add form hides the manager; closing it leaves the manager where it was. |
+| the submodules dialog | `src/lib/submodules/modal.test.ts` | Showing twice leaves it open — the palette and the tabs menu can both ask. |
+
 ## Tests that were changed
 
 | Test | Why |
@@ -94,6 +116,7 @@ broke.
 | `runs the screens in the order they are worked through` | `src/lib/nav.test.ts` — Badges joins the rail, after Reflog and before the divider. |
 | `finds a command by its initials, which is the point of the palette` | `src/lib/palette/commands.test.ts` — "Go to Badges" and "Go to Branches" now share `gtb`, and the shorter title wins the tie. That is the documented ranking rule; the example it was asserted with had simply stopped being unambiguous. |
 | Settings fixtures in `api.test.ts`, `sections.test.ts`, `store.test.ts` | Two new keys on `Settings`. |
+| `lastHeld` in `visibility.test.ts` | The pinned argument is optional in the api signature; treating it as required failed `bun run check`. |
 
 ## How to run
 

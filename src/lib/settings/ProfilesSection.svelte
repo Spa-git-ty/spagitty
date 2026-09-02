@@ -19,6 +19,15 @@
 	const list = $derived(profiles.list);
 	const hasRepo = $derived(repo.info !== null);
 
+	/** A label as a stable id: lower case, one dash per run, none at the ends. */
+	function slug(label: string): string {
+		return label
+			.trim()
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '');
+	}
+
 	async function saveProfile(): Promise<void> {
 		if (!profileName.trim() || !authorName.trim() || !authorEmail.trim()) {
 			error = 'Name and email are required';
@@ -29,7 +38,13 @@
 		isSaving = true;
 
 		const profile: IdentityProfile = {
-			id: profileName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+			// From the trimmed label, not the raw one. Deriving it from what was
+			// typed gave `  Work Laptop ` the id `--work-laptop-`: leading and
+			// trailing dashes from the spaces, and a run of them wherever the
+			// label had a space beside punctuation. The id is the key the
+			// profile is stored under, so that is a key nobody could guess and
+			// two labels differing only in spacing would collide on.
+			id: slug(profileName),
 			name: profileName.trim(),
 			authorName: authorName.trim(),
 			authorEmail: authorEmail.trim(),

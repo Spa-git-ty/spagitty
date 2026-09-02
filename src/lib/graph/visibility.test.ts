@@ -18,7 +18,7 @@ import type { BranchRow, RepoInfo } from '$lib/types';
 
 vi.mock('$lib/api', () => ({
 	branches: vi.fn(),
-	graphVisibility: vi.fn(() => Promise.resolve(7))
+	graphVisibility: vi.fn((_roots: string[], _pinned: string[]) => Promise.resolve(7))
 }));
 
 vi.mock('./store.svelte', () => ({
@@ -75,7 +75,8 @@ function lastRoots(): string[] {
 function lastHeld(): string[] {
 	const call = graphVisibility.mock.calls.at(-1);
 	if (!call) throw new Error('the backend was never told anything');
-	return call[1];
+	// Optional in the api signature; a call that omitted it pinned nothing.
+	return call[1] ?? [];
 }
 
 let store: Record<string, string> = {};

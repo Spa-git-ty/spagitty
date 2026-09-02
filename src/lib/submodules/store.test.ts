@@ -104,3 +104,62 @@ describe('submodules store', () => {
 		expect(submodules.loading).toBe(false);
 	});
 });
+
+/**
+ * The failure paths, which FEAT-067 left untested (added under FEAT-072).
+ *
+ * Every action here throws as well as recording, and both halves matter: the
+ * record is what the screen shows, and the throw is what stops a modal closing
+ * as though the work had been done.
+ */
+describe('what happens when git says no', () => {
+	beforeEach(() => {
+		submodules.reset();
+		vi.clearAllMocks();
+		apiSubmodules.mockResolvedValue([]);
+	});
+
+	it('keeps a failed listing’s reason rather than presenting an empty list as fact', async () => {
+		apiSubmodules.mockRejectedValueOnce(new Error('no .gitmodules here'));
+
+		await submodules.fetch();
+
+		expect(submodules.error).toBe('no .gitmodules here');
+		expect(submodules.loading).toBe(false);
+	});
+
+	it('reports a thrown non-Error as itself rather than as [object Object]', async () => {
+		apiSubmodules.mockRejectedValueOnce('the backend went away');
+
+		await submodules.fetch();
+
+		expect(submodules.error).toBe('the backend went away');
+	});
+
+	it.each([
+		['update', () => submodules.update(), apiUpdate],
+		['sync', () => submodules.sync(), apiSync],
+		['deinit', () => submodules.deinit('vendor/one'), apiDeinit]
+	])('a failed %s reports why, clears busy, and still throws', async (_name, call, mocked) => {
+		(mocked as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+			new Error('submodule has local changes')
+		);
+
+		await expect(call()).rejects.toThrow('submodule has local changes');
+
+		expect(submodules.actionError).toBe('submodule has local changes');
+		expect(submodules.busy).toBe(false);
+	});
+
+	it('drops the previous run’s output when the next one starts', async () => {
+		// Leaving it up would attach the last command's output to this one.
+		apiSync.mockResolvedValueOnce('synchronized');
+		await submodules.sync();
+		expect(submodules.actionOutput).toBe('synchronized');
+
+		apiSync.mockRejectedValueOnce(new Error('nope'));
+		await expect(submodules.sync()).rejects.toThrow();
+
+		expect(submodules.actionOutput).toBeNull();
+	});
+});
