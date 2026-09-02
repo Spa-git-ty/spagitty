@@ -14,6 +14,24 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The README wordmark sat a row below the mark.** Pillow's default text
+  origin is the top of the em box, not the baseline; the generator treated a
+  centreline as a baseline and dropped the name by a full ascender. Lockups and
+  the hero now share one optical centreline, and the hero carries the approved
+  tagline under the name.
+
+### Changed
+
+- **README rewritten** for humans and agents: what Spagitty is and is not, the
+  full feature surface, every screen code, architecture in brief, and where the
+  working record lives.
+- **Gates 5 and 6 stay off for documentation.** A merge into `main` that only
+  touches the README, `docs/`, `agile/` or brand collateral no longer rebuilds
+  three platforms or tries to re-tag the current version. Application code,
+  manifests and lockfiles still publish as before.
+
 ## [0.3.0] - 2026-09-02
 
 ### Added

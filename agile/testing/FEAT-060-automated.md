@@ -18,8 +18,8 @@ raster faithful to the vector, and is the geometry sane?
 | Raster fidelity | pure-Pillow render vs librsvg at native 912×953 differs on ~30 px (sub-pixel strand edges, delta >40); interiors byte-equal; no nonzero/even-odd holes |
 | PNG/alpha geom: `icon.png` | 512², plate full-frame (alpha 0–255), strands+tangle within frame |
 | Bare mark (`brand-mark.png`) | 512² transparent frame; content bbox `(25,19)-(488,495)`, amber plate present |
-| `hero.png` | 1600×400, mark + wordmark banner |
-| `lockup-ink-light.png` | 1253×682, mark + wordmark in one row (`bbox (93,86)-(1183,598)`) |
+| `hero.png` | 1600×400, mark + wordmark on one centreline, approved tagline under |
+| `lockup-ink-light.png` | 1253×682, mark + wordmark in one row (`bbox (95,89)-(1183,595)`) |
 | `menubar-mono.png` | 18×18 from a 36² mono render, strands only (0 amber pixels), alpha-only shape |
 | `tray-white.png` / `tray-black.png` | 22×22 from 44² mono renders, strands only, no plate |
 | SVG sources (`mark.svg`, `lockup.svg`) | mark is the verbatim input; lockup references it |
