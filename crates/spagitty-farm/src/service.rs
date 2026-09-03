@@ -406,7 +406,12 @@ impl FarmService {
 
     /// Stop whatever is running for this task and cancel it.
     pub fn cancel_task(&self, id: &TaskId) -> Result<()> {
-        if let Some(session) = self.sessions.lock().expect("sessions lock").remove(id) {
+        // Out of the map first, cancelled after — the sessions lock is not held
+        // while the child is signalled and, more to the point, not held while
+        // the `Session` is dropped, which joins its reader threads and reaps
+        // the process. See [`Self::collect_plan`] for what holding it costs.
+        let running = self.sessions.lock().expect("sessions lock").remove(id);
+        if let Some(session) = running {
             session.cancel();
         }
         self.set_status(id, TaskStatus::Cancelled, Some("Stopped by hand.".into()))
@@ -497,7 +502,8 @@ impl FarmService {
             .cloned()
             .collect();
         for task in running {
-            if let Some(session) = self.sessions.lock().expect("sessions lock").remove(&task) {
+            let session = self.sessions.lock().expect("sessions lock").remove(&task);
+            if let Some(session) = session {
                 session.cancel();
             }
         }
@@ -1208,12 +1214,20 @@ impl FarmService {
     /// becoming five agent runs.
     pub fn collect_plan(&self, run: &RunId) -> Result<Vec<Task>> {
         let planning_task = TaskId::new("planning");
-        if let Some(session) = self
+        // Taken out of the map on its own line, deliberately. Written as
+        // `if let Some(session) = self.sessions.lock()…remove(&planning_task)`
+        // the guard is a temporary of the scrutinee, so on edition 2021 it
+        // lives to the end of the `if let` — and `session.wait()` then holds
+        // the sessions lock for the whole planning run. Every command that
+        // starts, stops or schedules a task takes that lock, and they run on
+        // the main thread, so the window froze until the planner finished
+        // (BUG-020). `await_task` has always had the shape this now copies.
+        let waiting = self
             .sessions
             .lock()
             .expect("sessions lock")
-            .remove(&planning_task)
-        {
+            .remove(&planning_task);
+        if let Some(session) = waiting {
             session.wait();
         }
         {
