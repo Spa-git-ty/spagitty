@@ -32,6 +32,7 @@ import type {
 	Farm,
 	FarmEvent,
 	FarmSnapshot,
+	RecordedEvent,
 	Policy,
 	AgentProvider,
 	AgentRun,
@@ -69,7 +70,7 @@ export const REFRESH_DELAY_MS = 250;
 let farm = $state<Farm | null>(null);
 let agents = $state<AgentStatus[]>([]);
 let undetected = $state<AgentProvider[]>([]);
-let activity = $state<FarmEvent[]>([]);
+let activity = $state<RecordedEvent[]>([]);
 let runs = $state<AgentRun[]>([]);
 let policy = $state<Policy>({ sources: [], text: '' });
 let stale = $state<StaleWorkspace[]>([]);
@@ -99,7 +100,7 @@ function apply(snapshot: FarmSnapshot): void {
  * Only the changes a person watches for. Everything else arrives with the next
  * snapshot, which is a quarter of a second away.
  */
-function absorb(event: FarmEvent): void {
+function absorb(event: RecordedEvent): void {
 	if (event.kind === 'agentOutput') {
 		const existing = transcripts[event.task] ?? [];
 		const next = [...existing, event.line];
@@ -154,7 +155,7 @@ export const farmStore = {
 	get undetected(): AgentProvider[] {
 		return undetected;
 	},
-	get activity(): FarmEvent[] {
+	get activity(): RecordedEvent[] {
 		return activity;
 	},
 	get runs(): AgentRun[] {
@@ -273,7 +274,7 @@ export const farmStore = {
 	/** Subscribe to the backend's events. Safe to call twice. */
 	async listen(): Promise<void> {
 		if (unlisten) return;
-		unlisten = await listen<FarmEvent>(EVENT, (message) => {
+		unlisten = await listen<RecordedEvent>(EVENT, (message) => {
 			absorb(message.payload);
 			// A transcript line changes nothing a snapshot would report, and a
 			// run produces thousands of them. Refreshing on each one both cost

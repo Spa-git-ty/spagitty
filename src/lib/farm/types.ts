@@ -287,11 +287,20 @@ export type FarmEvent =
 	| { kind: 'taskProposed'; from: string; title: string }
 	| { kind: 'failed'; message: string };
 
+/**
+ * An event, and when it happened.
+ *
+ * Flattened on the wire: a recorded event is the event's own object with one
+ * more key. `atMs` is zero for events written before the field existed, which
+ * the interface shows as no time rather than as 1970 (FEAT-074).
+ */
+export type RecordedEvent = FarmEvent & { atMs: number };
+
 export interface FarmSnapshot {
 	farm: Farm | null;
 	agents: AgentStatus[];
 	undetected: AgentProvider[];
-	events: FarmEvent[];
+	events: RecordedEvent[];
 	runs: AgentRun[];
 	policy: Policy;
 	scoreboard: AgentScore[];

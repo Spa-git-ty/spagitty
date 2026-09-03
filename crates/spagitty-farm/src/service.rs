@@ -56,17 +56,17 @@ use crate::workspace::{self, Leases};
 /// A trait so the crate has no opinion about Tauri. The Tauri layer emits; the
 /// tests collect.
 pub trait Observer: Send + Sync + std::fmt::Debug {
-    fn event(&self, event: FarmEvent);
+    fn event(&self, event: Recorded);
 }
 
 /// An observer that keeps everything, for tests and headless use.
 #[derive(Debug, Default)]
 pub struct Recorder {
-    events: Mutex<Vec<FarmEvent>>,
+    events: Mutex<Vec<Recorded>>,
 }
 
 impl Recorder {
-    pub fn events(&self) -> Vec<FarmEvent> {
+    pub fn events(&self) -> Vec<Recorded> {
         self.events.lock().expect("recorded events").clone()
     }
 
@@ -75,7 +75,7 @@ impl Recorder {
     pub fn statuses(&self) -> Vec<(TaskId, TaskStatus)> {
         self.events()
             .into_iter()
-            .filter_map(|event| match event {
+            .filter_map(|recorded| match recorded.event {
                 FarmEvent::TaskStatusChanged { task, status, .. } => Some((task, status)),
                 _ => None,
             })
@@ -84,7 +84,7 @@ impl Recorder {
 }
 
 impl Observer for Recorder {
-    fn event(&self, event: FarmEvent) {
+    fn event(&self, event: Recorded) {
         self.events.lock().expect("recorded events").push(event);
     }
 }
@@ -99,11 +99,14 @@ struct RunSink {
 
 impl Sink for RunSink {
     fn line(&self, text: &str) {
-        self.observer.event(FarmEvent::AgentOutput {
+        // Stamped here rather than when it reaches a screen: this is the moment
+        // the agent said it, and a transcript timed by when the webview
+        // happened to render it would be a transcript of the interface.
+        self.observer.event(Recorded::now(FarmEvent::AgentOutput {
             run: self.run.clone(),
             task: self.task.clone(),
             line: text.to_string(),
-        });
+        }));
     }
 }
 
@@ -157,7 +160,7 @@ pub struct FarmService {
     /// answering by reading and re-parsing two thousand JSON objects made the
     /// cost of watching a farm proportional to how much it had already done
     /// (TASK-030).
-    recent: Mutex<VecDeque<FarmEvent>>,
+    recent: Mutex<VecDeque<Recorded>>,
 }
 
 impl FarmService {
@@ -306,7 +309,7 @@ impl FarmService {
     }
 
     /// The whole history the farm is holding, oldest first.
-    pub fn events(&self) -> Vec<FarmEvent> {
+    pub fn events(&self) -> Vec<Recorded> {
         self.recent
             .lock()
             .expect("recent events lock")
@@ -319,7 +322,7 @@ impl FarmService {
     ///
     /// What a screen actually renders is a screenful and a scrollback, not the
     /// whole history, and every event sent is one serialised across the bridge.
-    pub fn events_tail(&self, limit: usize) -> Vec<FarmEvent> {
+    pub fn events_tail(&self, limit: usize) -> Vec<Recorded> {
         let recent = self.recent.lock().expect("recent events lock");
         recent
             .iter()
@@ -929,16 +932,19 @@ impl FarmService {
 
         self.set_status(id, TaskStatus::Verification, None)?;
 
-        let observer = self.observer.clone();
+        // Through `emit`, not straight to the observer. These two used to go
+        // directly to the interface, which meant a verification was on screen
+        // while it happened and in no record afterwards: it was in neither the
+        // log on disk nor the history a reopened farm reads back.
         let task_id = id.clone();
         for command in &commands {
-            observer.event(FarmEvent::VerificationStarted {
+            self.emit(FarmEvent::VerificationStarted {
                 task: task_id.clone(),
                 command: command.clone(),
             });
         }
         let mut report = |result: &CommandResult| {
-            observer.event(FarmEvent::VerificationFinished {
+            self.emit(FarmEvent::VerificationFinished {
                 task: task_id.clone(),
                 command: result.command.clone(),
                 passed: result.passed,
@@ -1498,6 +1504,7 @@ impl FarmService {
     }
 
     fn emit(&self, event: FarmEvent) {
+        let event = Recorded::now(event);
         let _ = store::append_event(&self.repo, &event);
         // Transcript lines are deliberately not kept, here or on disk: one run
         // produces thousands, and they would push the history out within a

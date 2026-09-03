@@ -15,10 +15,10 @@ import type {
 	AgentDefinition,
 	AgentStatus,
 	Farm,
-	FarmEvent,
 	FarmFailure,
 	FarmSettings,
 	FarmSnapshot,
+	RecordedEvent,
 	StaleWorkspace,
 	Task,
 	TaskDetail,
@@ -160,7 +160,7 @@ export function stale(): Promise<StaleWorkspace[]> {
 }
 
 /** More activity than a snapshot carries, for a reader scrolling back. */
-export function events(limit?: number): Promise<FarmEvent[]> {
+export function events(limit?: number): Promise<RecordedEvent[]> {
 	return invoke('farm_events', { limit: limit ?? null });
 }
 

@@ -25,10 +25,42 @@
 	const waiting = $derived(
 		task.status === 'ready' || task.status === 'waiting' ? waitingOn(task, byId) : null
 	);
+
+	/**
+	 * A row that has just moved says so, for about a second (FEAT-074).
+	 *
+	 * A farm changes while nobody is looking at the row it changed. Without
+	 * this, a list of eight tasks where one moved is a list of eight tasks: the
+	 * chip is right, and there is nothing to draw the eye to *which* chip. The
+	 * effect is a background wash that fades out — no movement, no size change,
+	 * nothing that shifts the rows around it.
+	 */
+	let moved = $state(false);
+	let previous = $state<string | null>(null);
+	let clearing: ReturnType<typeof setTimeout> | null = null;
+
+	$effect(() => {
+		const status = task.status;
+		if (previous === null) {
+			// The first render is not a change: a list that flashes on arrival
+			// is a list that flashes when you switch to the screen.
+			previous = status;
+			return;
+		}
+		if (previous === status) return;
+		previous = status;
+		moved = true;
+		if (clearing) clearTimeout(clearing);
+		clearing = setTimeout(() => (moved = false), 1100);
+		return () => {
+			if (clearing) clearTimeout(clearing);
+		};
+	});
 </script>
 
 <button
 	class="row"
+	class:moved
 	class:selected
 	onclick={() => onselect(task.id)}
 	aria-current={selected ? 'true' : undefined}
@@ -69,6 +101,26 @@
 
 	.row:hover {
 		background-color: var(--stripe);
+	}
+
+	/* The wash a row gets when its status changes under the reader. */
+	.moved {
+		animation: moved 1.1s var(--ease);
+	}
+
+	@keyframes moved {
+		0% {
+			background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+		}
+		100% {
+			background-color: transparent;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.moved {
+			animation: none;
+		}
 	}
 
 	.selected {

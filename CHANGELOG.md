@@ -14,8 +14,25 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Added
+
+- **The farm's log is a drawer you can read.** Six lines in a footer, with no
+  times and no scrollback, become a resizable drawer with two tabs: *Activity*,
+  the farm's own record — timestamped, filterable to one task, as long as the
+  history — and *Transcript*, what one agent is saying, which used to be
+  collected and never shown outside a task's panel. The pane follows the newest
+  line while you are at the bottom and lets go when you scroll up; **Hold**
+  freezes it so a line can be read while it is still arriving, and counts what
+  arrived meanwhile. Copy takes what is shown, filter and all.
+- **A little motion, where it says something.** A log line arrives rather than
+  appearing, and a task row washes with the accent for a second when its status
+  changes under you — nothing that moves anything already on screen, and nothing
+  at all for a reader who has asked for reduced motion.
+
 ### Changed
 
+- **Every farm event now carries the time it happened**, which is what makes a
+  log a log. Events recorded before this show no time rather than a 1970 one.
 - **Watching a farm costs almost nothing now.** The Farm screen refreshes after
   every burst of events, and that refresh used to run `git worktree list` and
   re-parse the whole activity log — on the thread that paints the window, four
@@ -36,6 +53,12 @@ stays backward-compatible.
   said, and a control that stops the planner without cancelling the farm. A
   cancelled planner adopts nothing, and a planner that produces no tasks says so
   instead of leaving an empty plan that looks untouched.
+- **Arrow keys on a panel divider resize that panel.** Keyboard resizing moved
+  the graph's detail panel whichever divider was focused, so four of the six
+  resizable panels could not be sized from the keyboard at all.
+- **A verification is recorded, not just shown.** Verification events reached
+  the screen live and were written to neither the log on disk nor the history a
+  reopened farm reads back.
 - **The window no longer freezes while the farm plans.** Asking an agent to
   break a goal into tasks locked the whole application — every screen, the
   menus, the window itself — until the planner finished, typically minutes. The

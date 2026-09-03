@@ -489,7 +489,7 @@ fn the_activity_log_survives_a_restart() {
     assert!(
         events
             .iter()
-            .any(|event| matches!(event, FarmEvent::TaskCreated { .. })),
+            .any(|recorded| matches!(recorded.event, FarmEvent::TaskCreated { .. })),
         "{events:?}"
     );
 }
@@ -506,7 +506,7 @@ fn events_describe_what_happened_in_order() {
     let events = harness.recorder.events();
     let kinds: Vec<&str> = events
         .iter()
-        .map(|event| match event {
+        .map(|recorded| match recorded.event {
             FarmEvent::TaskCreated { .. } => "created",
             FarmEvent::TaskStatusChanged { .. } => "status",
             FarmEvent::AgentStarted { .. } => "started",
@@ -796,7 +796,7 @@ fn the_history_is_held_in_memory_and_matches_what_is_on_disk() {
     assert!(
         !held
             .iter()
-            .any(|event| matches!(event, FarmEvent::AgentOutput { .. })),
+            .any(|recorded| matches!(recorded.event, FarmEvent::AgentOutput { .. })),
         "transcript lines are being kept as history"
     );
 

@@ -64,7 +64,7 @@ struct Emit<R: Runtime> {
 }
 
 impl<R: Runtime> Observer for Emit<R> {
-    fn event(&self, event: FarmEvent) {
+    fn event(&self, event: Recorded) {
         // A webview that has gone away is not an error worth propagating into
         // the farm: the run continues and the events are on disk.
         let _ = self.app.emit(EVENT, &event);
@@ -127,7 +127,7 @@ pub struct FarmSnapshot {
     /// Providers with no definition, so the settings screen can offer them.
     pub undetected: Vec<AgentProvider>,
     /// The tail of the activity history — [`SNAPSHOT_EVENTS`] of it.
-    pub events: Vec<FarmEvent>,
+    pub events: Vec<Recorded>,
     pub runs: Vec<AgentRun>,
     pub policy: Policy,
     pub scoreboard: Vec<AgentScore>,
@@ -218,14 +218,17 @@ pub fn farm_open<R: Runtime>(
             let service = service.clone();
             move || {
                 service.detect_agents();
+                // Stamped like every other event, because the webview reads
+                // one channel and a line with no time in a log that has times
+                // reads as a bug in the log.
                 let _ = app.emit(
                     EVENT,
-                    &FarmEvent::FarmStatusChanged {
+                    &Recorded::now(FarmEvent::FarmStatusChanged {
                         status: service
                             .farm()
                             .map(|farm| farm.status)
                             .unwrap_or(FarmStatus::Idle),
-                    },
+                    }),
                 );
             }
         })
@@ -241,7 +244,7 @@ pub fn farm_snapshot(state: State<'_, FarmState>) -> Result<FarmSnapshot> {
 
 /// More history than a snapshot carries, for a reader scrolling back.
 #[tauri::command(async)]
-pub fn farm_events(state: State<'_, FarmState>, limit: Option<usize>) -> Result<Vec<FarmEvent>> {
+pub fn farm_events(state: State<'_, FarmState>, limit: Option<usize>) -> Result<Vec<Recorded>> {
     Ok(state
         .service()?
         .events_tail(limit.unwrap_or(usize::MAX).min(store::MAX_EVENTS)))

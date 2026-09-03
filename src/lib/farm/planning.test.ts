@@ -122,6 +122,7 @@ describe('the store, about planning', () => {
 	it('keeps the planner’s own transcript, which belongs to no task', () => {
 		farmStore.reset();
 		farmStore.absorb({
+			atMs: 1_700_000_000_000,
 			kind: 'agentOutput',
 			run: 'plan-1',
 			task: PLANNING_TASK,

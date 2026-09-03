@@ -239,18 +239,21 @@ describe('farmStore.open & getters', () => {
 describe('farmStore events & absorb', () => {
 	it('absorbs agentOutput events into transcripts per task', () => {
 		farmStore.absorb({
+			atMs: 1_700_000_000_000,
 			kind: 'agentOutput',
 			task: 'TASK-001',
 			run: 'run-1',
 			line: 'Compiling project...'
 		});
 		farmStore.absorb({
+			atMs: 1_700_000_000_000,
 			kind: 'agentOutput',
 			task: 'TASK-001',
 			run: 'run-1',
 			line: 'Done.'
 		});
 		farmStore.absorb({
+			atMs: 1_700_000_000_000,
 			kind: 'agentOutput',
 			task: 'TASK-002',
 			run: 'run-2',
@@ -268,12 +271,14 @@ describe('farmStore events & absorb', () => {
 		await farmStore.open('/repo');
 
 		farmStore.absorb({
+			atMs: 1_700_000_000_000,
 			kind: 'farmStatusChanged',
 			status: 'paused'
 		});
 		expect(farmStore.farm?.status).toBe('paused');
 
 		farmStore.absorb({
+			atMs: 1_700_000_000_000,
 			kind: 'taskStatusChanged',
 			task: 'TASK-001',
 			status: 'running',
