@@ -183,7 +183,7 @@ cd spagitty
 bun install
 bun run check          # typecheck
 bun run test           # vitest
-bun run coverage       # vitest with the Amendment 10 floor
+bun run coverage       # vitest with the coverage floor
 bun run tauri dev      # the desktop app
 ```
 
