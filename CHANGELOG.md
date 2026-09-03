@@ -14,6 +14,52 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Added
+
+- **The agent farm (FEAT-073).** Spagitty now runs the coding agents on your
+  machine, not only reads what they did. A goal is cut into tasks, each task
+  gets a branch and a worktree of its own (`spagitty-farm/<task>/<provider>`),
+  and up to four agents work them in parallel under a dependency DAG. Claude
+  Code, Codex, Cursor and Oh My Pi are detected on `PATH`; anything else with a
+  command line can be added by hand. Your own verification commands run in the
+  task's worktree and a second agent reviews the change before it is yours to
+  merge — an agent's own "done" is not one. Five autonomy levels say where the
+  human stands, from *Manual* to *Unattended*. The farm is JSON under
+  `.spagitty/`, written by rename with an append-only event log, and excluded
+  from git. New screen: Farm (1Q), the rail's first item. New crate:
+  `crates/spagitty-farm`.
+- **Four more palette families.** Nord (Snow Storm / Polar Night), Rosé Pine
+  (Dawn / Moon), Solarized and Everforest, each in light and dark, bringing the
+  set to eight families and sixteen palettes.
+
+### Changed
+
+- **Every theme now accents in its own hue.** The palettes all wore the brand
+  amber — `#976317` in light, `#eeb04d` in dark — which put one colour on seven
+  palettes built around a different one: an amber primary button in the middle
+  of Dracula's purples, and a brown that read as muddy on every light
+  background. Each family accents with a colour of its own now, contrast-checked
+  the same way, and `themes.test.ts` fails if two families ever share one.
+- **The Farm is the rail's first screen**, and the Graph follows it. The Graph
+  still owns `/` and is still what the window opens on.
+- **Open repository leaves the rail once a repository is open.** It was a filled
+  accent button above every screen offering to replace the repository you were
+  working in. The tab strip's `+`, the repository menu and All repositories all
+  still open one.
+- **The repository's state moved from the rail's foot to the status strip.** It
+  was four lines stacked under the screens — the working-copy count, how fresh
+  the walk and the remote were, tags and submodules — and two of them repeated
+  counts the rail's own rows already carry as badges. It is one line along the
+  bottom of the window now, between the identity and the licence, and the rail
+  is navigation again. The line is two groups with a rule between them: what is
+  changing (the walk, the working copy, the last fetch) and what is merely true
+  (commits, tags, submodules), because reading them as one dot-separated run
+  made "1 changed file" look like the same kind of fact as "Tags 42".
+- **The Farm's first screen is a starter page**, not an empty state: what a farm
+  is, the loop in four steps, a goal field that starts one without navigating
+  anywhere, and three readiness rows — whether an agent was found, whether the
+  repository has an `AGENTS.md`, and whether anything verifies the work.
+
 ### Fixed
 
 - **The README wordmark sat a row below the mark.** Pillow's default text

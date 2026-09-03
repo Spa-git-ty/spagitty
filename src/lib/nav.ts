@@ -36,8 +36,11 @@ export type CountKey = keyof RepoCounts;
  *
  * 1Q is the Farm (FEAT-073), and it is the first screen about work that has not
  * happened yet: a goal, the tasks it was broken into, and the agents working
- * them. It sits above All repositories rather than beside Badges because it is
- * about *this* repository, and a person working a farm is in it all day.
+ * them. It takes the top slot: this is the gateway to a Git-managed agent farm,
+ * and the screen a person supervising one is in all day belongs where the eye
+ * lands rather than eleven rows down among the screens they visit to look
+ * something up. The Graph keeps `/` — it is still what the window opens on —
+ * and follows immediately, because what the farm produces is read there.
  */
 export type ScreenCode =
 	| '1A'
@@ -78,6 +81,7 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
+	{ code: '1Q', label: 'Farm', href: '/farm', icon: 'farm' },
 	{ code: '1A', label: 'Graph', href: '/', count: 'commits', icon: 'graph' },
 	{ code: '1C', label: 'Working copy', href: '/changes', count: 'working', icon: 'edit' },
 	{ code: '1D', label: 'Conflicts', href: '/conflicts', count: 'conflicts', icon: 'conflict' },
@@ -88,7 +92,6 @@ export const NAV_ITEMS: NavItem[] = [
 	{ code: '1E', label: 'Rebase', href: '/rebase', icon: 'rebase' },
 	{ code: '1I', label: 'Log', href: '/search', icon: 'search' },
 	{ code: '1M', label: 'Reflog', href: '/reflog', icon: 'history' },
-	{ code: '1Q', label: 'Farm', href: '/farm', icon: 'farm' },
 	{ code: '1P', label: 'Badges', href: '/badges', icon: 'badge' },
 	{ code: '1J', label: 'All repositories', href: '/repos', dividerBefore: true, icon: 'folder' },
 	{ code: '1K', label: 'Settings', href: '/settings', icon: 'settings' }

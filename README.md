@@ -18,7 +18,7 @@
 [![Gates](https://github.com/spa-git-ty/spagitty/actions/workflows/gates.yml/badge.svg)](https://github.com/spa-git-ty/spagitty/actions/workflows/gates.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-[**Download**](https://github.com/spa-git-ty/spagitty/releases/latest) · [**Screens**](docs/screens.md) · [**How it is built**](#learn-from-this-repository) · [**Docs**](#documentation)
+[**Download**](https://github.com/spa-git-ty/spagitty/releases/latest) · [**The farm**](#the-agent-farm) · [**Screens**](docs/screens.md) · [**How it is built**](#learn-from-this-repository) · [**Docs**](#documentation)
 
 </div>
 
@@ -26,12 +26,15 @@
 
 Spagitty is your gateway to a **Git-managed agent farm** — a local-first desktop
 Git client for repositories where people and coding agents commit side by side.
-Today it is where that work is read, reviewed and landed. The farm itself — the
-part that runs and shepherds the agents — is still being planned; what ships now
-is the gateway those agents will live behind.
+It is where that work is read, reviewed and landed — and now it is where the
+agents are *run*: a goal, the tasks it was cut into, and the coding agents
+already installed on your machine working them in parallel, each on its own
+branch, in its own worktree.
 
-Nothing in the client is a model. Nothing leaves the machine unless you ask it
-to: a forge token you supply, a fetch you trigger, a pull request you open.
+Nothing in Spagitty is a model and nothing here ships a key: the agents are
+Claude Code, Codex, Cursor, Oh My Pi or anything else with a command line, run
+as you. Nothing leaves the machine unless you ask it to: a forge token you
+supply, a fetch you trigger, a pull request you open.
 
 *Untangle the work — yours, and your agents'.* The name is *spa-gi-ty*:
 spaghetti + Git. A repository without a readable history is a plate of tangled
@@ -61,26 +64,38 @@ Gate 5 ships Linux, macOS and Windows installers on every publishing merge.
 Then open a repository and work. There is no account step and no cloud to log into.
 
 > **Status: 0.x.** The surface is not yet stable — MINOR may break. Every screen
-> in the handoff is built (graph through badges), and the release lane tags from
-> the changelog. The **agent farm** — running and shepherding agents from inside
-> Spagitty — is still being planned; what ships today is the Git gateway those
-> agents will live behind. Remaining client gaps are named on each screen in
-> [`docs/screens.md`](docs/screens.md).
+> in the handoff is built (graph through badges), the **agent farm** (screen 1Q)
+> is built on top of it, and the release lane tags from the changelog. Remaining
+> gaps are named on each screen in [`docs/screens.md`](docs/screens.md).
 
-## The gateway today — the farm next
+## The agent farm
 
-**What ships now is the gateway:** a desktop Git client that already treats
-agents as collaborators. Commits are attributed from `Co-authored-by` trailers,
-standings rank agents by first-pass rate rather than volume, and worktrees let
-several agents work beside you in one repository. Nothing in Spagitty is a
-model, and nothing here launches one.
+**Set a goal. Cut it into tasks. Watch four agents work them at once, on
+branches you can read in the graph you already trust.**
 
-**The agent farm itself is in progress** — the plan is still being written. When
-it lands, this same application is the place those agents are managed through
-Git; until then, agents you already run elsewhere leave history Spagitty can
-read. Event shapes the farm will emit (`AgentTaskEvent`, `ReviewEvent`) are
-already defined in the delight layer so the catalogue does not have to be
-rewritten later — see [`FEAT-072`](agile/items/FEAT-072-delight-layer.md).
+| | |
+| --- | --- |
+| **Agents, not models** | Claude Code, Codex, Cursor and Oh My Pi are detected on `PATH`; anything else with a command line can be added by hand. Spagitty runs them as you — no key of ours, no model of ours, no request to a server of ours |
+| **A branch and a worktree per task** | `spagitty-farm/<task>/<provider>`. Nothing an agent does reaches your working copy, and deleting a task keeps the commits on its branch |
+| **"Done" is not an agent's to declare** | Verification runs *your* repository's commands in the task's worktree, and review is performed by a different agent than the one that wrote the change. Neither can be skipped by an agent's own report |
+| **Agents never talk to each other** | Every handoff goes through Spagitty, so there is one audit trail and one place that decides what happens next |
+| **You choose where the human stands** | Five autonomy levels, from *Manual* — nothing runs by itself — to *Unattended*. The setting is a sentence about where you are, not a slider |
+| **Dependencies, in a DAG** | A task can depend on another; the ones that can run, run. Up to four at a time |
+| **The repository's own rules** | `AGENTS.md` (and friends) is read and attached to every prompt. Spagitty will write you a starter one |
+| **Survives a crash** | The farm is JSON under `.spagitty/`, written by rename, with an append-only event log. It is excluded from git, never committed |
+| **A scoreboard that is not a leaderboard** | Completed, failed, sent back and first-pass rate, counted *in this repository* — not a claim about which model is better |
+
+The plan is on the left of screen 1Q, the selected task in the middle, and what
+just happened along the bottom, so supervising does not mean navigating. Nothing
+polls: a farm moves at a model's pace and on no schedule, so the backend emits
+and the screen is a function of what it has been told.
+
+The control plane is [`crates/spagitty-farm`](crates/spagitty-farm) — model,
+adapters, workspaces, execution, verification, review, orchestrator,
+persistence — and it calls `spagitty-core` for every git operation rather than
+reimplementing one. The whole feature is written up in
+[`FEAT-073`](agile/items/FEAT-073-agent-farm.md) and
+[`docs/screens.md`](docs/screens.md#1q--farm).
 
 If you came looking for a hosted forge or a CI system, this is the wrong
 repository. Those stay outside.
@@ -102,10 +117,12 @@ repository. Those stay outside.
 | **Signing** | Reads whether git would actually sign (`commit.gpgsign` and friends) — not a Spagitty preference pretending to be that |
 | **Attribution** | Commits credited from `Co-authored-by` trailers; humans and agents tracked separately |
 | **Agent standings** | Ranked by first-pass rate, never by commit volume |
+| **Agent farm** | A goal cut into tasks, worked in parallel by the agents on your machine — one branch and one worktree each, your verification commands in the path, and a review by a second agent before anything is yours to merge |
+| **Farm supervision** | Five autonomy levels, a dependency DAG, up to four agents at once, a live activity strip, per-repository standings, and `AGENTS.md` attached to every prompt |
 | **Delight layer** | Badges and titles for clean commits, survived rebases, recovered work and conflicts resolved — never for time spent in the app. Personality and Sound settings; God mode in Settings |
-| **Chrome** | Command palette, themes (accent follows brand amber), glass window chrome |
+| **Chrome** | Command palette, glass window chrome, and eight palette families — Catppuccin, Dracula, Tokyo Night, Gruvbox, Nord, Rosé Pine, Solarized, Everforest — each in light and dark, each accented in its **own** hue and each contrast-checked in tests rather than by eye |
 
-Every screen, by code: [`docs/screens.md`](docs/screens.md) (1A Graph … 1P Badges).
+Every screen, by code: [`docs/screens.md`](docs/screens.md) (1A Graph … 1Q Farm).
 
 ## Learn from this repository
 
@@ -122,9 +139,12 @@ almost always a store bug rather than a Rust one. [`docs/architecture.md`](docs/
 is the map.
 
 **If you are interested in agentic coding**, this application was built with
-coding agents in the loop, and the honest account is in [`agile/`](agile/). It is
-not a demo of prompting. It is dated items, plans and test sweeps — including
-the defects found in passing:
+coding agents in the loop *and now runs them* — read
+[`crates/spagitty-farm`](crates/spagitty-farm) for the orchestration and
+[`FEAT-073`](agile/items/FEAT-073-agent-farm.md) for why it is shaped that way.
+The honest account of building it is in [`agile/`](agile/). It is not a demo of
+prompting. It is dated items, plans and test sweeps — including the defects
+found in passing:
 
 - A Settings chip that opened the wrong section, because eight chips fed seven
   branches and an `{:else}` catch-all hid the miss.
@@ -135,6 +155,13 @@ the defects found in passing:
   because a bundle tree was uploaded whole and `icon.icns` appeared twice.
 - A coverage floor that the delight layer briefly dropped under, recovered by
   mounting the surfaces FEAT-062 through FEAT-069 had left at 0% branches.
+- Eight themes wearing one accent, because "the brand runs through the UI" was
+  applied literally: an amber primary button in the middle of Dracula's purples
+  and a muddy brown on every light background. Each family accents in its own
+  hue now, and a test fails if two ever share one again.
+- A rail whose loudest pixel was a filled button offering to replace the
+  repository you were working in — above every screen, wanted approximately
+  never.
 
 The through-line: the leverage was real, and the verification was never optional.
 
@@ -160,7 +187,8 @@ The through-line: the leverage was real, and the verification was never optional
   hand-edit the derived PNGs.
 - Never use the Git logo or Git orange (`#F05133`). Spagitty is independent.
 - Frontend tests run under happy-dom via vitest; Rust tests live beside the
-  core. The coverage floor is **branch** coverage (70%), not line coverage.
+  core. The coverage floor is **branch** coverage — 65% for the frontend, with
+  Rust held to 70% lines — not a line count for the whole tree.
 - Changelog entries go under `## [Unreleased]` in the same change as the work
   (Amendment 20). Gate 6 reads that file for release notes.
 
@@ -198,7 +226,11 @@ Three layers. Each knows nothing about the one above it.
 ```
 src/                      SvelteKit SPA. One store per screen.
   └── invoke ───────────► src-tauri/           Tauri commands, worker, watcher.
-                            └── calls ───────► crates/spagitty-core/   Git, via gix + git.
+                            ├── calls ───────► crates/spagitty-core/   Git, via gix + git.
+                            └── calls ───────► crates/spagitty-farm/   Orchestration: agents,
+                                                                       worktrees, verification,
+                                                                       review — and it calls
+                                                                       spagitty-core for git.
 ```
 
 Only `src/lib/api.ts` crosses from the UI into the backend. Types on the wire are
@@ -210,7 +242,7 @@ mirrored by hand in `src/lib/types.ts`. Detail:
 | Document | What it is |
 | --- | --- |
 | [`docs/architecture.md`](docs/architecture.md) | How the three layers fit, and why |
-| [`docs/screens.md`](docs/screens.md) | Every screen (1A–1P) |
+| [`docs/screens.md`](docs/screens.md) | Every screen (1A–1Q) |
 | [`docs/testing.md`](docs/testing.md) | What is tested and what is deliberately not |
 | [`docs/ci.md`](docs/ci.md) | Gates, coverage floor, release lanes |
 | [`docs/branding.md`](docs/branding.md) | Mark, wordmark, palette, voice |

@@ -66,6 +66,18 @@ function luminance({ r, g, b }: Rgba): number {
 	return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
+/** The colour's hue in degrees, or null for a grey. Used to tell families apart. */
+function hue(colour: string): number | null {
+	const { r, g, b } = parse(colour);
+	const max = Math.max(r, g, b);
+	const min = Math.min(r, g, b);
+	if (max === min) return null;
+	const d = max - min;
+	const degrees =
+		max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+	return (degrees * 60 + 360) % 360;
+}
+
 function contrast(foreground: string, background: string): number {
 	const front = luminance(over(foreground, background));
 	const back = luminance(parse(background));
@@ -99,9 +111,9 @@ const TOKENS = [
 ] as const;
 
 describe('the set', () => {
-	it('is four families, each with a light and a dark variant', () => {
-		expect(FAMILIES).toHaveLength(4);
-		expect(ALL).toHaveLength(8);
+	it('is eight families, each with a light and a dark variant', () => {
+		expect(FAMILIES).toHaveLength(8);
+		expect(ALL).toHaveLength(16);
 
 		for (const family of FAMILIES) {
 			expect(family.light.name).not.toBe('');
@@ -113,7 +125,50 @@ describe('the set', () => {
 		// "Mocha" says more than "dark" to anyone who chose Catppuccin.
 		const names = FAMILIES.map((family) => `${family.light.name}/${family.dark.name}`);
 
-		expect(names).toEqual(['Latte/Mocha', 'Alucard/Dracula', 'Day/Night', 'Light/Dark']);
+		expect(names).toEqual([
+			'Latte/Mocha',
+			'Alucard/Dracula',
+			'Day/Night',
+			'Light/Dark',
+			'Snow Storm/Polar Night',
+			'Dawn/Moon',
+			'Light/Dark',
+			'Light/Dark'
+		]);
+	});
+
+	/**
+	 * The defect this catches is the one the set shipped with: every light
+	 * variant accented `#976317` and every dark one `#eeb04d`, so seven of the
+	 * eight families wore a hue from outside their own palette on the most
+	 * frequently painted colour in the interface.
+	 */
+	it('gives each family an accent of its own rather than one hue for all', () => {
+		for (const mode of ['light', 'dark'] as Mode[]) {
+			const accents = FAMILIES.map((family) => family[mode].palette.accent);
+			expect(new Set(accents).size, `${mode} accents repeat`).toBe(accents.length);
+		}
+	});
+
+	/**
+	 * The two halves of a family are the same theme in two lights, so they
+	 * accent the same hue — Catppuccin's amber in both, Dracula's purple in
+	 * both. The lightness differs, and has to: a light variant's accent is
+	 * deepened until a white label survives on it.
+	 */
+	it('accents both halves of a family with the same hue', () => {
+		for (const family of FAMILIES) {
+			const light = hue(family.light.palette.accent);
+			const dark = hue(family.dark.palette.accent);
+			expect(light, `${family.name} light accent is a grey`).not.toBeNull();
+			expect(dark, `${family.name} dark accent is a grey`).not.toBeNull();
+
+			// Round the short way: 350° and 10° are twenty degrees apart.
+			const apart = Math.abs(((light! - dark! + 540) % 360) - 180);
+			expect(apart, `${family.name}: its two accents are different colours`).toBeLessThanOrEqual(
+				30
+			);
+		}
 	});
 
 	it('has no two families sharing an id', () => {
@@ -242,7 +297,7 @@ describe('lookup', () => {
 
 	it('recognises exactly the families in the list', () => {
 		for (const family of FAMILIES) expect(isFamily(family.id)).toBe(true);
-		for (const nonsense of ['', 'solarized', 'Catppuccin', 'dark']) {
+		for (const nonsense of ['', 'monokai', 'Catppuccin', 'dark']) {
 			expect(isFamily(nonsense), nonsense).toBe(false);
 		}
 	});
