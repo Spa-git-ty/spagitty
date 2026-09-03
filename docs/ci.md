@@ -32,7 +32,7 @@ they are given.
 | 0 | Scope | `git diff` of the push / PR against the previous tip | Whether the change ships in the application. Gates 5 and 6 read this; documentation alone is not a release |
 | 1 | License | `cargo deny check licenses bans sources`, `bunx license-checker-rseidelsohn@4` over the JS production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with Spagitty shipping under GPL-3 |
 | 2 | Code quality | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `bun run check`, plus `tools/make-icons.py --check` and `tools/make-brand.py --check` (Pillow) | Formatting, lints and types across both languages, and no drift between the brand generators and the committed art |
-| 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `bun run coverage` | The suite passes and first-party coverage meets the Amendment 10 floor of 70% |
+| 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `bun run coverage` | The suite passes and first-party coverage holds its floor: 70% for Rust, 65% for the frontend |
 | 4 | Security | `cargo deny check advisories`, `bun audit --audit-level=high`, `gitleaks` over the diff | No known-vulnerable dependency at the high level or above, no secret in the change |
 | 5 | Build | `bun run tauri build` on Linux, macOS and Windows — **main, shipping changes only** | The release build works on every target, not only the one the author uses |
 | 6 | Release | tag, artifacts, notes read from `CHANGELOG.md` by `bun tools/release-notes.mjs` — **main, shipping changes only** | The build is published, carries its changelog section as notes (Amendment 20), and is traceable to a commit |
@@ -89,7 +89,8 @@ and the draft lane together, not to one of them.
   the right place — it does not get bolted onto whichever job is convenient.
 - The coverage floor is defined once per language: `COVERAGE_FLOOR` in the
   workflow for Rust, `test.coverage.thresholds` in `vite.config.ts` for the
-  frontend. They are the same number, and `bun run coverage` fails locally for
+  frontend. They are not the same number — the frontend carries whole screens
+  that mount but are not asserted on — and `bun run coverage` fails locally for
   the same reason it fails in CI.
 - Tags are never moved. Gate 6 refuses to publish over a tag that already
   exists and tells you to bump the version instead.

@@ -7,6 +7,7 @@
 //! launching external tools detached without blocking Spagitty.
 
 use std::env;
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
@@ -139,6 +140,40 @@ pub fn get_config(repo: &gix::Repository) -> Result<ExternalToolsConfig> {
         available_diff_tools: known_diff_tools(),
         available_merge_tools: known_merge_tools(),
     })
+}
+
+/// Read external tools configuration globally without an open repository.
+pub fn get_config_global() -> Result<ExternalToolsConfig> {
+    let dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let diff_tool = shell::get_config(&dir, "diff.tool")?;
+    let merge_tool = shell::get_config(&dir, "merge.tool")?;
+
+    Ok(ExternalToolsConfig {
+        diff_tool,
+        merge_tool,
+        available_diff_tools: known_diff_tools(),
+        available_merge_tools: known_merge_tools(),
+    })
+}
+
+/// Set configured diff or merge tool globally in ~/.gitconfig.
+pub fn set_tool_global(tool_type: &str, tool_name: Option<&str>) -> Result<()> {
+    let dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let key = match tool_type {
+        "diff" => "diff.tool",
+        "merge" => "merge.tool",
+        other => other,
+    };
+
+    match tool_name {
+        Some(name) if !name.trim().is_empty() => {
+            shell::set_config(&dir, "--global", key, name.trim())?;
+        }
+        _ => {
+            shell::unset_config(&dir, "--global", key)?;
+        }
+    }
+    Ok(())
 }
 
 /// Set configured diff or merge tool.
