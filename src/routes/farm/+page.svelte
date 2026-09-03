@@ -252,16 +252,16 @@
 					</div>
 				{/if}
 			</section>
-		{:else if pane === 'settings' || !farm}
+		{:else if pane === 'settings'}
 			<section class="pane single">
 				<h2 class="heading">{farm ? 'The goal' : 'Start a farm'}</h2>
 				<label class="field">
 					<span class="note">What is this farm for?</span>
-					<input bind:value={goalTitle} placeholder="Add GitHub OAuth login" />
+					<input bind:value={goalTitle} placeholder="e.g. Implement dark mode support" />
 				</label>
 				<label class="field">
 					<span class="note">Anything the agents should know</span>
-					<textarea bind:value={goalDescription} rows="3"></textarea>
+					<textarea bind:value={goalDescription} rows="3" placeholder="Constraints, conventions, files to avoid"></textarea>
 				</label>
 
 				{#if !farm}
@@ -270,25 +270,27 @@
 							Start a farm
 						</Btn>
 					</div>
-				{:else}
-					<h2 class="heading">How much it may do on its own</h2>
-					<div class="levels">
-						{#each AUTONOMY_LEVELS as level (level.id)}
-							<button
-								class="level"
-								class:on={farm.autonomy === level.id}
-								disabled={busy}
-								onclick={() =>
-									act('Could not change the autonomy level', () =>
-										api.configure({ autonomy: level.id })
-									)}
-							>
-								<span class="level-name">{level.label}</span>
-								<span class="note">{level.detail}</span>
-							</button>
-						{/each}
-					</div>
+				{/if}
 
+				<h2 class="heading">How much it may do on its own</h2>
+				<div class="levels">
+					{#each AUTONOMY_LEVELS as level (level.id)}
+						<button
+							class="level"
+							class:on={(farm ? farm.autonomy : 'semiAuto') === level.id}
+							disabled={busy}
+							onclick={() =>
+								farm && act('Could not change the autonomy level', () =>
+									api.configure({ autonomy: level.id })
+								)}
+						>
+							<span class="level-name">{level.label}</span>
+							<span class="note">{level.detail}</span>
+						</button>
+					{/each}
+				</div>
+
+				{#if farm}
 					<h2 class="heading">Agents at once</h2>
 					<div class="chips">
 						{#each [1, 2, 3, 4] as count (count)}
@@ -304,32 +306,34 @@
 							</Chip>
 						{/each}
 					</div>
+				{/if}
 
-					<h2 class="heading">Verification</h2>
+				<h2 class="heading">Verification</h2>
+				<p class="note">
+					Run against every task's worktree before it can be accepted. With none, a task
+					reaches review having been checked by nobody, and the screen says so.
+				</p>
+				<label class="field">
+					<textarea bind:value={verificationText} rows="3" placeholder="cargo test"></textarea>
+				</label>
+
+				<h2 class="heading">Repository rules</h2>
+				{#if farmStore.policy.sources.length > 0}
 					<p class="note">
-						Run against every task's worktree before it can be accepted. With none, a task
-						reaches review having been checked by nobody, and the screen says so.
+						Read from {farmStore.policy.sources.map((source) => source.path).join(', ')} and
+						attached to every prompt.
 					</p>
-					<label class="field">
-						<textarea bind:value={verificationText} rows="3" placeholder="cargo test"></textarea>
-					</label>
+				{:else}
+					<p class="note">
+						This repository has no agent rules file, so agents follow whatever
+						conventions they find in the code.
+					</p>
+					<div class="actions">
+						<Btn disabled={busy} onclick={writePolicy}>Write a starter AGENTS.md</Btn>
+					</div>
+				{/if}
 
-					<h2 class="heading">Repository rules</h2>
-					{#if farmStore.policy.sources.length > 0}
-						<p class="note">
-							Read from {farmStore.policy.sources.map((source) => source.path).join(', ')} and
-							attached to every prompt.
-						</p>
-					{:else}
-						<p class="note">
-							This repository has no agent rules file, so agents follow whatever
-							conventions they find in the code.
-						</p>
-						<div class="actions">
-							<Btn disabled={busy} onclick={writePolicy}>Write a starter AGENTS.md</Btn>
-						</div>
-					{/if}
-
+				{#if farm}
 					<div class="actions">
 						<Btn primary disabled={busy} onclick={saveSettings}>Save</Btn>
 					</div>
@@ -348,6 +352,19 @@
 						</div>
 					{/if}
 				{/if}
+			</section>
+		{:else if !farm}
+			<section class="pane single">
+				<div class="empty">
+					<h2 class="heading">No farm started yet</h2>
+					<p class="note">
+						A farm organizes tasks for coding agents to work in parallel on isolated Git
+						branches and worktrees.
+					</p>
+					<div class="actions" style="margin-top: 12px;">
+						<Btn primary onclick={() => (pane = 'settings')}>Set a goal & start farm</Btn>
+					</div>
+				</div>
 			</section>
 		{:else}
 			<section class="pane list">
