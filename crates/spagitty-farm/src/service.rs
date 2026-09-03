@@ -242,7 +242,12 @@ impl FarmService {
         let mut goal = Goal::new(GoalId::new(format!("goal-{now}")), goal_title, now);
         goal.description = description.to_string();
 
-        let mut farm = Farm::new(FarmId::new(format!("farm-{now}")), self.repo.to_string_lossy(), goal, now);
+        let mut farm = Farm::new(
+            FarmId::new(format!("farm-{now}")),
+            self.repo.to_string_lossy(),
+            goal,
+            now,
+        );
         // A farm that has never been told what to check inherits nothing, and
         // the interface says so rather than pretending it will verify.
         farm.verification = Vec::new();
@@ -293,11 +298,21 @@ impl FarmService {
     }
 
     pub fn review_of(&self, task: &TaskId) -> Option<Review> {
-        self.state.lock().expect("farm lock").reviews.get(task).cloned()
+        self.state
+            .lock()
+            .expect("farm lock")
+            .reviews
+            .get(task)
+            .cloned()
     }
 
     pub fn handoff_of(&self, task: &TaskId) -> Option<Handoff> {
-        self.state.lock().expect("farm lock").handoffs.get(task).cloned()
+        self.state
+            .lock()
+            .expect("farm lock")
+            .handoffs
+            .get(task)
+            .cloned()
     }
 
     /// The tail of a run's transcript.
@@ -423,7 +438,10 @@ impl FarmService {
 
     /// Give a task to a particular agent.
     pub fn assign(&self, id: &TaskId, agent: &AgentId) -> Result<()> {
-        self.registry.lock().expect("registry lock").runnable(agent)?;
+        self.registry
+            .lock()
+            .expect("registry lock")
+            .runnable(agent)?;
         self.edit_task(id, |task| task.assigned_agent = Some(agent.clone()))?;
         self.emit(FarmEvent::TaskAssigned {
             task: id.clone(),
@@ -494,7 +512,11 @@ impl FarmService {
             })
             .unwrap_or_default();
         for task in unfinished {
-            let _ = self.set_status(&task, TaskStatus::Cancelled, Some("The farm was stopped.".into()));
+            let _ = self.set_status(
+                &task,
+                TaskStatus::Cancelled,
+                Some("The farm was stopped.".into()),
+            );
         }
         self.set_farm_status(FarmStatus::Cancelled)
     }
@@ -521,11 +543,8 @@ impl FarmService {
                 }
                 scheduler::Decision::Start { task, agent } => {
                     if let Err(error) = self.start_task(&task, &agent) {
-                        let _ = self.set_status(
-                            &task,
-                            TaskStatus::Blocked,
-                            Some(error.to_string()),
-                        );
+                        let _ =
+                            self.set_status(&task, TaskStatus::Blocked, Some(error.to_string()));
                     }
                 }
             }
@@ -638,12 +657,7 @@ impl FarmService {
         // The worktree is cut from the branch the user is on, so a farm run
         // starts from what they can see rather than from `main` on a checkout
         // that has moved on.
-        let workspace = match workspace::create(
-            &self.repo,
-            id,
-            definition.provider,
-            "HEAD",
-        ) {
+        let workspace = match workspace::create(&self.repo, id, definition.provider, "HEAD") {
             Ok(workspace) => workspace,
             Err(error) => {
                 self.state.lock().expect("farm lock").leases.release(id);
@@ -848,9 +862,7 @@ impl FarmService {
         let (workdir, commands) = {
             let state = self.state.lock().expect("farm lock");
             let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
-            let task = farm
-                .task(id)
-                .ok_or_else(|| Error::NoSuchTask(id.clone()))?;
+            let task = farm.task(id).ok_or_else(|| Error::NoSuchTask(id.clone()))?;
             let workdir = task
                 .worktree
                 .clone()
@@ -917,7 +929,8 @@ impl FarmService {
         let Some(implementer) = implementer else {
             return Ok(());
         };
-        let Some(reviewer) = reviewer::pick(&self.registry.lock().expect("registry lock"), &implementer)
+        let Some(reviewer) =
+            reviewer::pick(&self.registry.lock().expect("registry lock"), &implementer)
         else {
             return Ok(());
         };
@@ -951,7 +964,11 @@ impl FarmService {
             reviewer: reviewer.id.clone(),
         });
 
-        let run = RunId::new(format!("{}-review-{}", id.as_str().to_lowercase(), now_ms()));
+        let run = RunId::new(format!(
+            "{}-review-{}",
+            id.as_str().to_lowercase(),
+            now_ms()
+        ));
         let command = adapter_for(reviewer.provider).command(
             &reviewer,
             &AgentRunRequest {
@@ -962,7 +979,14 @@ impl FarmService {
         );
         // `spawn_run` sets the task to Running, which is what the interface
         // should show: an agent is executing against this task.
-        self.spawn_run(run, id.clone(), reviewer.id, RunPhase::Review, command, workdir)
+        self.spawn_run(
+            run,
+            id.clone(),
+            reviewer.id,
+            RunPhase::Review,
+            command,
+            workdir,
+        )
     }
 
     fn conclude_review(&self, id: &TaskId, reviewer: &AgentId, transcript: &str) -> Result<()> {
@@ -1023,9 +1047,7 @@ impl FarmService {
             // `permissions.merge` gates the farm merging unprompted, which is
             // decided in `approve`.
             let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
-            let task = farm
-                .task(id)
-                .ok_or_else(|| Error::NoSuchTask(id.clone()))?;
+            let task = farm.task(id).ok_or_else(|| Error::NoSuchTask(id.clone()))?;
             let branch = task
                 .branch
                 .clone()
@@ -1085,9 +1107,7 @@ impl FarmService {
         let (exhausted, autonomy) = {
             let state = self.state.lock().expect("farm lock");
             let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
-            let task = farm
-                .task(id)
-                .ok_or_else(|| Error::NoSuchTask(id.clone()))?;
+            let task = farm.task(id).ok_or_else(|| Error::NoSuchTask(id.clone()))?;
             (task.is_exhausted(), farm.autonomy)
         };
 

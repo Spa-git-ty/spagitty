@@ -232,7 +232,9 @@ mod tests {
     #[test]
     fn only_the_first_line_of_a_banner_is_kept() {
         let found = probe_shell("echo '1.0.0'; echo 'update available'");
-        assert!(matches!(found, AgentAvailability::Available { version, .. } if version == "1.0.0"));
+        assert!(
+            matches!(found, AgentAvailability::Available { version, .. } if version == "1.0.0")
+        );
     }
 
     #[cfg(unix)]
@@ -240,7 +242,9 @@ mod tests {
     fn a_version_printed_on_stderr_still_counts() {
         // Several CLIs do this, and reporting them broken would be wrong.
         let found = probe_shell("echo '2.0.0' >&2");
-        assert!(matches!(found, AgentAvailability::Available { version, .. } if version == "2.0.0"));
+        assert!(
+            matches!(found, AgentAvailability::Available { version, .. } if version == "2.0.0")
+        );
     }
 
     #[cfg(unix)]
@@ -269,7 +273,10 @@ mod tests {
 
     #[test]
     fn a_file_that_is_not_there_is_broken_rather_than_a_panic() {
-        let found = probe(Path::new("/nonexistent/agent-that-is-not-here"), &["--version"]);
+        let found = probe(
+            Path::new("/nonexistent/agent-that-is-not-here"),
+            &["--version"],
+        );
         assert!(matches!(found, AgentAvailability::Broken { .. }));
     }
 

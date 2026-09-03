@@ -33,7 +33,12 @@ pub const MAX_BYTES: usize = 64 * 1024;
 
 /// The files that are read, in the order they are appended. The first is the
 /// one that governs.
-pub const SOURCES: [&str; 4] = ["AGENTS.md", "CLAUDE.md", ".cursor/rules", ".github/copilot-instructions.md"];
+pub const SOURCES: [&str; 4] = [
+    "AGENTS.md",
+    "CLAUDE.md",
+    ".cursor/rules",
+    ".github/copilot-instructions.md",
+];
 
 /// One policy file that was found.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -94,9 +99,7 @@ pub fn read(repo: &Path) -> Policy {
     // Only worth saying when there is more than one, and only then because an
     // agent reading two sets of rules needs to know which to follow.
     if sources.len() > 1 {
-        text.push_str(
-            "\n\n(Where these disagree, AGENTS.md governs.)",
-        );
+        text.push_str("\n\n(Where these disagree, AGENTS.md governs.)");
     }
 
     Policy { sources, text }

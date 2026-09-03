@@ -137,7 +137,9 @@ mod tests {
 
     #[test]
     fn an_approval_is_read() {
-        let transcript = format!("Checked it.\n```{FENCE}\n{{\"decision\":\"approve\",\"summary\":\"Fine\"}}\n```");
+        let transcript = format!(
+            "Checked it.\n```{FENCE}\n{{\"decision\":\"approve\",\"summary\":\"Fine\"}}\n```"
+        );
         let review = Review::parse(&transcript);
         assert!(review.approved());
         assert_eq!(review.summary, "Fine");
@@ -151,7 +153,9 @@ mod tests {
         let review = Review::parse(&transcript);
         assert_eq!(review.decision, Decision::RequestChanges);
         assert_eq!(review.blocking().len(), 1);
-        assert!(review.change_request().contains("src/auth.rs: Refresh token is not invalidated."));
+        assert!(review
+            .change_request()
+            .contains("src/auth.rs: Refresh token is not invalidated."));
     }
 
     #[test]
@@ -160,8 +164,16 @@ mod tests {
             decision: Decision::RequestChanges,
             summary: String::new(),
             issues: vec![
-                Issue { severity: Severity::Medium, file: String::new(), message: "b".into() },
-                Issue { severity: Severity::High, file: String::new(), message: "a".into() },
+                Issue {
+                    severity: Severity::Medium,
+                    file: String::new(),
+                    message: "b".into(),
+                },
+                Issue {
+                    severity: Severity::High,
+                    file: String::new(),
+                    message: "a".into(),
+                },
             ],
         };
         assert_eq!(review.blocking()[0].message, "a");
@@ -172,7 +184,11 @@ mod tests {
         let review = Review {
             decision: Decision::RequestChanges,
             summary: "nits".into(),
-            issues: vec![Issue { severity: Severity::Low, file: String::new(), message: "naming".into() }],
+            issues: vec![Issue {
+                severity: Severity::Low,
+                file: String::new(),
+                message: "naming".into(),
+            }],
         };
         assert!(review.blocking().is_empty());
         assert_eq!(review.change_request(), "nits");
@@ -182,8 +198,18 @@ mod tests {
     fn the_contract_describes_the_block_the_parser_reads() {
         let contract = Review::contract();
         assert!(contract.contains(&format!("```{FENCE}")));
-        for field in ["decision", "summary", "issues", "severity", "approve", "request_changes"] {
-            assert!(contract.contains(field), "the contract never mentions {field}");
+        for field in [
+            "decision",
+            "summary",
+            "issues",
+            "severity",
+            "approve",
+            "request_changes",
+        ] {
+            assert!(
+                contract.contains(field),
+                "the contract never mentions {field}"
+            );
         }
     }
 
@@ -192,7 +218,10 @@ mod tests {
         let transcript = format!(
             "```{FENCE}\n{{\"decision\":\"approve\"}}\n```\nOn reflection:\n```{FENCE}\n{{\"decision\":\"request_changes\"}}\n```"
         );
-        assert_eq!(Review::parse(&transcript).decision, Decision::RequestChanges);
+        assert_eq!(
+            Review::parse(&transcript).decision,
+            Decision::RequestChanges
+        );
     }
 
     #[test]

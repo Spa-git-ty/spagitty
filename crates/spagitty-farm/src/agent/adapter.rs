@@ -141,7 +141,10 @@ mod tests {
             args: vec!["-p".into(), "--permission-mode=plan".into()],
             stdin: None,
         };
-        assert_eq!(command.display(), "/usr/bin/claude -p --permission-mode=plan");
+        assert_eq!(
+            command.display(),
+            "/usr/bin/claude -p --permission-mode=plan"
+        );
     }
 
     #[test]

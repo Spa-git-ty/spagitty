@@ -134,7 +134,9 @@ impl Scoreboard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::adapters::{claude::ClaudeAdapter, codex::CodexAdapter, cursor::CursorAdapter};
+    use crate::agent::adapters::{
+        claude::ClaudeAdapter, codex::CodexAdapter, cursor::CursorAdapter,
+    };
     use crate::agent::AgentAdapter;
     use crate::model::AgentAvailability;
     use std::path::PathBuf;

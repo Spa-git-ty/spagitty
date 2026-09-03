@@ -287,7 +287,16 @@ mod tests {
 
     #[test]
     fn stop_is_never_refused_on_a_technicality() {
-        for state in [Draft, Ready, Assigned, Running, Waiting, Blocked, Review, Verification] {
+        for state in [
+            Draft,
+            Ready,
+            Assigned,
+            Running,
+            Waiting,
+            Blocked,
+            Review,
+            Verification,
+        ] {
             assert!(state.can_become(Cancelled), "{state:?} must be cancellable");
         }
     }
@@ -313,7 +322,10 @@ mod tests {
         // either transition strands a task mid-pipeline.
         for gate in [Verification, Review] {
             assert!(gate.can_become(Blocked), "{gate:?} cannot block");
-            assert!(gate.can_become(Waiting), "{gate:?} cannot go back to the queue");
+            assert!(
+                gate.can_become(Waiting),
+                "{gate:?} cannot go back to the queue"
+            );
         }
     }
 

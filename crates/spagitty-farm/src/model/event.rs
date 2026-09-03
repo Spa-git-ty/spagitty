@@ -20,9 +20,14 @@ use super::{AgentId, FarmStatus, RunId, TaskId, TaskStatus};
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum FarmEvent {
     /// The farm as a whole moved.
-    FarmStatusChanged { status: FarmStatus },
+    FarmStatusChanged {
+        status: FarmStatus,
+    },
 
-    TaskCreated { task: TaskId, title: String },
+    TaskCreated {
+        task: TaskId,
+        title: String,
+    },
     TaskStatusChanged {
         task: TaskId,
         status: TaskStatus,
@@ -31,7 +36,10 @@ pub enum FarmEvent {
         #[serde(default)]
         note: Option<String>,
     },
-    TaskAssigned { task: TaskId, agent: AgentId },
+    TaskAssigned {
+        task: TaskId,
+        agent: AgentId,
+    },
 
     AgentStarted {
         run: RunId,
@@ -45,7 +53,11 @@ pub enum FarmEvent {
     /// Lines rather than bytes, and one event per line: the UI appends to a
     /// list, and re-assembling partial lines in the webview would put a parser
     /// on the wrong side of the boundary.
-    AgentOutput { run: RunId, task: TaskId, line: String },
+    AgentOutput {
+        run: RunId,
+        task: TaskId,
+        line: String,
+    },
     AgentStopped {
         run: RunId,
         task: TaskId,
@@ -55,7 +67,10 @@ pub enum FarmEvent {
         reason: Option<String>,
     },
 
-    VerificationStarted { task: TaskId, command: String },
+    VerificationStarted {
+        task: TaskId,
+        command: String,
+    },
     VerificationFinished {
         task: TaskId,
         command: String,
@@ -66,7 +81,10 @@ pub enum FarmEvent {
         output: String,
     },
 
-    ReviewRequested { task: TaskId, reviewer: AgentId },
+    ReviewRequested {
+        task: TaskId,
+        reviewer: AgentId,
+    },
     ReviewCompleted {
         task: TaskId,
         reviewer: AgentId,
@@ -75,7 +93,10 @@ pub enum FarmEvent {
         summary: String,
     },
 
-    MergeRequested { task: TaskId, branch: String },
+    MergeRequested {
+        task: TaskId,
+        branch: String,
+    },
     MergeCompleted {
         task: TaskId,
         branch: String,
@@ -86,13 +107,22 @@ pub enum FarmEvent {
 
     /// A worktree was cut or removed. Worth an event of its own because it is
     /// the farm touching the user's disk.
-    WorkspaceChanged { task: TaskId, path: String, created: bool },
+    WorkspaceChanged {
+        task: TaskId,
+        path: String,
+        created: bool,
+    },
 
     /// The agent proposed work Spagitty has not scheduled. The human decides.
-    TaskProposed { from: TaskId, title: String },
+    TaskProposed {
+        from: TaskId,
+        title: String,
+    },
 
     /// Something went wrong that is not attached to one task.
-    Failed { message: String },
+    Failed {
+        message: String,
+    },
 }
 
 impl FarmEvent {
@@ -150,15 +180,45 @@ mod tests {
     fn every_task_shaped_event_reports_its_task() {
         let task = TaskId::new("TASK-0007");
         let events = [
-            FarmEvent::TaskCreated { task: task.clone(), title: String::new() },
-            FarmEvent::TaskStatusChanged { task: task.clone(), status: TaskStatus::Done, note: None },
-            FarmEvent::TaskAssigned { task: task.clone(), agent: AgentId::new("a") },
-            FarmEvent::AgentOutput { run: RunId::new("r"), task: task.clone(), line: String::new() },
-            FarmEvent::VerificationStarted { task: task.clone(), command: String::new() },
-            FarmEvent::ReviewRequested { task: task.clone(), reviewer: AgentId::new("a") },
-            FarmEvent::MergeRequested { task: task.clone(), branch: String::new() },
-            FarmEvent::WorkspaceChanged { task: task.clone(), path: String::new(), created: true },
-            FarmEvent::TaskProposed { from: task.clone(), title: String::new() },
+            FarmEvent::TaskCreated {
+                task: task.clone(),
+                title: String::new(),
+            },
+            FarmEvent::TaskStatusChanged {
+                task: task.clone(),
+                status: TaskStatus::Done,
+                note: None,
+            },
+            FarmEvent::TaskAssigned {
+                task: task.clone(),
+                agent: AgentId::new("a"),
+            },
+            FarmEvent::AgentOutput {
+                run: RunId::new("r"),
+                task: task.clone(),
+                line: String::new(),
+            },
+            FarmEvent::VerificationStarted {
+                task: task.clone(),
+                command: String::new(),
+            },
+            FarmEvent::ReviewRequested {
+                task: task.clone(),
+                reviewer: AgentId::new("a"),
+            },
+            FarmEvent::MergeRequested {
+                task: task.clone(),
+                branch: String::new(),
+            },
+            FarmEvent::WorkspaceChanged {
+                task: task.clone(),
+                path: String::new(),
+                created: true,
+            },
+            FarmEvent::TaskProposed {
+                from: task.clone(),
+                title: String::new(),
+            },
         ];
         for event in events {
             assert_eq!(event.task(), Some(&task), "{event:?} lost its task");
@@ -168,10 +228,19 @@ mod tests {
     #[test]
     fn farm_wide_events_belong_to_no_task() {
         assert_eq!(
-            FarmEvent::FarmStatusChanged { status: FarmStatus::Running }.task(),
+            FarmEvent::FarmStatusChanged {
+                status: FarmStatus::Running
+            }
+            .task(),
             None
         );
-        assert_eq!(FarmEvent::Failed { message: "x".into() }.task(), None);
+        assert_eq!(
+            FarmEvent::Failed {
+                message: "x".into()
+            }
+            .task(),
+            None
+        );
     }
 
     #[test]
@@ -182,7 +251,10 @@ mod tests {
             line: "hello".into()
         }
         .is_transcript());
-        assert!(!FarmEvent::Failed { message: "x".into() }.is_transcript());
+        assert!(!FarmEvent::Failed {
+            message: "x".into()
+        }
+        .is_transcript());
     }
 
     #[test]

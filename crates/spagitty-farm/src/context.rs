@@ -144,7 +144,11 @@ pub fn planning(farm: &Farm, policy: &Policy) -> String {
         }
         .as_str(),
     );
-    section(&mut out, "EXPECTED PLAN", &crate::orchestrator::planner::Plan::contract());
+    section(
+        &mut out,
+        "EXPECTED PLAN",
+        &crate::orchestrator::planner::Plan::contract(),
+    );
     out.trim_end().to_string()
 }
 
@@ -211,7 +215,10 @@ fn dependencies_section(out: &mut String, dependencies: &[DependencyResult]) {
     }
     let mut text = String::new();
     for dependency in dependencies {
-        text.push_str(&format!("### {} — {}\n\n", dependency.task, dependency.title));
+        text.push_str(&format!(
+            "### {} — {}\n\n",
+            dependency.task, dependency.title
+        ));
         if !dependency.summary.trim().is_empty() {
             text.push_str(dependency.summary.trim());
             text.push('\n');
@@ -438,6 +445,7 @@ mod tests {
     fn the_task_identifier_is_in_the_prompt() {
         // The agent puts it in its commit message; the graph reads it back.
         let (farm, task, policy) = (farm(), task(), Policy::default());
-        assert!(implementation(&context(&farm, &task, &policy)).contains(TaskId::new("TASK-0042").as_str()));
+        assert!(implementation(&context(&farm, &task, &policy))
+            .contains(TaskId::new("TASK-0042").as_str()));
     }
 }

@@ -160,7 +160,10 @@ pub fn trim_events(repo: &Path) -> Result<()> {
     let Ok(text) = std::fs::read_to_string(&path) else {
         return Ok(());
     };
-    let lines: Vec<&str> = text.lines().filter(|line| !line.trim().is_empty()).collect();
+    let lines: Vec<&str> = text
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .collect();
     if lines.len() <= MAX_EVENTS {
         return Ok(());
     }

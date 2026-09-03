@@ -199,10 +199,9 @@ impl AgentRegistry {
         }
         match self.availability.get(id) {
             Some(found) if found.is_available() => Ok(definition.clone()),
-            Some(AgentAvailability::Broken { reason, .. }) => Err(Error::AgentUnavailable(format!(
-                "{} ({reason})",
-                definition.display_name
-            ))),
+            Some(AgentAvailability::Broken { reason, .. }) => Err(Error::AgentUnavailable(
+                format!("{} ({reason})", definition.display_name),
+            )),
             _ => Err(Error::AgentUnavailable(definition.display_name.clone())),
         }
     }
@@ -213,7 +212,11 @@ impl AgentRegistry {
     /// three-step fallback is what stops a farm stalling because the machine has
     /// no agent whose *role* field says "Frontend" — a coding agent is still a
     /// coding agent.
-    pub fn for_role(&self, role: AgentRole, capability: AgentCapability) -> Option<AgentDefinition> {
+    pub fn for_role(
+        &self,
+        role: AgentRole,
+        capability: AgentCapability,
+    ) -> Option<AgentDefinition> {
         let usable = self.usable();
         usable
             .iter()
@@ -233,7 +236,11 @@ impl AgentRegistry {
     /// from everybody except the agent that wrote the change. Returns nothing
     /// when there is only one agent, which is the case where review has to be
     /// the human's job.
-    pub fn other_than(&self, avoid: &AgentId, capability: AgentCapability) -> Option<AgentDefinition> {
+    pub fn other_than(
+        &self,
+        avoid: &AgentId,
+        capability: AgentCapability,
+    ) -> Option<AgentDefinition> {
         let usable = self.usable();
         let others: Vec<_> = usable
             .into_iter()
@@ -354,7 +361,10 @@ mod tests {
     #[test]
     fn an_unknown_identifier_is_its_own_failure() {
         assert_eq!(
-            registry().runnable(&AgentId::new("nope")).unwrap_err().kind(),
+            registry()
+                .runnable(&AgentId::new("nope"))
+                .unwrap_err()
+                .kind(),
             "noSuchAgent"
         );
     }
@@ -381,10 +391,7 @@ mod tests {
         let picked = registry()
             .for_role(AgentRole::Tester, AgentCapability::Vision)
             .unwrap();
-        assert!(matches!(
-            picked.id.as_str(),
-            "claude" | "codex"
-        ));
+        assert!(matches!(picked.id.as_str(), "claude" | "codex"));
     }
 
     #[test]

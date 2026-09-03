@@ -124,7 +124,13 @@ pub fn read(path: &Path) -> String {
 fn sanitise(value: &str) -> String {
     value
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '-' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                c
+            } else {
+                '-'
+            }
+        })
         .collect()
 }
 
@@ -149,7 +155,10 @@ mod tests {
             &TaskId::new("TASK-0001"),
             &RunId::new("../../etc/passwd"),
         );
-        assert!(path.ends_with("logs/task-0001/------etc-passwd.log"), "{path:?}");
+        assert!(
+            path.ends_with("logs/task-0001/------etc-passwd.log"),
+            "{path:?}"
+        );
     }
 
     #[test]
@@ -182,7 +191,11 @@ mod tests {
         let tail = tail(&path);
         assert!((tail.len() as u64) <= TAIL_BYTES);
         // Whole lines only: a UI that renders a half-line looks broken.
-        assert!(tail.starts_with("line "), "{:?}", &tail[..40.min(tail.len())]);
+        assert!(
+            tail.starts_with("line "),
+            "{:?}",
+            &tail[..40.min(tail.len())]
+        );
         assert!(tail.ends_with("narration\n"));
         // The end is what matters — the handoff block lives there.
         assert!(tail.contains("line 39999 "));

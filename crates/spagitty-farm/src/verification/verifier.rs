@@ -45,7 +45,10 @@ pub struct Verification {
 impl Verification {
     /// The commands that failed, for the event and the interface.
     pub fn failures(&self) -> Vec<&CommandResult> {
-        self.results.iter().filter(|result| !result.passed).collect()
+        self.results
+            .iter()
+            .filter(|result| !result.passed)
+            .collect()
     }
 
     /// One line saying what happened, for the task's note.
@@ -62,7 +65,11 @@ impl Verification {
             return format!(
                 "All {} verification {} passed.",
                 self.results.len(),
-                if self.results.len() == 1 { "command" } else { "commands" }
+                if self.results.len() == 1 {
+                    "command"
+                } else {
+                    "commands"
+                }
             );
         }
         let names: Vec<&str> = failures
@@ -105,7 +112,11 @@ pub fn commands_for(farm: &[String], task: &Task) -> Vec<String> {
 ///
 /// `report` is called as each command starts and finishes, so the screen fills
 /// in as it goes rather than after several minutes of nothing.
-pub fn run(workdir: &Path, commands: &[String], report: &mut dyn FnMut(&CommandResult)) -> Verification {
+pub fn run(
+    workdir: &Path,
+    commands: &[String],
+    report: &mut dyn FnMut(&CommandResult),
+) -> Verification {
     if commands.is_empty() {
         return Verification {
             results: Vec::new(),
@@ -150,7 +161,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let verification = run(dir.path(), &[], &mut silent());
         assert!(verification.unverified);
-        assert!(!verification.passed, "nothing checked must not read as passed");
+        assert!(
+            !verification.passed,
+            "nothing checked must not read as passed"
+        );
         assert!(verification.summary().contains("nothing was checked"));
     }
 
@@ -165,17 +179,16 @@ mod tests {
         assert!(verification.passed);
         assert!(!verification.unverified);
         assert_eq!(verification.results.len(), 2);
-        assert_eq!(verification.summary(), "All 2 verification commands passed.");
+        assert_eq!(
+            verification.summary(),
+            "All 2 verification commands passed."
+        );
     }
 
     #[test]
     fn one_command_failing_fails_the_task() {
         let dir = tempfile::tempdir().unwrap();
-        let verification = run(
-            dir.path(),
-            &["/bin/sh -c 'exit 1'".into()],
-            &mut silent(),
-        );
+        let verification = run(dir.path(), &["/bin/sh -c 'exit 1'".into()], &mut silent());
         assert!(!verification.passed);
         assert_eq!(verification.failures().len(), 1);
         assert!(verification.summary().starts_with("Verification failed:"));

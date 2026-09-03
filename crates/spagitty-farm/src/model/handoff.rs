@@ -231,7 +231,10 @@ mod tests {
             "questions",
             "proposedTasks",
         ] {
-            assert!(contract.contains(field), "the contract never mentions {field}");
+            assert!(
+                contract.contains(field),
+                "the contract never mentions {field}"
+            );
         }
     }
 
@@ -250,6 +253,9 @@ mod tests {
         let handoff: Handoff = serde_json::from_str(json).unwrap();
         assert!(handoff.is_blocked());
         assert_eq!(handoff.tests[0].outcome, TestOutcome::Failed);
-        assert_eq!(handoff.proposed_tasks[0].depends_on[0], TaskId::new("TASK-0001"));
+        assert_eq!(
+            handoff.proposed_tasks[0].depends_on[0],
+            TaskId::new("TASK-0001")
+        );
     }
 }

@@ -86,7 +86,10 @@ impl<'a> Graph<'a> {
             }
             for id in &task.depends_on {
                 if let Some(dependency) = self.tasks.get(id) {
-                    if matches!(dependency.status, TaskStatus::Failed | TaskStatus::Cancelled) {
+                    if matches!(
+                        dependency.status,
+                        TaskStatus::Failed | TaskStatus::Cancelled
+                    ) {
                         stranded.push((&task.id, &dependency.id));
                         break;
                     }
@@ -150,10 +153,8 @@ pub fn validate(tasks: &[Task]) -> Result<()> {
                     };
                     match marks.get(*key) {
                         Some(Mark::Open) => {
-                            let mut path: Vec<String> = stack
-                                .iter()
-                                .map(|(id, _)| id.to_string())
-                                .collect();
+                            let mut path: Vec<String> =
+                                stack.iter().map(|(id, _)| id.to_string()).collect();
                             path.push(key.to_string());
                             return Err(Error::DependencyCycle(path.join(" → ")));
                         }
@@ -243,7 +244,11 @@ mod tests {
     fn ready_is_ordered_by_priority_then_identifier() {
         let mut high = task(3, TaskStatus::Ready, &[]);
         high.priority = TaskPriority::High;
-        let tasks = [task(1, TaskStatus::Ready, &[]), task(2, TaskStatus::Ready, &[]), high];
+        let tasks = [
+            task(1, TaskStatus::Ready, &[]),
+            task(2, TaskStatus::Ready, &[]),
+            high,
+        ];
         let ready: Vec<String> = Graph::new(&tasks)
             .ready()
             .iter()

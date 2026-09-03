@@ -155,7 +155,11 @@ pub fn run(workdir: &Path, line: &str) -> CommandResult {
                 command: line.to_string(),
                 passed: !timed_out && output.status.success(),
                 output: if timed_out {
-                    format!("gave up after {} minutes\n{}", TIMEOUT.as_secs() / 60, tail(&text))
+                    format!(
+                        "gave up after {} minutes\n{}",
+                        TIMEOUT.as_secs() / 60,
+                        tail(&text)
+                    )
                 } else {
                     tail(&text)
                 },
@@ -235,7 +239,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let result = run(dir.path(), "/bin/sh -c 'echo 2 tests failed >&2; exit 1'");
         assert!(!result.passed);
-        assert!(result.output.contains("2 tests failed"), "{}", result.output);
+        assert!(
+            result.output.contains("2 tests failed"),
+            "{}",
+            result.output
+        );
     }
 
     #[test]

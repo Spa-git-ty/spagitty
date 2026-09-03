@@ -176,7 +176,6 @@ pub fn set_tool_global(tool_type: &str, tool_name: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-
 /// Set configured diff or merge tool.
 pub fn set_tool(
     repo: &gix::Repository,

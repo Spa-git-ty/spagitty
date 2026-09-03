@@ -183,7 +183,10 @@ fn a_task_runs_in_its_own_worktree_and_leaves_the_repository_alone() {
     harness.run(&task, &agent);
 
     let worktree = harness.worktree(&task);
-    assert!(worktree.join("agent-output.txt").exists(), "the agent did no work");
+    assert!(
+        worktree.join("agent-output.txt").exists(),
+        "the agent did no work"
+    );
     // The user's own checkout is untouched. This is the whole reason for the
     // worktree isolation.
     assert!(!harness.repo.path().join("agent-output.txt").exists());
@@ -322,7 +325,15 @@ echo '```'"#,
     harness.run(&task, &agent);
 
     assert_eq!(harness.status(&task), TaskStatus::Blocked);
-    let note = harness.service.farm().unwrap().task(&task).unwrap().note.clone().unwrap();
+    let note = harness
+        .service
+        .farm()
+        .unwrap()
+        .task(&task)
+        .unwrap()
+        .note
+        .clone()
+        .unwrap();
     assert!(note.contains("persistence layer"), "{note}");
 }
 
@@ -504,7 +515,10 @@ fn events_describe_what_happened_in_order() {
         .collect();
 
     for expected in ["created", "workspace", "started", "output", "stopped"] {
-        assert!(kinds.contains(&expected), "no {expected} event in {kinds:?}");
+        assert!(
+            kinds.contains(&expected),
+            "no {expected} event in {kinds:?}"
+        );
     }
     assert!(
         kinds.iter().position(|k| *k == "started").unwrap()
@@ -548,7 +562,10 @@ fn two_tasks_on_the_same_paths_cannot_run_at_once() {
             .unwrap();
     }
 
-    harness.service.run_task(&first, Some(agent.clone())).unwrap();
+    harness
+        .service
+        .run_task(&first, Some(agent.clone()))
+        .unwrap();
     let error = harness.service.run_task(&second, Some(agent)).unwrap_err();
     assert_eq!(error.kind(), "pathContended");
 
@@ -626,7 +643,10 @@ fn a_farm_reads_the_repositorys_agent_rules() {
     harness.run(&task, &agent);
 
     let prompt = std::fs::read_to_string(harness.worktree(&task).join("prompt.txt")).unwrap();
-    assert!(prompt.contains("Never add a dependency."), "the rules were not sent");
+    assert!(
+        prompt.contains("Never add a dependency."),
+        "the rules were not sent"
+    );
 }
 
 #[test]

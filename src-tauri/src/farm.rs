@@ -197,12 +197,15 @@ pub fn farm_open<R: Runtime>(
             let service = service.clone();
             move || {
                 service.detect_agents();
-                let _ = app.emit(EVENT, &FarmEvent::FarmStatusChanged {
-                    status: service
-                        .farm()
-                        .map(|farm| farm.status)
-                        .unwrap_or(FarmStatus::Idle),
-                });
+                let _ = app.emit(
+                    EVENT,
+                    &FarmEvent::FarmStatusChanged {
+                        status: service
+                            .farm()
+                            .map(|farm| farm.status)
+                            .unwrap_or(FarmStatus::Idle),
+                    },
+                );
             }
         })
         .ok();
@@ -232,7 +235,11 @@ fn snapshot(service: &FarmService) -> Result<FarmSnapshot> {
                 branch: stale.branch,
             })
             .collect(),
-        scoreboard: service.scoreboard().into_iter().map(AgentScore::from).collect(),
+        scoreboard: service
+            .scoreboard()
+            .into_iter()
+            .map(AgentScore::from)
+            .collect(),
     })
 }
 
@@ -418,11 +425,7 @@ pub fn farm_add_task(state: State<'_, FarmState>, draft: TaskDraft) -> Result<Ta
 }
 
 #[tauri::command]
-pub fn farm_edit_task(
-    state: State<'_, FarmState>,
-    id: TaskId,
-    draft: TaskDraft,
-) -> Result<Task> {
+pub fn farm_edit_task(state: State<'_, FarmState>, id: TaskId, draft: TaskDraft) -> Result<Task> {
     Ok(state.service()?.edit_task(&id, |task| draft.apply(task))?)
 }
 
@@ -443,11 +446,7 @@ pub fn farm_ready_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
 }
 
 #[tauri::command]
-pub fn farm_assign_task(
-    state: State<'_, FarmState>,
-    id: TaskId,
-    agent: AgentId,
-) -> Result<()> {
+pub fn farm_assign_task(state: State<'_, FarmState>, id: TaskId, agent: AgentId) -> Result<()> {
     state.service()?.assign(&id, &agent)?;
     Ok(())
 }
@@ -502,11 +501,7 @@ pub fn farm_task_detail(state: State<'_, FarmState>, id: TaskId) -> Result<TaskD
 
 /// The tail of a run's transcript.
 #[tauri::command]
-pub fn farm_transcript(
-    state: State<'_, FarmState>,
-    run: RunId,
-    task: TaskId,
-) -> Result<String> {
+pub fn farm_transcript(state: State<'_, FarmState>, run: RunId, task: TaskId) -> Result<String> {
     Ok(state.service()?.transcript(&run, &task))
 }
 

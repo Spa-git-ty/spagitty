@@ -227,7 +227,10 @@ mod tests {
             task(2, TaskStatus::Ready),
             task(3, TaskStatus::Ready),
         ]);
-        assert_eq!(starts(&decide(&farm, &registry(), &Leases::default())), ["TASK-0001"]);
+        assert_eq!(
+            starts(&decide(&farm, &registry(), &Leases::default())),
+            ["TASK-0001"]
+        );
     }
 
     #[test]
@@ -241,7 +244,10 @@ mod tests {
         let farm = farm(tasks);
         assert_eq!(farm.max_parallel, 2);
         // Two, not three: `maxParallel` is the limit, and it is respected.
-        assert_eq!(starts(&decide(&farm, &registry(), &Leases::default())).len(), 2);
+        assert_eq!(
+            starts(&decide(&farm, &registry(), &Leases::default())).len(),
+            2
+        );
     }
 
     #[test]
@@ -267,7 +273,10 @@ mod tests {
             task(2, TaskStatus::Ready),
             task(3, TaskStatus::Ready),
         ]);
-        assert_eq!(starts(&decide(&farm, &registry(), &Leases::default())).len(), 1);
+        assert_eq!(
+            starts(&decide(&farm, &registry(), &Leases::default())).len(),
+            1
+        );
     }
 
     #[test]
@@ -279,7 +288,10 @@ mod tests {
         second.allowed_paths = vec!["src/auth/token.rs".into()];
 
         let farm = farm(vec![first, second]);
-        assert_eq!(starts(&decide(&farm, &registry(), &Leases::default())), ["TASK-0001"]);
+        assert_eq!(
+            starts(&decide(&farm, &registry(), &Leases::default())),
+            ["TASK-0001"]
+        );
     }
 
     #[test]
@@ -290,7 +302,10 @@ mod tests {
         second.allowed_paths = vec!["frontend/**".into()];
 
         let farm = farm(vec![first, second]);
-        assert_eq!(starts(&decide(&farm, &registry(), &Leases::default())).len(), 2);
+        assert_eq!(
+            starts(&decide(&farm, &registry(), &Leases::default())).len(),
+            2
+        );
     }
 
     #[test]
@@ -330,7 +345,10 @@ mod tests {
         exhausted.attempts = Task::MAX_ATTEMPTS;
         let farm = farm(vec![exhausted]);
 
-        match decide(&farm, &registry(), &Leases::default()).first().unwrap() {
+        match decide(&farm, &registry(), &Leases::default())
+            .first()
+            .unwrap()
+        {
             Decision::Block { why, .. } => assert!(why.contains("needs a person"), "{why}"),
             other => panic!("expected a block, got {other:?}"),
         }
@@ -355,7 +373,10 @@ mod tests {
         assigned.assigned_agent = Some(AgentId::new("claude"));
         let farm = farm(vec![assigned]);
 
-        match decide(&farm, &registry(), &Leases::default()).first().unwrap() {
+        match decide(&farm, &registry(), &Leases::default())
+            .first()
+            .unwrap()
+        {
             Decision::Start { agent, .. } => assert_eq!(agent, &AgentId::new("claude")),
             other => panic!("expected a start, got {other:?}"),
         }
@@ -368,7 +389,10 @@ mod tests {
         assigned.assigned_agent = Some(AgentId::new("uninstalled"));
         let farm = farm(vec![assigned]);
 
-        match decide(&farm, &registry(), &Leases::default()).first().unwrap() {
+        match decide(&farm, &registry(), &Leases::default())
+            .first()
+            .unwrap()
+        {
             Decision::Start { agent, .. } => assert_eq!(agent, &AgentId::new("codex")),
             other => panic!("expected a start, got {other:?}"),
         }
@@ -381,7 +405,10 @@ mod tests {
         let mut farm = farm(vec![backend]);
         farm.agents = vec![AgentId::new("claude")];
 
-        match decide(&farm, &registry(), &Leases::default()).first().unwrap() {
+        match decide(&farm, &registry(), &Leases::default())
+            .first()
+            .unwrap()
+        {
             Decision::Start { agent, .. } => assert_eq!(agent, &AgentId::new("claude")),
             other => panic!("expected a start, got {other:?}"),
         }

@@ -111,7 +111,10 @@ mod tests {
 
     #[test]
     fn a_template_puts_the_prompt_where_it_is_asked_for() {
-        let command = CustomAdapter.command(&definition(&["--yes", "--message", PROMPT_TOKEN]), &request());
+        let command = CustomAdapter.command(
+            &definition(&["--yes", "--message", PROMPT_TOKEN]),
+            &request(),
+        );
         assert_eq!(command.args, ["--yes", "--message", "Fix the bug"]);
         assert_eq!(command.stdin, None);
     }
@@ -145,7 +148,8 @@ mod tests {
     #[test]
     fn arguments_are_passed_through_without_a_shell() {
         // A template that looks like shell is data, not code.
-        let command = CustomAdapter.command(&definition(&["-c", "echo $HOME && {prompt}"]), &request());
+        let command =
+            CustomAdapter.command(&definition(&["-c", "echo $HOME && {prompt}"]), &request());
         assert_eq!(command.args, ["-c", "echo $HOME && Fix the bug"]);
     }
 }

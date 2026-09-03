@@ -25,7 +25,11 @@ pub const NAMESPACE: &str = "spagitty-farm";
 
 /// The branch for one task, worked by one provider.
 pub fn branch_name(task: &TaskId, provider: AgentProvider) -> String {
-    format!("{NAMESPACE}/{}/{}", sanitise(task.as_str()), provider.slug())
+    format!(
+        "{NAMESPACE}/{}/{}",
+        sanitise(task.as_str()),
+        provider.slug()
+    )
 }
 
 /// The worktree directory name for one task.

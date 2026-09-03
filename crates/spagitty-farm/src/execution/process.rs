@@ -191,15 +191,14 @@ pub fn start(
     #[cfg(unix)]
     process.process_group(0);
 
-    process
-        .stdin(if command.stdin.is_some() {
-            Stdio::piped()
-        } else {
-            // Never inherited. An agent that reads standard input when nothing
-            // is piped to it would read the terminal Spagitty was launched
-            // from, which is either nothing or somebody else's keystrokes.
-            Stdio::null()
-        });
+    process.stdin(if command.stdin.is_some() {
+        Stdio::piped()
+    } else {
+        // Never inherited. An agent that reads standard input when nothing
+        // is piped to it would read the terminal Spagitty was launched
+        // from, which is either nothing or somebody else's keystrokes.
+        Stdio::null()
+    });
 
     let mut child = process.spawn().map_err(|error| {
         Error::Refused(format!(

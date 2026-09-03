@@ -310,7 +310,9 @@ mod tests {
         let mut farm = farm();
         let adopted = adopt(
             &mut farm,
-            &plan(r#"{"tasks":[{"reference":"t1","title":"  "},{"reference":"t2","title":"Real"}]}"#),
+            &plan(
+                r#"{"tasks":[{"reference":"t1","title":"  "},{"reference":"t2","title":"Real"}]}"#,
+            ),
         )
         .unwrap();
         assert_eq!(adopted.len(), 1);
@@ -364,7 +366,10 @@ mod tests {
             "acceptanceCriteria",
             "questions",
         ] {
-            assert!(contract.contains(field), "the contract never mentions {field}");
+            assert!(
+                contract.contains(field),
+                "the contract never mentions {field}"
+            );
         }
     }
 

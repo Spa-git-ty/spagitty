@@ -103,7 +103,10 @@ impl Error {
 
 /// Serialised as `{ kind, message }` so the webview gets both halves.
 impl serde::Serialize for Error {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
         let mut out = serializer.serialize_struct("FarmError", 2)?;
         out.serialize_field("kind", self.kind())?;

@@ -64,7 +64,6 @@ fn settings(
         out.push(("NO_AT_BRIDGE", "1"));
     }
 
-
     // The whole page on one path rather than WebKitGTK deciding per layer.
     // Harmless on the software renderer and necessary on the accelerated one.
     if compositing.is_none() {

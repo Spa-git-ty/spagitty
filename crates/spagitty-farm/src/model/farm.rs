@@ -278,7 +278,11 @@ impl Farm {
         if self.tasks.is_empty() {
             return FarmStatus::Idle;
         }
-        if self.tasks.iter().all(|task| task.status == TaskStatus::Done) {
+        if self
+            .tasks
+            .iter()
+            .all(|task| task.status == TaskStatus::Done)
+        {
             return FarmStatus::Completed;
         }
         if self

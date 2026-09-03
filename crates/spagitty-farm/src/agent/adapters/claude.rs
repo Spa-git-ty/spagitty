@@ -147,7 +147,9 @@ mod tests {
         assert_eq!(ClaudeAdapter.executables(), &["claude"]);
         assert!(ClaudeAdapter.is_headless(&definition()));
         assert_eq!(
-            ClaudeAdapter.command(&definition(), &request(false)).program,
+            ClaudeAdapter
+                .command(&definition(), &request(false))
+                .program,
             Path::new("/usr/bin/claude")
         );
     }

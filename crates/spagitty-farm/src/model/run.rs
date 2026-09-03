@@ -33,7 +33,10 @@ pub enum RunOutcome {
     /// The process exited zero.
     Completed { exit_code: i32 },
     /// The process exited non-zero, or could not be started at all.
-    Failed { exit_code: Option<i32>, reason: String },
+    Failed {
+        exit_code: Option<i32>,
+        reason: String,
+    },
     /// A person stopped it. Never a failure — the farm did what it was told.
     Cancelled,
 }
@@ -69,7 +72,8 @@ pub struct AgentRun {
 
 impl AgentRun {
     pub fn duration_ms(&self) -> Option<u64> {
-        self.ended_ms.map(|ended| ended.saturating_sub(self.started_ms))
+        self.ended_ms
+            .map(|ended| ended.saturating_sub(self.started_ms))
     }
 }
 

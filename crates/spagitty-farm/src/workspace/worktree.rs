@@ -153,7 +153,12 @@ fn branch_exists(repo: &Path, branch: &str) -> bool {
         )
         .iter()
         .any(|worktree| worktree.branch.as_deref() == Some(branch))
-        || repo.join(".git").join("refs").join("heads").join(branch).exists()
+        || repo
+            .join(".git")
+            .join("refs")
+            .join("heads")
+            .join(branch)
+            .exists()
 }
 
 /// Keep the farm's own directory out of the user's commits.
@@ -202,13 +207,7 @@ mod tests {
     #[test]
     fn cutting_a_workspace_produces_a_branch_and_a_checkout() {
         let repo = Fixture::woven();
-        let workspace = create(
-            repo.path(),
-            &task(),
-            AgentProvider::ClaudeCode,
-            "HEAD",
-        )
-        .unwrap();
+        let workspace = create(repo.path(), &task(), AgentProvider::ClaudeCode, "HEAD").unwrap();
 
         assert_eq!(workspace.branch, "spagitty-farm/TASK-0042/claude");
         assert!(workspace.path.join(".git").exists(), "no checkout was made");

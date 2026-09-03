@@ -237,10 +237,16 @@ impl AgentRole {
 #[serde(rename_all = "camelCase", tag = "state")]
 pub enum AgentAvailability {
     /// Found, and it answered `--version`.
-    Available { path: PathBuf, version: String },
+    Available {
+        path: PathBuf,
+        version: String,
+    },
     /// Found on disk, but running it did not work. Kept apart from `Missing`
     /// because the fix is different: this one is installed and broken.
-    Broken { path: PathBuf, reason: String },
+    Broken {
+        path: PathBuf,
+        reason: String,
+    },
     Missing,
 }
 
@@ -275,7 +281,8 @@ mod tests {
             let slug = provider.slug();
             assert!(!slug.is_empty());
             assert!(
-                slug.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()),
+                slug.chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()),
                 "{slug} would need quoting in a ref"
             );
         }
