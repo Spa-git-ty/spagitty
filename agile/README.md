@@ -153,6 +153,7 @@ rather than an audit.
 | [BUG-018](items/BUG-018-a-menu-cannot-be-dismissed.md) | A menu cannot be dismissed, and the next one is drawn over it | all | Fixed |
 | [BUG-019](items/BUG-019-closing-the-last-tab-leaves-the-repository-open.md) | Closing the last tab leaves the repository open | chrome | Fixed |
 | [BUG-020](items/BUG-020-the-window-freezes-while-the-farm-plans.md) | The window freezes while the farm plans | Farm (1Q) | Fixed |
+| [BUG-021](items/BUG-021-a-run-says-nothing-until-it-ends.md) | A run says nothing until it ends | Farm (1Q) | Fixed |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
 report, reopened on a corrected diagnosis, and BUG-009's own document keeps the

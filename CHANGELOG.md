@@ -16,6 +16,17 @@ stays backward-compatible.
 
 ### Fixed
 
+- **An agent's work is visible while it happens.** A task ran for minutes with
+  an empty transcript behind it and everything arrived at once at the end,
+  because Claude Code was being asked for its answer rather than for its work.
+  It now runs in streaming mode, and what it streams is narrated into lines a
+  person reads — `· Read src/auth.rs`, `· Bash cargo test`, and the agent's own
+  words. Agents that already narrate their work are unchanged.
+- **A planning run can be watched and stopped.** The Farm screen carries a card
+  while a planner is working: how long it has been going, the last thing it
+  said, and a control that stops the planner without cancelling the farm. A
+  cancelled planner adopts nothing, and a planner that produces no tasks says so
+  instead of leaving an empty plan that looks untouched.
 - **The window no longer freezes while the farm plans.** Asking an agent to
   break a goal into tasks locked the whole application — every screen, the
   menus, the window itself — until the planner finished, typically minutes. The

@@ -573,6 +573,17 @@ pub fn farm_plan(state: State<'_, FarmState>, agent: Option<AgentId>) -> Result<
     Ok(run)
 }
 
+/// Stop a planning run.
+///
+/// Separate from `farm_cancel`, which cancels every task in the farm. A person
+/// who has watched a planner for two minutes and changed their mind wants the
+/// planner stopped, not the farm emptied.
+#[tauri::command(async)]
+pub fn farm_cancel_plan(state: State<'_, FarmState>) -> Result<()> {
+    state.service()?.cancel_plan()?;
+    Ok(())
+}
+
 // ── Housekeeping ─────────────────────────────────────────────────────────
 
 /// Remove worktrees for tasks no farm claims.
