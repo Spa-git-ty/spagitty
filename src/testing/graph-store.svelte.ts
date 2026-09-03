@@ -20,6 +20,7 @@ let detail = $state<CommitDetail | null>(null);
 let detailError = $state<string | null>(null);
 let error = $state<string | null>(null);
 let complete = $state(true);
+let refreshedAt = $state<number | null>(null);
 let version = $state(0);
 
 /** Calls the components made, for assertions. */
@@ -49,6 +50,9 @@ export const control = {
 	setComplete(next: boolean) {
 		complete = next;
 	},
+	setRefreshedAt(next: number | null) {
+		refreshedAt = next;
+	},
 	reset() {
 		rows = [];
 		selectedIndex = null;
@@ -56,6 +60,7 @@ export const control = {
 		detailError = null;
 		error = null;
 		complete = true;
+		refreshedAt = null;
 		version = 0;
 		calls.ensured = [];
 		calls.selected = [];
@@ -71,6 +76,9 @@ export const graph = {
 	},
 	get complete() {
 		return complete;
+	},
+	get refreshedAt() {
+		return refreshedAt;
 	},
 	get error() {
 		return error;

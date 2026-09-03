@@ -167,7 +167,7 @@ describe('init', () => {
 	it('ignores a stored family that is not a family', () => {
 		// The file invites hand-editing, and a typo must not leave the window
 		// with no colours at all.
-		stubStorage({ [FAMILY_KEY]: 'solarized', [MODE_KEY]: 'light' });
+		stubStorage({ [FAMILY_KEY]: 'monokai', [MODE_KEY]: 'light' });
 
 		theme.init();
 

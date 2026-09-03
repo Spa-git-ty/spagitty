@@ -7,6 +7,7 @@
 	import TaskDetailPanel from '$lib/farm/components/TaskDetail.svelte';
 	import TaskEditor from '$lib/farm/components/TaskEditor.svelte';
 	import TaskRow from '$lib/farm/components/TaskRow.svelte';
+	import Starter from '$lib/farm/components/Starter.svelte';
 	import { AUTONOMY_LEVELS, eventLine, FARM_STATUS_LABELS, PROVIDER_LABELS } from '$lib/farm/describe';
 	import { lines, text } from '$lib/farm/options';
 	import { farmStore } from '$lib/farm/store.svelte';
@@ -117,9 +118,31 @@
 	}
 
 	async function createFarm(): Promise<void> {
-		const title = goalTitle.trim();
+		await startFarm(goalTitle.trim(), goalDescription.trim());
+	}
+
+	/**
+	 * Start a farm from a goal typed anywhere on the screen.
+	 *
+	 * The starter page and the Settings pane both ask for the same two fields,
+	 * so they call the same function rather than each having their own idea of
+	 * what a blank title means. The fields are seeded back into Settings so the
+	 * goal a person just typed is the goal Settings shows.
+	 */
+	async function startFarm(title: string, description: string): Promise<void> {
 		if (!title) return;
-		await act('Could not start a farm', () => api.create(title, goalDescription.trim()));
+		goalTitle = title;
+		goalDescription = description;
+		await act('Could not start a farm', async () => {
+			await api.create(title, description);
+			// Verification is a property of a farm, so a command typed in
+			// Settings before there was one had nowhere to go and was silently
+			// dropped by the create. It is applied here instead, in the same
+			// action, because the alternative is a screen that accepted a
+			// setting and did not keep it.
+			const commands = lines(verificationText);
+			if (commands.length > 0) await api.configure({ verification: commands });
+		});
 		pane = 'tasks';
 	}
 
@@ -192,7 +215,27 @@
 
 	<div class="body">
 		{#if repo.info === null}
-			<div class="empty"><p class="note">No repository open.</p></div>
+			<!--
+				A farm belongs to a repository, and this screen is now the first
+				thing in the rail — so the state a new window opens in is this
+				one, and "No repository open." was the whole of it. It says what
+				a farm is for and offers the one action that makes the screen
+				work, which is also the action the rail stops offering once a
+				repository is open.
+			-->
+			<div class="empty">
+				<div class="nothing">
+					<h2 class="heading">A farm lives in a repository</h2>
+					<p class="note">
+						Open one and the farm follows it: its goal, its tasks and its agents are
+						stored with that repository, and the branches its agents produce are the
+						branches you read in the graph.
+					</p>
+					<div class="actions">
+						<Btn primary onclick={() => repo.choose()}>Open repository…</Btn>
+					</div>
+				</div>
+			</div>
 		{:else if !farmStore.loaded && farmStore.loading}
 			<div class="empty"><p class="note">Reading the farm…</p></div>
 		{:else if pane === 'agents'}
@@ -354,17 +397,18 @@
 				{/if}
 			</section>
 		{:else if !farm}
-			<section class="pane single">
-				<div class="empty">
-					<h2 class="heading">No farm started yet</h2>
-					<p class="note">
-						A farm organizes tasks for coding agents to work in parallel on isolated Git
-						branches and worktrees.
-					</p>
-					<div class="actions" style="margin-top: 12px;">
-						<Btn primary onclick={() => (pane = 'settings')}>Set a goal & start farm</Btn>
-					</div>
-				</div>
+			<section class="pane single wide">
+				<Starter
+					ready={usable}
+					undetected={farmStore.undetected}
+					policySources={farmStore.policy.sources.map((source) => source.path)}
+					verificationCount={lines(verificationText).length}
+					{busy}
+					onstart={startFarm}
+					ondetect={() => act('Detection failed', api.detectAgents)}
+					onwritePolicy={writePolicy}
+					onsettings={() => (pane = 'settings')}
+				/>
 			</section>
 		{:else}
 			<section class="pane list">
@@ -533,6 +577,12 @@
 		max-width: 76ch;
 	}
 
+	/* The starter page sets its own measure and centres itself, so the pane
+	   must not clamp it to the Settings pane's column. */
+	.wide > :global(*) {
+		max-width: none;
+	}
+
 	.list {
 		flex: 1;
 		width: 100%;
@@ -556,6 +606,15 @@
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
+	}
+
+	/* The no-repository state: a short column rather than one grey line. */
+	.nothing {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		align-items: center;
+		max-width: 46ch;
 	}
 
 	.empty {

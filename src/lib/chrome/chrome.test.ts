@@ -43,6 +43,7 @@ import RepoTabs from './RepoTabs.svelte';
 import StatusStrip from './StatusStrip.svelte';
 import TitleBar from './TitleBar.svelte';
 import Toolbar from './Toolbar.svelte';
+import { NAV_ITEMS } from '$lib/nav';
 import { version } from '$lib/version';
 import { workspace } from '$lib/workspace.svelte';
 
@@ -317,13 +318,104 @@ describe('StatusStrip', () => {
 		view.destroy();
 	});
 
-	it('says nothing else, on purpose', () => {
-		// The left end is empty until something genuinely window-wide earns it.
-		// A strip filled with second copies of what the rail and toolbar already
-		// say is how a status bar becomes noise.
+	it('says nothing about a repository there is not one of', () => {
+		// With nothing open there is nothing true to say, and a strip filled
+		// with placeholders is how a status bar becomes noise.
 		const view = render(StatusStrip, {});
 
+		expect(view.all('.repo')).toHaveLength(0);
 		expect(view.text().trim()).toBe(`${version.licenseShort} · v${version.number}`);
+
+		view.destroy();
+	});
+
+	/** What the rail's foot used to say, in the place a status strip says it. */
+	it('says how much is changed, how fresh the walk is, and what has never been fetched', () => {
+		repoControl.setInfo(info());
+		repoControl.setCounts(counts({ working: 1, tags: 2, submodules: 0 }));
+		const view = render(StatusStrip, {});
+
+		const strip = view.get('.repo').textContent ?? '';
+		expect(strip).toContain('1 changed file');
+		expect(strip).toContain('not refreshed yet');
+		// `lastFetched` is null on this fixture, and inventing a time for a
+		// fetch that never happened is the one thing this must not do.
+		expect(strip).toContain('never fetched');
+		expect(strip).toContain('Tags 2');
+		expect(strip).toContain('Submodules 0');
+
+		view.destroy();
+	});
+
+	/**
+	 * The counts are inventory and the rest is state, and reading them as one
+	 * dot-separated run is what made "1 changed file" and "Tags 42" look like
+	 * the same kind of fact. They are two groups with a rule between them.
+	 */
+	it('keeps the counts in a group of their own, apart from what is changing', () => {
+		repoControl.setInfo(info());
+		repoControl.setCounts(counts({ working: 1, tags: 2, submodules: 0 }));
+		const view = render(StatusStrip, {});
+
+		const state = view.get('.state').textContent ?? '';
+		const tally = view.get('.counts').textContent ?? '';
+
+		// Every count is in the counts group, and none of them anywhere else.
+		expect(tally).toContain('commits');
+		expect(tally).toContain('Tags 2');
+		expect(tally).toContain('Submodules 0');
+		expect(state).not.toContain('Tags');
+		expect(state).not.toContain('Submodules');
+		expect(state).not.toContain('commits');
+
+		// And the changing half is all in the state group.
+		expect(state).toContain('1 changed file');
+		expect(state).toContain('never fetched');
+		expect(tally).not.toContain('changed file');
+		expect(tally).not.toContain('fetched');
+
+		// With a rule between them, not a fourth dot.
+		expect(view.all('.divider')).toHaveLength(1);
+
+		view.destroy();
+	});
+
+	it('counts one changed file as a file and two as files', () => {
+		repoControl.setInfo(info());
+		repoControl.setCounts(counts({ working: 2 }));
+		const many = render(StatusStrip, {});
+		expect(many.get('.repo').textContent).toContain('2 changed files');
+		many.destroy();
+
+		repoControl.setCounts(counts({ working: 0 }));
+		const clean = render(StatusStrip, {});
+		expect(clean.get('.repo').textContent).toContain('working copy clean');
+		clean.destroy();
+	});
+
+	it('gives one clear status while history loads and when the repository is ready', () => {
+		repoControl.setInfo(info());
+		graphControl.setComplete(false);
+		const loading = render(StatusStrip, {});
+		expect(loading.get('.repo').textContent).toContain('Loading history…');
+		expect(loading.get('.walk').classList.contains('running')).toBe(true);
+		loading.destroy();
+
+		graphControl.setComplete(true);
+		const done = render(StatusStrip, {});
+		expect(done.get('.repo').textContent).toContain('Repository ready');
+		expect(done.get('.walk').classList.contains('running')).toBe(false);
+		done.destroy();
+	});
+
+	it('keeps the licence at the end, whatever the repository has to say', () => {
+		// The GPL notice is the one thing on this strip that is not optional
+		// (FEAT-043), so it is last and it does not shrink.
+		repoControl.setInfo(info());
+		const view = render(StatusStrip, {});
+
+		const children = [...view.get('.strip').children];
+		expect(children[children.length - 1].classList.contains('license')).toBe(true);
 
 		view.destroy();
 	});
@@ -669,34 +761,22 @@ describe('NavRail', () => {
 		view.destroy();
 	});
 
-	it('shows tag and submodule counts in the footer', () => {
+	/**
+	 * The rail is navigation. The repository's own state — how much is changed,
+	 * how fresh the walk and the remote are, tags and submodules — is one line
+	 * in the status strip, and two of those four were second copies of counts
+	 * the rows above already carry as badges.
+	 */
+	it('carries no repository status of its own', () => {
 		repoControl.setInfo(info());
 		repoControl.setCounts(counts({ tags: 2, submodules: 0 }));
 		const view = render(NavRail, {});
-		expect(view.get('.foot').textContent).toContain('Tags 2');
-		expect(view.get('.foot').textContent).toContain('Submodules 0');
-		view.destroy();
-	});
 
-	it('gives one clear status while history loads and when the repository is ready', () => {
-		repoControl.setInfo(info());
-		graphControl.setComplete(false);
-		const loading = render(NavRail, {});
-		expect(loading.get('.foot').textContent).toContain('Loading history…');
-		expect(loading.get('.foot').textContent).not.toContain('walking');
-		expect(loading.get('.walk').classList.contains('running')).toBe(true);
-		loading.destroy();
-
-		graphControl.setComplete(true);
-		const done = render(NavRail, {});
-		expect(done.get('.foot').textContent).toContain('Repository ready');
-		expect(done.get('.walk').classList.contains('running')).toBe(false);
-		done.destroy();
-	});
-
-	it('does not show repository status before a repository is open', () => {
-		const view = render(NavRail, {});
 		expect(view.all('.foot')).toHaveLength(0);
+		expect(view.text()).not.toContain('Submodules');
+		expect(view.text()).not.toContain('Repository ready');
+		expect(view.text()).not.toContain('never fetched');
+
 		view.destroy();
 	});
 
@@ -746,17 +826,34 @@ describe('NavRail', () => {
 		view.destroy();
 	});
 
-	it('leaves the foot holding the counts alone', () => {
+	/**
+	 * Once there is a repository open, the loudest thing in the rail was a
+	 * filled accent button offering to replace it — above every screen, and
+	 * wanted approximately never. The tab strip's `+`, the repository menu and
+	 * All repositories all still open one.
+	 */
+	it('drops Open repository from the rail once a repository is open', () => {
 		repoControl.setInfo(info());
 		const view = render(NavRail, {});
 
-		const foot = view.get('.foot');
-		expect(foot.textContent).toContain('Tags');
-		expect(foot.textContent).toContain('Submodules');
-		expect(foot.querySelector('button')).toBeNull();
+		expect(view.all('.open')).toHaveLength(0);
+		expect(view.text()).not.toContain('Open repository');
+		// The screens are all still there, starting with the farm.
+		expect(view.all('.item').length).toBe(NAV_ITEMS.length);
 
 		view.destroy();
 	});
+
+	/** The rail's top slot is the farm (FEAT-073). */
+	it('puts the farm first among the screens', () => {
+		const view = render(NavRail, {});
+
+		const screens = view.all('.item').filter((item) => !item.classList.contains('open-repository'));
+		expect(screens[0].textContent).toContain('Farm');
+
+		view.destroy();
+	});
+
 });
 
 describe('ResizeEdges', () => {

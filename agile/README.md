@@ -126,6 +126,7 @@ rather than an audit.
 | [FEAT-069](items/FEAT-069-multi-identity-profiles.md) | Multi-identity profiles | 1K, chrome | Done |
 | [FEAT-070](items/FEAT-070-extended-forge-integration.md) | Extended forge integration | 1H, 1K | Done |
 | [FEAT-072](items/FEAT-072-delight-layer.md) | The delight layer: badges, titles and reward moments | 1P, 1K, chrome | Done |
+| [FEAT-073](items/FEAT-073-agent-farm.md) | The agent farm: running and shepherding agents from inside Spagitty | 1Q, 1K, chrome | Done |
 
 ## Bugs
 
@@ -214,3 +215,4 @@ missing documents are not listed here, and fails again if a row here is stale.
 | FEAT-055 | plan, automated, sweep | A rendering-path decision measured on one machine and written as a policy function with a unit test per row of the table. What is missing is a second machine: the plan and sweep are worth writing when somebody with different hardware can confirm or contradict it. |
 | FEAT-056 | plan, automated, sweep | A toggle and a set beside the widths, covered incidentally by the layout round-trip in `panels.test.ts`. The plan and sweep are worth writing when the Graph and Pull requests screens get their own component tests to point at. |
 | BUG-001 | plan, automated, sweep | Fixed inside FEAT-003's change before it had a branch of its own; its item document says so. No separate work to plan. |
+| FEAT-073 | plan, automated, sweep | The crate landed with its own Rust tests and the screen with component tests, and the item document records the decisions a plan would have argued in advance. What is missing is the record written *before* the code, which cannot be back-dated honestly; the sweep is owed the first time a farm is driven end to end on a repository that is not this one. |

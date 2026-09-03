@@ -82,6 +82,12 @@ jobs:
         id: version
         run: |
           base=$(bun -e "console.log(require('./package.json').version)")
+
+          # The manifest carries its own pre-release suffix from 0.4.0-alpha
+          # onwards, and the alpha *number* is appended here. Strip the suffix
+          # or the two compose into `v0.4.0-alpha-alpha.3`.
+          base=${base%%-*}
+
           echo "tag=v$base-alpha.${{ inputs.alpha }}" >> "$GITHUB_OUTPUT"
 
       - name: Refuse to move an existing tag
