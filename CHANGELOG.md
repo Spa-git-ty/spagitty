@@ -14,8 +14,69 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+## [0.4.0-alpha] - 2026-09-03
+
+The first release to carry its pre-release suffix in the manifest: `main`
+publishes `v0.4.0-alpha`, and the draft and prerelease lanes still number their
+own alphas from the `0.4.0` base.
+
+### Added
+
+- **The agent farm (FEAT-073).** Spagitty runs and shepherds coding agents
+  instead of only reading what they did. A new `crates/spagitty-farm` is the
+  control plane and nothing else — every git operation still goes through
+  `spagitty-core`. Inside it: the domain model, one adapter per provider,
+  a branch and worktree per task with path-level lease locks, a deterministic
+  verifier, a peer-review router, a dependency-DAG scheduler, and local
+  persistence.
+- **Adapters, not models.** Claude Code, Codex, Cursor and Oh My Pi are found on
+  `PATH`, and anything else with a command line can be added by hand. Spagitty
+  runs them as the user; it contains no model and ships no key.
+- **A branch and a worktree per task**, named `spagitty-farm/<task>/<provider>`
+  so the graph, the worktree list and the Farm screen find each other by one
+  derived name. Nothing an agent does reaches the user's working copy.
+- **An agent saying "done" is not done.** Verification runs the repository's own
+  commands in the task's worktree, and the review is performed by a *different*
+  agent than the one that wrote the change. Both are in the path to `Done`, and
+  an agent's own report cannot skip either.
+- **Agents never talk to each other.** Every handoff goes through Spagitty, so
+  there is one audit trail and one place that decides what happens next.
+- **Five autonomy levels**, from Manual to Unattended — a sentence about where
+  the human is, rather than a magnitude.
+- **The farm on disk** is JSON under `.spagitty/`, written by rename so a crash
+  leaves the previous state intact, with events appended one object per line.
+  The directory is added to `.git/info/exclude`; a farm is never committed.
+- **Farm (1Q)**, the screen over it: the plan on the left, the selected task in
+  the middle, and what just happened along the bottom — the three questions a
+  supervisor has, all visible at once. Events drive it; nothing polls.
+- **Tauri commands and an event bridge** streaming farm execution and progress,
+  with unit and pipeline suites over the engine, the bridge and the frontend.
+- **`go.farm` palette commands**, for reaching the screen without the rail.
+
 ### Fixed
 
+- **Linux hung on interaction ("Application Not Responding").** WebKitGTK
+  deadlocked with `at-spi2-registryd`; `platform::prepare_webview` now sets
+  `NO_AT_BRIDGE=1` unless explicitly opted out.
+- **Saving an agent took seconds.** `save_agent` probed the binary on every
+  save, so toggling a role or a capability paid for a subprocess. It probes
+  only when the executable path actually changed or was added.
+- **A custom agent was judged by `--version`**, which many agents do not answer
+  to — `dash` exits 2 on it, so every scripted agent was reported broken on the
+  Debian-family machines CI runs on. It is judged by whether it runs.
+- **Settings could not load or save external tools with no repository open.**
+  Farm settings can render with no session, so it falls back to `~/.gitconfig`
+  and surfaces a retry when the tools catalogue fails to load.
+- **The Tasks view hijacked the settings form** when no farm had been started.
+  Tasks now shows "No farm started yet", and Settings always renders the full
+  panel — goal, autonomy, verification commands, repository rules and stale
+  worktrees — whether or not a goal exists.
+- **Views did not fill the window.** `.screen-slot`, `.screen`, `.body` and
+  `.pane` now carry an explicit full height and `min-height: 0` so children
+  compute their scroll boundaries, the scroll containers span the full pane so
+  the wheel works anywhere in it, and the activity footer is pinned to the
+  bottom instead of floating mid-screen when there is little content.
+- **Scrollbars touched the card borders** on the Farm panes.
 - **The README wordmark sat a row below the mark.** Pillow's default text
   origin is the top of the em box, not the baseline; the generator treated a
   centreline as a baseline and dropped the name by a full ascender. Lockups and
@@ -24,6 +85,8 @@ stays backward-compatible.
 
 ### Changed
 
+- **The frontend coverage floor is 65%.** The farm's screens mount but are not
+  asserted on, which put branches at 68.3%. Rust keeps its own floor at 70%.
 - **README rewritten** in the Quiblo style: centered mark, badges, short pitch,
   a features table that covers the whole surface, and a "learn from this
   repository" section for humans and agents — instead of a handbook dump.

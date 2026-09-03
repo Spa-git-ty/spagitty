@@ -40,8 +40,9 @@
 # `draft/**`: pushing `draft/0.1.0-alpha` builds and drafts, and nothing
 # else in the repository reacts to a branch under that prefix.
 #
-# The tag is **computed, never typed**. It is the version in `package.json` with
-# the next alpha number after the highest one already released — so two runs
+# The tag is **computed, never typed**. It is the release version in
+# `package.json` with its own pre-release suffix stripped, carrying the next
+# alpha number after the highest one already released — so two runs
 # never collide, and nobody has to remember what the last one was. A pushed
 # build leaves a draft; a dispatch can publish outright. Releases stay alpha
 # until a deliberate choice is made to cut a beta or a public release.
@@ -94,6 +95,11 @@ jobs:
         run: |
           set -euo pipefail
           base=$(bun -e "console.log(require('./package.json').version)")
+
+          # The manifest carries its own pre-release suffix from 0.4.0-alpha
+          # onwards, and the alpha *number* is appended here. Strip the suffix
+          # or the two compose into `v0.4.0-alpha-alpha.1`.
+          base=${base%%-*}
 
           # The highest alpha already cut for this version, or nothing.
           # `sort -n` rather than lexical, or alpha.10 would sort under
