@@ -16,3 +16,4 @@ run_claude_job.sh
 .claude/
 .idea/
 __pycache__/
+/.spagitty/

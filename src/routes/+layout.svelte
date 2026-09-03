@@ -446,6 +446,8 @@
 		flex: 1;
 		min-width: 0;
 		min-height: 0;
+		height: 100%;
+		width: 100%;
 		display: flex;
 		overflow: hidden;
 	}

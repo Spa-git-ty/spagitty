@@ -11,6 +11,7 @@ mod accounts;
 mod clone_worker;
 mod command_log;
 mod commands;
+mod farm;
 mod graph_worker;
 mod network_worker;
 mod platform;
@@ -158,6 +159,35 @@ pub fn run() {
             commands::launch_path,
             commands::git_commands,
             commands::clear_git_commands,
+            // The agent farm (FEAT-073). A separate module rather than more of
+            // `commands.rs`: see its header.
+            farm::farm_open,
+            farm::farm_close,
+            farm::farm_snapshot,
+            farm::farm_detect_agents,
+            farm::farm_save_agent,
+            farm::farm_remove_agent,
+            farm::farm_create,
+            farm::farm_configure,
+            farm::farm_start,
+            farm::farm_pause,
+            farm::farm_cancel,
+            farm::farm_write_policy,
+            farm::farm_add_task,
+            farm::farm_edit_task,
+            farm::farm_delete_task,
+            farm::farm_ready_task,
+            farm::farm_assign_task,
+            farm::farm_cancel_task,
+            farm::farm_retry_task,
+            farm::farm_run_task,
+            farm::farm_task_detail,
+            farm::farm_transcript,
+            farm::farm_merge_task,
+            farm::farm_review_task,
+            farm::farm_verify_task,
+            farm::farm_plan,
+            farm::farm_sweep,
         ])
         .setup(|app| {
             if let (Some(window), Some(icon)) =
@@ -169,6 +199,9 @@ pub fn run() {
             // Registered before any command can run, so the first execution of
             // the session is already being forwarded.
             command_log::forward_to(app.handle().clone());
+
+            // The farm's state, empty until a repository is opened.
+            farm::manage(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())

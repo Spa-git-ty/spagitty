@@ -13,11 +13,11 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 bun run check          # svelte-kit sync && svelte-check
 bun run test           # vitest, run through bun
-bun run coverage       # vitest with the Amendment 10 floor enforced
+bun run coverage       # vitest with the coverage floor enforced
 ```
 
-Coverage of first-party code is measured on both sides and both must clear the
-Amendment 10 floor of 70%:
+Coverage of first-party code is measured on both sides and both must clear their
+floor — 70% for Rust, 65% for the frontend:
 
 ```sh
 cargo llvm-cov --workspace --ignore-filename-regex '(fixture|testing)\.rs' --summary-only

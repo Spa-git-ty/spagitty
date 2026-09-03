@@ -968,12 +968,20 @@ pub fn submodule_deinit(state: State<'_, AppState>, path: String, force: bool) -
 }
 
 /// Read configured and available external diff/merge tools (FEAT-068).
+///
+/// Falls back to global configuration from ~/.gitconfig if no repository is open.
 #[tauri::command]
 pub fn external_tools_config(state: State<'_, AppState>) -> Result<ExternalToolsConfig> {
-    state.with_session(|session| tools::get_config(&session.repo.to_thread_local()))
+    let guard = state.session.lock().expect("session lock");
+    match guard.as_ref() {
+        Some(session) => tools::get_config(&session.repo.to_thread_local()),
+        None => tools::get_config_global(),
+    }
 }
 
 /// Set configured external tool (FEAT-068).
+///
+/// If no repository is open, writes to global configuration (~/.gitconfig).
 #[tauri::command]
 pub fn set_external_tool(
     state: State<'_, AppState>,
@@ -981,14 +989,21 @@ pub fn set_external_tool(
     tool_name: Option<String>,
     global: bool,
 ) -> Result<()> {
-    state.with_session(|session| {
-        tools::set_tool(
+    let guard = state.session.lock().expect("session lock");
+    match guard.as_ref() {
+        Some(session) => tools::set_tool(
             &session.repo.to_thread_local(),
             &tool_type,
             tool_name.as_deref(),
             global,
-        )
-    })
+        ),
+        None => {
+            if !global {
+                return Err(Error::NoRepository);
+            }
+            tools::set_tool_global(&tool_type, tool_name.as_deref())
+        }
+    }
 }
 
 /// Launch external diff tool (FEAT-068).
