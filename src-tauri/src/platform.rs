@@ -44,16 +44,26 @@ type Setting = (&'static str, &'static str);
 /// inferred from a running window on one person's machine.
 ///
 /// `wayland` is whether this is a Wayland session — `WAYLAND_DISPLAY` set.
-/// `backend`, `dmabuf` and `compositing` are the current values of
-/// `GDK_BACKEND`, `WEBKIT_DISABLE_DMABUF_RENDERER` and
-/// `WEBKIT_FORCE_COMPOSITING_MODE`.
+/// `backend`, `dmabuf`, `compositing` and `no_at_bridge` are the current values of
+/// `GDK_BACKEND`, `WEBKIT_DISABLE_DMABUF_RENDERER`,
+/// `WEBKIT_FORCE_COMPOSITING_MODE` and `NO_AT_BRIDGE`.
 fn settings(
     wayland: bool,
     backend: Option<&str>,
     dmabuf: Option<&str>,
     compositing: Option<&str>,
+    no_at_bridge: Option<&str>,
 ) -> Vec<Setting> {
     let mut out = Vec::new();
+    // WebKitGTK on Linux has a known deadlock bug with at-spi2: when an AT-SPI
+    // registry daemon is running (standard on modern Linux desktop installs),
+    // user interactions in the webview trigger synchronous ATK D-Bus queries that
+    // deadlock the GTK main thread event loop, causing "Application Not Responding".
+    // Disabling the AT-SPI bridge prevents the hang unless explicitly configured.
+    if no_at_bridge.is_none() {
+        out.push(("NO_AT_BRIDGE", "1"));
+    }
+
 
     // The whole page on one path rather than WebKitGTK deciding per layer.
     // Harmless on the software renderer and necessary on the accelerated one.
@@ -100,12 +110,14 @@ pub fn prepare_webview() {
     let backend = std::env::var("GDK_BACKEND").ok();
     let dmabuf = std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").ok();
     let compositing = std::env::var("WEBKIT_FORCE_COMPOSITING_MODE").ok();
+    let no_at_bridge = std::env::var("NO_AT_BRIDGE").ok();
 
     for (name, value) in settings(
         wayland,
         backend.as_deref(),
         dmabuf.as_deref(),
         compositing.as_deref(),
+        no_at_bridge.as_deref(),
     ) {
         std::env::set_var(name, value);
     }
@@ -123,7 +135,7 @@ mod tests {
     /// measured to keep painting on the driver this was found on.
     #[test]
     fn a_wayland_session_takes_the_path_that_paints() {
-        let set = settings(true, None, None, None);
+        let set = settings(true, None, None, None, None);
 
         assert_eq!(value(&set, "WEBKIT_DISABLE_DMABUF_RENDERER"), Some("1"));
         assert_eq!(value(&set, "WEBKIT_FORCE_COMPOSITING_MODE"), Some("1"));
@@ -135,7 +147,7 @@ mod tests {
     #[test]
     fn an_explicit_renderer_choice_is_left_alone() {
         for chosen in ["0", "1", ""] {
-            let set = settings(true, None, Some(chosen), None);
+            let set = settings(true, None, Some(chosen), None, None);
             assert_eq!(
                 value(&set, "WEBKIT_DISABLE_DMABUF_RENDERER"),
                 None,
@@ -149,7 +161,7 @@ mod tests {
     /// renderer disabled underneath them.
     #[test]
     fn an_explicit_backend_is_never_overridden() {
-        let set = settings(true, Some("x11"), None, None);
+        let set = settings(true, Some("x11"), None, None, None);
 
         assert_eq!(value(&set, "GDK_BACKEND"), None);
         assert_eq!(value(&set, "WEBKIT_DISABLE_DMABUF_RENDERER"), None);
@@ -160,7 +172,7 @@ mod tests {
     #[test]
     fn a_backend_preference_list_still_takes_the_safe_renderer() {
         for chosen in ["wayland,x11,*", "wayland", "x11,wayland"] {
-            let set = settings(true, Some(chosen), None, None);
+            let set = settings(true, Some(chosen), None, None, None);
 
             assert_eq!(
                 value(&set, "WEBKIT_DISABLE_DMABUF_RENDERER"),
@@ -173,7 +185,7 @@ mod tests {
     /// An X11 session never had the bug, and gets nothing done to it.
     #[test]
     fn an_x11_session_is_left_where_it_is() {
-        let set = settings(false, None, None, None);
+        let set = settings(false, None, None, None, None);
 
         assert_eq!(value(&set, "WEBKIT_DISABLE_DMABUF_RENDERER"), None);
         assert_eq!(value(&set, "GDK_BACKEND"), None);
@@ -182,8 +194,21 @@ mod tests {
 
     #[test]
     fn an_explicit_compositing_choice_is_left_alone() {
-        let set = settings(false, None, None, Some("0"));
+        let set = settings(false, None, None, Some("0"), None);
         assert_eq!(value(&set, "WEBKIT_FORCE_COMPOSITING_MODE"), None);
+    }
+    #[test]
+    fn at_bridge_is_disabled_by_default_on_linux() {
+        let set = settings(true, None, None, None, None);
+        assert_eq!(value(&set, "NO_AT_BRIDGE"), Some("1"));
+    }
+
+    #[test]
+    fn an_explicit_at_bridge_choice_is_left_alone() {
+        for chosen in ["0", "1"] {
+            let set = settings(true, None, None, None, Some(chosen));
+            assert_eq!(value(&set, "NO_AT_BRIDGE"), None);
+        }
     }
 
     /// The process really does export what the policy decided.

@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import * as api from '$lib/farm/api';
 	import AgentCard from '$lib/farm/components/AgentCard.svelte';
 	import TaskDetailPanel from '$lib/farm/components/TaskDetail.svelte';
@@ -33,7 +34,14 @@
 
 	type Pane = 'tasks' | 'agents' | 'settings';
 
-	let pane = $state<Pane>('tasks');
+	let pane = $state<Pane>((page.url.searchParams.get('pane') as Pane) || 'tasks');
+
+	$effect(() => {
+		const requested = page.url.searchParams.get('pane');
+		if (requested === 'tasks' || requested === 'agents' || requested === 'settings') {
+			pane = requested;
+		}
+	});
 	let selected = $state<string | null>(null);
 	let detail = $state<TaskDetail | null>(null);
 	let editing = $state<Task | null | 'new'>(null);
@@ -490,14 +498,16 @@
 	.single {
 		flex: 1;
 		overflow-y: auto;
-		padding: 12px;
-		max-width: 72ch;
+		padding: 16px 28px 24px 20px;
+		max-width: 76ch;
+		scrollbar-gutter: stable;
 	}
 
 	.list {
 		flex: 1;
 		overflow-y: auto;
-		padding: 12px;
+		padding: 16px 24px 24px 16px;
+		scrollbar-gutter: stable;
 	}
 
 	/* The detail column. Fixed-ish so the task list does not reflow every time

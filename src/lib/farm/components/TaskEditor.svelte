@@ -175,9 +175,10 @@
 		display: flex;
 		flex-direction: column;
 		gap: 9px;
-		padding: 12px;
+		padding: 16px 24px 24px 16px;
 		overflow-y: auto;
 		min-height: 0;
+		scrollbar-gutter: stable;
 	}
 
 	.field {

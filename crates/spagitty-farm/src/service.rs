@@ -184,15 +184,23 @@ impl FarmService {
         self.registry.lock().expect("registry lock").undetected()
     }
 
-    /// Save one agent's configuration, and check that one agent.
+    /// Save one agent's configuration, and check that one agent if its executable
+    /// path changed.
     ///
     /// Only that one: see [`AgentRegistry::probe`] for why saving a row does
-    /// not re-run every agent CLI on the machine.
+    /// not re-run every agent CLI on the machine. Toggling roles or capabilities
+    /// leaves the executable alone and skips probing.
     pub fn save_agent(&self, definition: AgentDefinition) -> Result<()> {
         let id = definition.id.clone();
         let mut registry = self.registry.lock().expect("registry lock");
+        let executable_changed = registry
+            .get(&id)
+            .map(|existing| existing.executable != definition.executable)
+            .unwrap_or(true);
         registry.put(definition);
-        registry.probe(&id);
+        if executable_changed {
+            registry.probe(&id);
+        }
         store::save_registry(&self.repo, &*registry)
     }
 
