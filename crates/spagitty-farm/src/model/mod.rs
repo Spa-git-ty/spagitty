@@ -119,7 +119,7 @@ mod tests {
 
     #[test]
     fn task_identifiers_sort_as_text_in_numeric_order() {
-        let mut ids = vec![task_id(10), task_id(2), task_id(1)];
+        let mut ids = [task_id(10), task_id(2), task_id(1)];
         ids.sort();
         assert_eq!(
             ids.iter().map(|id| id.to_string()).collect::<Vec<_>>(),

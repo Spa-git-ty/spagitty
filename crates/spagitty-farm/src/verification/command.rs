@@ -287,7 +287,7 @@ mod tests {
     fn cutting_never_splits_a_character() {
         // A multi-byte character straddling the cut would panic on a naive
         // slice, which is a crash in the verification of somebody's task.
-        let long: String = std::iter::repeat("é\n").take(OUTPUT_BYTES).collect();
+        let long = "é\n".repeat(OUTPUT_BYTES);
         let cut = tail(&long);
         assert!(cut.len() <= OUTPUT_BYTES);
     }

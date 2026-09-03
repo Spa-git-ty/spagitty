@@ -131,7 +131,7 @@ pub fn validate(tasks: &[Task]) -> Result<()> {
     let mut marks: BTreeMap<&TaskId, Mark> = BTreeMap::new();
 
     for root in tasks {
-        if marks.get(&root.id).is_some() {
+        if marks.contains_key(&root.id) {
             continue;
         }
         // (task, index of the next dependency to look at)
@@ -328,7 +328,7 @@ mod tests {
         // The reason the walk is iterative. Recursion here would take the
         // application down rather than report a problem.
         let tasks: Vec<Task> = (1..=20_000)
-            .map(|n| task(n, TaskStatus::Ready, if n == 1 { &[] } else { &[] }))
+            .map(|n| task(n, TaskStatus::Ready, &[]))
             .enumerate()
             .map(|(index, mut task)| {
                 if index > 0 {
