@@ -66,13 +66,14 @@ describe('what the section says before it knows anything', () => {
 		view.destroy();
 	});
 
-	it('draws nothing but the heading when the read fails', async () => {
+	it('offers a retry when the read fails', async () => {
 		externalToolsConfig.mockRejectedValue(new Error('no git here'));
 		const view = render(ExternalToolsSection, {});
 		await vi.waitFor(() => expect(view.text()).not.toContain('Scanning'));
 
 		expect(view.find('select')).toBeNull();
-		expect(view.text()).toContain('External Tools');
+		expect(view.text()).toContain('Could not load external tools configuration');
+		expect(view.text()).toContain('Try again');
 
 		view.destroy();
 	});

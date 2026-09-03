@@ -130,6 +130,13 @@
 				{/each}
 			</div>
 		</div>
+	{:else}
+		<div class="field-card">
+			<span class="note">Could not load external tools configuration.</span>
+			<div class="control-row" style="margin-top: 8px;">
+				<Btn disabled={loading} onclick={loadConfig}>Try again</Btn>
+			</div>
+		</div>
 	{/if}
 </section>
 
