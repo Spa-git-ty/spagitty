@@ -187,6 +187,7 @@ pub fn run() {
             farm::farm_review_task,
             farm::farm_verify_task,
             farm::farm_plan,
+            farm::farm_cancel_plan,
             farm::farm_sweep,
         ])
         .setup(|app| {
