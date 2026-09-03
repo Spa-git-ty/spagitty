@@ -32,7 +32,7 @@
 //! are needed together. Agent runs happen on their own threads with no lock
 //! held; they take it again to record what happened.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -149,6 +149,15 @@ pub struct FarmService {
     observer: Arc<dyn Observer>,
     /// The agent processes running right now, by task.
     sessions: Mutex<HashMap<TaskId, Session>>,
+    /// The event history, in memory.
+    ///
+    /// The log on disk is still the record — this is loaded from it once, when
+    /// the farm opens, and appended to as events are emitted. It exists because
+    /// the interface asks for the history after every burst of events, and
+    /// answering by reading and re-parsing two thousand JSON objects made the
+    /// cost of watching a farm proportional to how much it had already done
+    /// (TASK-030).
+    recent: Mutex<VecDeque<FarmEvent>>,
 }
 
 impl FarmService {
@@ -167,6 +176,7 @@ impl FarmService {
     /// checked yet.
     pub fn open(repo: impl Into<PathBuf>, observer: Arc<dyn Observer>) -> Self {
         let repo = repo.into();
+        let repo_for_events = repo.clone();
         let registry: AgentRegistry = store::load_registry(&repo).unwrap_or_default();
         let farm = store::load_farm(&repo);
         let service = FarmService {
@@ -178,6 +188,7 @@ impl FarmService {
             registry: Mutex::new(registry),
             observer,
             sessions: Mutex::new(HashMap::new()),
+            recent: Mutex::new(store::load_events(&repo_for_events).into()),
         };
         service.recover();
         service
@@ -294,8 +305,27 @@ impl FarmService {
         Ok(updated)
     }
 
+    /// The whole history the farm is holding, oldest first.
     pub fn events(&self) -> Vec<FarmEvent> {
-        store::load_events(&self.repo)
+        self.recent
+            .lock()
+            .expect("recent events lock")
+            .iter()
+            .cloned()
+            .collect()
+    }
+
+    /// The last `limit` events, oldest first.
+    ///
+    /// What a screen actually renders is a screenful and a scrollback, not the
+    /// whole history, and every event sent is one serialised across the bridge.
+    pub fn events_tail(&self, limit: usize) -> Vec<FarmEvent> {
+        let recent = self.recent.lock().expect("recent events lock");
+        recent
+            .iter()
+            .skip(recent.len().saturating_sub(limit))
+            .cloned()
+            .collect()
     }
 
     pub fn runs(&self) -> Vec<AgentRun> {
@@ -1469,6 +1499,17 @@ impl FarmService {
 
     fn emit(&self, event: FarmEvent) {
         let _ = store::append_event(&self.repo, &event);
+        // Transcript lines are deliberately not kept, here or on disk: one run
+        // produces thousands, and they would push the history out within a
+        // single agent run. They reach the interface as events and are read
+        // back from the run's own log.
+        if !event.is_transcript() {
+            let mut recent = self.recent.lock().expect("recent events lock");
+            recent.push_back(event.clone());
+            while recent.len() > store::MAX_EVENTS {
+                recent.pop_front();
+            }
+        }
         self.observer.event(event);
     }
 

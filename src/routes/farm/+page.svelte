@@ -403,7 +403,17 @@
 							no longer has. Anything with uncommitted work is kept.
 						</p>
 						<div class="actions">
-							<Btn disabled={busy} onclick={() => act('Could not clean up', api.sweep)}>
+							<Btn
+								disabled={busy}
+								onclick={() =>
+									act('Could not clean up', async () => {
+										await api.sweep();
+										// The leftovers list is not part of a
+										// snapshot any more, so the action that
+										// changes it asks for it again.
+										await farmStore.leftovers();
+									})}
+							>
 								Clean up
 							</Btn>
 						</div>

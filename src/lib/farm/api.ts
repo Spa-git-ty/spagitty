@@ -15,6 +15,7 @@ import type {
 	AgentDefinition,
 	AgentStatus,
 	Farm,
+	FarmEvent,
 	FarmFailure,
 	FarmSettings,
 	FarmSnapshot,
@@ -146,6 +147,21 @@ export function plan(agent: string | null): Promise<string> {
  */
 export function cancelPlan(): Promise<void> {
 	return invoke('farm_cancel_plan');
+}
+
+/**
+ * Worktrees left behind by tasks no farm claims.
+ *
+ * Its own call rather than part of the snapshot: answering it runs `git
+ * worktree list`, and the snapshot is taken after every burst of events.
+ */
+export function stale(): Promise<StaleWorkspace[]> {
+	return invoke('farm_stale');
+}
+
+/** More activity than a snapshot carries, for a reader scrolling back. */
+export function events(limit?: number): Promise<FarmEvent[]> {
+	return invoke('farm_events', { limit: limit ?? null });
 }
 
 export function sweep(): Promise<StaleWorkspace[]> {

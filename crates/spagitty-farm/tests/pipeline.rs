@@ -770,3 +770,53 @@ echo '```'"#,
     assert_eq!(tasks.len(), 1);
     assert_eq!(tasks[0].status, TaskStatus::Draft);
 }
+
+/// TASK-030 — the activity history is answered from memory, not from disk.
+///
+/// The interface asks for a snapshot after every burst of events, and the
+/// answer used to be "read and re-parse the whole log", which made the cost of
+/// watching a farm proportional to how much it had already done. What is
+/// asserted here is that the two agree: the in-memory history is not a cache
+/// that can drift from the file, it is the file, kept.
+#[test]
+fn the_history_is_held_in_memory_and_matches_what_is_on_disk() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = harness.worker("worker-history");
+    let task = harness.task("Do it");
+    harness.run(&task, &agent);
+
+    let held = harness.service.events();
+    let stored = spagitty_farm::persistence::store::load_events(harness.repo.path());
+    assert!(!held.is_empty(), "a whole run produced no history");
+    assert_eq!(held, stored);
+
+    // Transcript lines are not history: one run produces thousands and they
+    // would push everything else out.
+    assert!(
+        !held
+            .iter()
+            .any(|event| matches!(event, FarmEvent::AgentOutput { .. })),
+        "transcript lines are being kept as history"
+    );
+
+    // And the tail is the end of it, not the start.
+    let tail = harness.service.events_tail(3);
+    assert_eq!(tail.len(), 3.min(held.len()));
+    assert_eq!(tail.last(), held.last());
+}
+
+/// TASK-030 — a farm reopened on a repository remembers what happened.
+#[test]
+fn reopening_a_farm_reads_its_history_back() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = harness.worker("worker-reopen");
+    let task = harness.task("Do it");
+    harness.run(&task, &agent);
+    let before = harness.service.events();
+
+    let reopened = FarmService::open(harness.repo.path(), Arc::new(Recorder::default()));
+
+    assert_eq!(reopened.events(), before);
+}
