@@ -49,6 +49,9 @@ it, and what to do next.
 [![Linux](https://img.shields.io/badge/Linux-WebKitGTK-FCC624?logo=linux&logoColor=black)](https://webkitgtk.org)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000?logo=apple&logoColor=white)](https://github.com/spa-git-ty/spagitty/releases)
 [![Windows](https://img.shields.io/badge/Windows-supported-0078D6?logo=windows&logoColor=white)](https://github.com/spa-git-ty/spagitty/releases)
+[![Claude](https://img.shields.io/badge/Claude-Anthropic-D97757?logo=anthropic&logoColor=white)](https://claude.ai)
+[![Codex](https://img.shields.io/badge/Codex-OpenAI-000000?logo=openai&logoColor=white)](https://openai.com/codex)
+[![Cursor](https://img.shields.io/badge/Cursor-AI-000000?logo=cursor&logoColor=white)](https://cursor.com)
 
 ## Install
 

@@ -45,6 +45,10 @@
 # never collide, and nobody has to remember what the last one was. A pushed
 # build leaves a draft; a dispatch can publish outright. Releases stay alpha
 # until a deliberate choice is made to cut a beta or a public release.
+# A `release-alpha/**` push is the non-interactive equivalent of dispatching
+# with `publish: true`. It exists so a release can still be cut when a local
+# GitHub CLI session is unavailable, without making ordinary branch pushes
+# publish anything.
 
 name: draft release
 
@@ -58,6 +62,7 @@ on:
   push:
     branches:
       - 'draft/**'
+      - 'release-alpha/**'
 
 concurrency:
   group: draft-release-${{ github.ref }}
@@ -223,7 +228,7 @@ jobs:
           # A pushed build is a draft somebody looks at before it is anybody
           # else's problem. Publishing is a deliberate dispatch.
           draft=--draft
-          if [ "${PUBLISH:-false}" = "true" ]; then
+          if [ "${PUBLISH:-false}" = "true" ] || [[ "$GITHUB_REF" == refs/heads/release-alpha/* ]]; then
             draft=""
           fi
 

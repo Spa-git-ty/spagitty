@@ -85,6 +85,11 @@ describe('NAV_ITEMS', () => {
 			// what is in history, and what was just done to it — and before the
 			// divider because both are about the open repository.
 			'/reflog',
+			// FEAT-073. Between the reflog and the badges: it is about this
+			// repository, like everything above the divider, and it is where
+			// somebody running a farm spends the day rather than a place they
+			// visit to look something up.
+			'/farm',
 			// FEAT-072. Last of the repository screens, because it is the only
 			// one that is not about the repository's state — it is about what
 			// has been done in it, which is a question people ask after the

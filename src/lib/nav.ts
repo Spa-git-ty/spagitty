@@ -33,6 +33,11 @@ export type CountKey = keyof RepoCounts;
  * 1P is Badges (FEAT-072), and it came from neither: it is the first screen
  * that is not about the state of a repository but about what has been done in
  * one, by whom.
+ *
+ * 1Q is the Farm (FEAT-073), and it is the first screen about work that has not
+ * happened yet: a goal, the tasks it was broken into, and the agents working
+ * them. It sits above All repositories rather than beside Badges because it is
+ * about *this* repository, and a person working a farm is in it all day.
  */
 export type ScreenCode =
 	| '1A'
@@ -50,7 +55,8 @@ export type ScreenCode =
 	| '1M'
 	| '1N'
 	| '1O'
-	| '1P';
+	| '1P'
+	| '1Q';
 
 export interface NavItem {
 	code: ScreenCode;
@@ -82,6 +88,7 @@ export const NAV_ITEMS: NavItem[] = [
 	{ code: '1E', label: 'Rebase', href: '/rebase', icon: 'rebase' },
 	{ code: '1I', label: 'Log', href: '/search', icon: 'search' },
 	{ code: '1M', label: 'Reflog', href: '/reflog', icon: 'history' },
+	{ code: '1Q', label: 'Farm', href: '/farm', icon: 'farm' },
 	{ code: '1P', label: 'Badges', href: '/badges', icon: 'badge' },
 	{ code: '1J', label: 'All repositories', href: '/repos', dividerBefore: true, icon: 'folder' },
 	{ code: '1K', label: 'Settings', href: '/settings', icon: 'settings' }
