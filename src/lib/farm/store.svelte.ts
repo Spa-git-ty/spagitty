@@ -32,6 +32,7 @@ import type {
 	Farm,
 	FarmEvent,
 	FarmSnapshot,
+	RecordedEvent,
 	Policy,
 	AgentProvider,
 	AgentRun,
@@ -42,6 +43,15 @@ import type {
 
 /** The Tauri event every farm event arrives on. */
 export const EVENT = 'farm-event';
+
+/**
+ * The task identifier a planning run's output is filed under.
+ *
+ * A planning run has no task — it is what produces the tasks — so the backend
+ * files it under this fixed identifier. It is not in `farm.tasks`, which is why
+ * a planning run was invisible until something asked for it by name.
+ */
+export const PLANNING_TASK = 'planning';
 
 /**
  * How many activity lines are kept.
@@ -60,7 +70,7 @@ export const REFRESH_DELAY_MS = 250;
 let farm = $state<Farm | null>(null);
 let agents = $state<AgentStatus[]>([]);
 let undetected = $state<AgentProvider[]>([]);
-let activity = $state<FarmEvent[]>([]);
+let activity = $state<RecordedEvent[]>([]);
 let runs = $state<AgentRun[]>([]);
 let policy = $state<Policy>({ sources: [], text: '' });
 let stale = $state<StaleWorkspace[]>([]);
@@ -79,7 +89,6 @@ function apply(snapshot: FarmSnapshot): void {
 	undetected = snapshot.undetected;
 	runs = snapshot.runs;
 	policy = snapshot.policy;
-	stale = snapshot.stale;
 	scoreboard = snapshot.scoreboard;
 	activity = snapshot.events.slice(-ACTIVITY_LIMIT);
 	loaded = true;
@@ -91,7 +100,7 @@ function apply(snapshot: FarmSnapshot): void {
  * Only the changes a person watches for. Everything else arrives with the next
  * snapshot, which is a quarter of a second away.
  */
-function absorb(event: FarmEvent): void {
+function absorb(event: RecordedEvent): void {
 	if (event.kind === 'agentOutput') {
 		const existing = transcripts[event.task] ?? [];
 		const next = [...existing, event.line];
@@ -146,7 +155,7 @@ export const farmStore = {
 	get undetected(): AgentProvider[] {
 		return undetected;
 	},
-	get activity(): FarmEvent[] {
+	get activity(): RecordedEvent[] {
 		return activity;
 	},
 	get runs(): AgentRun[] {
@@ -205,6 +214,24 @@ export const farmStore = {
 		return transcripts[task] ?? [];
 	},
 
+	/** What the planner has said so far, this session. */
+	get planning(): string[] {
+		return transcripts[PLANNING_TASK] ?? [];
+	},
+
+	/**
+	 * The planning run in flight, if there is one.
+	 *
+	 * Read from `runs` rather than remembered when the status changed, so it
+	 * survives the screen being left and come back to, and so the elapsed time
+	 * is the run's own rather than the screen's.
+	 */
+	get planningRun(): AgentRun | null {
+		return (
+			runs.find((run) => run.phase === 'planning' && run.outcome.state === 'running') ?? null
+		);
+	},
+
 	/** Tasks in a given status. */
 	inStatus(status: TaskStatus): Task[] {
 		return (farm?.tasks ?? []).filter((task) => task.status === status);
@@ -217,6 +244,8 @@ export const farmStore = {
 		try {
 			apply(await api.open(path));
 			await this.listen();
+			// Once, on open, and never as part of a refresh: see `leftovers`.
+			await this.leftovers();
 		} catch (cause) {
 			error = api.failure(cause).message;
 		} finally {
@@ -224,12 +253,35 @@ export const farmStore = {
 		}
 	},
 
+	/**
+	 * Look for worktrees left behind by tasks no farm claims.
+	 *
+	 * Asked for by name rather than carried by every snapshot, because
+	 * answering it runs `git worktree list` and a snapshot is taken after
+	 * every burst of events. Leftovers do not appear while a farm runs — they
+	 * are what is left when one stops — so reading them on open and after a
+	 * sweep is reading them exactly as often as they can change.
+	 */
+	async leftovers(): Promise<void> {
+		try {
+			stale = await api.stale();
+		} catch (cause) {
+			// A leftovers scan that fails must not blank a working screen.
+			error = api.failure(cause).message;
+		}
+	},
+
 	/** Subscribe to the backend's events. Safe to call twice. */
 	async listen(): Promise<void> {
 		if (unlisten) return;
-		unlisten = await listen<FarmEvent>(EVENT, (message) => {
+		unlisten = await listen<RecordedEvent>(EVENT, (message) => {
 			absorb(message.payload);
-			scheduleRefresh();
+			// A transcript line changes nothing a snapshot would report, and a
+			// run produces thousands of them. Refreshing on each one both cost
+			// a round trip per line and, because the refresh is debounced,
+			// pushed the refresh that *did* matter past the end of the run
+			// (TASK-030).
+			if (message.payload.kind !== 'agentOutput') scheduleRefresh();
 		});
 	},
 

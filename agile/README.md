@@ -127,6 +127,7 @@ rather than an audit.
 | [FEAT-070](items/FEAT-070-extended-forge-integration.md) | Extended forge integration | 1H, 1K | Done |
 | [FEAT-072](items/FEAT-072-delight-layer.md) | The delight layer: badges, titles and reward moments | 1P, 1K, chrome | Done |
 | [FEAT-073](items/FEAT-073-agent-farm.md) | The agent farm: running and shepherding agents from inside Spagitty | 1Q, 1K, chrome | Done |
+| [FEAT-074](items/FEAT-074-the-activity-drawer.md) | The activity drawer: a log worth reading | Farm (1Q) | Done |
 
 ## Bugs
 
@@ -152,6 +153,8 @@ rather than an audit.
 | [BUG-017](items/BUG-017-the-lens-wipes-the-window.md) | The lens wipes the right column and the bottom of the window | all | Fixed |
 | [BUG-018](items/BUG-018-a-menu-cannot-be-dismissed.md) | A menu cannot be dismissed, and the next one is drawn over it | all | Fixed |
 | [BUG-019](items/BUG-019-closing-the-last-tab-leaves-the-repository-open.md) | Closing the last tab leaves the repository open | chrome | Fixed |
+| [BUG-020](items/BUG-020-the-window-freezes-while-the-farm-plans.md) | The window freezes while the farm plans | Farm (1Q) | Fixed |
+| [BUG-021](items/BUG-021-a-run-says-nothing-until-it-ends.md) | A run says nothing until it ends | Farm (1Q) | Fixed |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
 report, reopened on a corrected diagnosis, and BUG-009's own document keeps the
@@ -190,6 +193,7 @@ of its own.
 | [TASK-027](items/TASK-027-migrate-the-js-toolchain-to-bun.md) | Migrate the JS toolchain to bun | — | Done |
 | [TASK-028](items/TASK-028-reconcile-working-record-and-docs.md) | Reconcile working record and docs | — | Done |
 | [TASK-029](items/TASK-029-candidate-feature-backlog.md) | Candidate feature backlog items | — | Done |
+| [TASK-030](items/TASK-030-the-farm-refresh-stops-working-on-the-main-thread.md) | The farm's refresh stops working on the main thread | Farm (1Q) | Done |
 
 ## Skipped identifiers
 

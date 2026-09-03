@@ -23,6 +23,19 @@
 //! run and returns, a thread waits for it, and the webview learns what happened
 //! from events. That is the same shape as the clone, rebase and network
 //! workers, and it is why the window does not freeze while a farm runs.
+//!
+//! # Why every command is `#[tauri::command(async)]`
+//!
+//! A plain `#[tauri::command]` is `ExecutionContext::Blocking`: Tauri runs it
+//! on the main thread, so anything it waits on — a mutex another thread holds,
+//! a `git` subprocess, a file — is time the window is not painting. Returning
+//! quickly is not enough, because "quickly" here depends on what a lock's
+//! current holder is doing, and one of them used to be a whole planning run
+//! (BUG-020). `(async)` puts these on the runtime's pool instead, where a
+//! command that does have to wait costs a thread rather than the window.
+//!
+//! They stay ordinary synchronous functions: an `async fn` may not borrow
+//! `State`, and there is nothing here to await.
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -31,6 +44,7 @@ use serde::{Deserialize, Serialize};
 use spagitty_farm::agent::AgentStatus;
 use spagitty_farm::model::*;
 use spagitty_farm::orchestrator::Record;
+use spagitty_farm::persistence::store;
 use spagitty_farm::policy::Policy;
 use spagitty_farm::review::Review;
 use spagitty_farm::service::{FarmService, Observer};
@@ -50,7 +64,7 @@ struct Emit<R: Runtime> {
 }
 
 impl<R: Runtime> Observer for Emit<R> {
-    fn event(&self, event: FarmEvent) {
+    fn event(&self, event: Recorded) {
         // A webview that has gone away is not an error worth propagating into
         // the farm: the run continues and the events are on disk.
         let _ = self.app.emit(EVENT, &event);
@@ -112,13 +126,20 @@ pub struct FarmSnapshot {
     pub agents: Vec<AgentStatus>,
     /// Providers with no definition, so the settings screen can offer them.
     pub undetected: Vec<AgentProvider>,
-    pub events: Vec<FarmEvent>,
+    /// The tail of the activity history — [`SNAPSHOT_EVENTS`] of it.
+    pub events: Vec<Recorded>,
     pub runs: Vec<AgentRun>,
     pub policy: Policy,
-    /// Worktrees from tasks no farm claims any more.
-    pub stale: Vec<StaleWorkspace>,
     pub scoreboard: Vec<AgentScore>,
 }
+
+/// How much history a snapshot carries.
+///
+/// Two hundred: more than the activity list renders, so nothing is missing on
+/// screen, and few enough that a refresh after every burst of events stays
+/// cheap. Anything older is asked for by name — see [`farm_events`] — because a
+/// person scrolling back is a rare act and a refresh is a constant one.
+pub const SNAPSHOT_EVENTS: usize = 200;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -170,7 +191,7 @@ pub struct TaskDetail {
 /// Called by the frontend as a repository opens. Detection runs on a thread of
 /// its own: probing four agent CLIs takes long enough to be visible, and it is
 /// not something opening a repository should wait for.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_open<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, FarmState>,
@@ -197,14 +218,17 @@ pub fn farm_open<R: Runtime>(
             let service = service.clone();
             move || {
                 service.detect_agents();
+                // Stamped like every other event, because the webview reads
+                // one channel and a line with no time in a log that has times
+                // reads as a bug in the log.
                 let _ = app.emit(
                     EVENT,
-                    &FarmEvent::FarmStatusChanged {
+                    &Recorded::now(FarmEvent::FarmStatusChanged {
                         status: service
                             .farm()
                             .map(|farm| farm.status)
                             .unwrap_or(FarmStatus::Idle),
-                    },
+                    }),
                 );
             }
         })
@@ -213,9 +237,39 @@ pub fn farm_open<R: Runtime>(
     snapshot(&service)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_snapshot(state: State<'_, FarmState>) -> Result<FarmSnapshot> {
     snapshot(&*state.service()?)
+}
+
+/// More history than a snapshot carries, for a reader scrolling back.
+#[tauri::command(async)]
+pub fn farm_events(state: State<'_, FarmState>, limit: Option<usize>) -> Result<Vec<Recorded>> {
+    Ok(state
+        .service()?
+        .events_tail(limit.unwrap_or(usize::MAX).min(store::MAX_EVENTS)))
+}
+
+/// Worktrees left behind by tasks no farm claims.
+///
+/// Its own command rather than part of the snapshot, because answering it means
+/// running `git worktree list` — and the snapshot is taken after every burst of
+/// events, which made watching a farm run a `git` process every quarter of a
+/// second (TASK-030). Nothing on the screen shows leftovers *while* a run is in
+/// flight; they are read when the farm opens and when the housekeeping panel
+/// asks.
+#[tauri::command(async)]
+pub fn farm_stale(state: State<'_, FarmState>) -> Result<Vec<StaleWorkspace>> {
+    Ok(state
+        .service()?
+        .stale_workspaces()
+        .into_iter()
+        .map(|stale| StaleWorkspace {
+            task: stale.task,
+            path: stale.path,
+            branch: stale.branch,
+        })
+        .collect())
 }
 
 fn snapshot(service: &FarmService) -> Result<FarmSnapshot> {
@@ -223,18 +277,9 @@ fn snapshot(service: &FarmService) -> Result<FarmSnapshot> {
         farm: service.farm(),
         agents: service.agents(),
         undetected: service.undetected(),
-        events: service.events(),
+        events: service.events_tail(SNAPSHOT_EVENTS),
         runs: service.runs(),
         policy: service.policy(),
-        stale: service
-            .stale_workspaces()
-            .into_iter()
-            .map(|stale| StaleWorkspace {
-                task: stale.task,
-                path: stale.path,
-                branch: stale.branch,
-            })
-            .collect(),
         scoreboard: service
             .scoreboard()
             .into_iter()
@@ -246,18 +291,18 @@ fn snapshot(service: &FarmService) -> Result<FarmSnapshot> {
 // ── Agents ───────────────────────────────────────────────────────────────
 
 /// Look for installed agents again.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_detect_agents(state: State<'_, FarmState>) -> Result<Vec<AgentStatus>> {
     Ok(state.service()?.detect_agents())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_save_agent(state: State<'_, FarmState>, agent: AgentDefinition) -> Result<()> {
     state.service()?.save_agent(agent)?;
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_remove_agent(state: State<'_, FarmState>, id: AgentId) -> Result<()> {
     state.service()?.remove_agent(&id)?;
     Ok(())
@@ -265,7 +310,7 @@ pub fn farm_remove_agent(state: State<'_, FarmState>, id: AgentId) -> Result<()>
 
 // ── The farm ─────────────────────────────────────────────────────────────
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_create(
     state: State<'_, FarmState>,
     title: String,
@@ -291,7 +336,7 @@ pub struct FarmSettings {
     pub goal_description: Option<String>,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_configure(state: State<'_, FarmState>, settings: FarmSettings) -> Result<Farm> {
     Ok(state.service()?.configure(|farm| {
         if let Some(autonomy) = settings.autonomy {
@@ -324,7 +369,7 @@ pub fn farm_configure(state: State<'_, FarmState>, settings: FarmSettings) -> Re
     })?)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_start(state: State<'_, FarmState>) -> Result<()> {
     let service = state.service()?;
     service.start_farm()?;
@@ -332,20 +377,20 @@ pub fn farm_start(state: State<'_, FarmState>) -> Result<()> {
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_pause(state: State<'_, FarmState>) -> Result<()> {
     state.service()?.pause_farm()?;
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_cancel(state: State<'_, FarmState>) -> Result<()> {
     state.service()?.cancel_farm()?;
     Ok(())
 }
 
 /// Write the starter `AGENTS.md`.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_write_policy(state: State<'_, FarmState>) -> Result<String> {
     Ok(state
         .service()?
@@ -408,7 +453,7 @@ fn clean(values: Vec<String>) -> Vec<String> {
         .collect()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_add_task(state: State<'_, FarmState>, draft: TaskDraft) -> Result<Task> {
     let service = state.service()?;
     let ready = draft.ready;
@@ -424,19 +469,19 @@ pub fn farm_add_task(state: State<'_, FarmState>, draft: TaskDraft) -> Result<Ta
         .unwrap_or(created))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_edit_task(state: State<'_, FarmState>, id: TaskId, draft: TaskDraft) -> Result<Task> {
     Ok(state.service()?.edit_task(&id, |task| draft.apply(task))?)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_delete_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
     state.service()?.delete_task(&id)?;
     Ok(())
 }
 
 /// Move a draft into the plan.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_ready_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
     let service = state.service()?;
     service.ready(&id)?;
@@ -445,19 +490,19 @@ pub fn farm_ready_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_assign_task(state: State<'_, FarmState>, id: TaskId, agent: AgentId) -> Result<()> {
     state.service()?.assign(&id, &agent)?;
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_cancel_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
     state.service()?.cancel_task(&id)?;
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_retry_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
     let service = state.service()?;
     service.retry_task(&id)?;
@@ -467,7 +512,7 @@ pub fn farm_retry_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
 }
 
 /// Start one task now.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_run_task(
     state: State<'_, FarmState>,
     id: TaskId,
@@ -479,7 +524,7 @@ pub fn farm_run_task(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_task_detail(state: State<'_, FarmState>, id: TaskId) -> Result<TaskDetail> {
     let service = state.service()?;
     let task = service
@@ -500,13 +545,13 @@ pub fn farm_task_detail(state: State<'_, FarmState>, id: TaskId) -> Result<TaskD
 }
 
 /// The tail of a run's transcript.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_transcript(state: State<'_, FarmState>, run: RunId, task: TaskId) -> Result<String> {
     Ok(state.service()?.transcript(&run, &task))
 }
 
 /// Accept a reviewed task and merge it.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_merge_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
     let service = state.service()?;
     service.merge(&id)?;
@@ -515,7 +560,7 @@ pub fn farm_merge_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
 }
 
 /// Send a task to a reviewing agent by hand.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_review_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
     let service = state.service()?;
     service.request_review(&id)?;
@@ -524,7 +569,7 @@ pub fn farm_review_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
 }
 
 /// Run the verification commands against a task's worktree.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_verify_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
     let service = state.service()?;
     // Verification runs test suites, which take minutes. Off the caller's
@@ -544,7 +589,7 @@ pub fn farm_verify_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
 ///
 /// Returns immediately. The plan arrives as `TaskCreated` events when the
 /// planning run finishes.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_plan(state: State<'_, FarmState>, agent: Option<AgentId>) -> Result<RunId> {
     let service = state.service()?;
     let run = service.plan(agent)?;
@@ -560,10 +605,21 @@ pub fn farm_plan(state: State<'_, FarmState>, agent: Option<AgentId>) -> Result<
     Ok(run)
 }
 
+/// Stop a planning run.
+///
+/// Separate from `farm_cancel`, which cancels every task in the farm. A person
+/// who has watched a planner for two minutes and changed their mind wants the
+/// planner stopped, not the farm emptied.
+#[tauri::command(async)]
+pub fn farm_cancel_plan(state: State<'_, FarmState>) -> Result<()> {
+    state.service()?.cancel_plan()?;
+    Ok(())
+}
+
 // ── Housekeeping ─────────────────────────────────────────────────────────
 
 /// Remove worktrees for tasks no farm claims.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_sweep(state: State<'_, FarmState>) -> Result<Vec<StaleWorkspace>> {
     Ok(state
         .service()?
@@ -622,7 +678,7 @@ fn watch_all(service: &Arc<FarmService>) {
 /// away an agent's work, and the farm is on disk. Dropping the service would
 /// kill them, so the `Arc` is simply forgotten here and the sessions live until
 /// something asks them to stop.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn farm_close(state: State<'_, FarmState>) -> Result<()> {
     *state.path.lock().expect("farm path lock") = None;
     Ok(())

@@ -7,6 +7,17 @@
 //! output. That is exactly the shape the farm's runner wants, and it is why
 //! this is the provider the first end-to-end path was built against.
 //!
+//! # Why the output format is `stream-json`
+//!
+//! Print mode's default format writes *once*, when the turn is over. A task
+//! then sits at Running for the length of a real piece of work with an empty
+//! transcript behind it, which is what the farm looked like until BUG-021:
+//! nothing to watch, nothing to cancel on, and no way to tell a slow run from a
+//! stuck one. `--output-format stream-json` emits an event per step as it
+//! happens instead, and [`crate::execution::narrate::ClaudeStream`] turns those
+//! back into lines a person reads. `--verbose` is not optional: print mode
+//! refuses `stream-json` without it.
+//!
 //! The prompt goes on the command line rather than through standard input
 //! because print mode treats piped stdin as *additional context* rather than as
 //! the instruction, and a farm prompt is the instruction.
@@ -14,6 +25,7 @@
 use std::path::PathBuf;
 
 use crate::agent::adapter::{AgentAdapter, AgentCommand, AgentRunRequest};
+use crate::execution::narrate::{ClaudeStream, Narrator};
 use crate::model::{
     AgentCapability, AgentDefinition, AgentId, AgentInputMode, AgentProvider, AgentRole,
     AgentTraits,
@@ -64,8 +76,18 @@ impl AgentAdapter for ClaudeAdapter {
         }
     }
 
+    fn narrator(&self) -> Box<dyn Narrator> {
+        Box::new(ClaudeStream::default())
+    }
+
     fn command(&self, definition: &AgentDefinition, request: &AgentRunRequest) -> AgentCommand {
-        let mut args = vec!["-p".to_string()];
+        let mut args = vec![
+            "-p".to_string(),
+            // Streamed rather than delivered at the end. See the header.
+            "--output-format".to_string(),
+            "stream-json".to_string(),
+            "--verbose".to_string(),
+        ];
 
         if request.unattended {
             // The farm has already decided what this agent may do — it is
@@ -109,6 +131,15 @@ mod tests {
         assert_eq!(command.args.first().unwrap(), "-p");
         assert_eq!(command.args.last().unwrap(), "Do the thing");
         assert_eq!(command.stdin, None);
+    }
+
+    #[test]
+    fn the_run_streams_rather_than_reporting_once_at_the_end() {
+        // BUG-021: without these three flags a run says nothing for minutes.
+        let command = ClaudeAdapter.command(&definition(), &request(true));
+        let joined = command.args.join(" ");
+        assert!(joined.contains("--output-format stream-json"), "{joined}");
+        assert!(command.args.iter().any(|arg| arg == "--verbose"), "{joined}");
     }
 
     #[test]

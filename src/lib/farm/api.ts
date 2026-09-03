@@ -18,6 +18,7 @@ import type {
 	FarmFailure,
 	FarmSettings,
 	FarmSnapshot,
+	RecordedEvent,
 	StaleWorkspace,
 	Task,
 	TaskDetail,
@@ -136,6 +137,31 @@ export function verifyTask(id: string): Promise<void> {
 /** Ask an agent to break the goal into tasks. Resolves with the run id. */
 export function plan(agent: string | null): Promise<string> {
 	return invoke('farm_plan', { agent });
+}
+
+/**
+ * Stop a planning run.
+ *
+ * Not `cancel()`, which stops the whole farm. Changing your mind about a
+ * decomposition is not changing your mind about the work.
+ */
+export function cancelPlan(): Promise<void> {
+	return invoke('farm_cancel_plan');
+}
+
+/**
+ * Worktrees left behind by tasks no farm claims.
+ *
+ * Its own call rather than part of the snapshot: answering it runs `git
+ * worktree list`, and the snapshot is taken after every burst of events.
+ */
+export function stale(): Promise<StaleWorkspace[]> {
+	return invoke('farm_stale');
+}
+
+/** More activity than a snapshot carries, for a reader scrolling back. */
+export function events(limit?: number): Promise<RecordedEvent[]> {
+	return invoke('farm_events', { limit: limit ?? null });
 }
 
 export function sweep(): Promise<StaleWorkspace[]> {

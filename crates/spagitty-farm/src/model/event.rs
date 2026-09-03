@@ -16,6 +16,42 @@ use serde::{Deserialize, Serialize};
 
 use super::{AgentId, FarmStatus, RunId, TaskId, TaskStatus};
 
+/// An event, and when it happened.
+///
+/// The event itself does not carry a time: the variants say *what*, and adding
+/// a timestamp field to each of the sixteen would be sixteen places to forget
+/// it. It is added once, here, where the event is recorded.
+///
+/// Flattened on the wire, so a recorded event serialises as the event's own
+/// object with one more key. `atMs` defaults to zero when it is missing, which
+/// is what every line written before the field existed looks like — an old log
+/// still reads, and a zero is shown as no time rather than as 1970.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Recorded {
+    #[serde(default)]
+    pub at_ms: u64,
+    #[serde(flatten)]
+    pub event: FarmEvent,
+}
+
+impl Recorded {
+    /// Stamp an event with the moment it is being recorded.
+    pub fn now(event: FarmEvent) -> Self {
+        Recorded {
+            at_ms: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|since| since.as_millis() as u64)
+                .unwrap_or(0),
+            event,
+        }
+    }
+
+    pub fn is_transcript(&self) -> bool {
+        self.event.is_transcript()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum FarmEvent {
