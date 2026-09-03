@@ -304,6 +304,14 @@ export interface FarmSnapshot {
 	runs: AgentRun[];
 	policy: Policy;
 	scoreboard: AgentScore[];
+	/**
+	 * Why each queued task is not running, by task id.
+	 *
+	 * Only what the screen cannot work out for itself — a contended path, a
+	 * full parallelism limit, no agent for this kind of work. Unmet
+	 * dependencies are not here: `waitingOn` has the task list (FEAT-075).
+	 */
+	waiting: Record<string, string>;
 }
 
 export interface TaskDetail {

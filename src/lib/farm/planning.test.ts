@@ -62,7 +62,8 @@ function snapshot(runs: AgentRun[]): FarmSnapshot {
 		events: [],
 		runs,
 		policy: { sources: [], text: '' },
-		scoreboard: []
+		scoreboard: [],
+		waiting: {}
 	};
 }
 

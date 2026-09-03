@@ -16,6 +16,17 @@ stays backward-compatible.
 
 ### Added
 
+- **A proposed plan is accepted in one action.** A planner's tasks arrive as
+  drafts so a person reads a decomposition before five agents act on it — but
+  approving one meant opening each task and pressing a button in its panel, and
+  the list said nothing about tasks waiting on a decision. There is a band now:
+  how many were proposed, a checkbox per task, add them all or the ones you
+  want, or discard.
+- **A queued task says why it is not running.** "Pending" with no explanation
+  becomes the scheduler's own answer, on the row: which task is holding the same
+  files, how many agents are working against the limit, that nothing installed
+  can do this kind of work, or that the farm is not running. A task's own note —
+  a verification failure, a reviewer's words — still comes first.
 - **The farm's log is a drawer you can read.** Six lines in a footer, with no
   times and no scrollback, become a resizable drawer with two tabs: *Activity*,
   the farm's own record — timestamped, filterable to one task, as long as the

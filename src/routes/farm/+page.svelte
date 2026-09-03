@@ -68,6 +68,52 @@
 	const usable = $derived(farmStore.usable);
 	/** The planning run in flight, if there is one. */
 	const planning = $derived(farmStore.planningRun);
+	/** Tasks a planner proposed that nobody has accepted or discarded yet. */
+	const drafts = $derived(farmStore.drafts);
+
+	/**
+	 * Which proposed tasks are being kept (FEAT-075).
+	 *
+	 * A plan arrives as a set of drafts, and accepting one used to mean opening
+	 * each task and pressing a button in its panel — eight clicks for an
+	 * eight-task plan, with nothing on the list itself saying they were waiting
+	 * for a decision. Everything is picked by default, because a plan that was
+	 * asked for is usually a plan that is wanted.
+	 */
+	let picked = $state<string[]>([]);
+	let pickedFor = $state('');
+
+	$effect(() => {
+		const signature = drafts.map((task) => task.id).join(',');
+		if (signature === pickedFor) return;
+		pickedFor = signature;
+		picked = drafts.map((task) => task.id);
+	});
+
+	function toggle(id: string): void {
+		picked = picked.includes(id) ? picked.filter((kept) => kept !== id) : [...picked, id];
+	}
+
+	async function acceptPlan(): Promise<void> {
+		const ids = [...picked];
+		if (ids.length === 0) return;
+		await act('Could not accept the plan', () => api.readyTasks(ids));
+	}
+
+	async function discardPlan(): Promise<void> {
+		const ids = [...picked];
+		if (ids.length === 0) return;
+		const agreed = await dialog.confirm({
+			title: ids.length === 1 ? `Discard ${ids[0]}` : `Discard ${ids.length} proposed tasks`,
+			body:
+				'They were proposed by an agent and never started, so nothing is lost but the ' +
+				'proposal. Planning again produces a new one.',
+			confirmLabel: 'Discard',
+			danger: true
+		});
+		if (!agreed) return;
+		await act('Could not discard the plan', () => api.discardTasks(ids));
+	}
 	/** The activity list: everything except the transcript flood, which has its own tab. */
 	const activity = $derived(farmStore.activity.filter((event) => event.kind !== 'agentOutput'));
 
@@ -465,6 +511,35 @@
 					</div>
 				</div>
 
+				{#if drafts.length > 0}
+					<!--
+						A plan is one decision, so it gets one band rather than a
+						button inside each task's panel.
+					-->
+					<div class="proposed">
+						<span class="note">
+							{drafts.length}
+							{drafts.length === 1 ? 'task was proposed' : 'tasks were proposed'} and
+							nothing has started them.
+						</span>
+						<div class="chips">
+							<Chip
+								onclick={() =>
+									(picked =
+										picked.length === drafts.length ? [] : drafts.map((task) => task.id))}
+							>
+								{picked.length === drafts.length ? 'None' : 'All'}
+							</Chip>
+							<Btn primary disabled={busy || picked.length === 0} onclick={acceptPlan}>
+								Add {picked.length} to the plan
+							</Btn>
+							<Btn danger quiet disabled={busy || picked.length === 0} onclick={discardPlan}>
+								Discard
+							</Btn>
+						</div>
+					</div>
+				{/if}
+
 				{#if farmStore.needsYou.length > 0}
 					<p class="note attention">
 						{farmStore.needsYou.length}
@@ -483,6 +558,13 @@
 								{task}
 								selected={selected === task.id}
 								byId={farmStore.byId}
+								blocked={farmStore.waitingFor(task.id)}
+								pick={task.status === 'draft'
+									? {
+											on: picked.includes(task.id),
+											ontoggle: () => toggle(task.id)
+										}
+									: null}
 								onselect={(id) => {
 									selected = id;
 									editing = null;
@@ -776,6 +858,19 @@
 
 	.score:nth-child(odd) {
 		background-color: var(--stripe);
+	}
+
+	/* The band that turns a proposed plan into one decision. */
+	.proposed {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		flex-wrap: wrap;
+		padding: 8px 10px;
+		border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+		border-radius: var(--r-row);
+		background-color: var(--selection);
 	}
 
 </style>

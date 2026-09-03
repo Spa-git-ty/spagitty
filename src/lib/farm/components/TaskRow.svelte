@@ -17,13 +17,30 @@
 		task: Task;
 		selected?: boolean;
 		byId: Map<string, Task>;
+		/**
+		 * Why the scheduler has not started this one, when it has an answer.
+		 *
+		 * From the backend, because the answer depends on path leases and agent
+		 * availability that this screen cannot see (FEAT-075).
+		 */
+		blocked?: string | null;
+		/** Shown while a plan is being accepted, so drafts can be picked. */
+		pick?: { on: boolean; ontoggle: () => void } | null;
 		onselect: (id: string) => void;
 	}
 
-	let { task, selected = false, byId, onselect }: Props = $props();
+	let { task, selected = false, byId, blocked = null, pick = null, onselect }: Props = $props();
 
+	/**
+	 * Why this row is not moving, in one line.
+	 *
+	 * The task's own note first — a verification failure or a reviewer's words
+	 * are about *this* task and outrank anything general. Then the scheduler's
+	 * reason, then the dependency the interface can work out for itself.
+	 */
 	const waiting = $derived(
-		task.status === 'ready' || task.status === 'waiting' ? waitingOn(task, byId) : null
+		blocked ??
+			(task.status === 'ready' || task.status === 'waiting' ? waitingOn(task, byId) : null)
 	);
 
 	/**
@@ -65,6 +82,23 @@
 	onclick={() => onselect(task.id)}
 	aria-current={selected ? 'true' : undefined}
 >
+	{#if pick}
+		<!--
+			A checkbox inside a button is not nested interaction: the click is
+			stopped here, so picking a draft never also selects the row. Both
+			are wanted, and they are different gestures.
+		-->
+		<input
+			class="pick"
+			type="checkbox"
+			checked={pick.on}
+			onclick={(event) => {
+				event.stopPropagation();
+				pick?.ontoggle();
+			}}
+			aria-label="Include {task.id} in the plan"
+		/>
+	{/if}
 	<span class="id mono">{task.id}</span>
 	<span class="title">{task.title}</span>
 	<span class="meta">
@@ -84,8 +118,8 @@
 <style>
 	.row {
 		display: grid;
-		grid-template-columns: auto 1fr auto;
-		grid-template-areas: 'id title meta' '. reason reason';
+		grid-template-columns: auto auto 1fr auto;
+		grid-template-areas: 'pick id title meta' '. . reason reason';
 		align-items: center;
 		gap: 4px 10px;
 		width: 100%;
@@ -126,6 +160,12 @@
 	.selected {
 		background-color: var(--selection);
 		border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+	}
+
+	.pick {
+		grid-area: pick;
+		margin: 0;
+		accent-color: var(--accent);
 	}
 
 	.id {

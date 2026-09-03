@@ -173,7 +173,8 @@ function sampleSnapshot(tasks: Task[] = []): FarmSnapshot {
 				averageMs: 5000
 			}
 		],
-		events: []
+		events: [],
+		waiting: {}
 	};
 }
 
@@ -361,6 +362,32 @@ describe('farmStore refresh & stop', () => {
 		expect(api.stale).not.toHaveBeenCalled();
 		// And what was read on open is still on screen.
 		expect(farmStore.stale).toHaveLength(1);
+	});
+
+	it('answers why a queued task is not running, from the backend', async () => {
+		// FEAT-075. The reason depends on path leases and agent availability,
+		// which only the scheduler holds — so the screen asks rather than
+		// guessing.
+		const snapshot = sampleSnapshot([sampleTask('TASK-001', { status: 'ready' })]);
+		snapshot.waiting = { 'TASK-001': 'TASK-002 is working on the same files.' };
+		apiOpen.mockResolvedValueOnce(snapshot);
+		await farmStore.open('/repo');
+
+		expect(farmStore.waitingFor('TASK-001')).toBe('TASK-002 is working on the same files.');
+		expect(farmStore.waitingFor('TASK-999')).toBeNull();
+	});
+
+	it('lists the drafts a planner proposed', async () => {
+		apiOpen.mockResolvedValueOnce(
+			sampleSnapshot([
+				sampleTask('TASK-001', { status: 'draft' }),
+				sampleTask('TASK-002', { status: 'ready' }),
+				sampleTask('TASK-003', { status: 'draft' })
+			])
+		);
+		await farmStore.open('/repo');
+
+		expect(farmStore.drafts.map((task) => task.id)).toEqual(['TASK-001', 'TASK-003']);
 	});
 
 	it('stop cleans up event listener and clears error', async () => {

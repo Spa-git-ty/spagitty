@@ -37,6 +37,7 @@
 //! They stay ordinary synchronous functions: an `async fn` may not borrow
 //! `State`, and there is nothing here to await.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -131,6 +132,12 @@ pub struct FarmSnapshot {
     pub runs: Vec<AgentRun>,
     pub policy: Policy,
     pub scoreboard: Vec<AgentScore>,
+    /// Why each queued task is not running, by task.
+    ///
+    /// Only the reasons the interface cannot work out for itself — a contended
+    /// path, a full parallelism limit, no agent for the work. Unmet
+    /// dependencies are not here: the screen has the task list.
+    pub waiting: HashMap<String, String>,
 }
 
 /// How much history a snapshot carries.
@@ -284,6 +291,11 @@ fn snapshot(service: &FarmService) -> Result<FarmSnapshot> {
             .scoreboard()
             .into_iter()
             .map(AgentScore::from)
+            .collect(),
+        waiting: service
+            .waiting_reasons()
+            .into_iter()
+            .map(|(task, why)| (task.as_str().to_string(), why))
             .collect(),
     })
 }
@@ -487,6 +499,23 @@ pub fn farm_ready_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
     service.ready(&id)?;
     service.tick();
     watch_all(&service);
+    Ok(())
+}
+
+/// Accept a plan: move several drafts into it at once.
+#[tauri::command(async)]
+pub fn farm_ready_tasks(state: State<'_, FarmState>, ids: Vec<TaskId>) -> Result<()> {
+    let service = state.service()?;
+    service.ready_all(&ids)?;
+    service.tick();
+    watch_all(&service);
+    Ok(())
+}
+
+/// Discard a plan, or the part of it nobody wants.
+#[tauri::command(async)]
+pub fn farm_discard_tasks(state: State<'_, FarmState>, ids: Vec<TaskId>) -> Result<()> {
+    state.service()?.discard_all(&ids)?;
     Ok(())
 }
 

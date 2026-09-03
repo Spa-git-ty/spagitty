@@ -335,6 +335,48 @@ impl FarmService {
         self.state.lock().expect("farm lock").runs.clone()
     }
 
+    /// Why each queued task is not running, by task.
+    ///
+    /// The scheduler's own answer rather than a second opinion — see
+    /// [`scheduler::why_waiting`].
+    pub fn waiting_reasons(&self) -> Vec<(TaskId, String)> {
+        let state = self.state.lock().expect("farm lock");
+        let Some(farm) = state.farm.as_ref() else {
+            return Vec::new();
+        };
+        let registry = self.registry.lock().expect("registry lock");
+        scheduler::why_waiting(farm, &registry, &state.leases)
+    }
+
+    /// Move several drafts into the plan at once.
+    ///
+    /// One call rather than one per task, because accepting a plan is one
+    /// decision: eight round trips would be eight writes of the farm file and
+    /// eight chances to land half a plan.
+    pub fn ready_all(&self, ids: &[TaskId]) -> Result<()> {
+        for id in ids {
+            // A task that has already moved is not an error here: accepting a
+            // plan twice is a double click, not a failure.
+            if let Some(status) = self
+                .farm()
+                .and_then(|farm| farm.task(id).map(|task| task.status))
+            {
+                if status == TaskStatus::Draft {
+                    self.ready(id)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Throw several drafts away.
+    pub fn discard_all(&self, ids: &[TaskId]) -> Result<()> {
+        for id in ids {
+            self.delete_task(id)?;
+        }
+        Ok(())
+    }
+
     pub fn scoreboard(&self) -> Vec<(AgentId, router::Record)> {
         self.state.lock().expect("farm lock").scoreboard.all()
     }
