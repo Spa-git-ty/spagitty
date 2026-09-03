@@ -455,6 +455,9 @@
 	.screen {
 		flex: 1;
 		min-width: 0;
+		min-height: 0;
+		height: 100%;
+		width: 100%;
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
@@ -484,12 +487,16 @@
 	.body {
 		flex: 1;
 		min-height: 0;
+		height: 100%;
+		width: 100%;
 		display: flex;
 		overflow: hidden;
 	}
 
 	.pane {
 		min-width: 0;
+		min-height: 0;
+		height: 100%;
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
@@ -497,14 +504,23 @@
 
 	.single {
 		flex: 1;
+		width: 100%;
+		height: 100%;
+		min-height: 0;
 		overflow-y: auto;
 		padding: 16px 28px 24px 20px;
-		max-width: 76ch;
 		scrollbar-gutter: stable;
+	}
+
+	.single > * {
+		max-width: 76ch;
 	}
 
 	.list {
 		flex: 1;
+		width: 100%;
+		height: 100%;
+		min-height: 0;
 		overflow-y: auto;
 		padding: 16px 24px 24px 16px;
 		scrollbar-gutter: stable;
@@ -517,8 +533,12 @@
 		flex: none;
 		width: 30rem;
 		max-width: 45%;
+		height: 100%;
+		min-height: 0;
 		border-left: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
 		overflow: hidden;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.empty {
@@ -528,6 +548,8 @@
 		padding: 40px 20px;
 		text-align: center;
 		flex: 1;
+		height: 100%;
+		min-height: 0;
 	}
 
 	.heading {
@@ -664,6 +686,7 @@
 		color: var(--muted);
 		max-height: 7.5em;
 		overflow: hidden;
+		margin-top: auto;
 	}
 
 	.line {
