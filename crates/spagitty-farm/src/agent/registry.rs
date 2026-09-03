@@ -116,7 +116,7 @@ impl AgentRegistry {
         for id in custom {
             let executable = self.definitions[&id].executable.clone();
             self.availability
-                .insert(id, super::detector::probe(&executable, &["--version"]));
+                .insert(id, CustomAdapter.probe(&executable));
         }
     }
 
@@ -264,10 +264,7 @@ impl AgentRegistry {
         let Some(definition) = self.definitions.get(id) else {
             return;
         };
-        let found = super::detector::probe(
-            &definition.executable,
-            adapter_for(definition.provider).version_args(),
-        );
+        let found = adapter_for(definition.provider).probe(&definition.executable);
         self.availability.insert(id.clone(), found);
     }
 

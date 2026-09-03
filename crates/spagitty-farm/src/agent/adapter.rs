@@ -107,6 +107,15 @@ pub trait AgentAdapter: Send + Sync {
         &["--version"]
     }
 
+    /// Is the executable at `path` this provider, working?
+    ///
+    /// Asking for a version is the right question for a provider Spagitty
+    /// knows, because it knows the flag exists. It is the wrong question for
+    /// one it does not — see [`crate::agent::adapters::custom`].
+    fn probe(&self, path: &Path) -> AgentAvailability {
+        super::detector::probe(path, self.version_args())
+    }
+
     /// Build the command line for one run.
     fn command(&self, definition: &AgentDefinition, request: &AgentRunRequest) -> AgentCommand;
 

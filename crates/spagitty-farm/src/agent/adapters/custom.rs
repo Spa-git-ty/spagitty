@@ -14,7 +14,7 @@
 //! written. A template that needed a shell to work would be a template that can
 //! run anything, which is not something to put behind a text field.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::agent::adapter::{AgentAdapter, AgentCommand, AgentRunRequest};
 use crate::model::{
@@ -41,6 +41,17 @@ impl AgentAdapter for CustomAdapter {
     /// Never detected. It exists because somebody typed it in.
     fn detect(&self) -> AgentAvailability {
         AgentAvailability::Missing
+    }
+
+    /// Executable is the whole test.
+    ///
+    /// A custom agent is whatever the user pointed at, and `--version` is not
+    /// a flag every program has: `dash` exits 2 on it, and a program with no
+    /// version flag at all may take it as a prompt and sit there. Reporting
+    /// something broken for failing to answer a question it was never promised
+    /// would put a working agent behind a red label.
+    fn probe(&self, path: &Path) -> AgentAvailability {
+        super::super::detector::present(path)
     }
 
     fn default_definition(&self, executable: PathBuf) -> AgentDefinition {
@@ -143,6 +154,34 @@ mod tests {
     fn a_custom_agent_is_never_found_by_detection() {
         assert!(CustomAdapter.executables().is_empty());
         assert_eq!(CustomAdapter.detect(), AgentAvailability::Missing);
+    }
+
+    /// The failure this guards against: `/bin/sh` is `dash` on Debian and
+    /// Ubuntu, `dash --version` exits 2, and probing for a version reported
+    /// every such agent broken on exactly the machines CI runs on.
+    #[cfg(unix)]
+    #[test]
+    fn an_agent_that_has_no_version_flag_is_still_available() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("agent");
+        std::fs::write(&path, "#!/bin/sh\nexit 2\n").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        assert!(matches!(
+            CustomAdapter.probe(&path),
+            AgentAvailability::Available { .. }
+        ));
+    }
+
+    #[test]
+    fn a_path_that_holds_no_executable_is_broken() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(matches!(
+            CustomAdapter.probe(&dir.path().join("nothing-here")),
+            AgentAvailability::Broken { .. }
+        ));
     }
 
     #[test]

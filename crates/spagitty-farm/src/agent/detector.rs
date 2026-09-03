@@ -106,6 +106,27 @@ fn is_executable(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
+/// Decide what `path` is without running it.
+///
+/// For an executable whose command line Spagitty does not know, being there
+/// and runnable is the whole of what can be established: any argument passed
+/// to find out more is a guess, and a wrong guess either fails on a program
+/// with no version flag or starts a session that never returns. The version is
+/// empty because none was asked for; the interface says "Detected" for that.
+pub fn present(path: &Path) -> AgentAvailability {
+    if is_executable(path) {
+        AgentAvailability::Available {
+            path: path.to_path_buf(),
+            version: String::new(),
+        }
+    } else {
+        AgentAvailability::Broken {
+            path: path.to_path_buf(),
+            reason: "not an executable file".to_string(),
+        }
+    }
+}
+
 /// Run `path` with `args` and decide what it is.
 ///
 /// A non-zero exit is `Broken` rather than `Missing`, and so is a timeout: both
