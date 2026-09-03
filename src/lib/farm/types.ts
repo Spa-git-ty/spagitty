@@ -294,7 +294,6 @@ export interface FarmSnapshot {
 	events: FarmEvent[];
 	runs: AgentRun[];
 	policy: Policy;
-	stale: StaleWorkspace[];
 	scoreboard: AgentScore[];
 }
 

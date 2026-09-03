@@ -7,7 +7,9 @@
 //! See [`process`] for why none of it is async.
 
 pub mod log;
+pub mod narrate;
 pub mod process;
 
 pub use log::{log_path, tail, TranscriptWriter};
+pub use narrate::{ClaudeStream, Narrator, Verbatim};
 pub use process::{start, Collected, Ended, Session, Sink};

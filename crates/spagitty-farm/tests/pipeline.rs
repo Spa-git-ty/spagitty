@@ -72,7 +72,10 @@ fn scripted_agent(_dir: &Path, name: &str, body: &str) -> AgentDefinition {
 struct Harness {
     repo: Fixture,
     _bin: tempfile::TempDir,
-    service: FarmService,
+    /// Behind an `Arc` so a test can hand the service to a second thread —
+    /// which is the only way to prove a lock is *not* being held (BUG-020).
+    /// Every other test reaches its methods through `Deref` and is unaffected.
+    service: Arc<FarmService>,
     recorder: Arc<Recorder>,
 }
 
@@ -81,7 +84,7 @@ impl Harness {
         let repo = Fixture::woven();
         let bin = tempfile::tempdir().unwrap();
         let recorder = Arc::new(Recorder::default());
-        let service = FarmService::open(repo.path(), recorder.clone());
+        let service = Arc::new(FarmService::open(repo.path(), recorder.clone()));
         Harness {
             repo,
             _bin: bin,
@@ -701,4 +704,119 @@ fn a_dependency_cycle_is_refused_at_the_point_it_is_created() {
         .unwrap()
         .depends_on
         .is_empty());
+}
+
+/// BUG-020 — the window froze from the moment a farm started planning until the
+/// planner had finished.
+///
+/// The cause was not the waiting, which is expected and happens on a thread of
+/// its own: it was *where* the waiting happened. `collect_plan` took the
+/// planning session out of the map inside an `if let` whose scrutinee was the
+/// `sessions` mutex guard, so on edition 2021 that guard outlived the body and
+/// the lock was held for the whole run. Every command that starts, stops or
+/// schedules a task takes the same lock, and they run on the main thread.
+///
+/// So the assertion is not about output or state. It is that a second thread
+/// can still take that lock while a planning run is in flight, and it fails —
+/// by timing out — against the old shape.
+#[test]
+fn planning_does_not_hold_the_lock_that_starts_and_stops_tasks() {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    let harness = Harness::new();
+    harness.service.create("Ship the thing", "").unwrap();
+
+    // A planner that thinks for two seconds before answering. Long enough that
+    // a held lock is unmistakable, short enough to leave in the suite.
+    let planner = scripted_agent(
+        harness.bin(),
+        "planner-slow",
+        r#"sleep 2
+echo '```spagitty-plan'
+echo '{"tasks":[{"reference":"t1","title":"Investigate"}]}'
+echo '```'"#,
+    );
+    let planner_id = planner.id.clone();
+    harness.service.save_agent(planner).unwrap();
+
+    let run = harness.service.plan(Some(planner_id)).unwrap();
+
+    let collecting = {
+        let service = harness.service.clone();
+        std::thread::spawn(move || service.collect_plan(&run).unwrap())
+    };
+
+    // The probe: any command that reaches the sessions map. Cancelling a task
+    // that does not exist is the cheapest one — it takes the lock, finds
+    // nothing, and only then fails on the status change, which is discarded.
+    let (done, answered) = mpsc::channel();
+    {
+        let service = harness.service.clone();
+        std::thread::spawn(move || {
+            let _ = service.cancel_task(&TaskId::new("no-such-task"));
+            let _ = done.send(());
+        });
+    }
+
+    assert!(
+        answered.recv_timeout(Duration::from_millis(750)).is_ok(),
+        "a command needing the sessions lock waited for the planning run to \
+         finish — the guard is being held across the wait (BUG-020)"
+    );
+
+    // And planning still works: the point is the lock, not skipping the wait.
+    let tasks = collecting.join().unwrap();
+    assert_eq!(tasks.len(), 1);
+    assert_eq!(tasks[0].status, TaskStatus::Draft);
+}
+
+/// TASK-030 — the activity history is answered from memory, not from disk.
+///
+/// The interface asks for a snapshot after every burst of events, and the
+/// answer used to be "read and re-parse the whole log", which made the cost of
+/// watching a farm proportional to how much it had already done. What is
+/// asserted here is that the two agree: the in-memory history is not a cache
+/// that can drift from the file, it is the file, kept.
+#[test]
+fn the_history_is_held_in_memory_and_matches_what_is_on_disk() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = harness.worker("worker-history");
+    let task = harness.task("Do it");
+    harness.run(&task, &agent);
+
+    let held = harness.service.events();
+    let stored = spagitty_farm::persistence::store::load_events(harness.repo.path());
+    assert!(!held.is_empty(), "a whole run produced no history");
+    assert_eq!(held, stored);
+
+    // Transcript lines are not history: one run produces thousands and they
+    // would push everything else out.
+    assert!(
+        !held
+            .iter()
+            .any(|event| matches!(event, FarmEvent::AgentOutput { .. })),
+        "transcript lines are being kept as history"
+    );
+
+    // And the tail is the end of it, not the start.
+    let tail = harness.service.events_tail(3);
+    assert_eq!(tail.len(), 3.min(held.len()));
+    assert_eq!(tail.last(), held.last());
+}
+
+/// TASK-030 — a farm reopened on a repository remembers what happened.
+#[test]
+fn reopening_a_farm_reads_its_history_back() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = harness.worker("worker-reopen");
+    let task = harness.task("Do it");
+    harness.run(&task, &agent);
+    let before = harness.service.events();
+
+    let reopened = FarmService::open(harness.repo.path(), Arc::new(Recorder::default()));
+
+    assert_eq!(reopened.events(), before);
 }

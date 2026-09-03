@@ -14,6 +14,37 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Changed
+
+- **Watching a farm costs almost nothing now.** The Farm screen refreshes after
+  every burst of events, and that refresh used to run `git worktree list` and
+  re-parse the whole activity log — on the thread that paints the window, four
+  times a second while an agent was talking. The history is held in memory, the
+  leftover-worktree scan happens when it can actually change, and a transcript
+  line no longer asks the backend anything.
+
+### Fixed
+
+- **An agent's work is visible while it happens.** A task ran for minutes with
+  an empty transcript behind it and everything arrived at once at the end,
+  because Claude Code was being asked for its answer rather than for its work.
+  It now runs in streaming mode, and what it streams is narrated into lines a
+  person reads — `· Read src/auth.rs`, `· Bash cargo test`, and the agent's own
+  words. Agents that already narrate their work are unchanged.
+- **A planning run can be watched and stopped.** The Farm screen carries a card
+  while a planner is working: how long it has been going, the last thing it
+  said, and a control that stops the planner without cancelling the farm. A
+  cancelled planner adopts nothing, and a planner that produces no tasks says so
+  instead of leaving an empty plan that looks untouched.
+- **The window no longer freezes while the farm plans.** Asking an agent to
+  break a goal into tasks locked the whole application — every screen, the
+  menus, the window itself — until the planner finished, typically minutes. The
+  planning run was waited on with the farm's session lock held, and every
+  command that starts, stops or schedules a task needs that lock and ran on the
+  main thread. Stop was locked out too, which is the control a person reaches
+  for when nothing responds. The farm's commands now run off the main thread,
+  and no lock is held across a wait, a cancel, or reaping an agent's process.
+
 ## [0.4.1-alpha] - 2026-09-03
 
 The farm shipped in `0.4.0-alpha` with the brand's amber on every palette and
