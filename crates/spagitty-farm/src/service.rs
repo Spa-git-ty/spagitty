@@ -1778,9 +1778,7 @@ impl FarmService {
                 };
                 // The agent that was working when it thought of this, so a
                 // proposal is attributable rather than anonymous (FEAT-078).
-                let agent = farm
-                    .task(from)
-                    .and_then(|task| task.implemented_by.clone());
+                let agent = farm.task(from).and_then(|task| task.implemented_by.clone());
                 let task = planner::from_proposal(farm, proposal, from, agent.as_ref());
                 farm.tasks.push(task.clone());
                 let _ = self.persist(&state);
