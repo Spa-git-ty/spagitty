@@ -533,7 +533,10 @@ mod tests {
         farm.status = FarmStatus::Idle;
         assert_eq!(
             why(&farm, &Leases::default()),
-            [(task_id(1).to_string(), "The farm is not running.".to_string())]
+            [(
+                task_id(1).to_string(),
+                "The farm is not running.".to_string()
+            )]
         );
     }
 
@@ -598,7 +601,9 @@ mod tests {
         let mut exhausted = task(1, TaskStatus::Ready);
         exhausted.attempts = 3;
         let farm = farm(vec![exhausted]);
-        assert!(why(&farm, &Leases::default())[0].1.contains("needs a person"));
+        assert!(why(&farm, &Leases::default())[0]
+            .1
+            .contains("needs a person"));
     }
 
     #[test]
