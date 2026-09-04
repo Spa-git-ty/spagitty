@@ -139,7 +139,10 @@ mod tests {
         let command = ClaudeAdapter.command(&definition(), &request(true));
         let joined = command.args.join(" ");
         assert!(joined.contains("--output-format stream-json"), "{joined}");
-        assert!(command.args.iter().any(|arg| arg == "--verbose"), "{joined}");
+        assert!(
+            command.args.iter().any(|arg| arg == "--verbose"),
+            "{joined}"
+        );
     }
 
     #[test]
