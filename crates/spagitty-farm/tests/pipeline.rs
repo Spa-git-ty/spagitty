@@ -1183,3 +1183,35 @@ fn completion_watching_follows_the_implementation_into_review() {
         .iter()
         .all(|run| matches!(run.outcome, RunOutcome::Completed { .. })));
 }
+
+#[test]
+fn cancellation_during_verification_does_not_start_review_or_later_checks() {
+    let harness = Harness::new();
+    harness.service.create("Cancel checks", "").unwrap();
+    harness
+        .service
+        .configure(|farm| {
+            farm.verification = vec![
+                "/bin/sh -c 'echo started > check-started; sleep 2; echo bad > check-survived'"
+                    .into(),
+                "/bin/sh -c 'echo bad > later-check'".into(),
+            ]
+        })
+        .unwrap();
+    let worker = harness.worker("checked-worker");
+    let task = harness.task("Do then check");
+    harness.service.run_task(&task, Some(worker)).unwrap();
+    let worktree = harness.worktree(&task);
+    harness.service.watch_pending();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    while !worktree.join("check-started").exists() && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(worktree.join("check-started").exists());
+    harness.service.cancel_task(&task).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(150));
+    assert_eq!(harness.status(&task), TaskStatus::Cancelled);
+    assert!(!worktree.join("check-survived").exists());
+    assert!(!worktree.join("later-check").exists());
+    assert!(harness.service.review_of(&task).is_none());
+}
