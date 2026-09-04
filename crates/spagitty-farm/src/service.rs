@@ -136,6 +136,16 @@ struct Launch {
     narrator: Box<dyn execution::narrate::Narrator>,
 }
 
+/// How many runs are kept in memory.
+///
+/// Two hundred, *plus* the most recent run of every task however old it is —
+/// see [`State::remember_run`]. A long session used to grow this list forever
+/// and clone the whole of it into every snapshot, so the cost of watching a
+/// farm rose with everything it had already done (TASK-031). What a person
+/// reads is a task's own runs and the recent ones; the transcripts stay on disk
+/// and outlive both.
+const MAX_RUNS: usize = 200;
+
 /// The mutable heart of a farm.
 #[derive(Debug, Default)]
 struct State {
@@ -160,6 +170,53 @@ struct State {
     /// runs on a thread the Tauri layer spawned from a command that has already
     /// returned: there is nobody left holding the argument.
     planning_parent: Option<TaskId>,
+}
+
+impl State {
+    /// Record a run, and forget the ones nobody will ask for (TASK-031).
+    ///
+    /// Two things are kept: the most recent [`MAX_RUNS`], and the newest run of
+    /// every task the farm still has. The second half is what makes the first
+    /// safe — a task's own panel shows its runs, and a farm where task three
+    /// has been quiet for a day would otherwise open on an empty panel because
+    /// two hundred other runs happened since.
+    ///
+    /// Both are bounded by something a person can see: a number, and how many
+    /// tasks they are looking at. A run that is dropped has not lost its
+    /// transcript — that is on disk, and outlives the farm.
+    fn remember_run(&mut self, run: AgentRun) {
+        self.runs.push(run);
+        if self.runs.len() <= MAX_RUNS {
+            return;
+        }
+
+        // The newest run of each task that still exists. A run belonging to a
+        // deleted task is history nobody can navigate to.
+        let live: std::collections::HashSet<TaskId> = self
+            .farm
+            .as_ref()
+            .map(|farm| farm.tasks.iter().map(|task| task.id.clone()).collect())
+            .unwrap_or_default();
+        let mut newest: HashMap<TaskId, RunId> = HashMap::new();
+        for entry in &self.runs {
+            if live.contains(&entry.task) {
+                newest.insert(entry.task.clone(), entry.id.clone());
+            }
+        }
+
+        let keep_from = self.runs.len() - MAX_RUNS;
+        let mut seen = 0;
+        self.runs.retain(|entry| {
+            let recent = seen >= keep_from;
+            seen += 1;
+            recent || newest.get(&entry.task) == Some(&entry.id)
+        });
+
+        // The clocks of runs nobody holds any more go with them.
+        let held: std::collections::HashSet<RunId> =
+            self.runs.iter().map(|entry| entry.id.clone()).collect();
+        self.heard.retain(|id, _| held.contains(id));
+    }
 }
 
 /// One repository's farm.
@@ -908,7 +965,7 @@ impl FarmService {
 
         {
             let mut state = self.state.lock().expect("farm lock");
-            state.runs.push(AgentRun {
+            state.remember_run(AgentRun {
                 id: run.clone(),
                 task: task.clone(),
                 agent: agent.clone(),
@@ -1426,7 +1483,7 @@ impl FarmService {
 
         {
             let mut state = self.state.lock().expect("farm lock");
-            state.runs.push(AgentRun {
+            state.remember_run(AgentRun {
                 id: run.clone(),
                 task: planning_task.clone(),
                 agent: definition.id,
@@ -1790,5 +1847,101 @@ impl FarmService {
                 })
             })
             .unwrap_or(AgentProvider::Custom)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{FarmId, Goal, GoalId};
+
+    fn run(number: u32, task: u32) -> AgentRun {
+        AgentRun {
+            id: RunId::new(format!("run-{number}")),
+            task: TaskId::new(format!("TASK-{task:04}")),
+            agent: AgentId::new("claude"),
+            phase: RunPhase::Implementation,
+            outcome: RunOutcome::Completed { exit_code: 0 },
+            command: vec!["claude".into()],
+            started_ms: number as u64,
+            ended_ms: Some(number as u64 + 1),
+            log_file: None,
+            last_output_ms: None,
+        }
+    }
+
+    /// A state holding a farm with `tasks` numbered from one.
+    fn state_with(tasks: u32) -> State {
+        let mut farm = Farm::new(
+            FarmId::new("f1"),
+            "/repo",
+            Goal::new(GoalId::new("g1"), "Ship it", 0),
+            0,
+        );
+        farm.tasks = (1..=tasks)
+            .map(|number| Task::new(TaskId::new(format!("TASK-{number:04}")), "t", 0))
+            .collect();
+        State {
+            farm: Some(farm),
+            ..State::default()
+        }
+    }
+
+    /// TASK-031 — a long session stops growing.
+    #[test]
+    fn the_history_is_bounded() {
+        let mut state = State::default();
+        for number in 0..(MAX_RUNS as u32 * 3) {
+            state.remember_run(run(number, number));
+        }
+
+        assert!(
+            state.runs.len() <= MAX_RUNS,
+            "the history grew to {}",
+            state.runs.len()
+        );
+        // And it is the *recent* end that survives.
+        assert!(state
+            .runs
+            .iter()
+            .any(|entry| entry.id == RunId::new(format!("run-{}", MAX_RUNS * 3 - 1))));
+    }
+
+    /// TASK-031 — and a task the farm still has never loses its newest run.
+    ///
+    /// Otherwise a task that has been quiet for a day opens on an empty panel
+    /// because two hundred other runs happened since.
+    #[test]
+    fn a_task_the_farm_still_has_keeps_its_newest_run() {
+        let mut state = state_with(1);
+        state.remember_run(run(0, 1));
+        for number in 1..(MAX_RUNS as u32 * 2) {
+            // Every other run belongs to a task the farm does not have.
+            state.remember_run(run(number, number + 100));
+        }
+
+        assert!(
+            state
+                .runs
+                .iter()
+                .any(|entry| entry.task == TaskId::new("TASK-0001")),
+            "the quiet task lost its only run"
+        );
+    }
+
+    #[test]
+    fn forgetting_a_run_forgets_its_clock_too() {
+        // Otherwise the map of "when did this last speak" grows forever beside
+        // a list that does not (FEAT-077 meets TASK-031).
+        let mut state = State::default();
+        for number in 0..(MAX_RUNS as u32 * 2) {
+            state.heard.insert(
+                RunId::new(format!("run-{number}")),
+                Arc::new(AtomicU64::new(1)),
+            );
+            state.remember_run(run(number, number));
+        }
+
+        assert_eq!(state.heard.len(), state.runs.len());
     }
 }

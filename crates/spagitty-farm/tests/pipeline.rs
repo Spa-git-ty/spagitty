@@ -1008,3 +1008,37 @@ fn an_existing_farm_reads_as_the_persons_own_work() {
             .unwrap();
     assert_eq!(task.origin, TaskOrigin::Person);
 }
+
+// ── A long session stays cheap (TASK-031) ────────────────────────────────
+
+/// TASK-031 — what a snapshot costs at a size nobody has tried yet.
+///
+/// A number rather than an opinion. It is asserted loosely, because the point
+/// is to notice a change of *order* — a snapshot that starts carrying every
+/// transcript, say — rather than to police a few bytes.
+#[test]
+fn a_farm_of_two_hundred_tasks_still_serialises_small() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    for index in 0..200 {
+        harness.task(&format!("Task number {index}"));
+    }
+
+    let farm = harness.service.farm().unwrap();
+    let json = serde_json::to_string(&farm).unwrap();
+    let per_task = json.len() / 200;
+    println!(
+        "200 tasks serialise to {} bytes, {per_task} a task",
+        json.len()
+    );
+
+    assert!(
+        per_task < 1_200,
+        "a task costs {per_task} bytes on the wire; it was about 400 when this was written"
+    );
+    assert!(
+        json.len() < 250_000,
+        "two hundred tasks serialise to {} bytes",
+        json.len()
+    );
+}
