@@ -179,6 +179,9 @@
 	}
 
 	.head {
+		/* One line across the window with the rail's header. */
+		min-height: var(--head-h);
+		box-sizing: border-box;
 		padding: 10px 12px;
 		background-color: var(--chrome-veil);
 		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);

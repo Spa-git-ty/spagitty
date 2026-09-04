@@ -140,18 +140,29 @@
 		overflow: hidden;
 	}
 
+	/*
+	 * The same height as a screen's header, from the same number.
+	 *
+	 * The rail and the screen sit side by side and their headers are read as
+	 * one line across the window. This one used to be its padding plus a small
+	 * button, which came out a few pixels shorter — so every first row in the
+	 * rail sat above the screen's first row and the whole left edge read as
+	 * slightly out.
+	 */
 	.head {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 6px;
-		padding: 8px;
+		padding: 0 8px;
+		min-height: var(--head-h);
+		box-sizing: border-box;
 		border-bottom: 1px solid var(--soft);
 	}
 
 	.rail.collapsed .head {
 		justify-content: center;
-		padding: 8px 4px;
+		padding: 0 4px;
 	}
 
 	.collapse {

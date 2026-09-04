@@ -525,6 +525,9 @@
 	}
 
 	.head {
+		/* One line across the window with the rail's header. */
+		min-height: var(--head-h);
+		box-sizing: border-box;
 		flex: none;
 		display: flex;
 		align-items: center;

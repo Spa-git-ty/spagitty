@@ -259,6 +259,22 @@ export const TABS_H = 30;
  * ought to be happening.
  */
 export const STRIP_H = 22;
+
+/**
+ * The header row every screen carries, and the rail's own.
+ *
+ * They sit side by side across the window and are read as one line — so a rail
+ * whose header is a few pixels shorter than the screen's puts the first item in
+ * the rail above the screen's first row, and the eye reads the whole left edge
+ * as slightly out. That was the state until this became a shared number rather
+ * than each side's padding plus whatever it happened to contain.
+ *
+ * Forty-four: the screen headers' own height at the default text size — a chip
+ * or a title, with 10px above and below — so nothing moved to make room for it.
+ * It scales with zoom like every other structural size here.
+ */
+export const HEAD_H = 44;
+
 export const RAIL_W = 186;
 export const DETAIL_W = 270;
 
@@ -433,6 +449,7 @@ export function applyMetrics(
 		'tabs-h': TABS_H,
 		'toolbar-h': TOOLBAR_H,
 		'strip-h': STRIP_H,
+		'head-h': HEAD_H,
 		'rail-w': RAIL_W,
 		'detail-w': DETAIL_W,
 		'refs-gutter-w': REFS_GUTTER_W,

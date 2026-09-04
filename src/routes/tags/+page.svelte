@@ -212,6 +212,9 @@
 	}
 
 	.head {
+		/* One line across the window with the rail's header. */
+		min-height: var(--head-h);
+		box-sizing: border-box;
 		justify-content: space-between;
 		padding: 10px 12px;
 		background-color: var(--chrome-veil);
