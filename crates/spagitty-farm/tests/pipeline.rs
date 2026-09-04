@@ -1042,3 +1042,176 @@ fn a_farm_of_two_hundred_tasks_still_serialises_small() {
         json.len()
     );
 }
+
+#[test]
+fn cancellation_reaches_a_session_already_owned_by_a_waiter() {
+    let harness = Harness::new();
+    harness.service.create("Cancel a watched run", "").unwrap();
+    let slow = scripted_agent(
+        harness.bin(),
+        "watched-worker",
+        "sleep 1; echo survived > survived.txt",
+    );
+    let agent = slow.id.clone();
+    harness.service.save_agent(slow).unwrap();
+    let task = harness.task("Stop this work");
+    harness.service.run_task(&task, Some(agent)).unwrap();
+    let worktree = harness.worktree(&task);
+    let service = harness.service.clone();
+    let waiting_task = task.clone();
+    let waiter = std::thread::spawn(move || service.await_task(&waiting_task));
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    harness.service.cancel_task(&task).unwrap();
+    waiter.join().unwrap().unwrap();
+    assert!(
+        !worktree.join("survived.txt").exists(),
+        "stopped agent kept writing"
+    );
+    assert_eq!(harness.status(&task), TaskStatus::Cancelled);
+}
+
+#[test]
+fn cancelling_the_farm_stops_an_already_watched_agent() {
+    let harness = Harness::new();
+    harness.service.create("Stop everything", "").unwrap();
+    let slow = scripted_agent(
+        harness.bin(),
+        "farm-stop-worker",
+        "sleep 1; echo survived > survived.txt",
+    );
+    let agent = slow.id.clone();
+    harness.service.save_agent(slow).unwrap();
+    let task = harness.task("Stop this work");
+    harness.service.run_task(&task, Some(agent)).unwrap();
+    let worktree = harness.worktree(&task);
+    let service = harness.service.clone();
+    let waiting_task = task.clone();
+    let waiter = std::thread::spawn(move || service.await_task(&waiting_task));
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    harness.service.cancel_farm().unwrap();
+    waiter.join().unwrap().unwrap();
+    assert!(!worktree.join("survived.txt").exists());
+    assert_eq!(harness.status(&task), TaskStatus::Cancelled);
+    assert_eq!(
+        harness.service.farm().unwrap().status,
+        FarmStatus::Cancelled
+    );
+}
+
+#[test]
+fn a_planner_remains_cancellable_while_its_plan_is_being_collected() {
+    let harness = Harness::new();
+    harness.service.create("Stop planning", "").unwrap();
+    let planner = scripted_agent(
+        harness.bin(),
+        "collected-planner",
+        "sleep 1; echo survived > planner-survived.txt",
+    );
+    let agent = planner.id.clone();
+    harness.service.save_agent(planner).unwrap();
+    let run = harness.service.plan(Some(agent)).unwrap();
+    let service = harness.service.clone();
+    let waiter = std::thread::spawn(move || service.collect_plan(&run));
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    harness.service.cancel_plan().unwrap();
+    assert!(waiter.join().unwrap().unwrap().is_empty());
+    assert!(!harness.repo.path().join("planner-survived.txt").exists());
+    assert!(harness.service.farm().unwrap().tasks.is_empty());
+}
+
+#[test]
+fn pending_watchers_are_claimed_once_and_cancelled_results_stay_cancelled() {
+    let harness = Harness::new();
+    harness.service.create("One watcher", "").unwrap();
+    let worker = scripted_agent(harness.bin(), "watch-once", "sleep 2");
+    let agent = worker.id.clone();
+    harness.service.save_agent(worker).unwrap();
+    let task = harness.task("Wait");
+    harness.service.run_task(&task, Some(agent)).unwrap();
+    assert_eq!(harness.service.watch_pending(), 1);
+    for _ in 0..50 {
+        assert_eq!(harness.service.watch_pending(), 0);
+    }
+    harness.service.cancel_task(&task).unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    while harness
+        .service
+        .runs()
+        .iter()
+        .any(|run| run.outcome == RunOutcome::Running)
+        && std::time::Instant::now() < deadline
+    {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(harness
+        .service
+        .runs()
+        .iter()
+        .all(|run| run.outcome == RunOutcome::Cancelled));
+    assert_eq!(harness.status(&task), TaskStatus::Cancelled);
+}
+
+#[test]
+fn completion_watching_follows_the_implementation_into_review() {
+    let harness = Harness::new();
+    harness.service.create("Watch a review", "").unwrap();
+    harness
+        .service
+        .configure(|farm| {
+            farm.autonomy = Autonomy::SemiAuto;
+            farm.verification = vec!["/bin/sh -c 'exit 0'".into()];
+        })
+        .unwrap();
+    let worker = harness.worker("watched-implementation");
+    harness.reviewer("watched-review", "approve");
+    let task = harness.task("Do and review");
+    harness.service.run_task(&task, Some(worker)).unwrap();
+    assert_eq!(harness.service.watch_pending(), 1);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    while harness.service.review_of(&task).is_none() && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(harness
+        .service
+        .review_of(&task)
+        .expect("review was never collected")
+        .approved());
+    assert_eq!(harness.status(&task), TaskStatus::Review);
+    let runs = harness.service.runs();
+    assert_eq!(runs.len(), 2);
+    assert!(runs
+        .iter()
+        .all(|run| matches!(run.outcome, RunOutcome::Completed { .. })));
+}
+
+#[test]
+fn cancellation_during_verification_does_not_start_review_or_later_checks() {
+    let harness = Harness::new();
+    harness.service.create("Cancel checks", "").unwrap();
+    harness
+        .service
+        .configure(|farm| {
+            farm.verification = vec![
+                "/bin/sh -c 'echo started > check-started; sleep 2; echo bad > check-survived'"
+                    .into(),
+                "/bin/sh -c 'echo bad > later-check'".into(),
+            ]
+        })
+        .unwrap();
+    let worker = harness.worker("checked-worker");
+    let task = harness.task("Do then check");
+    harness.service.run_task(&task, Some(worker)).unwrap();
+    let worktree = harness.worktree(&task);
+    harness.service.watch_pending();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    while !worktree.join("check-started").exists() && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(worktree.join("check-started").exists());
+    harness.service.cancel_task(&task).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(150));
+    assert_eq!(harness.status(&task), TaskStatus::Cancelled);
+    assert!(!worktree.join("check-survived").exists());
+    assert!(!worktree.join("later-check").exists());
+    assert!(harness.service.review_of(&task).is_none());
+}
