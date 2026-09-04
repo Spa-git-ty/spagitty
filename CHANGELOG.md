@@ -20,6 +20,14 @@ stays backward-compatible.
   including the frozen range and the roles of Amendments 19 and 20. Direct
   agents to read the canonical book from `AGENTS.md`.
 
+### Reliability
+
+- Claim one completion watcher per run, including review runs, and keep late
+  results attached to the attempt that produced them.
+
+- Keep running agents and planners cancellable while background threads wait for
+  them; contain Windows agent descendants in jobs before execution starts.
+
 ### Added
 
 - **The Farm screen is worth watching.** `3 / 7 done` becomes a ring — what is
