@@ -96,6 +96,12 @@ export type TaskKind =
 
 export type TaskPriority = 'high' | 'normal' | 'low';
 
+export type TaskOrigin =
+	| { kind: 'person' }
+	| { kind: 'planned'; agent: string }
+	| { kind: 'subtask'; agent: string; parent: string }
+	| { kind: 'proposed'; agent: string | null; from: string };
+
 export interface Task {
 	id: string;
 	title: string;
@@ -112,6 +118,14 @@ export interface Task {
 	 * here, so there is no second field that can disagree.
 	 */
 	parent: string | null;
+	/**
+	 * Who asked for this task (FEAT-078).
+	 *
+	 * A farm mixes work a person decided on with work a model proposed, and by
+	 * the time there are twenty tasks they are indistinguishable — which
+	 * matters, because they are not owed the same trust.
+	 */
+	origin: TaskOrigin;
 	assignedAgent: string | null;
 	implementedBy: string | null;
 	allowedPaths: string[];

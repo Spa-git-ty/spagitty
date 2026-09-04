@@ -35,6 +35,7 @@ function task(id: string, overrides: Partial<Task> = {}): Task {
 		note: null,
 		createdMs: 0,
 		updatedMs: 0,
+		origin: { kind: 'person' },
 		...overrides
 	} as unknown as Task;
 }
@@ -134,6 +135,53 @@ describe('a task that was broken down', () => {
 		expect(view.text()).toContain('General');
 		expect(view.text()).not.toContain('0 of 0');
 
+		view.destroy();
+	});
+});
+
+describe('who asked for a task', () => {
+	it('leaves a person’s own work unmarked', () => {
+		// Most rows in most farms are theirs; a mark on everything marks nothing.
+		const view = render(TaskRow, props());
+
+		expect(view.find('.mark')).toBeNull();
+		view.destroy();
+	});
+
+	it('marks a task an agent asked for, and says who and why', () => {
+		const view = render(
+			TaskRow,
+			props({
+				task: task('T-1', { origin: { kind: 'planned', agent: 'claude' } })
+			})
+		);
+
+		const mark = view.get('.mark');
+		expect(mark.title).toBe('claude cut this out of the goal.');
+		view.destroy();
+	});
+
+	it('says which task a subtask was cut out of', () => {
+		const view = render(
+			TaskRow,
+			props({
+				task: task('T-9', { origin: { kind: 'subtask', agent: 'codex', parent: 'T-2' } })
+			})
+		);
+
+		expect(view.get('.mark').title).toBe('codex cut this out of T-2.');
+		view.destroy();
+	});
+
+	it('says plainly that nobody asked for a proposal', () => {
+		const view = render(
+			TaskRow,
+			props({
+				task: task('T-4', { origin: { kind: 'proposed', agent: 'claude', from: 'T-1' } })
+			})
+		);
+
+		expect(view.get('.mark').title).toContain('Nobody asked for it');
 		view.destroy();
 	});
 });

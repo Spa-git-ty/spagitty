@@ -19,6 +19,7 @@ import type {
 	FarmEvent,
 	FarmStatus,
 	TaskKind,
+	TaskOrigin,
 	TaskStatus,
 	Verification
 } from './types';
@@ -214,6 +215,38 @@ export function waitingOn(
 		return 'No paths declared, so this runs on its own';
 	}
 	return null;
+}
+
+/**
+ * Who asked for a task, in one line (FEAT-078).
+ *
+ * Written as a fact rather than as a warning. A proposed task is not suspect —
+ * it is often the best idea in the plan — but it was nobody's decision until
+ * somebody accepts it, and the sentence says so plainly.
+ */
+export function originLine(origin: TaskOrigin): string {
+	switch (origin.kind) {
+		case 'person':
+			return 'You added this.';
+		case 'planned':
+			return `${origin.agent} cut this out of the goal.`;
+		case 'subtask':
+			return `${origin.agent} cut this out of ${origin.parent}.`;
+		case 'proposed':
+			return origin.agent
+				? `${origin.agent} proposed this while working on ${origin.from}. Nobody asked for it.`
+				: `Proposed while working on ${origin.from}. Nobody asked for it.`;
+	}
+}
+
+/**
+ * The mark a row carries for who asked.
+ *
+ * Two characters and no colour: a person's own work is unmarked, because most
+ * rows in most farms are theirs and a mark on everything marks nothing.
+ */
+export function originMark(origin: TaskOrigin): string | null {
+	return origin.kind === 'person' ? null : '⌁';
 }
 
 /** A duration, for a run row. */

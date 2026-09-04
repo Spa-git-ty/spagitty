@@ -20,6 +20,8 @@ import {
 	eventLine,
 	FARM_STATUS_LABELS,
 	isMoving,
+	originLine,
+	originMark,
 	PROVIDER_LABELS,
 	TASK_KIND_LABELS,
 	TASK_STATUS_LABELS,
@@ -381,5 +383,39 @@ describe('duration', () => {
 
 	it('handles zero rather than rendering nothing', () => {
 		expect(duration(0)).toBe('0ms');
+	});
+});
+
+describe('who asked for a task (FEAT-078)', () => {
+	it('says it plainly, one line each', () => {
+		expect(originLine({ kind: 'person' })).toBe('You added this.');
+		expect(originLine({ kind: 'planned', agent: 'claude' })).toBe(
+			'claude cut this out of the goal.'
+		);
+		expect(originLine({ kind: 'subtask', agent: 'codex', parent: 'TASK-0002' })).toBe(
+			'codex cut this out of TASK-0002.'
+		);
+		expect(originLine({ kind: 'proposed', agent: 'claude', from: 'TASK-0003' })).toContain(
+			'Nobody asked for it'
+		);
+	});
+
+	it('still names the task a proposal came from when the agent is unknown', () => {
+		// A farm reopened after the agent was removed still knows where the
+		// proposal came from, which is the half that matters.
+		const line = originLine({ kind: 'proposed', agent: null, from: 'TASK-0003' });
+		expect(line).toContain('TASK-0003');
+		expect(line).not.toContain('null');
+	});
+
+	it('marks only what an agent asked for', () => {
+		expect(originMark({ kind: 'person' })).toBeNull();
+		for (const origin of [
+			{ kind: 'planned', agent: 'a' },
+			{ kind: 'subtask', agent: 'a', parent: 'T-1' },
+			{ kind: 'proposed', agent: 'a', from: 'T-1' }
+		] as const) {
+			expect(originMark(origin)).not.toBeNull();
+		}
 	});
 });

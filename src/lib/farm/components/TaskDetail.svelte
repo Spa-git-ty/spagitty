@@ -3,7 +3,7 @@
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 	import TaskChip from './TaskChip.svelte';
-	import { duration, TASK_KIND_LABELS, verificationLine } from '../describe';
+	import { duration, originLine, TASK_KIND_LABELS, verificationLine } from '../describe';
 	import type { AgentStatus, TaskDetail } from '../types';
 
 	/**
@@ -128,6 +128,9 @@
 	{/if}
 
 	<dl class="facts">
+		<dt>Asked for by</dt>
+		<dd>{originLine(task.origin)}</dd>
+
 		<dt>Kind</dt>
 		<dd>{TASK_KIND_LABELS[task.kind]}</dd>
 

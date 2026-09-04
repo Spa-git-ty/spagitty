@@ -2,7 +2,7 @@
 <script lang="ts">
 	import Chip from '$lib/ui/Chip.svelte';
 	import TaskChip from './TaskChip.svelte';
-	import { TASK_KIND_LABELS, waitingOn } from '../describe';
+	import { originLine, originMark, TASK_KIND_LABELS, waitingOn } from '../describe';
 	import type { Task } from '../types';
 
 	/**
@@ -46,6 +46,14 @@
 
 	/** A task something was cut out of. It is a heading, and it never runs. */
 	const container = $derived(progress !== null && progress.total > 0);
+
+	/**
+	 * Whether an agent asked for this rather than a person (FEAT-078).
+	 *
+	 * Unmarked when it is the person's own, because most rows in most farms are
+	 * theirs and a mark on everything marks nothing.
+	 */
+	const mark = $derived(originMark(task.origin));
 
 	/**
 	 * Why this row is not moving, in one line.
@@ -117,7 +125,9 @@
 			aria-label="Include {task.id} in the plan"
 		/>
 	{/if}
-	<span class="id mono">{task.id}</span>
+	<span class="id mono">
+		{#if mark}<span class="mark" title={originLine(task.origin)}>{mark}</span>{/if}{task.id}
+	</span>
 	<span class="title">{task.title}</span>
 	<span class="meta">
 		{#if task.assignedAgent}
@@ -214,6 +224,13 @@
 		grid-area: id;
 		color: var(--muted);
 		font-size: var(--fs-mono);
+		white-space: nowrap;
+	}
+
+	/* An agent asked for this one. Quiet: it is provenance, not a warning. */
+	.mark {
+		margin-right: 3px;
+		color: var(--accent);
 	}
 
 	.title {

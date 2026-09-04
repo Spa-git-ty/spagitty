@@ -1483,8 +1483,17 @@ impl FarmService {
         let tasks = {
             let mut state = self.state.lock().expect("farm lock");
             let parent = state.planning_parent.take();
+            // Which agent produced this plan, from the run itself rather than
+            // remembered separately: the run is the record of who was asked
+            // (FEAT-078).
+            let agent = state
+                .runs
+                .iter()
+                .find(|entry| &entry.id == run)
+                .map(|entry| entry.agent.clone())
+                .unwrap_or_else(|| AgentId::new("an agent"));
             let farm = state.farm.as_mut().ok_or(Error::NoFarm)?;
-            let tasks = planner::adopt_under(farm, &plan, parent.as_ref())?;
+            let tasks = planner::adopt_under(farm, &agent, &plan, parent.as_ref())?;
             farm.tasks.extend(tasks.clone());
             farm.status = FarmStatus::Idle;
             self.persist(&state)?;
@@ -1676,7 +1685,10 @@ impl FarmService {
                 let Some(farm) = state.farm.as_mut() else {
                     continue;
                 };
-                let task = planner::from_proposal(farm, proposal);
+                // The agent that was working when it thought of this, so a
+                // proposal is attributable rather than anonymous (FEAT-078).
+                let agent = farm.task(from).and_then(|task| task.implemented_by.clone());
+                let task = planner::from_proposal(farm, proposal, from, agent.as_ref());
                 farm.tasks.push(task.clone());
                 let _ = self.persist(&state);
                 task
