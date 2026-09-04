@@ -129,6 +129,7 @@ rather than an audit.
 | [FEAT-073](items/FEAT-073-agent-farm.md) | The agent farm: running and shepherding agents from inside Spagitty | 1Q, 1K, chrome | Done |
 | [FEAT-074](items/FEAT-074-the-activity-drawer.md) | The activity drawer: a log worth reading | Farm (1Q) | Done |
 | [FEAT-075](items/FEAT-075-the-queue-explains-itself.md) | The queue explains itself | Farm (1Q) | Done |
+| [FEAT-076](items/FEAT-076-the-farm-takes-on-large-work.md) | The farm takes on large work | Farm (1Q) | Done |
 
 ## Bugs
 
@@ -156,6 +157,7 @@ rather than an audit.
 | [BUG-019](items/BUG-019-closing-the-last-tab-leaves-the-repository-open.md) | Closing the last tab leaves the repository open | chrome | Fixed |
 | [BUG-020](items/BUG-020-the-window-freezes-while-the-farm-plans.md) | The window freezes while the farm plans | Farm (1Q) | Fixed |
 | [BUG-021](items/BUG-021-a-run-says-nothing-until-it-ends.md) | A run says nothing until it ends | Farm (1Q) | Fixed |
+| [BUG-022](items/BUG-022-the-farm-subscribes-after-it-asks.md) | The farm subscribes after it asks, so the answer is lost | Farm (1Q) | Fixed |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
 report, reopened on a corrected diagnosis, and BUG-009's own document keeps the

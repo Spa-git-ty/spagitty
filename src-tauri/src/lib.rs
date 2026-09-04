@@ -192,6 +192,7 @@ pub fn run() {
             farm::farm_verify_task,
             farm::farm_plan,
             farm::farm_cancel_plan,
+            farm::farm_decompose,
             farm::farm_sweep,
         ])
         .setup(|app| {

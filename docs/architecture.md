@@ -149,7 +149,7 @@ Commands registered today, grouped by what they are for:
   `farm_assign_task`, `farm_cancel_task`, `farm_retry_task`,
   `farm_run_task`, `farm_task_detail`, `farm_transcript`, `farm_merge_task`,
   `farm_review_task`, `farm_verify_task`, `farm_plan`, `farm_cancel_plan`,
-  `farm_sweep`.
+  `farm_decompose`, `farm_sweep`.
 
 `platform.rs` is the other file that is not about git at all. It arranges the
 webview's environment as the first statement of `run` — before the builder, and

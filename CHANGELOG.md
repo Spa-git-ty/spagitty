@@ -53,6 +53,12 @@ stays backward-compatible.
 
 ### Fixed
 
+- **The farm sees the agents that are installed.** Opening the Farm screen said
+  `Agents 0` and marked Claude Code, Codex and Oh My Pi "Not installed" while
+  all three sat on `PATH`, with **Plan it** disabled and nothing able to run.
+  Detection was working the whole time: the screen subscribed to the farm's
+  events *after* asking it to detect, so the answer arrived a few hundred
+  milliseconds later with nobody listening, and nothing asked again.
 - **An agent's work is visible while it happens.** A task ran for minutes with
   an empty transcript behind it and everything arrived at once at the end,
   because Claude Code was being asked for its answer rather than for its work.

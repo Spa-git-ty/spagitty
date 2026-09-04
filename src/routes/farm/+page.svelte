@@ -399,14 +399,40 @@
 
 				{#if farm}
 					<h2 class="heading">Agents at once</h2>
+					<p class="note">
+						What keeps a farm supervisable is how many run at once, not how many tasks
+						there are. Every one of them is a model you are paying for and a worktree on
+						your disk.
+					</p>
 					<div class="chips">
-						{#each [1, 2, 3, 4] as count (count)}
+						{#each [1, 2, 3, 4, 5, 6, 7, 8] as count (count)}
 							<Chip
 								active={farm.maxParallel === count}
 								disabled={busy}
 								onclick={() =>
 									act('Could not change the limit', () =>
 										api.configure({ maxParallel: count })
+									)}
+							>
+								{count}
+							</Chip>
+						{/each}
+					</div>
+
+					<h2 class="heading">Attempts before a person is needed</h2>
+					<p class="note">
+						A task sent back by verification or review is tried again, up to this many
+						times. The first failure is normal, the second is usually a bad prompt, and
+						the third is a task nobody has understood yet.
+					</p>
+					<div class="chips">
+						{#each [1, 2, 3, 5, 10] as count (count)}
+							<Chip
+								active={farm.maxAttempts === count}
+								disabled={busy}
+								onclick={() =>
+									act('Could not change the attempts', () =>
+										api.configure({ maxAttempts: count })
 									)}
 							>
 								{count}
@@ -553,9 +579,12 @@
 					</p>
 				{:else}
 					<div class="tasks">
-						{#each tasks as task (task.id)}
+						{#each farmStore.outline as row (row.task.id)}
+							{@const task = row.task}
 							<TaskRow
 								{task}
+								depth={row.depth}
+								progress={row.total > 0 ? { done: row.done, total: row.total } : null}
 								selected={selected === task.id}
 								byId={farmStore.byId}
 								blocked={farmStore.waitingFor(task.id)}
@@ -602,6 +631,12 @@
 						onreview={() => act('Could not request a review', () => api.reviewTask(detail!.task.id))}
 						onmerge={() => act('Could not merge', () => api.mergeTask(detail!.task.id))}
 						onready={() => act('Could not add to the plan', () => api.readyTask(detail!.task.id))}
+						ondecompose={() =>
+							act('Could not break the task down', () =>
+								api.decompose(detail!.task.id, null)
+							)}
+						children={farmStore.outline.find((row) => row.task.id === detail!.task.id) ??
+							null}
 						onedit={() => (editing = detail!.task)}
 						ondelete={() => deleteTask(detail!.task.id)}
 						onopenDiff={openDiff}

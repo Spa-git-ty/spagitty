@@ -392,6 +392,40 @@ describe('farmStore refresh & stop', () => {
 		expect(farmStore.drafts.map((task) => task.id)).toEqual(['TASK-001', 'TASK-003']);
 	});
 
+	it('reads the task list as an outline, parents then children', async () => {
+		// FEAT-076. The list renders as rows, so what it needs is a depth per
+		// row rather than a tree.
+		apiOpen.mockResolvedValueOnce(
+			sampleSnapshot([
+				sampleTask('TASK-001'),
+				sampleTask('TASK-002'),
+				sampleTask('TASK-003', { parent: 'TASK-001', status: 'done' }),
+				sampleTask('TASK-004', { parent: 'TASK-001' })
+			])
+		);
+		await farmStore.open('/repo');
+
+		expect(farmStore.outline.map((row) => [row.task.id, row.depth])).toEqual([
+			['TASK-001', 0],
+			['TASK-003', 1],
+			['TASK-004', 1],
+			['TASK-002', 0]
+		]);
+		// The heading counts what is under it.
+		expect(farmStore.outline[0]).toMatchObject({ done: 1, total: 2 });
+		// A task nothing was cut out of has no fraction to show.
+		expect(farmStore.outline[3]).toMatchObject({ done: 0, total: 0 });
+	});
+
+	it('shows a task whose heading was deleted rather than losing it', async () => {
+		apiOpen.mockResolvedValueOnce(
+			sampleSnapshot([sampleTask('TASK-009', { parent: 'TASK-GONE' })])
+		);
+		await farmStore.open('/repo');
+
+		expect(farmStore.outline.map((row) => [row.task.id, row.depth])).toEqual([['TASK-009', 0]]);
+	});
+
 	it('is already listening while the backend is still answering', async () => {
 		// BUG-022. `farm_open` starts agent detection on a thread and reports
 		// the result as an event a few hundred milliseconds later. Subscribing

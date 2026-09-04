@@ -142,6 +142,13 @@ struct State {
     change_requests: HashMap<TaskId, String>,
     verifications: HashMap<TaskId, Verification>,
     reviews: HashMap<TaskId, Review>,
+    /// The task a planning run is breaking down, when it is breaking one down
+    /// rather than planning the goal (FEAT-076).
+    ///
+    /// Held here rather than passed to `collect_plan`, because the collector
+    /// runs on a thread the Tauri layer spawned from a command that has already
+    /// returned: there is nobody left holding the argument.
+    planning_parent: Option<TaskId>,
 }
 
 /// One repository's farm.
@@ -563,6 +570,14 @@ impl FarmService {
                 ));
             }
             farm.tasks.retain(|candidate| &candidate.id != id);
+            // Anything cut out of it becomes work in its own right rather than
+            // an orphan pointing at a task that is gone. Deleting a heading is
+            // not deleting what was under it (FEAT-076).
+            for child in farm.tasks.iter_mut() {
+                if child.parent.as_ref() == Some(id) {
+                    child.parent = None;
+                }
+            }
             state.leases.release(id);
             self.persist(&state)?;
             self.provider_of(&task)
@@ -646,9 +661,44 @@ impl FarmService {
                             self.set_status(&task, TaskStatus::Blocked, Some(error.to_string()));
                     }
                 }
+                scheduler::Decision::Settle { task, status } => {
+                    let _ = self.settle(&task, status);
+                }
             }
         }
         self.emit_farm_status();
+    }
+
+    /// Move a container to where its children have put it (FEAT-076).
+    ///
+    /// Deliberately not [`Self::set_status`]: that enforces the machine a task
+    /// with a *run* follows — assigned, verified, reviewed — and a container has
+    /// no run to follow it with. `TaskStatus::can_settle` is the rule that
+    /// applies instead, and it is in the model beside the other one.
+    fn settle(&self, id: &TaskId, status: TaskStatus) -> Result<()> {
+        {
+            let mut state = self.state.lock().expect("farm lock");
+            let farm = state.farm.as_mut().ok_or(Error::NoFarm)?;
+            let task = farm
+                .task_mut(id)
+                .ok_or_else(|| Error::NoSuchTask(id.clone()))?;
+            if !task.status.can_settle(status) {
+                return Ok(());
+            }
+            task.status = status;
+            task.note = match status {
+                TaskStatus::Blocked => Some("Something underneath this did not finish.".into()),
+                _ => None,
+            };
+            task.updated_ms = now_ms();
+            self.persist(&state)?;
+        }
+        self.emit(FarmEvent::TaskStatusChanged {
+            task: id.clone(),
+            status,
+            note: None,
+        });
+        Ok(())
     }
 
     /// Run one task now, whatever the scheduler thinks.
@@ -666,6 +716,13 @@ impl FarmService {
                 .clone();
 
             let graph = crate::orchestrator::Graph::new(&farm.tasks);
+            if graph.is_container(id) {
+                // Running the heading would cut a worktree for a task whose
+                // whole content is "these five things" (FEAT-076).
+                return Err(Error::Refused(
+                    "This task was broken down. Run the tasks underneath it instead.".into(),
+                ));
+            }
             let unmet = graph.unmet(&task);
             if !unmet.is_empty() {
                 return Err(Error::Refused(format!(
@@ -1213,7 +1270,7 @@ impl FarmService {
             let state = self.state.lock().expect("farm lock");
             let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
             let task = farm.task(id).ok_or_else(|| Error::NoSuchTask(id.clone()))?;
-            (task.is_exhausted(), farm.autonomy)
+            (task.is_exhausted_at(farm.max_attempts), farm.autonomy)
         };
 
         self.state.lock().expect("farm lock").leases.release(id);
@@ -1237,6 +1294,42 @@ impl FarmService {
     /// is read with [`Self::collect_plan`]. Two steps rather than one because
     /// the planning run streams like any other and the interface shows it.
     pub fn plan(&self, agent: Option<AgentId>) -> Result<RunId> {
+        let prompt = {
+            let state = self.state.lock().expect("farm lock");
+            let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
+            context::planning(farm, &policy::read(&self.repo))
+        };
+        self.start_planning(prompt, None, agent)
+    }
+
+    /// Ask an agent to break one task into smaller ones (FEAT-076).
+    ///
+    /// The same machinery as [`Self::plan`] pointed at a task instead of the
+    /// goal. The children arrive as drafts, and the task they came out of
+    /// becomes a container the moment they are accepted.
+    pub fn decompose(&self, id: &TaskId, agent: Option<AgentId>) -> Result<RunId> {
+        let prompt = {
+            let state = self.state.lock().expect("farm lock");
+            let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
+            let task = farm.task(id).ok_or_else(|| Error::NoSuchTask(id.clone()))?;
+            if task.status.is_terminal() {
+                return Err(Error::Refused(
+                    "That task is finished. Breaking it down would produce work nobody asked for."
+                        .into(),
+                ));
+            }
+            context::decomposition(farm, task, &policy::read(&self.repo))
+        };
+        self.start_planning(prompt, Some(id.clone()), agent)
+    }
+
+    /// Start a planning run, whatever it is planning.
+    fn start_planning(
+        &self,
+        prompt: String,
+        parent: Option<TaskId>,
+        agent: Option<AgentId>,
+    ) -> Result<RunId> {
         let definition = {
             let registry = self.registry.lock().expect("registry lock");
             match agent {
@@ -1247,11 +1340,19 @@ impl FarmService {
             }
         };
 
-        let prompt = {
-            let state = self.state.lock().expect("farm lock");
+        // One planning run at a time. Two would share the `planning` session
+        // slot and the second would collect the first one's transcript, which
+        // is the kind of fault that shows up as a plan that makes no sense.
+        {
+            let mut state = self.state.lock().expect("farm lock");
             let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
-            context::planning(farm, &policy::read(&self.repo))
-        };
+            if farm.status == FarmStatus::Planning {
+                return Err(Error::Refused(
+                    "Something is already being planned. Wait for it, or stop it.".into(),
+                ));
+            }
+            state.planning_parent = parent;
+        }
 
         self.set_farm_status(FarmStatus::Planning)?;
 
@@ -1370,6 +1471,7 @@ impl FarmService {
         // put an arbitrary prefix of a decomposition into the plan, which is
         // worse than nothing: the tasks look deliberate.
         if ended == execution::Ended::Cancelled {
+            self.state.lock().expect("farm lock").planning_parent = None;
             self.set_farm_status(FarmStatus::Idle)?;
             return Ok(Vec::new());
         }
@@ -1380,8 +1482,9 @@ impl FarmService {
 
         let tasks = {
             let mut state = self.state.lock().expect("farm lock");
+            let parent = state.planning_parent.take();
             let farm = state.farm.as_mut().ok_or(Error::NoFarm)?;
-            let tasks = planner::adopt(farm, &plan)?;
+            let tasks = planner::adopt_under(farm, &plan, parent.as_ref())?;
             farm.tasks.extend(tasks.clone());
             farm.status = FarmStatus::Idle;
             self.persist(&state)?;

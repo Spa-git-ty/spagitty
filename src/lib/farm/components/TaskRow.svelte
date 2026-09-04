@@ -26,10 +26,26 @@
 		blocked?: string | null;
 		/** Shown while a plan is being accepted, so drafts can be picked. */
 		pick?: { on: boolean; ontoggle: () => void } | null;
+		/** How far down the outline this row sits (FEAT-076). */
+		depth?: number;
+		/** Finished children out of all of them, for a container. */
+		progress?: { done: number; total: number } | null;
 		onselect: (id: string) => void;
 	}
 
-	let { task, selected = false, byId, blocked = null, pick = null, onselect }: Props = $props();
+	let {
+		task,
+		selected = false,
+		byId,
+		blocked = null,
+		pick = null,
+		depth = 0,
+		progress = null,
+		onselect
+	}: Props = $props();
+
+	/** A task something was cut out of. It is a heading, and it never runs. */
+	const container = $derived(progress !== null && progress.total > 0);
 
 	/**
 	 * Why this row is not moving, in one line.
@@ -78,7 +94,9 @@
 <button
 	class="row"
 	class:moved
+	class:container
 	class:selected
+	style="--depth: {depth}"
 	onclick={() => onselect(task.id)}
 	aria-current={selected ? 'true' : undefined}
 >
@@ -105,7 +123,17 @@
 		{#if task.assignedAgent}
 			<Chip title="Assigned to {task.assignedAgent}">{task.assignedAgent}</Chip>
 		{/if}
-		<Chip title="Kind of work">{TASK_KIND_LABELS[task.kind]}</Chip>
+		{#if container}
+			<!--
+				A container's progress is the only number on the row that is
+				about other rows, so it reads as a fraction rather than a chip.
+			-->
+			<span class="progress note" title="Tasks cut out of this one">
+				{progress?.done} of {progress?.total}
+			</span>
+		{:else}
+			<Chip title="Kind of work">{TASK_KIND_LABELS[task.kind]}</Chip>
+		{/if}
 		<TaskChip status={task.status} title={task.note ?? undefined} />
 	</span>
 	{#if task.note}
@@ -124,6 +152,10 @@
 		gap: 4px 10px;
 		width: 100%;
 		padding: 7px 10px;
+		/* One indent per level of the outline, from the row's own custom
+		   property, so nesting costs no extra element. After the shorthand,
+		   which would otherwise reset it. */
+		padding-left: calc(10px + var(--depth, 0) * 18px);
 		border-radius: var(--r-row);
 		border: 1px solid transparent;
 		text-align: left;
@@ -160,6 +192,16 @@
 	.selected {
 		background-color: var(--selection);
 		border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+	}
+
+	/* A heading over other work reads as one: its title carries the weight. */
+	.container .title {
+		font-weight: 600;
+	}
+
+	.progress {
+		font-size: var(--fs-mono);
+		white-space: nowrap;
 	}
 
 	.pick {

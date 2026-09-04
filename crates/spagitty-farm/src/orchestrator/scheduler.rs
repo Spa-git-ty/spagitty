@@ -15,7 +15,7 @@
 //! thing that does.
 
 use crate::agent::AgentRegistry;
-use crate::model::{AgentId, Farm, Task, TaskId};
+use crate::model::{AgentId, Farm, Task, TaskId, TaskStatus};
 use crate::orchestrator::dependency::Graph;
 use crate::orchestrator::router;
 use crate::workspace::Leases;
@@ -27,12 +27,20 @@ pub enum Decision {
     Start { task: TaskId, agent: AgentId },
     /// It cannot proceed, and here is the sentence to show.
     Block { task: TaskId, why: String },
+    /// A container has caught up with its children (FEAT-076).
+    ///
+    /// Not a `Block` even when the status is `Blocked`: a blocked container is
+    /// bookkeeping about work that already failed somewhere else, and the
+    /// sentence belongs to the child that failed.
+    Settle { task: TaskId, status: TaskStatus },
 }
 
 impl Decision {
     pub fn task(&self) -> &TaskId {
         match self {
-            Decision::Start { task, .. } | Decision::Block { task, .. } => task,
+            Decision::Start { task, .. }
+            | Decision::Block { task, .. }
+            | Decision::Settle { task, .. } => task,
         }
     }
 }
@@ -44,10 +52,25 @@ impl Decision {
 /// cycles asking a question whose answer has not changed.
 pub fn decide(farm: &Farm, registry: &AgentRegistry, leases: &Leases) -> Vec<Decision> {
     let mut decisions = Vec::new();
+    let graph = Graph::new(&farm.tasks);
+
+    // Containers first, and regardless of whether the farm is running: a
+    // heading whose children have all finished is finished, and a farm that is
+    // paused has not un-finished them.
+    for task in &farm.tasks {
+        let Some(status) = graph.container_status(&task.id) else {
+            continue;
+        };
+        if task.status != status && task.status.can_settle(status) {
+            decisions.push(Decision::Settle {
+                task: task.id.clone(),
+                status,
+            });
+        }
+    }
 
     // Tasks waiting on something that has failed will never run. Saying so is
     // more useful than leaving them in the queue looking imminent.
-    let graph = Graph::new(&farm.tasks);
     for (task, blocker) in graph.stranded() {
         decisions.push(Decision::Block {
             task: task.clone(),
@@ -88,7 +111,7 @@ pub fn decide(farm: &Farm, registry: &AgentRegistry, leases: &Leases) -> Vec<Dec
             continue;
         }
 
-        if task.is_exhausted() {
+        if task.is_exhausted_at(farm.max_attempts) {
             decisions.push(Decision::Block {
                 task: task.id.clone(),
                 why: format!(
@@ -154,7 +177,7 @@ pub fn why_waiting(
     let mut free = farm.max_parallel.saturating_sub(farm.running());
 
     for task in graph.ready() {
-        if task.is_exhausted() {
+        if task.is_exhausted_at(farm.max_attempts) {
             reasons.push((
                 task.id.clone(),
                 format!("Attempted {} times. It needs a person.", task.attempts),
@@ -618,5 +641,115 @@ mod tests {
         let reasons = why(&farm, &Leases::default());
         assert_eq!(reasons.len(), 1);
         assert_eq!(reasons[0].0, task_id(2).to_string());
+    }
+
+    // ── Containers (FEAT-076) ────────────────────────────────────────────
+
+    fn child(number: u32, parent: u32, status: TaskStatus) -> Task {
+        let mut task = task(number, status);
+        task.parent = Some(task_id(parent));
+        task
+    }
+
+    #[test]
+    fn a_container_is_never_started() {
+        // Running the heading would cut a worktree for a task whose whole
+        // content is "these two things".
+        let farm = farm(vec![
+            task(1, TaskStatus::Ready),
+            child(2, 1, TaskStatus::Ready),
+            child(3, 1, TaskStatus::Ready),
+        ]);
+        let started = starts(&decide(&farm, &registry(), &Leases::default()));
+        assert!(!started.contains(&task_id(1).to_string()), "{started:?}");
+        assert!(started.contains(&task_id(2).to_string()), "{started:?}");
+    }
+
+    #[test]
+    fn a_container_is_done_when_its_children_are() {
+        let farm = farm(vec![
+            task(1, TaskStatus::Ready),
+            child(2, 1, TaskStatus::Done),
+            child(3, 1, TaskStatus::Done),
+        ]);
+        let settled: Vec<(String, TaskStatus)> = decide(&farm, &registry(), &Leases::default())
+            .into_iter()
+            .filter_map(|decision| match decision {
+                Decision::Settle { task, status } => Some((task.to_string(), status)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(settled, [(task_id(1).to_string(), TaskStatus::Done)]);
+    }
+
+    #[test]
+    fn a_container_with_one_child_stuck_is_blocked() {
+        for stuck in [TaskStatus::Failed, TaskStatus::Cancelled, TaskStatus::Blocked] {
+            let farm = farm(vec![
+                task(1, TaskStatus::Ready),
+                child(2, 1, TaskStatus::Done),
+                child(3, 1, stuck),
+            ]);
+            let settled = decide(&farm, &registry(), &Leases::default())
+                .into_iter()
+                .any(|decision| {
+                    matches!(
+                        decision,
+                        Decision::Settle { status: TaskStatus::Blocked, .. }
+                    )
+                });
+            assert!(settled, "a child that is {stuck:?} did not block its container");
+        }
+    }
+
+    #[test]
+    fn a_container_settles_even_while_the_farm_is_paused() {
+        // Pausing does not un-finish the children, and a heading that stays
+        // Ready over five Done tasks is a lie about the state of the work.
+        let mut farm = farm(vec![task(1, TaskStatus::Ready), child(2, 1, TaskStatus::Done)]);
+        farm.status = FarmStatus::Paused;
+        assert!(decide(&farm, &registry(), &Leases::default())
+            .iter()
+            .any(|decision| matches!(decision, Decision::Settle { .. })));
+    }
+
+    #[test]
+    fn a_container_that_has_already_settled_is_left_alone() {
+        // Otherwise every pass would emit a decision and every decision an
+        // event, which is a farm that never stops talking about a finished task.
+        let mut container = task(1, TaskStatus::Ready);
+        container.status = TaskStatus::Done;
+        let farm = farm(vec![container, child(2, 1, TaskStatus::Done)]);
+        assert!(decide(&farm, &registry(), &Leases::default()).is_empty());
+    }
+
+    #[test]
+    fn a_container_is_not_asked_why_it_is_waiting() {
+        // It is not waiting for anything; it is waiting on its children, and
+        // the row says that with a fraction rather than a sentence.
+        let mut farm = farm(vec![
+            task(1, TaskStatus::Ready),
+            child(2, 1, TaskStatus::Running),
+        ]);
+        farm.max_parallel = 1;
+        let reasons = why(&farm, &Leases::default());
+        assert!(
+            !reasons.iter().any(|(task, _)| task == &task_id(1).to_string()),
+            "{reasons:?}"
+        );
+    }
+
+    #[test]
+    fn the_attempt_limit_is_the_farms_rather_than_a_constant() {
+        let mut tried = task(1, TaskStatus::Ready);
+        tried.attempts = 3;
+        let mut farm = farm(vec![tried]);
+
+        farm.max_attempts = 3;
+        assert!(why(&farm, &Leases::default())[0].1.contains("needs a person"));
+
+        // The same task, on a farm given more rope, is simply queued.
+        farm.max_attempts = 5;
+        assert!(why(&farm, &Leases::default()).is_empty());
     }
 }
