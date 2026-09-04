@@ -20,6 +20,13 @@ stays backward-compatible.
   including the frozen range and the roles of Amendments 19 and 20. Direct
   agents to read the canonical book from `AGENTS.md`.
 
+## [0.5.0] - 2026-09-05
+
+The farm could run a plan but there was almost no way to watch it run. This is
+that release: a ring rather than a count, a chip for every working agent, a log
+you can read and filter, a queue that says why a task is waiting, and a task
+too big for one agent that can be cut into smaller ones.
+
 ### Added
 
 - **The Farm screen is worth watching.** `3 / 7 done` becomes a ring — what is
