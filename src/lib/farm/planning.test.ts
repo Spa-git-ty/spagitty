@@ -50,6 +50,7 @@ function planningRun(overrides: Partial<AgentRun> = {}): AgentRun {
 		startedMs: 1_000,
 		endedMs: null,
 		logFile: null,
+		lastOutputMs: null,
 		...overrides
 	};
 }

@@ -14,6 +14,7 @@
 
 import type {
 	AgentAvailability,
+	AgentRun,
 	AgentProvider,
 	Autonomy,
 	FarmEvent,
@@ -247,6 +248,30 @@ export function originLine(origin: TaskOrigin): string {
  */
 export function originMark(origin: TaskOrigin): string | null {
 	return origin.kind === 'person' ? null : '⌁';
+}
+
+/**
+ * How long a run may say nothing before the screen mentions it (FEAT-077).
+ *
+ * Six minutes. Long enough that a model reading a large repository is not
+ * flagged for thinking, short enough that a run which died is noticed while the
+ * person is still at the machine. Nothing is stopped on the strength of it: a
+ * quiet run is flagged, and stopping stays the reader's decision.
+ */
+export const QUIET_AFTER_MS = 6 * 60 * 1000;
+
+/**
+ * What to say about a run that has gone quiet, or nothing.
+ *
+ * `null` for a run that is talking, a run that is finished, and a run that has
+ * been quiet for less than [`QUIET_AFTER_MS`] — the overwhelming majority.
+ */
+export function quietLine(run: AgentRun | null, now: number): string | null {
+	if (!run || run.outcome.state !== 'running') return null;
+	const since = run.lastOutputMs ?? run.startedMs;
+	const quiet = now - since;
+	if (quiet < QUIET_AFTER_MS) return null;
+	return `No output for ${duration(quiet)}.`;
 }
 
 /** A duration, for a run row. */

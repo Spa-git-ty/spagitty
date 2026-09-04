@@ -8,9 +8,12 @@
 	import TaskEditor from '$lib/farm/components/TaskEditor.svelte';
 	import TaskRow from '$lib/farm/components/TaskRow.svelte';
 	import ActivityDrawer from '$lib/farm/components/ActivityDrawer.svelte';
+	import AgentStrip from '$lib/farm/components/AgentStrip.svelte';
+	import ProgressRing from '$lib/farm/components/ProgressRing.svelte';
 	import PlanningCard from '$lib/farm/components/PlanningCard.svelte';
 	import Starter from '$lib/farm/components/Starter.svelte';
-	import { AUTONOMY_LEVELS, FARM_STATUS_LABELS, PROVIDER_LABELS } from '$lib/farm/describe';
+	import * as farmDelight from '$lib/farm/delight';
+	import { AUTONOMY_LEVELS, FARM_STATUS_LABELS, PROVIDER_LABELS, quietLine } from '$lib/farm/describe';
 	import { lines, text } from '$lib/farm/options';
 	import { farmStore } from '$lib/farm/store.svelte';
 	import type { Task, TaskDetail, TaskDraft } from '$lib/farm/types';
@@ -64,12 +67,55 @@
 
 	const farm = $derived(farmStore.farm);
 	const tasks = $derived(farmStore.tasks);
-	const progress = $derived(farmStore.progress);
 	const usable = $derived(farmStore.usable);
 	/** The planning run in flight, if there is one. */
 	const planning = $derived(farmStore.planningRun);
 	/** Tasks a planner proposed that nobody has accepted or discarded yet. */
 	const drafts = $derived(farmStore.drafts);
+	const running = $derived(farmStore.runs.filter((run) => run.outcome.state === 'running'));
+
+	/**
+	 * One clock for the screen (FEAT-077).
+	 *
+	 * Elapsed times and "this has said nothing for six minutes" are the only
+	 * things here that change without an event, and they should change
+	 * together: two intervals would drift and show two different nows in one
+	 * header. It ticks only while something is running.
+	 */
+	let now = $state(Date.now());
+	$effect(() => {
+		if (running.length === 0 && !planning) return;
+		const tick = setInterval(() => (now = Date.now()), 5000);
+		return () => clearInterval(tick);
+	});
+
+	/** What the ring shows. */
+	const tally = $derived({
+		done: tasks.filter((task) => task.status === 'done').length,
+		running: tasks.filter((task) => task.status === 'running' || task.status === 'verification')
+			.length,
+		blocked: tasks.filter((task) => task.status === 'blocked' || task.status === 'failed').length,
+		total: tasks.length
+	});
+
+	/**
+	 * Hand a finished task to the delight layer, once (FEAT-077).
+	 *
+	 * Watched here rather than pushed from the store, because the panel is
+	 * where verification and review are already loaded — and the event wants
+	 * all three. `counted` is what stops a refresh from awarding the same task
+	 * twice; it is per session, like the rest of the screen's state.
+	 */
+	const counted = new Set<string>();
+	$effect(() => {
+		const finished = detail;
+		if (!finished || finished.task.status !== 'done' || counted.has(finished.task.id)) return;
+		counted.add(finished.task.id);
+		farmDelight.taskCompleted(finished.task, finished.verification, finished.review);
+		if (finished.review && finished.task.implementedBy) {
+			farmDelight.reviewCompleted(finished.task.implementedBy, finished.review);
+		}
+	});
 
 	/**
 	 * Which proposed tasks are being kept (FEAT-075).
@@ -256,7 +302,12 @@
 			<span class="title">Farm</span>
 			{#if farm}
 				<Chip title="What the farm is doing">{FARM_STATUS_LABELS[farm.status]}</Chip>
-				<span class="note">{progress.done} / {progress.total} done</span>
+				<ProgressRing
+					done={tally.done}
+					running={tally.running}
+					blocked={tally.blocked}
+					total={tally.total}
+				/>
 			{/if}
 		</div>
 		<div class="right">
@@ -276,6 +327,16 @@
 			oncancel={() => act('Could not stop the planner', api.cancelPlan)}
 		/>
 	{/if}
+
+	<AgentStrip
+		runs={farmStore.runs}
+		byId={farmStore.byId}
+		{now}
+		onselect={(id) => {
+			selected = id;
+			editing = null;
+		}}
+	/>
 
 	<div class="body">
 		{#if repo.info === null}
@@ -587,7 +648,10 @@
 								progress={row.total > 0 ? { done: row.done, total: row.total } : null}
 								selected={selected === task.id}
 								byId={farmStore.byId}
-								blocked={farmStore.waitingFor(task.id)}
+								blocked={quietLine(
+									running.find((run) => run.task === task.id) ?? null,
+									now
+								) ?? farmStore.waitingFor(task.id)}
 								pick={task.status === 'draft'
 									? {
 											on: picked.includes(task.id),
