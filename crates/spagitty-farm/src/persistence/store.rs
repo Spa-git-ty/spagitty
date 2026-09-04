@@ -45,7 +45,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use crate::error::Result;
-use crate::model::{Farm, FarmEvent};
+use crate::model::{Farm, Recorded};
 use crate::workspace::worktree::FARM_DIR;
 
 /// How many events are kept.
@@ -115,7 +115,7 @@ pub fn save_registry<T: Serialize>(repo: &Path, registry: &T) -> Result<()> {
 /// Transcript lines are not stored: they are already in the run's own log file,
 /// there are thousands of them, and they would push everything else out of the
 /// bounded history within one agent run.
-pub fn append_event(repo: &Path, event: &FarmEvent) -> Result<()> {
+pub fn append_event(repo: &Path, event: &Recorded) -> Result<()> {
     if event.is_transcript() {
         return Ok(());
     }
@@ -139,11 +139,11 @@ pub fn append_event(repo: &Path, event: &FarmEvent) -> Result<()> {
 /// A line that does not parse is skipped rather than fatal: the last line of a
 /// log that was being written when the process died is exactly that case, and
 /// losing one event must not lose the other nineteen hundred.
-pub fn load_events(repo: &Path) -> Vec<FarmEvent> {
+pub fn load_events(repo: &Path) -> Vec<Recorded> {
     let Ok(text) = std::fs::read_to_string(events_path(repo)) else {
         return Vec::new();
     };
-    let events: Vec<FarmEvent> = text
+    let events: Vec<Recorded> = text
         .lines()
         .filter_map(|line| serde_json::from_str(line).ok())
         .collect();
@@ -223,6 +223,7 @@ fn atomic_write(path: &Path, contents: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::FarmEvent;
     use crate::model::{task_id, FarmId, FarmStatus, Goal, GoalId, Task, TaskId, TaskStatus};
 
     fn farm() -> Farm {
@@ -294,17 +295,17 @@ mod tests {
         for number in 1..=3 {
             append_event(
                 dir.path(),
-                &FarmEvent::TaskCreated {
+                &Recorded::now(FarmEvent::TaskCreated {
                     task: task_id(number),
                     title: format!("task {number}"),
-                },
+                }),
             )
             .unwrap();
         }
         let events = load_events(dir.path());
         assert_eq!(events.len(), 3);
-        assert_eq!(events[0].task(), Some(&task_id(1)));
-        assert_eq!(events[2].task(), Some(&task_id(3)));
+        assert_eq!(events[0].event.task(), Some(&task_id(1)));
+        assert_eq!(events[2].event.task(), Some(&task_id(3)));
     }
 
     #[test]
@@ -313,11 +314,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         append_event(
             dir.path(),
-            &FarmEvent::AgentOutput {
+            &Recorded::now(FarmEvent::AgentOutput {
                 run: crate::model::RunId::new("r1"),
                 task: task_id(1),
                 line: "reading files".into(),
-            },
+            }),
         )
         .unwrap();
         assert!(load_events(dir.path()).is_empty());
@@ -328,10 +329,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         append_event(
             dir.path(),
-            &FarmEvent::TaskCreated {
+            &Recorded::now(FarmEvent::TaskCreated {
                 task: task_id(1),
                 title: "kept".into(),
-            },
+            }),
         )
         .unwrap();
         // What a crash mid-append leaves behind.
@@ -356,10 +357,10 @@ mod tests {
         for number in 0..(MAX_EVENTS + 50) {
             append_event(
                 dir.path(),
-                &FarmEvent::TaskCreated {
+                &Recorded::now(FarmEvent::TaskCreated {
                     task: TaskId::new(format!("TASK-{number:05}")),
                     title: String::new(),
-                },
+                }),
             )
             .unwrap();
         }
@@ -367,7 +368,7 @@ mod tests {
         assert_eq!(events.len(), MAX_EVENTS);
         // The end of the log, not the beginning.
         assert_eq!(
-            events.last().unwrap().task(),
+            events.last().unwrap().event.task(),
             Some(&TaskId::new(format!("TASK-{:05}", MAX_EVENTS + 49)))
         );
     }
@@ -378,10 +379,10 @@ mod tests {
         for number in 0..(MAX_EVENTS + 100) {
             append_event(
                 dir.path(),
-                &FarmEvent::TaskCreated {
+                &Recorded::now(FarmEvent::TaskCreated {
                     task: TaskId::new(format!("TASK-{number:05}")),
                     title: String::new(),
-                },
+                }),
             )
             .unwrap();
         }
@@ -397,10 +398,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         append_event(
             dir.path(),
-            &FarmEvent::TaskCreated {
+            &Recorded::now(FarmEvent::TaskCreated {
                 task: task_id(1),
                 title: String::new(),
-            },
+            }),
         )
         .unwrap();
         trim_events(dir.path()).unwrap();
@@ -413,9 +414,9 @@ mod tests {
         save_farm(dir.path(), &farm()).unwrap();
         append_event(
             dir.path(),
-            &FarmEvent::FarmStatusChanged {
+            &Recorded::now(FarmEvent::FarmStatusChanged {
                 status: FarmStatus::Running,
-            },
+            }),
         )
         .unwrap();
 

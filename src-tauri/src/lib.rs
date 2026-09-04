@@ -179,6 +179,8 @@ pub fn run() {
             farm::farm_edit_task,
             farm::farm_delete_task,
             farm::farm_ready_task,
+            farm::farm_ready_tasks,
+            farm::farm_discard_tasks,
             farm::farm_assign_task,
             farm::farm_cancel_task,
             farm::farm_retry_task,

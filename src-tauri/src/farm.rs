@@ -37,6 +37,7 @@
 //! They stay ordinary synchronous functions: an `async fn` may not borrow
 //! `State`, and there is nothing here to await.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -64,7 +65,7 @@ struct Emit<R: Runtime> {
 }
 
 impl<R: Runtime> Observer for Emit<R> {
-    fn event(&self, event: FarmEvent) {
+    fn event(&self, event: Recorded) {
         // A webview that has gone away is not an error worth propagating into
         // the farm: the run continues and the events are on disk.
         let _ = self.app.emit(EVENT, &event);
@@ -127,10 +128,16 @@ pub struct FarmSnapshot {
     /// Providers with no definition, so the settings screen can offer them.
     pub undetected: Vec<AgentProvider>,
     /// The tail of the activity history — [`SNAPSHOT_EVENTS`] of it.
-    pub events: Vec<FarmEvent>,
+    pub events: Vec<Recorded>,
     pub runs: Vec<AgentRun>,
     pub policy: Policy,
     pub scoreboard: Vec<AgentScore>,
+    /// Why each queued task is not running, by task.
+    ///
+    /// Only the reasons the interface cannot work out for itself — a contended
+    /// path, a full parallelism limit, no agent for the work. Unmet
+    /// dependencies are not here: the screen has the task list.
+    pub waiting: HashMap<String, String>,
 }
 
 /// How much history a snapshot carries.
@@ -218,14 +225,17 @@ pub fn farm_open<R: Runtime>(
             let service = service.clone();
             move || {
                 service.detect_agents();
+                // Stamped like every other event, because the webview reads
+                // one channel and a line with no time in a log that has times
+                // reads as a bug in the log.
                 let _ = app.emit(
                     EVENT,
-                    &FarmEvent::FarmStatusChanged {
+                    &Recorded::now(FarmEvent::FarmStatusChanged {
                         status: service
                             .farm()
                             .map(|farm| farm.status)
                             .unwrap_or(FarmStatus::Idle),
-                    },
+                    }),
                 );
             }
         })
@@ -241,7 +251,7 @@ pub fn farm_snapshot(state: State<'_, FarmState>) -> Result<FarmSnapshot> {
 
 /// More history than a snapshot carries, for a reader scrolling back.
 #[tauri::command(async)]
-pub fn farm_events(state: State<'_, FarmState>, limit: Option<usize>) -> Result<Vec<FarmEvent>> {
+pub fn farm_events(state: State<'_, FarmState>, limit: Option<usize>) -> Result<Vec<Recorded>> {
     Ok(state
         .service()?
         .events_tail(limit.unwrap_or(usize::MAX).min(store::MAX_EVENTS)))
@@ -281,6 +291,11 @@ fn snapshot(service: &FarmService) -> Result<FarmSnapshot> {
             .scoreboard()
             .into_iter()
             .map(AgentScore::from)
+            .collect(),
+        waiting: service
+            .waiting_reasons()
+            .into_iter()
+            .map(|(task, why)| (task.as_str().to_string(), why))
             .collect(),
     })
 }
@@ -484,6 +499,23 @@ pub fn farm_ready_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
     service.ready(&id)?;
     service.tick();
     watch_all(&service);
+    Ok(())
+}
+
+/// Accept a plan: move several drafts into it at once.
+#[tauri::command(async)]
+pub fn farm_ready_tasks(state: State<'_, FarmState>, ids: Vec<TaskId>) -> Result<()> {
+    let service = state.service()?;
+    service.ready_all(&ids)?;
+    service.tick();
+    watch_all(&service);
+    Ok(())
+}
+
+/// Discard a plan, or the part of it nobody wants.
+#[tauri::command(async)]
+pub fn farm_discard_tasks(state: State<'_, FarmState>, ids: Vec<TaskId>) -> Result<()> {
+    state.service()?.discard_all(&ids)?;
     Ok(())
 }
 

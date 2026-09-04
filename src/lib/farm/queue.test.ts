@@ -1,0 +1,137 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { describe, expect, it, vi } from 'vitest';
+import { click, render } from '../../testing/mount';
+import TaskRow from './components/TaskRow.svelte';
+import type { Task } from './types';
+
+/**
+ * The queue explaining itself (FEAT-075).
+ *
+ * The row is where a person looks first, so it is where the answer to "why is
+ * this not moving" has to be. What is asserted here is the order the three
+ * possible answers come in, and that a draft can be picked without also being
+ * selected.
+ */
+
+function task(id: string, overrides: Partial<Task> = {}): Task {
+	return {
+		id,
+		title: `Task ${id}`,
+		description: '',
+		kind: 'general',
+		status: 'ready',
+		priority: 'normal',
+		dependsOn: [],
+		allowedPaths: ['src/**'],
+		acceptanceCriteria: [],
+		verification: [],
+		verificationOverrides: false,
+		assignedAgent: null,
+		implementedBy: null,
+		branch: null,
+		worktree: null,
+		attempts: 0,
+		note: null,
+		createdMs: 0,
+		updatedMs: 0,
+		...overrides
+	} as unknown as Task;
+}
+
+function props(overrides: Record<string, unknown> = {}) {
+	return {
+		task: task('T-1'),
+		selected: false,
+		byId: new Map<string, Task>(),
+		blocked: null,
+		pick: null,
+		onselect: vi.fn(),
+		...overrides
+	} as never;
+}
+
+describe('a task row that is not moving', () => {
+	it('says what the scheduler says', () => {
+		const view = render(
+			TaskRow,
+			props({ blocked: 'T-3 is working on the same files.' })
+		);
+
+		expect(view.text()).toContain('T-3 is working on the same files.');
+
+		view.destroy();
+	});
+
+	it('falls back to the dependency it can work out itself', () => {
+		// The backend deliberately does not answer this one: the screen has the
+		// whole task list, and two places writing one sentence is how they come
+		// to disagree.
+		const view = render(
+			TaskRow,
+			props({
+				task: task('T-2', { dependsOn: ['T-1'] }),
+				byId: new Map([['T-1', task('T-1', { status: 'running' })]])
+			})
+		);
+
+		expect(view.text()).toContain('Waiting for T-1');
+
+		view.destroy();
+	});
+
+	it('puts the task’s own note above anything general', () => {
+		// A verification failure is about this task; "no free agent" is not.
+		const view = render(
+			TaskRow,
+			props({
+				task: task('T-1', { status: 'blocked', note: 'Verification failed: cargo test' }),
+				blocked: 'No free agent — 2 of 2 are working.'
+			})
+		);
+
+		expect(view.text()).toContain('Verification failed: cargo test');
+		expect(view.text()).not.toContain('No free agent');
+
+		view.destroy();
+	});
+
+	it('offers no explanation at all when the task is simply running', () => {
+		const view = render(TaskRow, props({ task: task('T-1', { status: 'running' }) }));
+
+		expect(view.all('.reason')).toHaveLength(0);
+
+		view.destroy();
+	});
+});
+
+describe('picking proposed tasks', () => {
+	it('picks a draft without selecting the row', () => {
+		const ontoggle = vi.fn();
+		const onselect = vi.fn();
+		const view = render(
+			TaskRow,
+			props({
+				task: task('T-1', { status: 'draft' }),
+				pick: { on: true, ontoggle },
+				onselect
+			})
+		);
+
+		click(view.get('.pick'));
+
+		expect(ontoggle).toHaveBeenCalledOnce();
+		// The two are different gestures and both are wanted.
+		expect(onselect).not.toHaveBeenCalled();
+
+		view.destroy();
+	});
+
+	it('has no checkbox on a task that is not being picked', () => {
+		const view = render(TaskRow, props());
+
+		expect(view.find('.pick')).toBeNull();
+
+		view.destroy();
+	});
+});

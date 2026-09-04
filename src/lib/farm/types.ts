@@ -287,14 +287,31 @@ export type FarmEvent =
 	| { kind: 'taskProposed'; from: string; title: string }
 	| { kind: 'failed'; message: string };
 
+/**
+ * An event, and when it happened.
+ *
+ * Flattened on the wire: a recorded event is the event's own object with one
+ * more key. `atMs` is zero for events written before the field existed, which
+ * the interface shows as no time rather than as 1970 (FEAT-074).
+ */
+export type RecordedEvent = FarmEvent & { atMs: number };
+
 export interface FarmSnapshot {
 	farm: Farm | null;
 	agents: AgentStatus[];
 	undetected: AgentProvider[];
-	events: FarmEvent[];
+	events: RecordedEvent[];
 	runs: AgentRun[];
 	policy: Policy;
 	scoreboard: AgentScore[];
+	/**
+	 * Why each queued task is not running, by task id.
+	 *
+	 * Only what the screen cannot work out for itself — a contended path, a
+	 * full parallelism limit, no agent for this kind of work. Unmet
+	 * dependencies are not here: `waitingOn` has the task list (FEAT-075).
+	 */
+	waiting: Record<string, string>;
 }
 
 export interface TaskDetail {

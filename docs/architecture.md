@@ -145,7 +145,8 @@ Commands registered today, grouped by what they are for:
   `farm_stale`, `farm_detect_agents`, `farm_save_agent`, `farm_remove_agent`,
   `farm_create`, `farm_configure`, `farm_start`, `farm_pause`, `farm_cancel`,
   `farm_write_policy`, `farm_add_task`, `farm_edit_task`, `farm_delete_task`,
-  `farm_ready_task`, `farm_assign_task`, `farm_cancel_task`, `farm_retry_task`,
+  `farm_ready_task`, `farm_ready_tasks`, `farm_discard_tasks`,
+  `farm_assign_task`, `farm_cancel_task`, `farm_retry_task`,
   `farm_run_task`, `farm_task_detail`, `farm_transcript`, `farm_merge_task`,
   `farm_review_task`, `farm_verify_task`, `farm_plan`, `farm_cancel_plan`,
   `farm_sweep`.

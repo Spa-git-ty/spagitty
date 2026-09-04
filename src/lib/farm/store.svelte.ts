@@ -32,6 +32,7 @@ import type {
 	Farm,
 	FarmEvent,
 	FarmSnapshot,
+	RecordedEvent,
 	Policy,
 	AgentProvider,
 	AgentRun,
@@ -69,11 +70,12 @@ export const REFRESH_DELAY_MS = 250;
 let farm = $state<Farm | null>(null);
 let agents = $state<AgentStatus[]>([]);
 let undetected = $state<AgentProvider[]>([]);
-let activity = $state<FarmEvent[]>([]);
+let activity = $state<RecordedEvent[]>([]);
 let runs = $state<AgentRun[]>([]);
 let policy = $state<Policy>({ sources: [], text: '' });
 let stale = $state<StaleWorkspace[]>([]);
 let scoreboard = $state<AgentScore[]>([]);
+let waiting = $state<Record<string, string>>({});
 let transcripts = $state<Record<string, string[]>>({});
 let loaded = $state(false);
 let loading = $state(false);
@@ -89,6 +91,7 @@ function apply(snapshot: FarmSnapshot): void {
 	runs = snapshot.runs;
 	policy = snapshot.policy;
 	scoreboard = snapshot.scoreboard;
+	waiting = snapshot.waiting;
 	activity = snapshot.events.slice(-ACTIVITY_LIMIT);
 	loaded = true;
 }
@@ -99,7 +102,7 @@ function apply(snapshot: FarmSnapshot): void {
  * Only the changes a person watches for. Everything else arrives with the next
  * snapshot, which is a quarter of a second away.
  */
-function absorb(event: FarmEvent): void {
+function absorb(event: RecordedEvent): void {
 	if (event.kind === 'agentOutput') {
 		const existing = transcripts[event.task] ?? [];
 		const next = [...existing, event.line];
@@ -154,7 +157,7 @@ export const farmStore = {
 	get undetected(): AgentProvider[] {
 		return undetected;
 	},
-	get activity(): FarmEvent[] {
+	get activity(): RecordedEvent[] {
 		return activity;
 	},
 	get runs(): AgentRun[] {
@@ -168,6 +171,21 @@ export const farmStore = {
 	},
 	get scoreboard(): AgentScore[] {
 		return scoreboard;
+	},
+
+	/**
+	 * Why a queued task is not running, from the scheduler itself.
+	 *
+	 * The screen asks the backend rather than guessing, because the answer
+	 * depends on leases and agent availability that only the backend holds.
+	 */
+	waitingFor(task: string): string | null {
+		return waiting[task] ?? null;
+	},
+
+	/** Tasks a planner proposed that nobody has accepted or discarded yet. */
+	get drafts(): Task[] {
+		return (farm?.tasks ?? []).filter((task) => task.status === 'draft');
 	},
 	get loaded(): boolean {
 		return loaded;
@@ -273,7 +291,7 @@ export const farmStore = {
 	/** Subscribe to the backend's events. Safe to call twice. */
 	async listen(): Promise<void> {
 		if (unlisten) return;
-		unlisten = await listen<FarmEvent>(EVENT, (message) => {
+		unlisten = await listen<RecordedEvent>(EVENT, (message) => {
 			absorb(message.payload);
 			// A transcript line changes nothing a snapshot would report, and a
 			// run produces thousands of them. Refreshing on each one both cost
@@ -311,6 +329,7 @@ export const farmStore = {
 		policy = { sources: [], text: '' };
 		stale = [];
 		scoreboard = [];
+		waiting = {};
 		transcripts = {};
 		loaded = false;
 		loading = false;
