@@ -42,6 +42,14 @@
 		tasks: Task[];
 		/** The lines one task's agent has produced this session. */
 		transcript: (task: string) => string[];
+		/**
+		 * Read a task's whole log back from disk (TASK-031).
+		 *
+		 * What the store holds is what this session heard, capped; the run's own
+		 * log outlives both, and `farm_transcript` has existed since FEAT-073
+		 * with nothing calling it.
+		 */
+		onwholeLog?: ((task: string) => Promise<string>) | null;
 		/** The task whose transcript opens first, usually the selected one. */
 		selected?: string | null;
 		/** True while a planning run is in flight, so its transcript is offered. */
@@ -56,9 +64,29 @@
 		transcript,
 		selected = null,
 		planning = false,
+		onwholeLog = null,
 		collapsed,
 		ontoggle
 	}: Props = $props();
+
+	/** A whole log read from disk, by task, for as long as the drawer is open. */
+	let whole = $state<Record<string, string[]>>({});
+	let fetching = $state(false);
+
+	async function readWholeLog(): Promise<void> {
+		if (!subject || !onwholeLog || fetching) return;
+		fetching = true;
+		try {
+			const text = await onwholeLog(subject);
+			whole = { ...whole, [subject]: text.split('\n') };
+		} catch {
+			// The log may not exist yet — a task that has never run has none.
+			// Saying nothing is right: the pane already says it has heard
+			// nothing this session.
+		} finally {
+			fetching = false;
+		}
+	}
 
 	type Tab = 'activity' | 'transcript';
 
@@ -81,11 +109,13 @@
 
 	const lines = $derived.by(() => {
 		if (held) return frozen;
-		return tab === 'activity'
-			? shown.map((event) => `${clock(event.atMs)}  ${eventLine(event)}`)
-			: subject
-				? transcript(subject)
-				: [];
+		if (tab === 'activity') {
+			return shown.map((event) => `${clock(event.atMs)}  ${eventLine(event)}`);
+		}
+		if (!subject) return [];
+		// The whole log wins once it has been read: it contains what this
+		// session heard and everything before it.
+		return whole[subject] ?? transcript(subject);
 	});
 
 	/** Tasks worth offering as a filter: the ones that have said something. */
@@ -201,6 +231,11 @@
 		<button class="control" class:on={held} onclick={hold} title={held ? 'Resume' : 'Hold'}>
 			{held ? '▶' : '❚❚'}
 		</button>
+		{#if tab === 'transcript' && subject && onwholeLog && !whole[subject]}
+			<button class="control" onclick={readWholeLog} disabled={fetching}>
+				{fetching ? 'Reading…' : 'Whole log'}
+			</button>
+		{/if}
 		<button class="control" onclick={copy} title="Copy what is shown">Copy</button>
 		<button
 			class="control"

@@ -69,6 +69,12 @@ stays backward-compatible.
 
 ### Changed
 
+- **A long session stops growing.** Every run of every task stayed in memory for
+  the life of the process and was copied into every refresh, so a farm left open
+  for a day paid for everything it had already done. The history is bounded now
+  — the recent runs, plus the newest of every task the farm still has, so
+  nothing you can click on loses its record. Transcripts were always on disk and
+  still are: the drawer can now read a task's **whole log** back from one.
 - **Every farm event now carries the time it happened**, which is what makes a
   log a log. Events recorded before this show no time rather than a 1970 one.
 - **Watching a farm costs almost nothing now.** The Farm screen refreshes after

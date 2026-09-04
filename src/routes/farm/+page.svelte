@@ -720,6 +720,11 @@
 			events={activity}
 			{tasks}
 			transcript={(id) => farmStore.transcript(id)}
+			onwholeLog={async (id) => {
+				// The most recent run of that task, whose log is the one on disk.
+				const run = farmStore.runs.filter((entry) => entry.task === id).at(-1);
+				return run ? await api.transcript(run.id, id) : '';
+			}}
 			selected={selected}
 			planning={planning !== null}
 			collapsed={panels.isHidden('farmLog')}
