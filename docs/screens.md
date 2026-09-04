@@ -28,6 +28,7 @@ under Amendment 11.
 | 1N | Tags | `/tags` | yes | Built | FEAT-051 |
 | 1O | File history | `/history` | no | Built | FEAT-063 |
 | 1P | Badges | `/badges` | yes | Built | FEAT-072 |
+| 1Q | Farm | `/farm` | yes | Built | FEAT-073 |
 
 **Every screen in the handoff is built**, and 1A–1L is the whole of it. 1M and
 1N were not in the handoff at all: the Reflog and Tags came out of the GitKraken
@@ -37,6 +38,11 @@ from.
 
 1P came from neither. Every other screen here answers a question about the state
 of a repository; Badges answers what has been *done* in one, and by whom.
+
+1Q is the first screen about work that has not happened yet — a goal, the tasks
+it was cut into, and the agents working them. It takes the rail's top slot: it
+is the product's own subject, and everything below it in the rail is where the
+farm's output is read.
 
 What remains deferred is named on the screen that defers it, in place rather
 than being absent — a conflicted stash apply, and the forges Spagitty has no
@@ -798,3 +804,39 @@ against the models they are supervising turns a useful comparison — which of
 these does well in *this* repository — into a productivity leaderboard, which is
 the thing the feature exists not to build. Agents are ordered by first-pass rate
 rather than by volume, because volume ranks whoever was given the most work.
+
+## 1Q — Farm
+
+**Built.** `src/routes/farm/+page.svelte`, `src/lib/farm/`, `crates/spagitty-farm`
+(FEAT-073).
+
+Supervising a small engineering team from inside the Git client. The plan is on
+the left, the selected task in the middle, and what just happened along the
+bottom — the three questions a supervisor has, answerable without navigating
+between them. A person who has to move between those three is reading a log.
+
+**Nothing polls.** A farm changes when an agent says something, which is at a
+model's pace and on no schedule. The backend emits, the store applies, and the
+screen is a function of the store; a snapshot is refetched shortly after a burst
+so nothing drifts if an event was missed.
+
+**A branch and a worktree per task**, named `spagitty-farm/<task>/<provider>`.
+The name is derived rather than chosen, in one place, because it is how the
+graph, the worktree list and this screen find each other. Nothing an agent does
+reaches the working copy, and deleting a task keeps the commits on its branch.
+
+**An agent saying "done" is not done.** Verification runs the repository's own
+commands in the task's worktree; review is performed by a different agent than
+the one that wrote the change. A task that reached review with nothing
+configured to check it says so, in those words, rather than reading as passed.
+
+**The starter page answers three questions in the order they are asked** — what
+a farm is, how to start one, and whether this machine can run one. The goal
+field is on it, so starting a farm needs one sentence and no navigation. The
+readiness rows say whether an agent was found, whether the repository has an
+`AGENTS.md` for one, and whether anything verifies the work; none of them blocks
+starting a farm, because a farm with no agent is still a plan.
+
+**Spagitty runs agents; it does not contain them.** Claude Code, Codex, Cursor
+and Oh My Pi are detected on `PATH`, and anything else with a command line can
+be added by hand. There is no model here and no key.
