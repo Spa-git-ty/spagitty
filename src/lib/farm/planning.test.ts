@@ -12,6 +12,7 @@ vi.mock('@tauri-apps/api/event', () => ({
 vi.mock('./api', () => ({
 	open: vi.fn(),
 	snapshot: vi.fn(),
+	stale: vi.fn(() => Promise.resolve([])),
 	failure: vi.fn((error: unknown) => ({ kind: 'testError', message: String(error) }))
 }));
 
@@ -61,7 +62,6 @@ function snapshot(runs: AgentRun[]): FarmSnapshot {
 		events: [],
 		runs,
 		policy: { sources: [], text: '' },
-		stale: [],
 		scoreboard: []
 	};
 }

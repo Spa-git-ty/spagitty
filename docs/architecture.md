@@ -11,7 +11,9 @@ How Spagitty is put together, and why. Screen-by-screen state lives in
 ```
 src/                    SvelteKit, SPA mode. One store per screen.
   └── invoke ─────────► src-tauri/           Tauri commands, worker, watcher.
-                          └── calls ───────► crates/spagitty-core/   git, via gix.
+                          ├── calls ───────► crates/spagitty-core/   git, via gix.
+                          └── calls ───────► crates/spagitty-farm/   agents, via processes.
+                                               └── calls ─────────► crates/spagitty-core/
 ```
 
 Each layer knows nothing about the one above it.
@@ -70,6 +72,41 @@ Types crossing to the frontend derive `Serialize` with
 because the wire shape is small and a generator would be more machinery than the
 problem needs.
 
+### `crates/spagitty-farm`
+
+The agent farm's control plane (FEAT-073): a goal, the tasks it was cut into,
+and the agents working them. It orchestrates and nothing else — every git
+operation it performs is `spagitty-core`'s, and it has no Tauri types either.
+
+| Module | Holds |
+| --- | --- |
+| `model/` | `Farm`, `Goal`, `Task`, `AgentDefinition`, `AgentRun`, `Handoff`, `FarmEvent` — the data, and the status machine no path may skip |
+| `agent/` | One adapter per provider, detection on `PATH`, and the per-repository registry |
+| `workspace/` | A branch and a worktree per task, the leases that stop two agents touching one path, and the sweep for what is left behind |
+| `execution/` | Starting an agent, reading it, stopping its whole process group; the transcript on disk; the narrator that turns a provider's stream into lines a person reads |
+| `orchestrator/` | The dependency graph, the scheduler (a pure function: farm in, decisions out), the router, and the planner that turns a goal into tasks |
+| `verification/` | The repository's own commands, run in the task's worktree |
+| `review/` | A second agent reading the first one's change, and the decision it returns |
+| `persistence/` | The farm on disk: JSON under `.spagitty/`, written by rename, events appended one object per line |
+| `policy.rs` | The repository's `AGENTS.md` and its neighbours, attached to every prompt |
+| `service.rs` | The API, and the only module that changes anything |
+
+Three rules the crate is built around, each of which is load-bearing:
+
+- **An agent saying "done" is not done.** There is no transition from an agent's
+  own report to `Done`; verification and a review by a *different* agent are in
+  the path and cannot be skipped.
+- **Agents never talk to each other.** Every handoff goes through the service,
+  so there is one audit trail and one place that decides what happens next.
+- **Nothing an agent does reaches the user's checkout.** Every task runs in its
+  own worktree on its own branch.
+
+The Tauri layer's `farm.rs` mirrors `commands.rs`: it holds the open farm,
+forwards, and turns `FarmEvent` into one webview event. Its commands are
+`#[tauri::command(async)]` rather than plain, because they take locks that agent
+threads hold and a blocking command runs on the thread that paints the window
+(BUG-020).
+
 ### `src-tauri`
 
 Deliberately thin. It holds the open session — one repository at a time — and
@@ -84,6 +121,7 @@ forwards to the core.
 | `graph_worker.rs` | A thread that walks history and emits batches |
 | `search_worker.rs` | A thread per query; starting one cancels the one before |
 | `clone_worker.rs` | A thread per clone; it owns the `git` process, so cancelling is a signal rather than a request |
+| `farm.rs` | The farm's commands and its event bridge. State of its own, with a different lifetime from the graph session |
 | `watch.rs` | Filesystem watcher over the git directory |
 | `platform.rs` | Host facts that must be true before the webview starts |
 | `lib.rs` | Command registration |
@@ -103,6 +141,14 @@ Commands registered today, grouped by what they are for:
 - **Application state** — `recent_repos`, `forget_repo`, `clone_plan`,
   `clone_start`, `clone_release`, `about`, `licenses`, `identity`,
   `set_identity`, `settings`, `set_settings`, `launch_path`.
+- **The farm** — `farm_open`, `farm_close`, `farm_snapshot`, `farm_events`,
+  `farm_stale`, `farm_detect_agents`, `farm_save_agent`, `farm_remove_agent`,
+  `farm_create`, `farm_configure`, `farm_start`, `farm_pause`, `farm_cancel`,
+  `farm_write_policy`, `farm_add_task`, `farm_edit_task`, `farm_delete_task`,
+  `farm_ready_task`, `farm_assign_task`, `farm_cancel_task`, `farm_retry_task`,
+  `farm_run_task`, `farm_task_detail`, `farm_transcript`, `farm_merge_task`,
+  `farm_review_task`, `farm_verify_task`, `farm_plan`, `farm_cancel_plan`,
+  `farm_sweep`.
 
 `platform.rs` is the other file that is not about git at all. It arranges the
 webview's environment as the first statement of `run` — before the builder, and

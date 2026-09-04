@@ -44,6 +44,7 @@ use serde::{Deserialize, Serialize};
 use spagitty_farm::agent::AgentStatus;
 use spagitty_farm::model::*;
 use spagitty_farm::orchestrator::Record;
+use spagitty_farm::persistence::store;
 use spagitty_farm::policy::Policy;
 use spagitty_farm::review::Review;
 use spagitty_farm::service::{FarmService, Observer};
@@ -125,13 +126,20 @@ pub struct FarmSnapshot {
     pub agents: Vec<AgentStatus>,
     /// Providers with no definition, so the settings screen can offer them.
     pub undetected: Vec<AgentProvider>,
+    /// The tail of the activity history — [`SNAPSHOT_EVENTS`] of it.
     pub events: Vec<FarmEvent>,
     pub runs: Vec<AgentRun>,
     pub policy: Policy,
-    /// Worktrees from tasks no farm claims any more.
-    pub stale: Vec<StaleWorkspace>,
     pub scoreboard: Vec<AgentScore>,
 }
+
+/// How much history a snapshot carries.
+///
+/// Two hundred: more than the activity list renders, so nothing is missing on
+/// screen, and few enough that a refresh after every burst of events stays
+/// cheap. Anything older is asked for by name — see [`farm_events`] — because a
+/// person scrolling back is a rare act and a refresh is a constant one.
+pub const SNAPSHOT_EVENTS: usize = 200;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -231,23 +239,44 @@ pub fn farm_snapshot(state: State<'_, FarmState>) -> Result<FarmSnapshot> {
     snapshot(&*state.service()?)
 }
 
+/// More history than a snapshot carries, for a reader scrolling back.
+#[tauri::command(async)]
+pub fn farm_events(state: State<'_, FarmState>, limit: Option<usize>) -> Result<Vec<FarmEvent>> {
+    Ok(state
+        .service()?
+        .events_tail(limit.unwrap_or(usize::MAX).min(store::MAX_EVENTS)))
+}
+
+/// Worktrees left behind by tasks no farm claims.
+///
+/// Its own command rather than part of the snapshot, because answering it means
+/// running `git worktree list` — and the snapshot is taken after every burst of
+/// events, which made watching a farm run a `git` process every quarter of a
+/// second (TASK-030). Nothing on the screen shows leftovers *while* a run is in
+/// flight; they are read when the farm opens and when the housekeeping panel
+/// asks.
+#[tauri::command(async)]
+pub fn farm_stale(state: State<'_, FarmState>) -> Result<Vec<StaleWorkspace>> {
+    Ok(state
+        .service()?
+        .stale_workspaces()
+        .into_iter()
+        .map(|stale| StaleWorkspace {
+            task: stale.task,
+            path: stale.path,
+            branch: stale.branch,
+        })
+        .collect())
+}
+
 fn snapshot(service: &FarmService) -> Result<FarmSnapshot> {
     Ok(FarmSnapshot {
         farm: service.farm(),
         agents: service.agents(),
         undetected: service.undetected(),
-        events: service.events(),
+        events: service.events_tail(SNAPSHOT_EVENTS),
         runs: service.runs(),
         policy: service.policy(),
-        stale: service
-            .stale_workspaces()
-            .into_iter()
-            .map(|stale| StaleWorkspace {
-                task: stale.task,
-                path: stale.path,
-                branch: stale.branch,
-            })
-            .collect(),
         scoreboard: service
             .scoreboard()
             .into_iter()

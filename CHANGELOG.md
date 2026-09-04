@@ -14,6 +14,15 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Changed
+
+- **Watching a farm costs almost nothing now.** The Farm screen refreshes after
+  every burst of events, and that refresh used to run `git worktree list` and
+  re-parse the whole activity log — on the thread that paints the window, four
+  times a second while an agent was talking. The history is held in memory, the
+  leftover-worktree scan happens when it can actually change, and a transcript
+  line no longer asks the backend anything.
+
 ### Fixed
 
 - **An agent's work is visible while it happens.** A task ran for minutes with

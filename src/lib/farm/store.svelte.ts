@@ -88,7 +88,6 @@ function apply(snapshot: FarmSnapshot): void {
 	undetected = snapshot.undetected;
 	runs = snapshot.runs;
 	policy = snapshot.policy;
-	stale = snapshot.stale;
 	scoreboard = snapshot.scoreboard;
 	activity = snapshot.events.slice(-ACTIVITY_LIMIT);
 	loaded = true;
@@ -244,10 +243,30 @@ export const farmStore = {
 		try {
 			apply(await api.open(path));
 			await this.listen();
+			// Once, on open, and never as part of a refresh: see `leftovers`.
+			await this.leftovers();
 		} catch (cause) {
 			error = api.failure(cause).message;
 		} finally {
 			loading = false;
+		}
+	},
+
+	/**
+	 * Look for worktrees left behind by tasks no farm claims.
+	 *
+	 * Asked for by name rather than carried by every snapshot, because
+	 * answering it runs `git worktree list` and a snapshot is taken after
+	 * every burst of events. Leftovers do not appear while a farm runs — they
+	 * are what is left when one stops — so reading them on open and after a
+	 * sweep is reading them exactly as often as they can change.
+	 */
+	async leftovers(): Promise<void> {
+		try {
+			stale = await api.stale();
+		} catch (cause) {
+			// A leftovers scan that fails must not blank a working screen.
+			error = api.failure(cause).message;
 		}
 	},
 
@@ -256,7 +275,12 @@ export const farmStore = {
 		if (unlisten) return;
 		unlisten = await listen<FarmEvent>(EVENT, (message) => {
 			absorb(message.payload);
-			scheduleRefresh();
+			// A transcript line changes nothing a snapshot would report, and a
+			// run produces thousands of them. Refreshing on each one both cost
+			// a round trip per line and, because the refresh is debounced,
+			// pushed the refresh that *did* matter past the end of the run
+			// (TASK-030).
+			if (message.payload.kind !== 'agentOutput') scheduleRefresh();
 		});
 	},
 
