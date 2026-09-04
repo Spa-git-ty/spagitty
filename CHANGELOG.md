@@ -14,6 +14,13 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-05
+
+The farm could run a plan but there was almost no way to watch it run. This is
+that release: a ring rather than a count, a chip for every working agent, a log
+you can read and filter, a queue that says why a task is waiting, and a task
+too big for one agent that can be cut into smaller ones.
+
 ### Added
 
 - **The Farm screen is worth watching.** `3 / 7 done` becomes a ring — what is
