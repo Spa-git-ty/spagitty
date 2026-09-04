@@ -51,6 +51,8 @@ export type IconName =
 	| 'maximize'
 	| 'chevron-left'
 	| 'chevron-right'
+	| 'chevron-up'
+	| 'chevron-down'
 	| 'terminal'
 	| 'check'
 	| 'refresh'
@@ -125,6 +127,10 @@ export const ICONS: Record<IconName, string[]> = {
 	maximize: ['M5 5h14v14H5z'],
 	'chevron-left': ['M14.5 6 8.5 12l6 6'],
 	'chevron-right': ['M9.5 6l6 6-6 6'],
+	// The same chevron, turned. A drawer opens upward and closes downward, so
+	// the glyph points where the panel is going rather than where it is.
+	'chevron-up': ['M6 14.5 12 8.5l6 6'],
+	'chevron-down': ['M6 9.5l6 6 6-6'],
 	terminal: ['M4 4h16v16H4z', 'M8 9.5 10.5 12 8 14.5', 'M13 15h3'],
 	check: ['M5 12.5 10 17.5 19 7'],
 	refresh: ['M20 11a8 8 0 1 0-.5 4', 'M20 4v7h-7'],

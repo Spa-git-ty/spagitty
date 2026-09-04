@@ -32,6 +32,7 @@ import type {
 	Farm,
 	FarmEvent,
 	FarmSnapshot,
+	RecordedEvent,
 	Policy,
 	AgentProvider,
 	AgentRun,
@@ -69,11 +70,12 @@ export const REFRESH_DELAY_MS = 250;
 let farm = $state<Farm | null>(null);
 let agents = $state<AgentStatus[]>([]);
 let undetected = $state<AgentProvider[]>([]);
-let activity = $state<FarmEvent[]>([]);
+let activity = $state<RecordedEvent[]>([]);
 let runs = $state<AgentRun[]>([]);
 let policy = $state<Policy>({ sources: [], text: '' });
 let stale = $state<StaleWorkspace[]>([]);
 let scoreboard = $state<AgentScore[]>([]);
+let waiting = $state<Record<string, string>>({});
 let transcripts = $state<Record<string, string[]>>({});
 let loaded = $state(false);
 let loading = $state(false);
@@ -89,6 +91,7 @@ function apply(snapshot: FarmSnapshot): void {
 	runs = snapshot.runs;
 	policy = snapshot.policy;
 	scoreboard = snapshot.scoreboard;
+	waiting = snapshot.waiting;
 	activity = snapshot.events.slice(-ACTIVITY_LIMIT);
 	loaded = true;
 }
@@ -99,7 +102,7 @@ function apply(snapshot: FarmSnapshot): void {
  * Only the changes a person watches for. Everything else arrives with the next
  * snapshot, which is a quarter of a second away.
  */
-function absorb(event: FarmEvent): void {
+function absorb(event: RecordedEvent): void {
 	if (event.kind === 'agentOutput') {
 		const existing = transcripts[event.task] ?? [];
 		const next = [...existing, event.line];
@@ -154,7 +157,7 @@ export const farmStore = {
 	get undetected(): AgentProvider[] {
 		return undetected;
 	},
-	get activity(): FarmEvent[] {
+	get activity(): RecordedEvent[] {
 		return activity;
 	},
 	get runs(): AgentRun[] {
@@ -168,6 +171,60 @@ export const farmStore = {
 	},
 	get scoreboard(): AgentScore[] {
 		return scoreboard;
+	},
+
+	/**
+	 * Why a queued task is not running, from the scheduler itself.
+	 *
+	 * The screen asks the backend rather than guessing, because the answer
+	 * depends on leases and agent availability that only the backend holds.
+	 */
+	waitingFor(task: string): string | null {
+		return waiting[task] ?? null;
+	},
+
+	/**
+	 * The task list as it is read: parents, each followed by what was cut out
+	 * of it (FEAT-076).
+	 *
+	 * Depth rather than a tree, because the list renders as rows and a row
+	 * needs one number to indent by. Two levels are all the farm produces — a
+	 * subtask cannot itself be broken down today — but the walk is recursive so
+	 * that stays a product decision rather than a shape the interface enforces.
+	 */
+	get outline(): { task: Task; depth: number; done: number; total: number }[] {
+		const tasks = farm?.tasks ?? [];
+		const byParent = new Map<string | null, Task[]>();
+		for (const task of tasks) {
+			const key = task.parent ?? null;
+			byParent.set(key, [...(byParent.get(key) ?? []), task]);
+		}
+		// A child whose parent was deleted is not lost: it is shown at the top
+		// level, which is what it has become.
+		const known = new Set(tasks.map((task) => task.id));
+		const orphans = tasks.filter((task) => task.parent !== null && !known.has(task.parent));
+
+		const rows: { task: Task; depth: number; done: number; total: number }[] = [];
+		const walk = (parent: string | null, depth: number): void => {
+			for (const task of byParent.get(parent) ?? []) {
+				const children = byParent.get(task.id) ?? [];
+				rows.push({
+					task,
+					depth,
+					done: children.filter((child) => child.status === 'done').length,
+					total: children.length
+				});
+				walk(task.id, depth + 1);
+			}
+		};
+		walk(null, 0);
+		for (const orphan of orphans) rows.push({ task: orphan, depth: 0, done: 0, total: 0 });
+		return rows;
+	},
+
+	/** Tasks a planner proposed that nobody has accepted or discarded yet. */
+	get drafts(): Task[] {
+		return (farm?.tasks ?? []).filter((task) => task.status === 'draft');
 	},
 	get loaded(): boolean {
 		return loaded;
@@ -236,13 +293,26 @@ export const farmStore = {
 		return (farm?.tasks ?? []).filter((task) => task.status === status);
 	},
 
-	/** Point the farm at a repository and start listening. */
+	/**
+	 * Start listening, then point the farm at a repository.
+	 *
+	 * **In that order** (BUG-022). `farm_open` does not only answer — it starts
+	 * agent detection on a thread and reports the result as an event a few
+	 * hundred milliseconds later. Subscribing afterwards left a window in which
+	 * that event was emitted with nobody listening, and the answer it carried
+	 * is the one that decides whether the farm has any agents at all. The
+	 * screen then said "Not installed" about agents sitting on `PATH`, with
+	 * Plan it disabled, until something unrelated caused a refresh.
+	 *
+	 * Subscribing first cannot lose it: the listener is armed before the work
+	 * that produces the event is asked for.
+	 */
 	async open(path: string): Promise<void> {
 		loading = true;
 		error = null;
 		try {
-			apply(await api.open(path));
 			await this.listen();
+			apply(await api.open(path));
 			// Once, on open, and never as part of a refresh: see `leftovers`.
 			await this.leftovers();
 		} catch (cause) {
@@ -273,7 +343,7 @@ export const farmStore = {
 	/** Subscribe to the backend's events. Safe to call twice. */
 	async listen(): Promise<void> {
 		if (unlisten) return;
-		unlisten = await listen<FarmEvent>(EVENT, (message) => {
+		unlisten = await listen<RecordedEvent>(EVENT, (message) => {
 			absorb(message.payload);
 			// A transcript line changes nothing a snapshot would report, and a
 			// run produces thousands of them. Refreshing on each one both cost
@@ -311,6 +381,7 @@ export const farmStore = {
 		policy = { sources: [], text: '' };
 		stale = [];
 		scoreboard = [];
+		waiting = {};
 		transcripts = {};
 		loaded = false;
 		loading = false;

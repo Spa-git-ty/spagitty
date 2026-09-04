@@ -14,8 +14,69 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Added
+
+- **The Farm screen is worth watching.** `3 / 7 done` becomes a ring — what is
+  finished fills it, what is running is a brighter arc at its leading edge, and
+  anything blocked colours the rest, so a farm that is working looks different
+  from one that stopped at the same point. Above the plan, one chip per working
+  agent says who is on what and for how long, and disappears when nothing is
+  running.
+- **A run that has gone quiet says so.** After six minutes without a word the
+  chip and the task row say how long it has been silent and the pulse stops.
+  Nothing is stopped for you: a model may think for a long time, and killing it
+  throws the work away.
+- **Agents earn their badges from the farm now.** A task taken all the way to
+  Done scores the agent that did it — whether the checks really passed, whether
+  the reviewer approved, how many times it was sent back — which is the event
+  the badge catalogue has been waiting for since it was written.
+- **Every task says who asked for it.** A farm mixes work you decided on with
+  work a model produced, and after twenty tasks they looked identical. Your own
+  tasks stay unmarked; anything an agent asked for carries one quiet mark, and
+  its panel says which agent and why — cut out of the goal, cut out of another
+  task, or proposed while working on something else and asked for by nobody.
+  Tasks from an existing farm read as yours, because at the time they were.
+- **A task that turns out to be too big can be broken down.** **Break it down**
+  asks an agent to cut one task into smaller ones; they arrive as a proposed
+  plan under it, and the task becomes a heading that finishes when they do.
+  Deleting the heading keeps the work that was under it. A plan may hold 24
+  tasks rather than 12, a farm may run 8 agents at once rather than 4, and how
+  many attempts a task gets before it needs a person is a setting rather than a
+  constant.
+- **A proposed plan is accepted in one action.** A planner's tasks arrive as
+  drafts so a person reads a decomposition before five agents act on it — but
+  approving one meant opening each task and pressing a button in its panel, and
+  the list said nothing about tasks waiting on a decision. There is a band now:
+  how many were proposed, a checkbox per task, add them all or the ones you
+  want, or discard.
+- **A queued task says why it is not running.** "Pending" with no explanation
+  becomes the scheduler's own answer, on the row: which task is holding the same
+  files, how many agents are working against the limit, that nothing installed
+  can do this kind of work, or that the farm is not running. A task's own note —
+  a verification failure, a reviewer's words — still comes first.
+- **The farm's log is a drawer you can read.** Six lines in a footer, with no
+  times and no scrollback, become a resizable drawer with two tabs: *Activity*,
+  the farm's own record — timestamped, filterable to one task, as long as the
+  history — and *Transcript*, what one agent is saying, which used to be
+  collected and never shown outside a task's panel. The pane follows the newest
+  line while you are at the bottom and lets go when you scroll up; **Hold**
+  freezes it so a line can be read while it is still arriving, and counts what
+  arrived meanwhile. Copy takes what is shown, filter and all.
+- **A little motion, where it says something.** A log line arrives rather than
+  appearing, and a task row washes with the accent for a second when its status
+  changes under you — nothing that moves anything already on screen, and nothing
+  at all for a reader who has asked for reduced motion.
+
 ### Changed
 
+- **A long session stops growing.** Every run of every task stayed in memory for
+  the life of the process and was copied into every refresh, so a farm left open
+  for a day paid for everything it had already done. The history is bounded now
+  — the recent runs, plus the newest of every task the farm still has, so
+  nothing you can click on loses its record. Transcripts were always on disk and
+  still are: the drawer can now read a task's **whole log** back from one.
+- **Every farm event now carries the time it happened**, which is what makes a
+  log a log. Events recorded before this show no time rather than a 1970 one.
 - **Watching a farm costs almost nothing now.** The Farm screen refreshes after
   every burst of events, and that refresh used to run `git worktree list` and
   re-parse the whole activity log — on the thread that paints the window, four
@@ -25,6 +86,12 @@ stays backward-compatible.
 
 ### Fixed
 
+- **The farm sees the agents that are installed.** Opening the Farm screen said
+  `Agents 0` and marked Claude Code, Codex and Oh My Pi "Not installed" while
+  all three sat on `PATH`, with **Plan it** disabled and nothing able to run.
+  Detection was working the whole time: the screen subscribed to the farm's
+  events *after* asking it to detect, so the answer arrived a few hundred
+  milliseconds later with nobody listening, and nothing asked again.
 - **An agent's work is visible while it happens.** A task ran for minutes with
   an empty transcript behind it and everything arrived at once at the end,
   because Claude Code was being asked for its answer rather than for its work.
@@ -36,6 +103,12 @@ stays backward-compatible.
   said, and a control that stops the planner without cancelling the farm. A
   cancelled planner adopts nothing, and a planner that produces no tasks says so
   instead of leaving an empty plan that looks untouched.
+- **Arrow keys on a panel divider resize that panel.** Keyboard resizing moved
+  the graph's detail panel whichever divider was focused, so four of the six
+  resizable panels could not be sized from the keyboard at all.
+- **A verification is recorded, not just shown.** Verification events reached
+  the screen live and were written to neither the log on disk nor the history a
+  reopened farm reads back.
 - **The window no longer freezes while the farm plans.** Asking an agent to
   break a goal into tasks locked the whole application — every screen, the
   menus, the window itself — until the planner finished, typically minutes. The

@@ -50,6 +50,65 @@ impl<'a> Graph<'a> {
             .collect()
     }
 
+    /// The tasks cut out of `parent`, in identifier order.
+    pub fn children(&self, parent: &TaskId) -> Vec<&'a Task> {
+        self.tasks
+            .values()
+            .copied()
+            .filter(|task| task.parent.as_ref() == Some(parent))
+            .collect()
+    }
+
+    /// True when something was cut out of this task.
+    ///
+    /// A container is never run: it is a heading over the work, and the work is
+    /// its children. Derived from the children rather than stored on the task,
+    /// so a task stops being a container the moment its last child is deleted
+    /// and there is no flag left saying otherwise (FEAT-076).
+    pub fn is_container(&self, id: &TaskId) -> bool {
+        self.tasks
+            .values()
+            .any(|task| task.parent.as_ref() == Some(id))
+    }
+
+    /// What a container's children add up to: how many are finished, and how
+    /// many there are.
+    pub fn progress(&self, parent: &TaskId) -> (usize, usize) {
+        let children = self.children(parent);
+        let done = children
+            .iter()
+            .filter(|task| task.status == TaskStatus::Done)
+            .count();
+        (done, children.len())
+    }
+
+    /// What a container should become, given where its children are.
+    ///
+    /// `None` while there is still work to do. A container follows its
+    /// children and nothing else — it has no agent, no worktree and no run of
+    /// its own to fail.
+    pub fn container_status(&self, parent: &TaskId) -> Option<TaskStatus> {
+        let children = self.children(parent);
+        if children.is_empty() {
+            return None;
+        }
+        if children.iter().all(|task| task.status == TaskStatus::Done) {
+            return Some(TaskStatus::Done);
+        }
+        // One child that will never finish is a container that will never
+        // finish. Saying so is the difference between a heading that is stuck
+        // and a heading that looks like it is still going.
+        if children.iter().any(|task| {
+            matches!(
+                task.status,
+                TaskStatus::Failed | TaskStatus::Cancelled | TaskStatus::Blocked
+            )
+        }) {
+            return Some(TaskStatus::Blocked);
+        }
+        None
+    }
+
     /// Tasks whose dependencies are all `Done`.
     ///
     /// Ordered by priority and then by identifier, so a farm run twice against
@@ -62,6 +121,10 @@ impl<'a> Graph<'a> {
             .values()
             .copied()
             .filter(|task| matches!(task.status, TaskStatus::Ready | TaskStatus::Waiting))
+            // A container is a heading, not work. Its children are what run,
+            // and starting an agent on it would cut a worktree for a task
+            // whose whole description is "these five things" (FEAT-076).
+            .filter(|task| !self.is_container(&task.id))
             .filter(|task| self.unmet(task).is_empty())
             .collect();
         ready.sort_by(|left, right| {

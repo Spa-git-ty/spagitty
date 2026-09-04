@@ -489,7 +489,7 @@ fn the_activity_log_survives_a_restart() {
     assert!(
         events
             .iter()
-            .any(|event| matches!(event, FarmEvent::TaskCreated { .. })),
+            .any(|recorded| matches!(recorded.event, FarmEvent::TaskCreated { .. })),
         "{events:?}"
     );
 }
@@ -506,7 +506,7 @@ fn events_describe_what_happened_in_order() {
     let events = harness.recorder.events();
     let kinds: Vec<&str> = events
         .iter()
-        .map(|event| match event {
+        .map(|recorded| match recorded.event {
             FarmEvent::TaskCreated { .. } => "created",
             FarmEvent::TaskStatusChanged { .. } => "status",
             FarmEvent::AgentStarted { .. } => "started",
@@ -796,7 +796,7 @@ fn the_history_is_held_in_memory_and_matches_what_is_on_disk() {
     assert!(
         !held
             .iter()
-            .any(|event| matches!(event, FarmEvent::AgentOutput { .. })),
+            .any(|recorded| matches!(recorded.event, FarmEvent::AgentOutput { .. })),
         "transcript lines are being kept as history"
     );
 
@@ -819,4 +819,226 @@ fn reopening_a_farm_reads_its_history_back() {
     let reopened = FarmService::open(harness.repo.path(), Arc::new(Recorder::default()));
 
     assert_eq!(reopened.events(), before);
+}
+
+// ── Large work: containers and decomposition (FEAT-076) ──────────────────
+
+/// An agent that answers a decomposition with two subtasks.
+fn splitter(harness: &Harness, name: &str) -> AgentId {
+    let definition = scripted_agent(
+        harness.bin(),
+        name,
+        r#"printf '%s' "$1" > /dev/null
+printf '%s\n' '```spagitty-plan'
+printf '%s\n' '{"tasks":[{"reference":"a","title":"First half","allowedPaths":["src/a/**"]},{"reference":"b","title":"Second half","dependsOn":["a"],"allowedPaths":["src/b/**"]}]}'
+printf '%s\n' '```'"#,
+    );
+    let id = definition.id.clone();
+    harness.service.save_agent(definition).unwrap();
+    id
+}
+
+#[test]
+fn breaking_a_task_down_produces_drafts_under_it() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-split");
+    let big = harness.task("Rework the auth module");
+
+    let run = harness.service.decompose(&big, Some(agent)).unwrap();
+    let children = harness.service.collect_plan(&run).unwrap();
+
+    assert_eq!(children.len(), 2);
+    for child in &children {
+        // Drafts, so the plan-review band asks before any of them runs.
+        assert_eq!(child.status, TaskStatus::Draft);
+        assert_eq!(child.parent.as_ref(), Some(&big));
+    }
+    // The agent's own references became real dependencies between the children.
+    assert_eq!(children[1].depends_on, [children[0].id.clone()]);
+}
+
+#[test]
+fn a_task_that_was_broken_down_is_not_run_itself() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-norun");
+    let worker = harness.worker("worker-norun");
+    let big = harness.task("Rework the auth module");
+
+    let run = harness.service.decompose(&big, Some(agent)).unwrap();
+    harness.service.collect_plan(&run).unwrap();
+
+    let error = harness.service.run_task(&big, Some(worker)).unwrap_err();
+    assert_eq!(error.kind(), "refused");
+    assert!(error.to_string().contains("underneath"), "{error}");
+}
+
+#[test]
+fn a_container_follows_its_children_to_done() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-follow");
+    let big = harness.task("Rework the auth module");
+
+    let run = harness.service.decompose(&big, Some(agent)).unwrap();
+    let children = harness.service.collect_plan(&run).unwrap();
+
+    // Nothing has finished: the container is still where it was.
+    harness.service.tick();
+    assert_eq!(harness.status(&big), TaskStatus::Ready);
+
+    for child in &children {
+        harness
+            .service
+            .edit_task(&child.id, |task| task.status = TaskStatus::Done)
+            .unwrap();
+    }
+    harness.service.tick();
+
+    assert_eq!(harness.status(&big), TaskStatus::Done);
+}
+
+#[test]
+fn deleting_a_heading_does_not_delete_what_was_under_it() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-delete");
+    let big = harness.task("Rework the auth module");
+    let run = harness.service.decompose(&big, Some(agent)).unwrap();
+    let children = harness.service.collect_plan(&run).unwrap();
+
+    harness.service.delete_task(&big).unwrap();
+
+    let farm = harness.service.farm().unwrap();
+    assert!(farm.task(&big).is_none());
+    for child in &children {
+        let child = farm
+            .task(&child.id)
+            .expect("a child was deleted with its heading");
+        // Work in its own right now, not an orphan pointing at nothing.
+        assert_eq!(child.parent, None);
+    }
+}
+
+#[test]
+fn only_one_thing_is_planned_at_a_time() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-once");
+    let first = harness.task("One");
+    let second = harness.task("Two");
+
+    let run = harness
+        .service
+        .decompose(&first, Some(agent.clone()))
+        .unwrap();
+    // The second would share the planning session slot and collect the first
+    // one's transcript.
+    let error = harness
+        .service
+        .decompose(&second, Some(agent))
+        .expect_err("a second planning run was allowed to start");
+    assert_eq!(error.kind(), "refused");
+
+    harness.service.collect_plan(&run).unwrap();
+}
+
+// ── Who asked for a task (FEAT-078) ──────────────────────────────────────
+
+#[test]
+fn a_task_a_person_typed_is_recorded_as_theirs() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let mine = harness.task("Something I decided on");
+
+    let task = harness.service.farm().unwrap().task(&mine).unwrap().clone();
+    assert_eq!(task.origin, TaskOrigin::Person);
+    assert!(!task.origin.is_agents());
+}
+
+#[test]
+fn a_planned_task_names_the_agent_that_planned_it() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-origin");
+
+    let run = harness.service.plan(Some(agent.clone())).unwrap();
+    let planned = harness.service.collect_plan(&run).unwrap();
+
+    assert_eq!(
+        planned[0].origin,
+        TaskOrigin::Planned {
+            agent: agent.clone()
+        }
+    );
+    assert!(planned[0].origin.is_agents());
+    assert_eq!(planned[0].origin.agent(), Some(&agent));
+}
+
+#[test]
+fn a_subtask_says_which_task_it_was_cut_out_of() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-origin-sub");
+    let big = harness.task("Rework the auth module");
+
+    let run = harness
+        .service
+        .decompose(&big, Some(agent.clone()))
+        .unwrap();
+    let children = harness.service.collect_plan(&run).unwrap();
+
+    assert_eq!(
+        children[0].origin,
+        TaskOrigin::Subtask {
+            agent,
+            parent: big.clone()
+        }
+    );
+}
+
+#[test]
+fn an_existing_farm_reads_as_the_persons_own_work() {
+    // A task saved before origins existed has no `origin` field. The only ways
+    // to make one then were typing it or accepting a plan, and both are a
+    // person's decision — so the default is the honest reading, not a guess.
+    let task: Task =
+        serde_json::from_str(r#"{"id":"TASK-0001","title":"Old","status":"ready","createdMs":0}"#)
+            .unwrap();
+    assert_eq!(task.origin, TaskOrigin::Person);
+}
+
+// ── A long session stays cheap (TASK-031) ────────────────────────────────
+
+/// TASK-031 — what a snapshot costs at a size nobody has tried yet.
+///
+/// A number rather than an opinion. It is asserted loosely, because the point
+/// is to notice a change of *order* — a snapshot that starts carrying every
+/// transcript, say — rather than to police a few bytes.
+#[test]
+fn a_farm_of_two_hundred_tasks_still_serialises_small() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    for index in 0..200 {
+        harness.task(&format!("Task number {index}"));
+    }
+
+    let farm = harness.service.farm().unwrap();
+    let json = serde_json::to_string(&farm).unwrap();
+    let per_task = json.len() / 200;
+    println!(
+        "200 tasks serialise to {} bytes, {per_task} a task",
+        json.len()
+    );
+
+    assert!(
+        per_task < 1_200,
+        "a task costs {per_task} bytes on the wire; it was about 400 when this was written"
+    );
+    assert!(
+        json.len() < 250_000,
+        "two hundred tasks serialise to {} bytes",
+        json.len()
+    );
 }

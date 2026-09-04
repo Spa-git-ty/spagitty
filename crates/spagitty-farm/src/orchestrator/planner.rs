@@ -26,7 +26,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
-use crate::model::{now_ms, Farm, Task, TaskId, TaskKind, TaskPriority};
+use crate::model::{now_ms, AgentId, Farm, Task, TaskId, TaskKind, TaskOrigin, TaskPriority};
 use crate::orchestrator::dependency;
 
 /// The fence a planning agent is asked to use.
@@ -34,10 +34,21 @@ pub const FENCE: &str = "spagitty-plan";
 
 /// How many tasks a plan may contain.
 ///
-/// Twelve. More than that is not a plan, it is a model filling space, and a
-/// farm that starts twelve worktrees is one nobody can supervise. A goal that
-/// genuinely needs more is decomposed a second time, from a task.
-pub const MAX_TASKS: usize = 12;
+/// Twenty-four. It was twelve, which was the right number when twelve was all a
+/// plan could ever be: a goal larger than that had nowhere to go, because a
+/// task could not be broken down (FEAT-076). Now that it can, the top-level
+/// plan is allowed to be a real decomposition of a real piece of work, and the
+/// thing that keeps a farm supervisable is `max_parallel` — how many run at
+/// once — rather than how many exist.
+pub const MAX_TASKS: usize = 24;
+
+/// How many tasks one task may be broken into.
+///
+/// Eight. A task that needs more than eight pieces was not a task, and the
+/// answer is to break the *goal* up differently rather than to grow a tree
+/// nobody can hold in their head. Smaller than [`MAX_TASKS`] deliberately: this
+/// is a subdivision, not a second plan.
+pub const MAX_SUBTASKS: usize = 8;
 
 /// One task as the planning agent proposed it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -93,8 +104,17 @@ impl Plan {
 
     /// The instructions appended to a planning prompt.
     pub fn contract() -> String {
+        Self::contract_for(MAX_TASKS, "the goal")
+    }
+
+    /// The same contract, for a run that is breaking one task down.
+    pub fn subtask_contract() -> String {
+        Self::contract_for(MAX_SUBTASKS, "the task above")
+    }
+
+    fn contract_for(limit: usize, subject: &str) -> String {
         format!(
-            "Break the goal into no more than {MAX_TASKS} tasks. End your reply with exactly one \
+            "Break {subject} into no more than {limit} tasks. End your reply with exactly one \
              block in this form:\n\
              \n\
              ```{FENCE}\n\
@@ -126,13 +146,32 @@ impl Plan {
 /// Does not modify the farm — it returns the tasks, and the caller decides
 /// whether the user has approved them. Identifiers are allocated from the farm,
 /// which is why it is taken mutably.
-pub fn adopt(farm: &mut Farm, plan: &Plan) -> Result<Vec<Task>> {
+pub fn adopt(farm: &mut Farm, agent: &AgentId, plan: &Plan) -> Result<Vec<Task>> {
+    adopt_under(farm, agent, plan, None)
+}
+
+/// Turn a proposal into real tasks, cut out of `parent`.
+///
+/// The children are `Draft` like any other proposal, so the plan-review band
+/// asks before anything runs. `parent` is what makes the task they came from a
+/// container: it stops being runnable and starts following them (FEAT-076).
+pub fn adopt_under(
+    farm: &mut Farm,
+    agent: &AgentId,
+    plan: &Plan,
+    parent: Option<&TaskId>,
+) -> Result<Vec<Task>> {
     let now = now_ms();
+    let limit = if parent.is_some() {
+        MAX_SUBTASKS
+    } else {
+        MAX_TASKS
+    };
     let proposed: Vec<&PlannedTask> = plan
         .tasks
         .iter()
         .filter(|task| !task.title.trim().is_empty())
-        .take(MAX_TASKS)
+        .take(limit)
         .collect();
 
     // Identifiers first, so dependencies can be remapped in one pass.
@@ -141,6 +180,18 @@ pub fn adopt(farm: &mut Farm, plan: &Plan) -> Result<Vec<Task>> {
     let mut tasks = Vec::new();
     for (index, planned) in proposed.iter().enumerate() {
         let mut task = Task::new(ids[index].clone(), planned.title.trim(), now);
+        task.parent = parent.cloned();
+        // Who asked for it, so a plan's tasks never read as somebody's own
+        // decisions (FEAT-078).
+        task.origin = match parent {
+            Some(parent) => TaskOrigin::Subtask {
+                agent: agent.clone(),
+                parent: parent.clone(),
+            },
+            None => TaskOrigin::Planned {
+                agent: agent.clone(),
+            },
+        };
         task.description = planned.description.clone();
         task.kind = planned.kind;
         task.priority = planned.priority;
@@ -176,10 +227,19 @@ pub fn adopt(farm: &mut Farm, plan: &Plan) -> Result<Vec<Task>> {
 /// The plan's phase 8: an agent that finds missing work says so in its handoff,
 /// and Spagitty turns it into a task nobody has approved yet — `Draft`, so it
 /// sits in the list without being scheduled.
-pub fn from_proposal(farm: &mut Farm, proposal: &crate::model::ProposedTask) -> Task {
+pub fn from_proposal(
+    farm: &mut Farm,
+    proposal: &crate::model::ProposedTask,
+    from: &TaskId,
+    agent: Option<&AgentId>,
+) -> Task {
     let id = farm.allocate_task_id();
     let mut task = Task::new(id, proposal.title.trim(), now_ms());
     task.description = proposal.description.clone();
+    task.origin = TaskOrigin::Proposed {
+        agent: agent.cloned(),
+        from: from.clone(),
+    };
     // Draft, not Ready. An agent may propose; only a person may schedule.
     task.status = crate::model::TaskStatus::Draft;
     task.depends_on = proposal
@@ -195,6 +255,12 @@ pub fn from_proposal(farm: &mut Farm, proposal: &crate::model::ProposedTask) -> 
 mod tests {
     use super::*;
     use crate::model::{task_id, FarmId, Goal, GoalId, ProposedTask, TaskStatus};
+
+    /// The agent every test in this module plans with. Which one it is does
+    /// not matter here; that it is *recorded* is FEAT-078's own concern.
+    fn planner_agent() -> AgentId {
+        AgentId::new("claude")
+    }
 
     fn farm() -> Farm {
         Farm::new(
@@ -229,6 +295,7 @@ mod tests {
         let mut farm = farm();
         let tasks = adopt(
             &mut farm,
+            &planner_agent(),
             &plan(r#"{"tasks":[{"reference":"t1","title":"A"},{"reference":"t2","title":"B"}]}"#),
         )
         .unwrap();
@@ -241,6 +308,7 @@ mod tests {
         let mut farm = farm();
         let tasks = adopt(
             &mut farm,
+            &planner_agent(),
             &plan(
                 r#"{"tasks":[
                     {"reference":"t1","title":"Investigate"},
@@ -257,6 +325,7 @@ mod tests {
         let mut farm = farm();
         let tasks = adopt(
             &mut farm,
+            &planner_agent(),
             &plan(r#"{"tasks":[{"reference":"t1","title":"A","dependsOn":["t9"]}]}"#),
         )
         .unwrap();
@@ -269,6 +338,7 @@ mod tests {
         let mut farm = farm();
         let tasks = adopt(
             &mut farm,
+            &planner_agent(),
             &plan(r#"{"tasks":[{"reference":"t1","title":"A","dependsOn":["t1"]}]}"#),
         )
         .unwrap();
@@ -280,6 +350,7 @@ mod tests {
         let mut farm = farm();
         let error = adopt(
             &mut farm,
+            &planner_agent(),
             &plan(
                 r#"{"tasks":[
                     {"reference":"t1","title":"A","dependsOn":["t2"]},
@@ -299,6 +370,7 @@ mod tests {
         let mut farm = farm();
         let adopted = adopt(
             &mut farm,
+            &planner_agent(),
             &plan(&format!(r#"{{"tasks":[{}]}}"#, tasks.join(","))),
         )
         .unwrap();
@@ -310,6 +382,7 @@ mod tests {
         let mut farm = farm();
         let adopted = adopt(
             &mut farm,
+            &planner_agent(),
             &plan(
                 r#"{"tasks":[{"reference":"t1","title":"  "},{"reference":"t2","title":"Real"}]}"#,
             ),
@@ -322,7 +395,12 @@ mod tests {
     #[test]
     fn adopted_tasks_start_as_drafts_until_somebody_says_otherwise() {
         let mut farm = farm();
-        let adopted = adopt(&mut farm, &plan(r#"{"tasks":[{"title":"A"}]}"#)).unwrap();
+        let adopted = adopt(
+            &mut farm,
+            &planner_agent(),
+            &plan(r#"{"tasks":[{"title":"A"}]}"#),
+        )
+        .unwrap();
         assert_eq!(adopted[0].status, TaskStatus::Draft);
     }
 
@@ -331,6 +409,7 @@ mod tests {
         let mut farm = farm();
         let adopted = adopt(
             &mut farm,
+            &planner_agent(),
             &plan(
                 r#"{"tasks":[{
                     "title":"Implement OAuth backend",
@@ -384,19 +463,39 @@ mod tests {
                 description: "The persistence layer does not exist.".into(),
                 depends_on: vec![task_id(1), task_id(99)],
             },
+            &task_id(1),
+            Some(&planner_agent()),
         );
         assert_eq!(task.status, TaskStatus::Draft);
         assert_eq!(task.title, "Create RefreshTokenRepository");
         // The real dependency is kept; the phantom is dropped.
         assert_eq!(task.depends_on, [task_id(1)]);
+        // And it is attributable: nobody asked for this one (FEAT-078).
+        assert_eq!(
+            task.origin,
+            TaskOrigin::Proposed {
+                agent: Some(planner_agent()),
+                from: task_id(1)
+            }
+        );
     }
 
     #[test]
     fn adopting_twice_does_not_reuse_identifiers() {
         let mut farm = farm();
-        let first = adopt(&mut farm, &plan(r#"{"tasks":[{"title":"A"}]}"#)).unwrap();
+        let first = adopt(
+            &mut farm,
+            &planner_agent(),
+            &plan(r#"{"tasks":[{"title":"A"}]}"#),
+        )
+        .unwrap();
         farm.tasks.extend(first);
-        let second = adopt(&mut farm, &plan(r#"{"tasks":[{"title":"B"}]}"#)).unwrap();
+        let second = adopt(
+            &mut farm,
+            &planner_agent(),
+            &plan(r#"{"tasks":[{"title":"B"}]}"#),
+        )
+        .unwrap();
         assert_eq!(second[0].id, task_id(2));
     }
 }

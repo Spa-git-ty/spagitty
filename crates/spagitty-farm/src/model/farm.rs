@@ -184,6 +184,14 @@ pub struct Farm {
     /// How many agents may run at once.
     #[serde(default = "default_parallelism")]
     pub max_parallel: usize,
+    /// How many times a task may be sent back before it needs a person.
+    ///
+    /// A farm setting rather than a constant, because the right number depends
+    /// on the work: a routine change that fails three times is a bad prompt,
+    /// and a week-long piece of work may reasonably be sent back more often
+    /// than that (FEAT-076).
+    #[serde(default = "default_attempts")]
+    pub max_attempts: u32,
     /// The highest task number handed out so far.
     ///
     /// Held rather than derived from the task list, because deleting a task
@@ -209,6 +217,12 @@ fn default_parallelism() -> usize {
     2
 }
 
+/// Three: [`crate::model::Task::MAX_ATTEMPTS`]'s reasoning, as a default rather
+/// than a law.
+fn default_attempts() -> u32 {
+    Task::MAX_ATTEMPTS
+}
+
 impl Farm {
     pub fn new(id: FarmId, repository: impl Into<String>, goal: Goal, now: u64) -> Self {
         Farm {
@@ -222,6 +236,7 @@ impl Farm {
             tasks: Vec::new(),
             verification: Vec::new(),
             max_parallel: default_parallelism(),
+            max_attempts: default_attempts(),
             task_sequence: 0,
             created_ms: now,
             updated_ms: now,

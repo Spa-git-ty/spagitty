@@ -14,11 +14,13 @@
 
 import type {
 	AgentAvailability,
+	AgentRun,
 	AgentProvider,
 	Autonomy,
 	FarmEvent,
 	FarmStatus,
 	TaskKind,
+	TaskOrigin,
 	TaskStatus,
 	Verification
 } from './types';
@@ -214,6 +216,62 @@ export function waitingOn(
 		return 'No paths declared, so this runs on its own';
 	}
 	return null;
+}
+
+/**
+ * Who asked for a task, in one line (FEAT-078).
+ *
+ * Written as a fact rather than as a warning. A proposed task is not suspect —
+ * it is often the best idea in the plan — but it was nobody's decision until
+ * somebody accepts it, and the sentence says so plainly.
+ */
+export function originLine(origin: TaskOrigin): string {
+	switch (origin.kind) {
+		case 'person':
+			return 'You added this.';
+		case 'planned':
+			return `${origin.agent} cut this out of the goal.`;
+		case 'subtask':
+			return `${origin.agent} cut this out of ${origin.parent}.`;
+		case 'proposed':
+			return origin.agent
+				? `${origin.agent} proposed this while working on ${origin.from}. Nobody asked for it.`
+				: `Proposed while working on ${origin.from}. Nobody asked for it.`;
+	}
+}
+
+/**
+ * The mark a row carries for who asked.
+ *
+ * Two characters and no colour: a person's own work is unmarked, because most
+ * rows in most farms are theirs and a mark on everything marks nothing.
+ */
+export function originMark(origin: TaskOrigin): string | null {
+	return origin.kind === 'person' ? null : '⌁';
+}
+
+/**
+ * How long a run may say nothing before the screen mentions it (FEAT-077).
+ *
+ * Six minutes. Long enough that a model reading a large repository is not
+ * flagged for thinking, short enough that a run which died is noticed while the
+ * person is still at the machine. Nothing is stopped on the strength of it: a
+ * quiet run is flagged, and stopping stays the reader's decision.
+ */
+export const QUIET_AFTER_MS = 6 * 60 * 1000;
+
+/**
+ * What to say about a run that has gone quiet, or nothing.
+ *
+ * `null` for a run that is talking, a run that is finished, and a run that has
+ * been quiet for less than [`QUIET_AFTER_MS`] — the overwhelming majority.
+ */
+export function quietLine(run: AgentRun | null, now: number): string | null {
+	if (!run || run.outcome.state !== 'running') return null;
+	const since = run.lastOutputMs ?? run.startedMs;
+	const quiet = now - since;
+	if (quiet < QUIET_AFTER_MS) return null;
+	return `No output for ${duration(quiet)}.`;
 }
 
 /** A duration, for a run row. */

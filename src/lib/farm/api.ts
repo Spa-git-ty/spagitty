@@ -15,10 +15,10 @@ import type {
 	AgentDefinition,
 	AgentStatus,
 	Farm,
-	FarmEvent,
 	FarmFailure,
 	FarmSettings,
 	FarmSnapshot,
+	RecordedEvent,
 	StaleWorkspace,
 	Task,
 	TaskDetail,
@@ -97,6 +97,21 @@ export function readyTask(id: string): Promise<void> {
 	return invoke('farm_ready_task', { id });
 }
 
+/**
+ * Accept a plan: move several drafts into it at once.
+ *
+ * One call rather than one per task — accepting a plan is one decision, and
+ * eight calls would be eight writes and eight chances to land half of it.
+ */
+export function readyTasks(ids: string[]): Promise<void> {
+	return invoke('farm_ready_tasks', { ids });
+}
+
+/** Throw several drafts away. */
+export function discardTasks(ids: string[]): Promise<void> {
+	return invoke('farm_discard_tasks', { ids });
+}
+
 export function assignTask(id: string, agent: string): Promise<void> {
 	return invoke('farm_assign_task', { id, agent });
 }
@@ -140,6 +155,16 @@ export function plan(agent: string | null): Promise<string> {
 }
 
 /**
+ * Ask an agent to break one task into smaller ones.
+ *
+ * The same planning run pointed at a task. Its children arrive as drafts, so
+ * the plan-review band asks before any of them runs.
+ */
+export function decompose(id: string, agent: string | null): Promise<string> {
+	return invoke('farm_decompose', { id, agent });
+}
+
+/**
  * Stop a planning run.
  *
  * Not `cancel()`, which stops the whole farm. Changing your mind about a
@@ -160,7 +185,7 @@ export function stale(): Promise<StaleWorkspace[]> {
 }
 
 /** More activity than a snapshot carries, for a reader scrolling back. */
-export function events(limit?: number): Promise<FarmEvent[]> {
+export function events(limit?: number): Promise<RecordedEvent[]> {
 	return invoke('farm_events', { limit: limit ?? null });
 }
 

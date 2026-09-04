@@ -127,6 +127,11 @@ rather than an audit.
 | [FEAT-070](items/FEAT-070-extended-forge-integration.md) | Extended forge integration | 1H, 1K | Done |
 | [FEAT-072](items/FEAT-072-delight-layer.md) | The delight layer: badges, titles and reward moments | 1P, 1K, chrome | Done |
 | [FEAT-073](items/FEAT-073-agent-farm.md) | The agent farm: running and shepherding agents from inside Spagitty | 1Q, 1K, chrome | Done |
+| [FEAT-074](items/FEAT-074-the-activity-drawer.md) | The activity drawer: a log worth reading | Farm (1Q) | Done |
+| [FEAT-075](items/FEAT-075-the-queue-explains-itself.md) | The queue explains itself | Farm (1Q) | Done |
+| [FEAT-076](items/FEAT-076-the-farm-takes-on-large-work.md) | The farm takes on large work | Farm (1Q) | Done |
+| [FEAT-078](items/FEAT-078-who-asked-for-this-task.md) | Who asked for this task | Farm (1Q) | Done |
+| [FEAT-077](items/FEAT-077-the-farm-is-worth-watching.md) | The farm is worth watching | Farm (1Q) | Done |
 
 ## Bugs
 
@@ -154,6 +159,7 @@ rather than an audit.
 | [BUG-019](items/BUG-019-closing-the-last-tab-leaves-the-repository-open.md) | Closing the last tab leaves the repository open | chrome | Fixed |
 | [BUG-020](items/BUG-020-the-window-freezes-while-the-farm-plans.md) | The window freezes while the farm plans | Farm (1Q) | Fixed |
 | [BUG-021](items/BUG-021-a-run-says-nothing-until-it-ends.md) | A run says nothing until it ends | Farm (1Q) | Fixed |
+| [BUG-022](items/BUG-022-the-farm-subscribes-after-it-asks.md) | The farm subscribes after it asks, so the answer is lost | Farm (1Q) | Fixed |
 | [BUG-023](items/BUG-023-a-record-test-reads-another-tests-clone.md) | A record test reads another test's clone | none | Fixed |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
@@ -194,6 +200,7 @@ of its own.
 | [TASK-028](items/TASK-028-reconcile-working-record-and-docs.md) | Reconcile working record and docs | — | Done |
 | [TASK-029](items/TASK-029-candidate-feature-backlog.md) | Candidate feature backlog items | — | Done |
 | [TASK-030](items/TASK-030-the-farm-refresh-stops-working-on-the-main-thread.md) | The farm's refresh stops working on the main thread | Farm (1Q) | Done |
+| [TASK-031](items/TASK-031-long-sessions-stay-fast.md) | A long session stays fast | Farm (1Q) | Done |
 
 ## Skipped identifiers
 

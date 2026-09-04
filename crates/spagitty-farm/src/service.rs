@@ -34,6 +34,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use spagitty_core::shell;
@@ -56,17 +57,17 @@ use crate::workspace::{self, Leases};
 /// A trait so the crate has no opinion about Tauri. The Tauri layer emits; the
 /// tests collect.
 pub trait Observer: Send + Sync + std::fmt::Debug {
-    fn event(&self, event: FarmEvent);
+    fn event(&self, event: Recorded);
 }
 
 /// An observer that keeps everything, for tests and headless use.
 #[derive(Debug, Default)]
 pub struct Recorder {
-    events: Mutex<Vec<FarmEvent>>,
+    events: Mutex<Vec<Recorded>>,
 }
 
 impl Recorder {
-    pub fn events(&self) -> Vec<FarmEvent> {
+    pub fn events(&self) -> Vec<Recorded> {
         self.events.lock().expect("recorded events").clone()
     }
 
@@ -75,7 +76,7 @@ impl Recorder {
     pub fn statuses(&self) -> Vec<(TaskId, TaskStatus)> {
         self.events()
             .into_iter()
-            .filter_map(|event| match event {
+            .filter_map(|recorded| match recorded.event {
                 FarmEvent::TaskStatusChanged { task, status, .. } => Some((task, status)),
                 _ => None,
             })
@@ -84,7 +85,7 @@ impl Recorder {
 }
 
 impl Observer for Recorder {
-    fn event(&self, event: FarmEvent) {
+    fn event(&self, event: Recorded) {
         self.events.lock().expect("recorded events").push(event);
     }
 }
@@ -95,15 +96,25 @@ struct RunSink {
     observer: Arc<dyn Observer>,
     run: RunId,
     task: TaskId,
+    /// When this run last said something, shared with the service (FEAT-077).
+    ///
+    /// An atomic rather than a lock: this is written once per line of output,
+    /// which for a talkative agent is thousands of times, and it is read when
+    /// somebody asks for the runs. Nothing waits on it.
+    heard: Arc<AtomicU64>,
 }
 
 impl Sink for RunSink {
     fn line(&self, text: &str) {
-        self.observer.event(FarmEvent::AgentOutput {
+        self.heard.store(now_ms(), Ordering::Relaxed);
+        // Stamped here rather than when it reaches a screen: this is the moment
+        // the agent said it, and a transcript timed by when the webview
+        // happened to render it would be a transcript of the interface.
+        self.observer.event(Recorded::now(FarmEvent::AgentOutput {
             run: self.run.clone(),
             task: self.task.clone(),
             line: text.to_string(),
-        });
+        }));
     }
 }
 
@@ -125,6 +136,16 @@ struct Launch {
     narrator: Box<dyn execution::narrate::Narrator>,
 }
 
+/// How many runs are kept in memory.
+///
+/// Two hundred, *plus* the most recent run of every task however old it is —
+/// see [`State::remember_run`]. A long session used to grow this list forever
+/// and clone the whole of it into every snapshot, so the cost of watching a
+/// farm rose with everything it had already done (TASK-031). What a person
+/// reads is a task's own runs and the recent ones; the transcripts stay on disk
+/// and outlive both.
+const MAX_RUNS: usize = 200;
+
 /// The mutable heart of a farm.
 #[derive(Debug, Default)]
 struct State {
@@ -139,6 +160,63 @@ struct State {
     change_requests: HashMap<TaskId, String>,
     verifications: HashMap<TaskId, Verification>,
     reviews: HashMap<TaskId, Review>,
+    /// When each run last said something, by run (FEAT-077). Written by the
+    /// sink on the reader thread, read when the runs are asked for.
+    heard: HashMap<RunId, Arc<AtomicU64>>,
+    /// The task a planning run is breaking down, when it is breaking one down
+    /// rather than planning the goal (FEAT-076).
+    ///
+    /// Held here rather than passed to `collect_plan`, because the collector
+    /// runs on a thread the Tauri layer spawned from a command that has already
+    /// returned: there is nobody left holding the argument.
+    planning_parent: Option<TaskId>,
+}
+
+impl State {
+    /// Record a run, and forget the ones nobody will ask for (TASK-031).
+    ///
+    /// Two things are kept: the most recent [`MAX_RUNS`], and the newest run of
+    /// every task the farm still has. The second half is what makes the first
+    /// safe — a task's own panel shows its runs, and a farm where task three
+    /// has been quiet for a day would otherwise open on an empty panel because
+    /// two hundred other runs happened since.
+    ///
+    /// Both are bounded by something a person can see: a number, and how many
+    /// tasks they are looking at. A run that is dropped has not lost its
+    /// transcript — that is on disk, and outlives the farm.
+    fn remember_run(&mut self, run: AgentRun) {
+        self.runs.push(run);
+        if self.runs.len() <= MAX_RUNS {
+            return;
+        }
+
+        // The newest run of each task that still exists. A run belonging to a
+        // deleted task is history nobody can navigate to.
+        let live: std::collections::HashSet<TaskId> = self
+            .farm
+            .as_ref()
+            .map(|farm| farm.tasks.iter().map(|task| task.id.clone()).collect())
+            .unwrap_or_default();
+        let mut newest: HashMap<TaskId, RunId> = HashMap::new();
+        for entry in &self.runs {
+            if live.contains(&entry.task) {
+                newest.insert(entry.task.clone(), entry.id.clone());
+            }
+        }
+
+        let keep_from = self.runs.len() - MAX_RUNS;
+        let mut seen = 0;
+        self.runs.retain(|entry| {
+            let recent = seen >= keep_from;
+            seen += 1;
+            recent || newest.get(&entry.task) == Some(&entry.id)
+        });
+
+        // The clocks of runs nobody holds any more go with them.
+        let held: std::collections::HashSet<RunId> =
+            self.runs.iter().map(|entry| entry.id.clone()).collect();
+        self.heard.retain(|id, _| held.contains(id));
+    }
 }
 
 /// One repository's farm.
@@ -157,7 +235,7 @@ pub struct FarmService {
     /// answering by reading and re-parsing two thousand JSON objects made the
     /// cost of watching a farm proportional to how much it had already done
     /// (TASK-030).
-    recent: Mutex<VecDeque<FarmEvent>>,
+    recent: Mutex<VecDeque<Recorded>>,
 }
 
 impl FarmService {
@@ -306,7 +384,7 @@ impl FarmService {
     }
 
     /// The whole history the farm is holding, oldest first.
-    pub fn events(&self) -> Vec<FarmEvent> {
+    pub fn events(&self) -> Vec<Recorded> {
         self.recent
             .lock()
             .expect("recent events lock")
@@ -319,7 +397,7 @@ impl FarmService {
     ///
     /// What a screen actually renders is a screenful and a scrollback, not the
     /// whole history, and every event sent is one serialised across the bridge.
-    pub fn events_tail(&self, limit: usize) -> Vec<FarmEvent> {
+    pub fn events_tail(&self, limit: usize) -> Vec<Recorded> {
         let recent = self.recent.lock().expect("recent events lock");
         recent
             .iter()
@@ -328,8 +406,63 @@ impl FarmService {
             .collect()
     }
 
+    /// Every run, with when each last spoke folded in.
     pub fn runs(&self) -> Vec<AgentRun> {
-        self.state.lock().expect("farm lock").runs.clone()
+        let state = self.state.lock().expect("farm lock");
+        state
+            .runs
+            .iter()
+            .map(|run| {
+                let mut run = run.clone();
+                if let Some(heard) = state.heard.get(&run.id) {
+                    let at = heard.load(Ordering::Relaxed);
+                    run.last_output_ms = (at > 0).then_some(at);
+                }
+                run
+            })
+            .collect()
+    }
+
+    /// Why each queued task is not running, by task.
+    ///
+    /// The scheduler's own answer rather than a second opinion — see
+    /// [`scheduler::why_waiting`].
+    pub fn waiting_reasons(&self) -> Vec<(TaskId, String)> {
+        let state = self.state.lock().expect("farm lock");
+        let Some(farm) = state.farm.as_ref() else {
+            return Vec::new();
+        };
+        let registry = self.registry.lock().expect("registry lock");
+        scheduler::why_waiting(farm, &registry, &state.leases)
+    }
+
+    /// Move several drafts into the plan at once.
+    ///
+    /// One call rather than one per task, because accepting a plan is one
+    /// decision: eight round trips would be eight writes of the farm file and
+    /// eight chances to land half a plan.
+    pub fn ready_all(&self, ids: &[TaskId]) -> Result<()> {
+        for id in ids {
+            // A task that has already moved is not an error here: accepting a
+            // plan twice is a double click, not a failure.
+            if let Some(status) = self
+                .farm()
+                .and_then(|farm| farm.task(id).map(|task| task.status))
+            {
+                if status == TaskStatus::Draft {
+                    self.ready(id)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Throw several drafts away.
+    pub fn discard_all(&self, ids: &[TaskId]) -> Result<()> {
+        for id in ids {
+            self.delete_task(id)?;
+        }
+        Ok(())
     }
 
     pub fn scoreboard(&self) -> Vec<(AgentId, router::Record)> {
@@ -518,6 +651,14 @@ impl FarmService {
                 ));
             }
             farm.tasks.retain(|candidate| &candidate.id != id);
+            // Anything cut out of it becomes work in its own right rather than
+            // an orphan pointing at a task that is gone. Deleting a heading is
+            // not deleting what was under it (FEAT-076).
+            for child in farm.tasks.iter_mut() {
+                if child.parent.as_ref() == Some(id) {
+                    child.parent = None;
+                }
+            }
             state.leases.release(id);
             self.persist(&state)?;
             self.provider_of(&task)
@@ -601,9 +742,44 @@ impl FarmService {
                             self.set_status(&task, TaskStatus::Blocked, Some(error.to_string()));
                     }
                 }
+                scheduler::Decision::Settle { task, status } => {
+                    let _ = self.settle(&task, status);
+                }
             }
         }
         self.emit_farm_status();
+    }
+
+    /// Move a container to where its children have put it (FEAT-076).
+    ///
+    /// Deliberately not [`Self::set_status`]: that enforces the machine a task
+    /// with a *run* follows — assigned, verified, reviewed — and a container has
+    /// no run to follow it with. `TaskStatus::can_settle` is the rule that
+    /// applies instead, and it is in the model beside the other one.
+    fn settle(&self, id: &TaskId, status: TaskStatus) -> Result<()> {
+        {
+            let mut state = self.state.lock().expect("farm lock");
+            let farm = state.farm.as_mut().ok_or(Error::NoFarm)?;
+            let task = farm
+                .task_mut(id)
+                .ok_or_else(|| Error::NoSuchTask(id.clone()))?;
+            if !task.status.can_settle(status) {
+                return Ok(());
+            }
+            task.status = status;
+            task.note = match status {
+                TaskStatus::Blocked => Some("Something underneath this did not finish.".into()),
+                _ => None,
+            };
+            task.updated_ms = now_ms();
+            self.persist(&state)?;
+        }
+        self.emit(FarmEvent::TaskStatusChanged {
+            task: id.clone(),
+            status,
+            note: None,
+        });
+        Ok(())
     }
 
     /// Run one task now, whatever the scheduler thinks.
@@ -621,6 +797,13 @@ impl FarmService {
                 .clone();
 
             let graph = crate::orchestrator::Graph::new(&farm.tasks);
+            if graph.is_container(id) {
+                // Running the heading would cut a worktree for a task whose
+                // whole content is "these five things" (FEAT-076).
+                return Err(Error::Refused(
+                    "This task was broken down. Run the tasks underneath it instead.".into(),
+                ));
+            }
             let unmet = graph.unmet(&task);
             if !unmet.is_empty() {
                 return Err(Error::Refused(format!(
@@ -768,17 +951,21 @@ impl FarmService {
         let log = execution::log::log_path(&self.repo, &task, &run);
         let transcript = TranscriptWriter::create(&log)?;
 
+        // One clock per run, shared between the sink that writes it and the
+        // state that reads it (FEAT-077).
+        let heard = Arc::new(AtomicU64::new(0));
         let sink = Arc::new(RunSink {
             observer: self.observer.clone(),
             run: run.clone(),
             task: task.clone(),
+            heard: heard.clone(),
         });
 
         let session = execution::start(&command, &workdir, transcript, sink, narrator)?;
 
         {
             let mut state = self.state.lock().expect("farm lock");
-            state.runs.push(AgentRun {
+            state.remember_run(AgentRun {
                 id: run.clone(),
                 task: task.clone(),
                 agent: agent.clone(),
@@ -790,7 +977,9 @@ impl FarmService {
                 started_ms: now_ms(),
                 ended_ms: None,
                 log_file: Some(log.to_string_lossy().into_owned()),
+                last_output_ms: None,
             });
+            state.heard.insert(run.clone(), heard);
         }
 
         self.emit(FarmEvent::AgentStarted {
@@ -929,16 +1118,19 @@ impl FarmService {
 
         self.set_status(id, TaskStatus::Verification, None)?;
 
-        let observer = self.observer.clone();
+        // Through `emit`, not straight to the observer. These two used to go
+        // directly to the interface, which meant a verification was on screen
+        // while it happened and in no record afterwards: it was in neither the
+        // log on disk nor the history a reopened farm reads back.
         let task_id = id.clone();
         for command in &commands {
-            observer.event(FarmEvent::VerificationStarted {
+            self.emit(FarmEvent::VerificationStarted {
                 task: task_id.clone(),
                 command: command.clone(),
             });
         }
         let mut report = |result: &CommandResult| {
-            observer.event(FarmEvent::VerificationFinished {
+            self.emit(FarmEvent::VerificationFinished {
                 task: task_id.clone(),
                 command: result.command.clone(),
                 passed: result.passed,
@@ -1165,7 +1357,7 @@ impl FarmService {
             let state = self.state.lock().expect("farm lock");
             let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
             let task = farm.task(id).ok_or_else(|| Error::NoSuchTask(id.clone()))?;
-            (task.is_exhausted(), farm.autonomy)
+            (task.is_exhausted_at(farm.max_attempts), farm.autonomy)
         };
 
         self.state.lock().expect("farm lock").leases.release(id);
@@ -1189,6 +1381,42 @@ impl FarmService {
     /// is read with [`Self::collect_plan`]. Two steps rather than one because
     /// the planning run streams like any other and the interface shows it.
     pub fn plan(&self, agent: Option<AgentId>) -> Result<RunId> {
+        let prompt = {
+            let state = self.state.lock().expect("farm lock");
+            let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
+            context::planning(farm, &policy::read(&self.repo))
+        };
+        self.start_planning(prompt, None, agent)
+    }
+
+    /// Ask an agent to break one task into smaller ones (FEAT-076).
+    ///
+    /// The same machinery as [`Self::plan`] pointed at a task instead of the
+    /// goal. The children arrive as drafts, and the task they came out of
+    /// becomes a container the moment they are accepted.
+    pub fn decompose(&self, id: &TaskId, agent: Option<AgentId>) -> Result<RunId> {
+        let prompt = {
+            let state = self.state.lock().expect("farm lock");
+            let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
+            let task = farm.task(id).ok_or_else(|| Error::NoSuchTask(id.clone()))?;
+            if task.status.is_terminal() {
+                return Err(Error::Refused(
+                    "That task is finished. Breaking it down would produce work nobody asked for."
+                        .into(),
+                ));
+            }
+            context::decomposition(farm, task, &policy::read(&self.repo))
+        };
+        self.start_planning(prompt, Some(id.clone()), agent)
+    }
+
+    /// Start a planning run, whatever it is planning.
+    fn start_planning(
+        &self,
+        prompt: String,
+        parent: Option<TaskId>,
+        agent: Option<AgentId>,
+    ) -> Result<RunId> {
         let definition = {
             let registry = self.registry.lock().expect("registry lock");
             match agent {
@@ -1199,11 +1427,19 @@ impl FarmService {
             }
         };
 
-        let prompt = {
-            let state = self.state.lock().expect("farm lock");
+        // One planning run at a time. Two would share the `planning` session
+        // slot and the second would collect the first one's transcript, which
+        // is the kind of fault that shows up as a plan that makes no sense.
+        {
+            let mut state = self.state.lock().expect("farm lock");
             let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
-            context::planning(farm, &policy::read(&self.repo))
-        };
+            if farm.status == FarmStatus::Planning {
+                return Err(Error::Refused(
+                    "Something is already being planned. Wait for it, or stop it.".into(),
+                ));
+            }
+            state.planning_parent = parent;
+        }
 
         self.set_farm_status(FarmStatus::Planning)?;
 
@@ -1220,10 +1456,12 @@ impl FarmService {
 
         let log = execution::log::log_path(&self.repo, &planning_task, &run);
         let transcript = TranscriptWriter::create(&log)?;
+        let heard = Arc::new(AtomicU64::new(0));
         let sink = Arc::new(RunSink {
             observer: self.observer.clone(),
             run: run.clone(),
             task: planning_task.clone(),
+            heard: heard.clone(),
         });
         // The planner runs in the repository itself, read-only. It is told not
         // to change anything, and it has no worktree of its own because it is
@@ -1245,7 +1483,7 @@ impl FarmService {
 
         {
             let mut state = self.state.lock().expect("farm lock");
-            state.runs.push(AgentRun {
+            state.remember_run(AgentRun {
                 id: run.clone(),
                 task: planning_task.clone(),
                 agent: definition.id,
@@ -1255,7 +1493,9 @@ impl FarmService {
                 started_ms: now_ms(),
                 ended_ms: None,
                 log_file: Some(log.to_string_lossy().into_owned()),
+                last_output_ms: None,
             });
+            state.heard.insert(run.clone(), heard);
         }
         self.sessions
             .lock()
@@ -1322,6 +1562,7 @@ impl FarmService {
         // put an arbitrary prefix of a decomposition into the plan, which is
         // worse than nothing: the tasks look deliberate.
         if ended == execution::Ended::Cancelled {
+            self.state.lock().expect("farm lock").planning_parent = None;
             self.set_farm_status(FarmStatus::Idle)?;
             return Ok(Vec::new());
         }
@@ -1332,8 +1573,18 @@ impl FarmService {
 
         let tasks = {
             let mut state = self.state.lock().expect("farm lock");
+            let parent = state.planning_parent.take();
+            // Which agent produced this plan, from the run itself rather than
+            // remembered separately: the run is the record of who was asked
+            // (FEAT-078).
+            let agent = state
+                .runs
+                .iter()
+                .find(|entry| &entry.id == run)
+                .map(|entry| entry.agent.clone())
+                .unwrap_or_else(|| AgentId::new("an agent"));
             let farm = state.farm.as_mut().ok_or(Error::NoFarm)?;
-            let tasks = planner::adopt(farm, &plan)?;
+            let tasks = planner::adopt_under(farm, &agent, &plan, parent.as_ref())?;
             farm.tasks.extend(tasks.clone());
             farm.status = FarmStatus::Idle;
             self.persist(&state)?;
@@ -1498,6 +1749,7 @@ impl FarmService {
     }
 
     fn emit(&self, event: FarmEvent) {
+        let event = Recorded::now(event);
         let _ = store::append_event(&self.repo, &event);
         // Transcript lines are deliberately not kept, here or on disk: one run
         // produces thousands, and they would push the history out within a
@@ -1524,7 +1776,10 @@ impl FarmService {
                 let Some(farm) = state.farm.as_mut() else {
                     continue;
                 };
-                let task = planner::from_proposal(farm, proposal);
+                // The agent that was working when it thought of this, so a
+                // proposal is attributable rather than anonymous (FEAT-078).
+                let agent = farm.task(from).and_then(|task| task.implemented_by.clone());
+                let task = planner::from_proposal(farm, proposal, from, agent.as_ref());
                 farm.tasks.push(task.clone());
                 let _ = self.persist(&state);
                 task
@@ -1592,5 +1847,101 @@ impl FarmService {
                 })
             })
             .unwrap_or(AgentProvider::Custom)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{FarmId, Goal, GoalId};
+
+    fn run(number: u32, task: u32) -> AgentRun {
+        AgentRun {
+            id: RunId::new(format!("run-{number}")),
+            task: TaskId::new(format!("TASK-{task:04}")),
+            agent: AgentId::new("claude"),
+            phase: RunPhase::Implementation,
+            outcome: RunOutcome::Completed { exit_code: 0 },
+            command: vec!["claude".into()],
+            started_ms: number as u64,
+            ended_ms: Some(number as u64 + 1),
+            log_file: None,
+            last_output_ms: None,
+        }
+    }
+
+    /// A state holding a farm with `tasks` numbered from one.
+    fn state_with(tasks: u32) -> State {
+        let mut farm = Farm::new(
+            FarmId::new("f1"),
+            "/repo",
+            Goal::new(GoalId::new("g1"), "Ship it", 0),
+            0,
+        );
+        farm.tasks = (1..=tasks)
+            .map(|number| Task::new(TaskId::new(format!("TASK-{number:04}")), "t", 0))
+            .collect();
+        State {
+            farm: Some(farm),
+            ..State::default()
+        }
+    }
+
+    /// TASK-031 — a long session stops growing.
+    #[test]
+    fn the_history_is_bounded() {
+        let mut state = State::default();
+        for number in 0..(MAX_RUNS as u32 * 3) {
+            state.remember_run(run(number, number));
+        }
+
+        assert!(
+            state.runs.len() <= MAX_RUNS,
+            "the history grew to {}",
+            state.runs.len()
+        );
+        // And it is the *recent* end that survives.
+        assert!(state
+            .runs
+            .iter()
+            .any(|entry| entry.id == RunId::new(format!("run-{}", MAX_RUNS * 3 - 1))));
+    }
+
+    /// TASK-031 — and a task the farm still has never loses its newest run.
+    ///
+    /// Otherwise a task that has been quiet for a day opens on an empty panel
+    /// because two hundred other runs happened since.
+    #[test]
+    fn a_task_the_farm_still_has_keeps_its_newest_run() {
+        let mut state = state_with(1);
+        state.remember_run(run(0, 1));
+        for number in 1..(MAX_RUNS as u32 * 2) {
+            // Every other run belongs to a task the farm does not have.
+            state.remember_run(run(number, number + 100));
+        }
+
+        assert!(
+            state
+                .runs
+                .iter()
+                .any(|entry| entry.task == TaskId::new("TASK-0001")),
+            "the quiet task lost its only run"
+        );
+    }
+
+    #[test]
+    fn forgetting_a_run_forgets_its_clock_too() {
+        // Otherwise the map of "when did this last speak" grows forever beside
+        // a list that does not (FEAT-077 meets TASK-031).
+        let mut state = State::default();
+        for number in 0..(MAX_RUNS as u32 * 2) {
+            state.heard.insert(
+                RunId::new(format!("run-{number}")),
+                Arc::new(AtomicU64::new(1)),
+            );
+            state.remember_run(run(number, number));
+        }
+
+        assert_eq!(state.heard.len(), state.runs.len());
     }
 }

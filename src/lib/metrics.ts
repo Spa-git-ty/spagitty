@@ -306,6 +306,15 @@ export const REQUESTS_DETAIL_W = 300;
  */
 export const STASH_ENTRIES_W = 280;
 
+/**
+ * The Farm's activity drawer (FEAT-074).
+ *
+ * A hundred and eighty: eight or nine lines of log at the application's
+ * monospace size. Enough to read a run's last moves without turning the screen
+ * into a terminal, and the drawer is draggable for the times it should be one.
+ */
+export const FARM_LOG_H = 180;
+
 // --- Lane elbow shape -----------------------------------------------------
 
 /**
@@ -444,6 +453,7 @@ export function applyMetrics(
 		'search-side-w': SEARCH_SIDE_W,
 		'requests-detail-w': REQUESTS_DETAIL_W,
 		'stash-entries-w': STASH_ENTRIES_W,
+		'farm-log-h': FARM_LOG_H,
 		...RADII
 	};
 	for (const [name, value] of Object.entries(px)) {

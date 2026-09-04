@@ -37,6 +37,7 @@
 //! They stay ordinary synchronous functions: an `async fn` may not borrow
 //! `State`, and there is nothing here to await.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -64,7 +65,7 @@ struct Emit<R: Runtime> {
 }
 
 impl<R: Runtime> Observer for Emit<R> {
-    fn event(&self, event: FarmEvent) {
+    fn event(&self, event: Recorded) {
         // A webview that has gone away is not an error worth propagating into
         // the farm: the run continues and the events are on disk.
         let _ = self.app.emit(EVENT, &event);
@@ -127,10 +128,16 @@ pub struct FarmSnapshot {
     /// Providers with no definition, so the settings screen can offer them.
     pub undetected: Vec<AgentProvider>,
     /// The tail of the activity history — [`SNAPSHOT_EVENTS`] of it.
-    pub events: Vec<FarmEvent>,
+    pub events: Vec<Recorded>,
     pub runs: Vec<AgentRun>,
     pub policy: Policy,
     pub scoreboard: Vec<AgentScore>,
+    /// Why each queued task is not running, by task.
+    ///
+    /// Only the reasons the interface cannot work out for itself — a contended
+    /// path, a full parallelism limit, no agent for the work. Unmet
+    /// dependencies are not here: the screen has the task list.
+    pub waiting: HashMap<String, String>,
 }
 
 /// How much history a snapshot carries.
@@ -218,14 +225,17 @@ pub fn farm_open<R: Runtime>(
             let service = service.clone();
             move || {
                 service.detect_agents();
+                // Stamped like every other event, because the webview reads
+                // one channel and a line with no time in a log that has times
+                // reads as a bug in the log.
                 let _ = app.emit(
                     EVENT,
-                    &FarmEvent::FarmStatusChanged {
+                    &Recorded::now(FarmEvent::FarmStatusChanged {
                         status: service
                             .farm()
                             .map(|farm| farm.status)
                             .unwrap_or(FarmStatus::Idle),
-                    },
+                    }),
                 );
             }
         })
@@ -241,7 +251,7 @@ pub fn farm_snapshot(state: State<'_, FarmState>) -> Result<FarmSnapshot> {
 
 /// More history than a snapshot carries, for a reader scrolling back.
 #[tauri::command(async)]
-pub fn farm_events(state: State<'_, FarmState>, limit: Option<usize>) -> Result<Vec<FarmEvent>> {
+pub fn farm_events(state: State<'_, FarmState>, limit: Option<usize>) -> Result<Vec<Recorded>> {
     Ok(state
         .service()?
         .events_tail(limit.unwrap_or(usize::MAX).min(store::MAX_EVENTS)))
@@ -281,6 +291,11 @@ fn snapshot(service: &FarmService) -> Result<FarmSnapshot> {
             .scoreboard()
             .into_iter()
             .map(AgentScore::from)
+            .collect(),
+        waiting: service
+            .waiting_reasons()
+            .into_iter()
+            .map(|(task, why)| (task.as_str().to_string(), why))
             .collect(),
     })
 }
@@ -327,6 +342,7 @@ pub struct FarmSettings {
     pub autonomy: Option<Autonomy>,
     pub permissions: Option<Permissions>,
     pub max_parallel: Option<usize>,
+    pub max_attempts: Option<u32>,
     pub verification: Option<Vec<String>>,
     pub agents: Option<Vec<AgentId>>,
     pub goal_title: Option<String>,
@@ -341,6 +357,12 @@ pub fn farm_configure(state: State<'_, FarmState>, settings: FarmSettings) -> Re
         }
         if let Some(permissions) = settings.permissions {
             farm.permissions = permissions;
+        }
+        if let Some(attempts) = settings.max_attempts {
+            // One at least — a farm that may not attempt anything is a farm
+            // that does nothing — and ten at most, which is already more
+            // rounds than a task nobody has understood deserves.
+            farm.max_attempts = attempts.clamp(1, 10);
         }
         if let Some(max) = settings.max_parallel {
             // One at least, and a ceiling: a farm told to run fifty agents
@@ -487,6 +509,23 @@ pub fn farm_ready_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
     Ok(())
 }
 
+/// Accept a plan: move several drafts into it at once.
+#[tauri::command(async)]
+pub fn farm_ready_tasks(state: State<'_, FarmState>, ids: Vec<TaskId>) -> Result<()> {
+    let service = state.service()?;
+    service.ready_all(&ids)?;
+    service.tick();
+    watch_all(&service);
+    Ok(())
+}
+
+/// Discard a plan, or the part of it nobody wants.
+#[tauri::command(async)]
+pub fn farm_discard_tasks(state: State<'_, FarmState>, ids: Vec<TaskId>) -> Result<()> {
+    state.service()?.discard_all(&ids)?;
+    Ok(())
+}
+
 #[tauri::command(async)]
 pub fn farm_assign_task(state: State<'_, FarmState>, id: TaskId, agent: AgentId) -> Result<()> {
     state.service()?.assign(&id, &agent)?;
@@ -590,16 +629,35 @@ pub fn farm_verify_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
 pub fn farm_plan(state: State<'_, FarmState>, agent: Option<AgentId>) -> Result<RunId> {
     let service = state.service()?;
     let run = service.plan(agent)?;
+    collect(&service, run.clone());
+    Ok(run)
+}
+
+/// Ask an agent to break one task into smaller ones.
+///
+/// The same run, pointed at a task. Its children arrive as drafts, and the task
+/// becomes a container once they are accepted.
+#[tauri::command(async)]
+pub fn farm_decompose(
+    state: State<'_, FarmState>,
+    id: TaskId,
+    agent: Option<AgentId>,
+) -> Result<RunId> {
+    let service = state.service()?;
+    let run = service.decompose(&id, agent)?;
+    collect(&service, run.clone());
+    Ok(run)
+}
+
+/// Wait for a planning run on a thread and adopt what it produced.
+fn collect(service: &Arc<FarmService>, run: RunId) {
+    let service = service.clone();
     std::thread::Builder::new()
         .name("spagitty-farm-plan".into())
-        .spawn({
-            let run = run.clone();
-            move || {
-                let _ = service.collect_plan(&run);
-            }
+        .spawn(move || {
+            let _ = service.collect_plan(&run);
         })
         .ok();
-    Ok(run)
 }
 
 /// Stop a planning run.
