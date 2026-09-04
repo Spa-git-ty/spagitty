@@ -3,7 +3,7 @@
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 	import TaskChip from './TaskChip.svelte';
-	import { duration, TASK_KIND_LABELS, verificationLine } from '../describe';
+	import { duration, originLine, TASK_KIND_LABELS, verificationLine } from '../describe';
 	import type { AgentStatus, TaskDetail } from '../types';
 
 	/**
@@ -26,6 +26,10 @@
 		onreview: () => void;
 		onmerge: () => void;
 		onready: () => void;
+		/** Ask an agent to break this task into smaller ones (FEAT-076). */
+		ondecompose: () => void;
+		/** This task's own row in the outline, so a container can say so. */
+		children?: { done: number; total: number } | null;
 		onedit: () => void;
 		ondelete: () => void;
 		onopenDiff: (branch: string) => void;
@@ -43,12 +47,16 @@
 		onreview,
 		onmerge,
 		onready,
+		ondecompose,
+		children = null,
 		onedit,
 		ondelete,
 		onopenDiff
 	}: Props = $props();
 
 	const task = $derived(detail.task);
+	/** A task something was cut out of: a heading, and never run itself. */
+	const container = $derived((children?.total ?? 0) > 0);
 	const running = $derived(task.status === 'running' || task.status === 'verification');
 	/** A task nothing is going to move on its own. */
 	const stalled = $derived(task.status === 'blocked' || task.status === 'failed');
@@ -69,6 +77,13 @@
 		<p class="reason" class:bad={stalled}>{task.note}</p>
 	{/if}
 
+	{#if container}
+		<p class="note">
+			This was broken down. It finishes when the {children?.total} tasks under it do —
+			{children?.done} so far — and nothing runs against it directly.
+		</p>
+	{/if}
+
 	<div class="actions">
 		{#if task.status === 'draft'}
 			<Btn primary disabled={busy} onclick={onready}>Add to the plan</Btn>
@@ -77,8 +92,16 @@
 			<Btn danger disabled={busy} onclick={onstop}>Stop</Btn>
 		{:else if stalled}
 			<Btn primary disabled={busy} onclick={onretry}>Try again</Btn>
-		{:else if task.status !== 'done' && task.status !== 'cancelled'}
+		{:else if !container && task.status !== 'done' && task.status !== 'cancelled'}
 			<Btn primary disabled={busy} onclick={() => onrun(null)}>Run</Btn>
+		{/if}
+		{#if !container && !running && task.status !== 'done' && task.status !== 'cancelled'}
+			<!--
+				Offered on any task that has not been broken down, because
+				"this is bigger than I thought" is something you find out at
+				any point, including after a failed attempt.
+			-->
+			<Btn disabled={busy} onclick={ondecompose}>Break it down</Btn>
 		{/if}
 		{#if task.status === 'review'}
 			<Btn disabled={busy} onclick={onreview}>Send for review</Btn>
@@ -105,6 +128,9 @@
 	{/if}
 
 	<dl class="facts">
+		<dt>Asked for by</dt>
+		<dd>{originLine(task.origin)}</dd>
+
 		<dt>Kind</dt>
 		<dd>{TASK_KIND_LABELS[task.kind]}</dd>
 

@@ -811,9 +811,41 @@ rather than by volume, because volume ranks whoever was given the most work.
 (FEAT-073).
 
 Supervising a small engineering team from inside the Git client. The plan is on
-the left, the selected task in the middle, and what just happened along the
-bottom — the three questions a supervisor has, answerable without navigating
-between them. A person who has to move between those three is reading a log.
+the left, the selected task in the middle, and the log along the bottom — the
+three questions a supervisor has, answerable without navigating between them. A
+person who has to move between those three is reading a log.
+
+**The log is a drawer, and it has two tabs** (FEAT-074). *Activity* is what the
+farm did — tasks created, statuses moved, verifications run, merges landed —
+timestamped, filterable to one task, and as long as the history. *Transcript* is
+what one agent said, which is thousands of lines and belongs to one task at a
+time; keeping them in one list would drown the record in the narration. The
+drawer is dragged to the height you want and collapses to its own tab bar.
+
+Two controls, and they are not the same thing. **Following** is where the
+scrollbar is: the pane sticks to the newest line while the reader is at the
+bottom and lets go the moment they scroll up. **Hold** is a decision — it
+freezes the list so a line can be read while it is still arriving, and counts
+what arrived while it was held, so holding is never losing.
+
+**The header is a ring, and the strip above the plan says who is working**
+(FEAT-077). What is finished fills the ring, what is running is a brighter arc
+at its leading edge, and anything blocked colours the remainder — an unfinished
+farm and a stuck one are not the same state. One chip per working agent names
+what it is on and for how long, and the strip is absent when nothing runs.
+
+**A quiet run says so, and is never stopped for you.** After six minutes without
+a word the chip and the row say how long it has been silent and the pulse stops.
+A model may think for a long time; killing it throws the work away, so the farm
+flags and leaves the decision where it belongs.
+
+**Finished work is scored.** A task taken to Done hands the delight layer
+(FEAT-072) what it needs to credit the agent that did it — including that
+"nothing checked it" is not a pass.
+
+**A planning run is visible while it runs.** A card under the header carries how
+long it has been going, the last thing the planner said, and a control that
+stops the planner without cancelling the farm (BUG-021).
 
 **Nothing polls.** A farm changes when an agent says something, which is at a
 model's pace and on no schedule. The backend emits, the store applies, and the

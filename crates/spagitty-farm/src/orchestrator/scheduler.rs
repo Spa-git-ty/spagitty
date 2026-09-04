@@ -15,7 +15,7 @@
 //! thing that does.
 
 use crate::agent::AgentRegistry;
-use crate::model::{AgentId, Farm, Task, TaskId};
+use crate::model::{AgentId, Farm, Task, TaskId, TaskStatus};
 use crate::orchestrator::dependency::Graph;
 use crate::orchestrator::router;
 use crate::workspace::Leases;
@@ -27,12 +27,20 @@ pub enum Decision {
     Start { task: TaskId, agent: AgentId },
     /// It cannot proceed, and here is the sentence to show.
     Block { task: TaskId, why: String },
+    /// A container has caught up with its children (FEAT-076).
+    ///
+    /// Not a `Block` even when the status is `Blocked`: a blocked container is
+    /// bookkeeping about work that already failed somewhere else, and the
+    /// sentence belongs to the child that failed.
+    Settle { task: TaskId, status: TaskStatus },
 }
 
 impl Decision {
     pub fn task(&self) -> &TaskId {
         match self {
-            Decision::Start { task, .. } | Decision::Block { task, .. } => task,
+            Decision::Start { task, .. }
+            | Decision::Block { task, .. }
+            | Decision::Settle { task, .. } => task,
         }
     }
 }
@@ -44,10 +52,25 @@ impl Decision {
 /// cycles asking a question whose answer has not changed.
 pub fn decide(farm: &Farm, registry: &AgentRegistry, leases: &Leases) -> Vec<Decision> {
     let mut decisions = Vec::new();
+    let graph = Graph::new(&farm.tasks);
+
+    // Containers first, and regardless of whether the farm is running: a
+    // heading whose children have all finished is finished, and a farm that is
+    // paused has not un-finished them.
+    for task in &farm.tasks {
+        let Some(status) = graph.container_status(&task.id) else {
+            continue;
+        };
+        if task.status != status && task.status.can_settle(status) {
+            decisions.push(Decision::Settle {
+                task: task.id.clone(),
+                status,
+            });
+        }
+    }
 
     // Tasks waiting on something that has failed will never run. Saying so is
     // more useful than leaving them in the queue looking imminent.
-    let graph = Graph::new(&farm.tasks);
     for (task, blocker) in graph.stranded() {
         decisions.push(Decision::Block {
             task: task.clone(),
@@ -88,7 +111,7 @@ pub fn decide(farm: &Farm, registry: &AgentRegistry, leases: &Leases) -> Vec<Dec
             continue;
         }
 
-        if task.is_exhausted() {
+        if task.is_exhausted_at(farm.max_attempts) {
             decisions.push(Decision::Block {
                 task: task.id.clone(),
                 why: format!(
@@ -108,6 +131,92 @@ pub fn decide(farm: &Farm, registry: &AgentRegistry, leases: &Leases) -> Vec<Dec
     }
 
     decisions
+}
+
+/// Why each queued task is not running, in one sentence each.
+///
+/// The scheduler already decides this — it just does not say so. A task that is
+/// `Ready` and not started is holding one of a small number of reasons, and
+/// every one of them is knowable here and knowable *nowhere else*: which task
+/// holds the path it wants, how many agents are busy against the limit, whether
+/// anything installed can do this kind of work. The interface could not compute
+/// any of it, so a queue that was not moving looked stalled (FEAT-075).
+///
+/// Deliberately not included: unmet dependencies. The interface has the whole
+/// task list and can say `Waiting for T-3` without asking, and two places
+/// producing the same sentence is how they come to disagree.
+///
+/// Pure, like [`decide`], and tested as a table for the same reason.
+pub fn why_waiting(
+    farm: &Farm,
+    registry: &AgentRegistry,
+    leases: &Leases,
+) -> Vec<(TaskId, String)> {
+    let mut reasons = Vec::new();
+
+    if !farm.status.is_live() {
+        // Nothing below is true while the farm is not running: a queue that is
+        // not being served is not a queue with a problem.
+        for task in farm.tasks.iter().filter(|task| task.status.is_queued()) {
+            reasons.push((task.id.clone(), "The farm is not running.".to_string()));
+        }
+        return reasons;
+    }
+    if !farm.autonomy.starts_tasks() {
+        for task in farm.tasks.iter().filter(|task| task.status.is_queued()) {
+            reasons.push((
+                task.id.clone(),
+                "Autonomy is Manual, so nothing starts on its own.".to_string(),
+            ));
+        }
+        return reasons;
+    }
+
+    let graph = Graph::new(&farm.tasks);
+    let mut leases = leases.clone();
+    let mut free = farm.max_parallel.saturating_sub(farm.running());
+
+    for task in graph.ready() {
+        if task.is_exhausted_at(farm.max_attempts) {
+            reasons.push((
+                task.id.clone(),
+                format!("Attempted {} times. It needs a person.", task.attempts),
+            ));
+            continue;
+        }
+        if agent_for(farm, registry, task).is_none() {
+            reasons.push((
+                task.id.clone(),
+                "No agent is available for this kind of work.".to_string(),
+            ));
+            continue;
+        }
+        if let Some(holder) = leases.blocked_by(&task.id, &task.allowed_paths) {
+            reasons.push((
+                task.id.clone(),
+                format!("{holder} is working on the same files."),
+            ));
+            continue;
+        }
+        if free == 0 {
+            reasons.push((
+                task.id.clone(),
+                format!(
+                    "No free agent — {} of {} are working.",
+                    farm.running(),
+                    farm.max_parallel
+                ),
+            ));
+            continue;
+        }
+        // This one is about to start, and it takes its paths with it — so the
+        // next task in the queue is told about *this* task rather than about
+        // whatever was running before the pass began.
+        let _ = leases.acquire(&task.id, &task.allowed_paths);
+        free -= 1;
+    }
+
+    reasons
 }
 
 /// Who should do this task.
@@ -421,5 +530,248 @@ mod tests {
         let farm = farm(vec![task(1, TaskStatus::Running), dependant]);
         let decisions = decide(&farm, &registry(), &Leases::default());
         assert!(decisions.is_empty(), "{decisions:?}");
+    }
+
+    /// FEAT-075 — the queue says why it is not moving.
+    ///
+    /// A table, because that is what the reasons are: one row per thing that
+    /// can hold a ready task still, and each one is a sentence somebody reads
+    /// on a task row.
+    fn why(farm: &Farm, leases: &Leases) -> Vec<(String, String)> {
+        why_waiting(farm, &registry(), leases)
+            .into_iter()
+            .map(|(task, why)| (task.to_string(), why))
+            .collect()
+    }
+
+    #[test]
+    fn a_task_that_is_about_to_start_has_nothing_to_explain() {
+        let farm = farm(vec![task(1, TaskStatus::Ready)]);
+        assert!(why(&farm, &Leases::default()).is_empty());
+    }
+
+    #[test]
+    fn a_stopped_farm_says_so_rather_than_blaming_the_task() {
+        let mut farm = farm(vec![task(1, TaskStatus::Ready)]);
+        farm.status = FarmStatus::Idle;
+        assert_eq!(
+            why(&farm, &Leases::default()),
+            [(
+                task_id(1).to_string(),
+                "The farm is not running.".to_string()
+            )]
+        );
+    }
+
+    #[test]
+    fn manual_autonomy_says_nothing_starts_on_its_own() {
+        let mut farm = farm(vec![task(1, TaskStatus::Ready)]);
+        farm.autonomy = Autonomy::Manual;
+        assert_eq!(
+            why(&farm, &Leases::default())[0].1,
+            "Autonomy is Manual, so nothing starts on its own."
+        );
+    }
+
+    #[test]
+    fn a_task_waiting_for_the_files_another_holds_names_the_holder() {
+        let mut first = task(1, TaskStatus::Running);
+        first.allowed_paths = vec!["src/auth/**".into()];
+        let mut second = task(2, TaskStatus::Ready);
+        second.allowed_paths = vec!["src/auth/tokens.rs".into()];
+        let farm = farm(vec![first, second]);
+
+        let mut leases = Leases::default();
+        leases
+            .acquire(&task_id(1), &["src/auth/**".to_string()])
+            .unwrap();
+
+        assert_eq!(
+            why(&farm, &leases),
+            [(
+                task_id(2).to_string(),
+                format!("{} is working on the same files.", task_id(1))
+            )]
+        );
+    }
+
+    #[test]
+    fn a_full_farm_says_how_full_it_is() {
+        let mut farm = farm(vec![
+            task(1, TaskStatus::Running),
+            task(2, TaskStatus::Ready),
+        ]);
+        farm.max_parallel = 1;
+        assert_eq!(
+            why(&farm, &Leases::default())[0].1,
+            "No free agent — 1 of 1 are working."
+        );
+    }
+
+    #[test]
+    fn a_task_nothing_can_do_says_that_rather_than_looking_queued() {
+        let mut farm = farm(vec![task(1, TaskStatus::Ready)]);
+        // A farm restricted to an agent that is not installed.
+        farm.agents = vec![AgentId::new("nobody")];
+        assert_eq!(
+            why(&farm, &Leases::default())[0].1,
+            "No agent is available for this kind of work."
+        );
+    }
+
+    #[test]
+    fn an_exhausted_task_says_it_needs_a_person() {
+        let mut exhausted = task(1, TaskStatus::Ready);
+        exhausted.attempts = 3;
+        let farm = farm(vec![exhausted]);
+        assert!(why(&farm, &Leases::default())[0]
+            .1
+            .contains("needs a person"));
+    }
+
+    #[test]
+    fn a_draft_is_not_a_queue_the_farm_is_failing_to_serve() {
+        // It is a decision nobody has made, which the plan band asks for.
+        let mut farm = farm(vec![task(1, TaskStatus::Draft)]);
+        farm.status = FarmStatus::Idle;
+        assert!(why(&farm, &Leases::default()).is_empty());
+    }
+
+    #[test]
+    fn the_second_of_two_queued_tasks_is_told_about_the_first() {
+        // Not about whatever was running before this pass: the first task takes
+        // its slot inside the same pass, which is what `decide` does too.
+        let mut farm = farm(vec![task(1, TaskStatus::Ready), task(2, TaskStatus::Ready)]);
+        farm.max_parallel = 1;
+        let reasons = why(&farm, &Leases::default());
+        assert_eq!(reasons.len(), 1);
+        assert_eq!(reasons[0].0, task_id(2).to_string());
+    }
+
+    // ── Containers (FEAT-076) ────────────────────────────────────────────
+
+    fn child(number: u32, parent: u32, status: TaskStatus) -> Task {
+        let mut task = task(number, status);
+        task.parent = Some(task_id(parent));
+        task
+    }
+
+    #[test]
+    fn a_container_is_never_started() {
+        // Running the heading would cut a worktree for a task whose whole
+        // content is "these two things".
+        let farm = farm(vec![
+            task(1, TaskStatus::Ready),
+            child(2, 1, TaskStatus::Ready),
+            child(3, 1, TaskStatus::Ready),
+        ]);
+        let started = starts(&decide(&farm, &registry(), &Leases::default()));
+        assert!(!started.contains(&task_id(1).to_string()), "{started:?}");
+        assert!(started.contains(&task_id(2).to_string()), "{started:?}");
+    }
+
+    #[test]
+    fn a_container_is_done_when_its_children_are() {
+        let farm = farm(vec![
+            task(1, TaskStatus::Ready),
+            child(2, 1, TaskStatus::Done),
+            child(3, 1, TaskStatus::Done),
+        ]);
+        let settled: Vec<(String, TaskStatus)> = decide(&farm, &registry(), &Leases::default())
+            .into_iter()
+            .filter_map(|decision| match decision {
+                Decision::Settle { task, status } => Some((task.to_string(), status)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(settled, [(task_id(1).to_string(), TaskStatus::Done)]);
+    }
+
+    #[test]
+    fn a_container_with_one_child_stuck_is_blocked() {
+        for stuck in [
+            TaskStatus::Failed,
+            TaskStatus::Cancelled,
+            TaskStatus::Blocked,
+        ] {
+            let farm = farm(vec![
+                task(1, TaskStatus::Ready),
+                child(2, 1, TaskStatus::Done),
+                child(3, 1, stuck),
+            ]);
+            let settled = decide(&farm, &registry(), &Leases::default())
+                .into_iter()
+                .any(|decision| {
+                    matches!(
+                        decision,
+                        Decision::Settle {
+                            status: TaskStatus::Blocked,
+                            ..
+                        }
+                    )
+                });
+            assert!(
+                settled,
+                "a child that is {stuck:?} did not block its container"
+            );
+        }
+    }
+
+    #[test]
+    fn a_container_settles_even_while_the_farm_is_paused() {
+        // Pausing does not un-finish the children, and a heading that stays
+        // Ready over five Done tasks is a lie about the state of the work.
+        let mut farm = farm(vec![
+            task(1, TaskStatus::Ready),
+            child(2, 1, TaskStatus::Done),
+        ]);
+        farm.status = FarmStatus::Paused;
+        assert!(decide(&farm, &registry(), &Leases::default())
+            .iter()
+            .any(|decision| matches!(decision, Decision::Settle { .. })));
+    }
+
+    #[test]
+    fn a_container_that_has_already_settled_is_left_alone() {
+        // Otherwise every pass would emit a decision and every decision an
+        // event, which is a farm that never stops talking about a finished task.
+        let mut container = task(1, TaskStatus::Ready);
+        container.status = TaskStatus::Done;
+        let farm = farm(vec![container, child(2, 1, TaskStatus::Done)]);
+        assert!(decide(&farm, &registry(), &Leases::default()).is_empty());
+    }
+
+    #[test]
+    fn a_container_is_not_asked_why_it_is_waiting() {
+        // It is not waiting for anything; it is waiting on its children, and
+        // the row says that with a fraction rather than a sentence.
+        let mut farm = farm(vec![
+            task(1, TaskStatus::Ready),
+            child(2, 1, TaskStatus::Running),
+        ]);
+        farm.max_parallel = 1;
+        let reasons = why(&farm, &Leases::default());
+        assert!(
+            !reasons
+                .iter()
+                .any(|(task, _)| task == &task_id(1).to_string()),
+            "{reasons:?}"
+        );
+    }
+
+    #[test]
+    fn the_attempt_limit_is_the_farms_rather_than_a_constant() {
+        let mut tried = task(1, TaskStatus::Ready);
+        tried.attempts = 3;
+        let mut farm = farm(vec![tried]);
+
+        farm.max_attempts = 3;
+        assert!(why(&farm, &Leases::default())[0]
+            .1
+            .contains("needs a person"));
+
+        // The same task, on a farm given more rope, is simply queued.
+        farm.max_attempts = 5;
+        assert!(why(&farm, &Leases::default()).is_empty());
     }
 }

@@ -17,6 +17,7 @@ import {
 	CHANGES_FILES_W,
 	DETAIL_W,
 	DIFF_FILES_W,
+	FARM_LOG_H,
 	RAIL_W,
 	REQUESTS_DETAIL_W,
 	STASH_ENTRIES_W
@@ -42,9 +43,16 @@ export const DETAIL_MAX = 520;
  * right, a right panel widens as it moves left.
  */
 export interface PanelSpec {
-	/** The CSS custom property the width is published as. */
+	/** The CSS custom property the size is published as. */
 	variable: string;
-	side: 'left' | 'right';
+	/**
+	 * Which edge the panel is anchored to.
+	 *
+	 * `bottom` is a *height* rather than a width, and it is the only difference
+	 * a drawer needs: the drag reads the pointer's Y, and everything else —
+	 * clamping, persistence, hiding — is the same problem (FEAT-074).
+	 */
+	side: 'left' | 'right' | 'bottom';
 	initial: number;
 	min: number;
 	max: number;
@@ -86,6 +94,16 @@ export const PANELS = {
 		initial: STASH_ENTRIES_W,
 		min: 200,
 		max: 520
+	},
+	farmLog: {
+		variable: 'farm-log-h',
+		side: 'bottom',
+		initial: FARM_LOG_H,
+		// Three lines at the low end; half a tall window at the high end. A
+		// drawer that can be dragged to one line is a drawer that can be closed
+		// by accident, and closing it has its own control.
+		min: 88,
+		max: 640
 	}
 } as const satisfies Record<string, PanelSpec>;
 
@@ -107,7 +125,8 @@ let extra = $state<Record<string, number>>({
 	requestsDetail: REQUESTS_DETAIL_W,
 	changesFiles: CHANGES_FILES_W,
 	diffFiles: DIFF_FILES_W,
-	stashEntries: STASH_ENTRIES_W
+	stashEntries: STASH_ENTRIES_W,
+	farmLog: FARM_LOG_H
 });
 /**
  * Collapsed to icons.
@@ -238,7 +257,8 @@ export const panels = {
 			requestsDetail: REQUESTS_DETAIL_W,
 			changesFiles: CHANGES_FILES_W,
 			diffFiles: DIFF_FILES_W,
-			stashEntries: STASH_ENTRIES_W
+			stashEntries: STASH_ENTRIES_W,
+			farmLog: FARM_LOG_H
 		};
 		railCollapsed = false;
 		hidden = {};

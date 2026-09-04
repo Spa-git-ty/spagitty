@@ -1247,6 +1247,11 @@ mod tests {
     fn a_clone_produces_the_same_repository_git_clone_would() {
         // Criterion 1, over a local path so the test needs no network. The
         // clone is a real `git clone`, which is the whole point of the boundary.
+        //
+        // The gate is taken because this writes to the process-wide record, and
+        // a test that reads the record must not have another test's clone
+        // appear in the middle of it (BUG-023).
+        let _gate = crate::record::test_gate();
         let source = Fixture::woven();
         let into = tempfile::tempdir().expect("temp dir");
         let destination = into.path().join("project");
@@ -1275,6 +1280,9 @@ mod tests {
         // Criterion 4's data half: without `--progress`, git writes nothing to
         // a pipe and the screen would sit frozen for the whole clone.
         use std::io::Read;
+
+        // Writes to the record; see the note in the test above (BUG-023).
+        let _gate = crate::record::test_gate();
 
         let source = Fixture::woven();
         let into = tempfile::tempdir().expect("temp dir");
@@ -1379,9 +1387,16 @@ mod tests {
         );
         let mut child = clone_start(&url, &into.path().join("project")).expect("git was spawned");
 
+        // *This* clone, not whichever clone happened to be recorded next: the
+        // record is process-wide and two other tests in this module clone as
+        // well. Matching on the host is what makes the assertion about the
+        // entry this test produced (BUG-023).
         let entry = crate::record::recent(before)
             .into_iter()
-            .find(|entry| entry.argv.get(1).map(String::as_str) == Some("clone"))
+            .find(|entry| {
+                entry.argv.get(1).map(String::as_str) == Some("clone")
+                    && entry.line().contains("example.invalid")
+            })
             .expect("the clone was recorded");
 
         assert_eq!(entry.outcome, crate::record::Outcome::Started);

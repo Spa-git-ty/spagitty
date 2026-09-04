@@ -18,6 +18,7 @@ import type {
 	FarmFailure,
 	FarmSettings,
 	FarmSnapshot,
+	RecordedEvent,
 	StaleWorkspace,
 	Task,
 	TaskDetail,
@@ -96,6 +97,21 @@ export function readyTask(id: string): Promise<void> {
 	return invoke('farm_ready_task', { id });
 }
 
+/**
+ * Accept a plan: move several drafts into it at once.
+ *
+ * One call rather than one per task — accepting a plan is one decision, and
+ * eight calls would be eight writes and eight chances to land half of it.
+ */
+export function readyTasks(ids: string[]): Promise<void> {
+	return invoke('farm_ready_tasks', { ids });
+}
+
+/** Throw several drafts away. */
+export function discardTasks(ids: string[]): Promise<void> {
+	return invoke('farm_discard_tasks', { ids });
+}
+
 export function assignTask(id: string, agent: string): Promise<void> {
 	return invoke('farm_assign_task', { id, agent });
 }
@@ -136,6 +152,41 @@ export function verifyTask(id: string): Promise<void> {
 /** Ask an agent to break the goal into tasks. Resolves with the run id. */
 export function plan(agent: string | null): Promise<string> {
 	return invoke('farm_plan', { agent });
+}
+
+/**
+ * Ask an agent to break one task into smaller ones.
+ *
+ * The same planning run pointed at a task. Its children arrive as drafts, so
+ * the plan-review band asks before any of them runs.
+ */
+export function decompose(id: string, agent: string | null): Promise<string> {
+	return invoke('farm_decompose', { id, agent });
+}
+
+/**
+ * Stop a planning run.
+ *
+ * Not `cancel()`, which stops the whole farm. Changing your mind about a
+ * decomposition is not changing your mind about the work.
+ */
+export function cancelPlan(): Promise<void> {
+	return invoke('farm_cancel_plan');
+}
+
+/**
+ * Worktrees left behind by tasks no farm claims.
+ *
+ * Its own call rather than part of the snapshot: answering it runs `git
+ * worktree list`, and the snapshot is taken after every burst of events.
+ */
+export function stale(): Promise<StaleWorkspace[]> {
+	return invoke('farm_stale');
+}
+
+/** More activity than a snapshot carries, for a reader scrolling back. */
+export function events(limit?: number): Promise<RecordedEvent[]> {
+	return invoke('farm_events', { limit: limit ?? null });
 }
 
 export function sweep(): Promise<StaleWorkspace[]> {
