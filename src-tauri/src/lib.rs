@@ -164,6 +164,8 @@ pub fn run() {
             farm::farm_open,
             farm::farm_close,
             farm::farm_snapshot,
+            farm::farm_events,
+            farm::farm_stale,
             farm::farm_detect_agents,
             farm::farm_save_agent,
             farm::farm_remove_agent,
@@ -187,6 +189,7 @@ pub fn run() {
             farm::farm_review_task,
             farm::farm_verify_task,
             farm::farm_plan,
+            farm::farm_cancel_plan,
             farm::farm_sweep,
         ])
         .setup(|app| {

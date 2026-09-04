@@ -52,6 +52,7 @@ use std::thread::JoinHandle;
 use crate::agent::AgentCommand;
 use crate::error::{Error, Result};
 use crate::execution::log::TranscriptWriter;
+use crate::execution::narrate::Narrator;
 
 /// What a run reports as it goes.
 ///
@@ -164,6 +165,12 @@ impl Drop for Session {
 
 /// Start `command` in `workdir`, streaming to `sink` and `transcript`.
 ///
+/// `narrator` sits between the pipe and both of them: the provider decides how
+/// its output should be read, and what reaches the transcript file is what a
+/// person would want to read rather than what the process happened to print.
+/// See [`crate::execution::narrate`] for why that translation happens here and
+/// not in the interface.
+///
 /// The environment is the one Spagitty was started with, minus nothing and plus
 /// two: `SPAGITTY_FARM` so an agent can tell it is being run by a farm, and
 /// `GIT_TERMINAL_PROMPT=0` so a git operation the agent performs cannot block
@@ -175,6 +182,7 @@ pub fn start(
     workdir: &Path,
     transcript: TranscriptWriter,
     sink: Arc<dyn Sink>,
+    narrator: Box<dyn Narrator>,
 ) -> Result<Session> {
     let mut process = Command::new(&command.program);
     process
@@ -226,15 +234,20 @@ pub fn start(
     // reader threads append to it, and interleaving whole lines is exactly what
     // is wanted — the alternative is two files and a merge.
     let shared = Arc::new(Mutex::new(transcript));
+    // One narrator for the run, not one per pipe: it carries the state that
+    // stops a final event repeating what was already said, and stdout and
+    // stderr are one stream by the time anyone reads them.
+    let narrator = Arc::new(Mutex::new(narrator));
     let mut readers = Vec::new();
     for pipe in [stdout.map(Pipe::Out), stderr.map(Pipe::Err)] {
         let Some(pipe) = pipe else { continue };
         let sink = sink.clone();
         let shared = shared.clone();
+        let narrator = narrator.clone();
         readers.push(
             std::thread::Builder::new()
                 .name("spagitty-farm-agent".to_string())
-                .spawn(move || pump(pipe, &*sink, &shared))
+                .spawn(move || pump(pipe, &*sink, &shared, &narrator))
                 .expect("spawning an agent reader"),
         );
     }
@@ -278,7 +291,12 @@ enum Pipe {
 /// Invalid UTF-8 is replaced rather than fatal: an agent that prints a progress
 /// spinner or a stray byte should not end the run, and `from_utf8_lossy` is
 /// what every other reader in this repository does with the same problem.
-fn pump(pipe: Pipe, sink: &dyn Sink, transcript: &Mutex<TranscriptWriter>) {
+fn pump(
+    pipe: Pipe,
+    sink: &dyn Sink,
+    transcript: &Mutex<TranscriptWriter>,
+    narrator: &Mutex<Box<dyn Narrator>>,
+) {
     let reader: Box<dyn BufRead> = match pipe {
         Pipe::Out(out) => Box::new(BufReader::new(out)),
         Pipe::Err(err) => Box::new(BufReader::new(err)),
@@ -292,10 +310,18 @@ fn pump(pipe: Pipe, sink: &dyn Sink, transcript: &Mutex<TranscriptWriter>) {
             Ok(_) => {
                 let text = String::from_utf8_lossy(&buffer);
                 let text = text.trim_end_matches(['\n', '\r']);
-                if let Ok(mut transcript) = transcript.lock() {
-                    transcript.line(text);
+                // One raw line can be nothing (an event nobody needs to see) or
+                // several lines (a message the agent wrote as a paragraph).
+                let narrated = match narrator.lock() {
+                    Ok(mut narrator) => narrator.narrate(text),
+                    Err(_) => vec![text.to_string()],
+                };
+                for line in narrated {
+                    if let Ok(mut transcript) = transcript.lock() {
+                        transcript.line(&line);
+                    }
+                    sink.line(&line);
                 }
-                sink.line(text);
             }
         }
     }
@@ -329,6 +355,7 @@ mod tests {
             dir.path(),
             TranscriptWriter::create(&log).unwrap(),
             sink.clone(),
+            Box::new(crate::execution::narrate::Verbatim),
         )
         .unwrap();
         let ended = session.wait();
@@ -394,6 +421,7 @@ mod tests {
             dir.path(),
             TranscriptWriter::create(&dir.path().join("run.log")).unwrap(),
             Arc::new(Collected::default()),
+            Box::new(crate::execution::narrate::Verbatim),
         )
         .unwrap_err();
         assert_eq!(error.kind(), "refused");
@@ -408,6 +436,7 @@ mod tests {
             dir.path(),
             TranscriptWriter::create(&dir.path().join("run.log")).unwrap(),
             sink.clone(),
+            Box::new(crate::execution::narrate::Verbatim),
         )
         .unwrap();
 
@@ -430,6 +459,7 @@ mod tests {
             dir.path(),
             TranscriptWriter::create(&log).unwrap(),
             sink.clone(),
+            Box::new(crate::execution::narrate::Verbatim),
         )
         .unwrap();
         while sink.lines().len() < 2 {
@@ -453,6 +483,7 @@ mod tests {
             dir.path(),
             TranscriptWriter::create(&dir.path().join("run.log")).unwrap(),
             sink.clone(),
+            Box::new(crate::execution::narrate::Verbatim),
         )
         .unwrap();
         while sink.lines().is_empty() {
@@ -478,6 +509,7 @@ mod tests {
             dir.path(),
             TranscriptWriter::create(&dir.path().join("run.log")).unwrap(),
             sink.clone(),
+            Box::new(crate::execution::narrate::Verbatim),
         )
         .unwrap();
         while sink.lines().is_empty() {
@@ -499,6 +531,7 @@ mod tests {
             dir.path(),
             TranscriptWriter::create(&dir.path().join("run.log")).unwrap(),
             sink.clone(),
+            Box::new(crate::execution::narrate::Verbatim),
         )
         .unwrap();
         assert_eq!(session.wait(), Ended::Ok);
@@ -518,5 +551,53 @@ mod tests {
         let lines = run.sink.lines();
         assert_eq!(lines.first().unwrap(), "good");
         assert_eq!(lines.last().unwrap(), "after");
+    }
+
+    /// BUG-021, and the one that would have been found late.
+    ///
+    /// Streaming the provider's machine format is only safe because the
+    /// transcript on disk is narrated first. If the raw JSON went to the file,
+    /// the handoff block would be inside a JSON string and
+    /// `Handoff::parse` — and with it every task's status — would quietly find
+    /// nothing.
+    #[test]
+    fn a_streamed_run_writes_prose_to_the_transcript_and_keeps_its_handoff() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = dir.path().join("run.log");
+        let sink = Arc::new(Collected::default());
+        // What `claude -p --output-format stream-json --verbose` actually
+        // prints: an init event, a tool call, and the answer as one message.
+        // `printf '%s\\n'` rather than `echo`: /bin/sh's echo expands the
+        // `\\n` inside the JSON string and splits one event across four lines,
+        // which tests the shell rather than the narrator.
+        let script = concat!(
+            r#"printf '%s\n' '{"type":"system","subtype":"init","model":"claude-opus-5"}'; "#,
+            r#"printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"src/auth.rs"}}]}}'; "#,
+            r#"printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Rotated the tokens.\n```spagitty-handoff\n{\"status\":\"completed\",\"summary\":\"Rotated tokens\"}\n```"}]}}'; "#,
+            r#"printf '%s\n' '{"type":"result","subtype":"success","result":"done","duration_ms":4000}'"#
+        );
+        let session = start(
+            &shell(script, None),
+            dir.path(),
+            TranscriptWriter::create(&log).unwrap(),
+            sink.clone(),
+            Box::new(crate::execution::narrate::ClaudeStream::default()),
+        )
+        .unwrap();
+        assert_eq!(session.wait(), Ended::Ok);
+
+        let transcript = crate::execution::log::read(&log);
+        assert!(
+            !transcript.contains(r#""type":"assistant""#),
+            "raw stream events reached the transcript:\n{transcript}"
+        );
+        assert!(transcript.contains("· Read src/auth.rs"), "{transcript}");
+
+        let handoff = crate::model::Handoff::parse(&transcript);
+        assert_eq!(handoff.status, crate::model::HandoffStatus::Completed);
+        assert_eq!(handoff.summary, "Rotated tokens");
+
+        // And the interface saw the same lines as they arrived, not at the end.
+        assert!(sink.lines().iter().any(|line| line == "· Read src/auth.rs"));
     }
 }
