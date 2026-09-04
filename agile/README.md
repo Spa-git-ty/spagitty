@@ -162,6 +162,7 @@ rather than an audit.
 | [BUG-022](items/BUG-022-the-farm-subscribes-after-it-asks.md) | The farm subscribes after it asks, so the answer is lost | Farm (1Q) | Fixed |
 | [BUG-023](items/BUG-023-a-record-test-reads-another-tests-clone.md) | A record test reads another test's clone | none | Fixed |
 | [BUG-024](items/BUG-024-cancellable-runs.md) | Stop a run while its waiter owns it | Farm (1Q) | Open |
+| [BUG-025](items/BUG-025-single-run-watcher.md) | One completion watcher per run | Farm (1Q) | Open |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
 report, reopened on a corrected diagnosis, and BUG-009's own document keeps the
