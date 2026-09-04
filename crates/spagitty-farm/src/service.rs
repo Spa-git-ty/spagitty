@@ -34,7 +34,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use spagitty_core::shell;
@@ -245,6 +245,7 @@ pub struct FarmService {
     /// cost of watching a farm proportional to how much it had already done
     /// (TASK-030).
     recent: Mutex<VecDeque<Recorded>>,
+    verification_stops: Mutex<HashMap<TaskId, Arc<AtomicBool>>>,
 }
 
 impl FarmService {
@@ -277,6 +278,7 @@ impl FarmService {
             sessions: Mutex::new(HashMap::new()),
             cancellations: Mutex::new(HashMap::new()),
             recent: Mutex::new(store::load_events(&repo_for_events).into()),
+            verification_stops: Mutex::new(HashMap::new()),
         };
         service.recover();
         service
@@ -598,6 +600,14 @@ impl FarmService {
     /// Stop whatever is running for this task and cancel it.
     pub fn cancel_task(&self, id: &TaskId) -> Result<()> {
         self.set_status(id, TaskStatus::Cancelled, Some("Stopped by hand.".into()))?;
+        if let Some(stop) = self
+            .verification_stops
+            .lock()
+            .expect("verification stop lock")
+            .get(id)
+        {
+            stop.store(true, Ordering::Release);
+        }
         self.stop_session(id);
         Ok(())
     }
@@ -641,6 +651,14 @@ impl FarmService {
     /// The attempt counter is *not* reset. A person retrying a task three times
     /// is making a decision; a farm that forgot each time would loop.
     pub fn retry_task(&self, id: &TaskId) -> Result<()> {
+        if self
+            .verification_stops
+            .lock()
+            .expect("verification stop lock")
+            .contains_key(id)
+        {
+            return Err(Error::Refused("Verification is still stopping.".into()));
+        }
         if self
             .cancellations
             .lock()
@@ -745,6 +763,14 @@ impl FarmService {
                 TaskStatus::Cancelled,
                 Some("The farm was stopped.".into()),
             );
+        }
+        for stop in self
+            .verification_stops
+            .lock()
+            .expect("verification stop lock")
+            .values()
+        {
+            stop.store(true, Ordering::Release);
         }
         let running: Vec<TaskId> = self
             .cancellations
@@ -1255,6 +1281,26 @@ impl FarmService {
     ///
     /// Blocking, like [`Self::await_task`], and for the same reason.
     pub fn verify(&self, id: &TaskId) -> Result<()> {
+        let stop = Arc::new(AtomicBool::new(false));
+        {
+            let mut stops = self
+                .verification_stops
+                .lock()
+                .expect("verification stop lock");
+            if stops.contains_key(id) {
+                return Err(Error::Refused("Verification is already running.".into()));
+            }
+            stops.insert(id.clone(), stop.clone());
+        }
+        let result = self.verify_with_stop(id, &stop);
+        self.verification_stops
+            .lock()
+            .expect("verification stop lock")
+            .remove(id);
+        result
+    }
+
+    fn verify_with_stop(&self, id: &TaskId, stop: &AtomicBool) -> Result<()> {
         let (workdir, commands) = {
             let state = self.state.lock().expect("farm lock");
             let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
@@ -1274,12 +1320,12 @@ impl FarmService {
         // while it happened and in no record afterwards: it was in neither the
         // log on disk nor the history a reopened farm reads back.
         let task_id = id.clone();
-        for command in &commands {
+        let mut starting = |command: &str| {
             self.emit(FarmEvent::VerificationStarted {
                 task: task_id.clone(),
-                command: command.clone(),
+                command: command.to_string(),
             });
-        }
+        };
         let mut report = |result: &CommandResult| {
             self.emit(FarmEvent::VerificationFinished {
                 task: task_id.clone(),
@@ -1288,7 +1334,11 @@ impl FarmService {
                 output: result.output.clone(),
             });
         };
-        let verification = verifier::run(&workdir, &commands, &mut report);
+        let verification =
+            verifier::run_cancellable(&workdir, &commands, stop, &mut starting, &mut report);
+        if stop.load(Ordering::Acquire) {
+            return Ok(());
+        }
 
         self.state
             .lock()

@@ -22,6 +22,9 @@ stays backward-compatible.
 
 ### Reliability
 
+- Drain verification output continuously with bounded retention. Stopping a
+  check or reaching its deadline terminates its process tree.
+
 - Claim one completion watcher per run, including review runs, and keep late
   results attached to the attempt that produced them.
 
