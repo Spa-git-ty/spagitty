@@ -230,7 +230,10 @@ fn tool_line(block: &Value) -> String {
         });
 
     match detail {
-        Some(detail) => format!("{MARK} {name} {}", clip(detail.lines().next().unwrap_or(""))),
+        Some(detail) => format!(
+            "{MARK} {name} {}",
+            clip(detail.lines().next().unwrap_or(""))
+        ),
         None => format!("{MARK} {name}"),
     }
 }
@@ -305,13 +308,11 @@ mod tests {
 
     #[test]
     fn a_tool_call_becomes_the_tool_and_what_it_touched() {
-        let lines = narrate(&[
-            r#"{"type":"assistant","message":{"content":[
+        let lines = narrate(&[r#"{"type":"assistant","message":{"content":[
                 {"type":"tool_use","name":"Read","input":{"file_path":"src/auth.rs"}},
                 {"type":"tool_use","name":"Bash","input":{"command":"cargo test","description":"run tests"}},
                 {"type":"tool_use","name":"Grep","input":{"pattern":"fn main"}}
-            ]}}"#,
-        ]);
+            ]}}"#]);
         assert_eq!(
             lines,
             ["· Read src/auth.rs", "· Bash cargo test", "· Grep fn main"]
@@ -320,11 +321,9 @@ mod tests {
 
     #[test]
     fn a_tool_nobody_has_heard_of_still_reads_as_something() {
-        let lines = narrate(&[
-            r#"{"type":"assistant","message":{"content":[
+        let lines = narrate(&[r#"{"type":"assistant","message":{"content":[
                 {"type":"tool_use","name":"mcp__thing__do","input":{"target":"the-thing"}}
-            ]}}"#,
-        ]);
+            ]}}"#]);
         assert_eq!(lines, ["· mcp__thing__do the-thing"]);
     }
 
@@ -348,8 +347,9 @@ mod tests {
     fn a_handoff_block_survives_narration() {
         // The whole reason narration happens before the transcript is written.
         let text = "```spagitty-handoff\\n{\\\"status\\\":\\\"completed\\\"}\\n```";
-        let event =
-            format!(r#"{{"type":"assistant","message":{{"content":[{{"type":"text","text":"{text}"}}]}}}}"#);
+        let event = format!(
+            r#"{{"type":"assistant","message":{{"content":[{{"type":"text","text":"{text}"}}]}}}}"#
+        );
         let lines = narrate(&[&event]);
         assert_eq!(
             lines,
@@ -386,12 +386,10 @@ mod tests {
 
     #[test]
     fn a_failing_tool_is_the_one_tool_result_worth_a_line() {
-        let lines = narrate(&[
-            r#"{"type":"user","message":{"content":[
+        let lines = narrate(&[r#"{"type":"user","message":{"content":[
                 {"type":"tool_result","is_error":true,"content":"No such file\nsecond line"},
                 {"type":"tool_result","content":"1\thello"}
-            ]}}"#,
-        ]);
+            ]}}"#]);
         assert_eq!(lines, ["· No such file"]);
     }
 
@@ -399,8 +397,12 @@ mod tests {
     fn a_long_command_is_clipped_but_the_agents_prose_is_not() {
         let long = "x".repeat(500);
         let lines = narrate(&[
-            &format!(r#"{{"type":"assistant","message":{{"content":[{{"type":"tool_use","name":"Bash","input":{{"command":"{long}"}}}}]}}}}"#),
-            &format!(r#"{{"type":"assistant","message":{{"content":[{{"type":"text","text":"{long}"}}]}}}}"#),
+            &format!(
+                r#"{{"type":"assistant","message":{{"content":[{{"type":"tool_use","name":"Bash","input":{{"command":"{long}"}}}}]}}}}"#
+            ),
+            &format!(
+                r#"{{"type":"assistant","message":{{"content":[{{"type":"text","text":"{long}"}}]}}}}"#
+            ),
         ]);
         // "· Bash " and then the clipped command, ellipsis included.
         assert!(lines[0].ends_with('…'), "{}", lines[0]);
