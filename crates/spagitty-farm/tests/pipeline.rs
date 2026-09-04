@@ -1027,7 +1027,10 @@ fn a_farm_of_two_hundred_tasks_still_serialises_small() {
     let farm = harness.service.farm().unwrap();
     let json = serde_json::to_string(&farm).unwrap();
     let per_task = json.len() / 200;
-    println!("200 tasks serialise to {} bytes, {per_task} a task", json.len());
+    println!(
+        "200 tasks serialise to {} bytes, {per_task} a task",
+        json.len()
+    );
 
     assert!(
         per_task < 1_200,

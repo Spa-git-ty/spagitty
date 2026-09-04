@@ -1935,9 +1935,10 @@ mod tests {
         // a list that does not (FEAT-077 meets TASK-031).
         let mut state = State::default();
         for number in 0..(MAX_RUNS as u32 * 2) {
-            state
-                .heard
-                .insert(RunId::new(format!("run-{number}")), Arc::new(AtomicU64::new(1)));
+            state.heard.insert(
+                RunId::new(format!("run-{number}")),
+                Arc::new(AtomicU64::new(1)),
+            );
             state.remember_run(run(number, number));
         }
 
