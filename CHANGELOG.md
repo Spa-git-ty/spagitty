@@ -117,6 +117,10 @@ stays backward-compatible.
   main thread. Stop was locked out too, which is the control a person reaches
   for when nothing responds. The farm's commands now run off the main thread,
   and no lock is held across a wait, a cancel, or reaping an agent's process.
+- **A flaky test stops failing the pipeline.** One of `spagitty-core`'s clone
+  tests read the process-wide git-command record and could pick up a *different*
+  test's clone, failing on a change that had nothing to do with it. It failed
+  about half the time when the three clone tests ran together.
 
 ## [0.4.1-alpha] - 2026-09-03
 
