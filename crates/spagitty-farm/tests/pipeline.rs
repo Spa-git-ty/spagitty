@@ -820,3 +820,126 @@ fn reopening_a_farm_reads_its_history_back() {
 
     assert_eq!(reopened.events(), before);
 }
+
+// ── Large work: containers and decomposition (FEAT-076) ──────────────────
+
+/// An agent that answers a decomposition with two subtasks.
+fn splitter(harness: &Harness, name: &str) -> AgentId {
+    let definition = scripted_agent(
+        harness.bin(),
+        name,
+        r#"printf '%s' "$1" > /dev/null
+printf '%s\n' '```spagitty-plan'
+printf '%s\n' '{"tasks":[{"reference":"a","title":"First half","allowedPaths":["src/a/**"]},{"reference":"b","title":"Second half","dependsOn":["a"],"allowedPaths":["src/b/**"]}]}'
+printf '%s\n' '```'"#,
+    );
+    let id = definition.id.clone();
+    harness.service.save_agent(definition).unwrap();
+    id
+}
+
+#[test]
+fn breaking_a_task_down_produces_drafts_under_it() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-split");
+    let big = harness.task("Rework the auth module");
+
+    let run = harness.service.decompose(&big, Some(agent)).unwrap();
+    let children = harness.service.collect_plan(&run).unwrap();
+
+    assert_eq!(children.len(), 2);
+    for child in &children {
+        // Drafts, so the plan-review band asks before any of them runs.
+        assert_eq!(child.status, TaskStatus::Draft);
+        assert_eq!(child.parent.as_ref(), Some(&big));
+    }
+    // The agent's own references became real dependencies between the children.
+    assert_eq!(children[1].depends_on, [children[0].id.clone()]);
+}
+
+#[test]
+fn a_task_that_was_broken_down_is_not_run_itself() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-norun");
+    let worker = harness.worker("worker-norun");
+    let big = harness.task("Rework the auth module");
+
+    let run = harness.service.decompose(&big, Some(agent)).unwrap();
+    harness.service.collect_plan(&run).unwrap();
+
+    let error = harness.service.run_task(&big, Some(worker)).unwrap_err();
+    assert_eq!(error.kind(), "refused");
+    assert!(error.to_string().contains("underneath"), "{error}");
+}
+
+#[test]
+fn a_container_follows_its_children_to_done() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-follow");
+    let big = harness.task("Rework the auth module");
+
+    let run = harness.service.decompose(&big, Some(agent)).unwrap();
+    let children = harness.service.collect_plan(&run).unwrap();
+
+    // Nothing has finished: the container is still where it was.
+    harness.service.tick();
+    assert_eq!(harness.status(&big), TaskStatus::Ready);
+
+    for child in &children {
+        harness
+            .service
+            .edit_task(&child.id, |task| task.status = TaskStatus::Done)
+            .unwrap();
+    }
+    harness.service.tick();
+
+    assert_eq!(harness.status(&big), TaskStatus::Done);
+}
+
+#[test]
+fn deleting_a_heading_does_not_delete_what_was_under_it() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-delete");
+    let big = harness.task("Rework the auth module");
+    let run = harness.service.decompose(&big, Some(agent)).unwrap();
+    let children = harness.service.collect_plan(&run).unwrap();
+
+    harness.service.delete_task(&big).unwrap();
+
+    let farm = harness.service.farm().unwrap();
+    assert!(farm.task(&big).is_none());
+    for child in &children {
+        let child = farm
+            .task(&child.id)
+            .expect("a child was deleted with its heading");
+        // Work in its own right now, not an orphan pointing at nothing.
+        assert_eq!(child.parent, None);
+    }
+}
+
+#[test]
+fn only_one_thing_is_planned_at_a_time() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-once");
+    let first = harness.task("One");
+    let second = harness.task("Two");
+
+    let run = harness
+        .service
+        .decompose(&first, Some(agent.clone()))
+        .unwrap();
+    // The second would share the planning session slot and collect the first
+    // one's transcript.
+    let error = harness
+        .service
+        .decompose(&second, Some(agent))
+        .expect_err("a second planning run was allowed to start");
+    assert_eq!(error.kind(), "refused");
+
+    harness.service.collect_plan(&run).unwrap();
+}

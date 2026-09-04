@@ -155,6 +155,16 @@ export function plan(agent: string | null): Promise<string> {
 }
 
 /**
+ * Ask an agent to break one task into smaller ones.
+ *
+ * The same planning run pointed at a task. Its children arrive as drafts, so
+ * the plan-review band asks before any of them runs.
+ */
+export function decompose(id: string, agent: string | null): Promise<string> {
+	return invoke('farm_decompose', { id, agent });
+}
+
+/**
  * Stop a planning run.
  *
  * Not `cancel()`, which stops the whole farm. Changing your mind about a

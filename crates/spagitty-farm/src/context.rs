@@ -152,6 +152,37 @@ pub fn planning(farm: &Farm, policy: &Policy) -> String {
     out.trim_end().to_string()
 }
 
+/// The prompt for breaking one task into smaller ones (FEAT-076).
+///
+/// The same shape as [`planning`] with the task in front of the goal, because
+/// that is what the agent is being asked about: the goal is context for it, not
+/// the subject. It keeps the goal all the same — a subtask that makes sense
+/// against its parent and not against the goal is a subtask of the wrong thing.
+pub fn decomposition(farm: &Farm, task: &Task, policy: &Policy) -> String {
+    let mut out = String::new();
+    goal_section(&mut out, &farm.goal);
+    task_section(&mut out, task);
+    criteria_section(&mut out, task);
+    files_section(&mut out, task);
+    rules_section(&mut out, policy);
+    section(
+        &mut out,
+        "YOUR JOB",
+        "This task is too large to be done in one go. Read enough of this \
+         repository to understand what it involves, then break *this task* — not \
+         the goal — into smaller tasks that can be worked independently. Each one \
+         will be given to one agent, in a worktree of its own, so keep their \
+         allowed paths apart where the work allows it. Do not restate the task \
+         itself as one of them, and do not change any files.",
+    );
+    section(
+        &mut out,
+        "EXPECTED PLAN",
+        &crate::orchestrator::planner::Plan::subtask_contract(),
+    );
+    out.trim_end().to_string()
+}
+
 fn goal_section(out: &mut String, goal: &Goal) {
     section(out, "GOAL", &goal.brief());
 }

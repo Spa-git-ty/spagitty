@@ -34,10 +34,21 @@ pub const FENCE: &str = "spagitty-plan";
 
 /// How many tasks a plan may contain.
 ///
-/// Twelve. More than that is not a plan, it is a model filling space, and a
-/// farm that starts twelve worktrees is one nobody can supervise. A goal that
-/// genuinely needs more is decomposed a second time, from a task.
-pub const MAX_TASKS: usize = 12;
+/// Twenty-four. It was twelve, which was the right number when twelve was all a
+/// plan could ever be: a goal larger than that had nowhere to go, because a
+/// task could not be broken down (FEAT-076). Now that it can, the top-level
+/// plan is allowed to be a real decomposition of a real piece of work, and the
+/// thing that keeps a farm supervisable is `max_parallel` — how many run at
+/// once — rather than how many exist.
+pub const MAX_TASKS: usize = 24;
+
+/// How many tasks one task may be broken into.
+///
+/// Eight. A task that needs more than eight pieces was not a task, and the
+/// answer is to break the *goal* up differently rather than to grow a tree
+/// nobody can hold in their head. Smaller than [`MAX_TASKS`] deliberately: this
+/// is a subdivision, not a second plan.
+pub const MAX_SUBTASKS: usize = 8;
 
 /// One task as the planning agent proposed it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -93,8 +104,17 @@ impl Plan {
 
     /// The instructions appended to a planning prompt.
     pub fn contract() -> String {
+        Self::contract_for(MAX_TASKS, "the goal")
+    }
+
+    /// The same contract, for a run that is breaking one task down.
+    pub fn subtask_contract() -> String {
+        Self::contract_for(MAX_SUBTASKS, "the task above")
+    }
+
+    fn contract_for(limit: usize, subject: &str) -> String {
         format!(
-            "Break the goal into no more than {MAX_TASKS} tasks. End your reply with exactly one \
+            "Break {subject} into no more than {limit} tasks. End your reply with exactly one \
              block in this form:\n\
              \n\
              ```{FENCE}\n\
@@ -127,12 +147,26 @@ impl Plan {
 /// whether the user has approved them. Identifiers are allocated from the farm,
 /// which is why it is taken mutably.
 pub fn adopt(farm: &mut Farm, plan: &Plan) -> Result<Vec<Task>> {
+    adopt_under(farm, plan, None)
+}
+
+/// Turn a proposal into real tasks, cut out of `parent`.
+///
+/// The children are `Draft` like any other proposal, so the plan-review band
+/// asks before anything runs. `parent` is what makes the task they came from a
+/// container: it stops being runnable and starts following them (FEAT-076).
+pub fn adopt_under(farm: &mut Farm, plan: &Plan, parent: Option<&TaskId>) -> Result<Vec<Task>> {
     let now = now_ms();
+    let limit = if parent.is_some() {
+        MAX_SUBTASKS
+    } else {
+        MAX_TASKS
+    };
     let proposed: Vec<&PlannedTask> = plan
         .tasks
         .iter()
         .filter(|task| !task.title.trim().is_empty())
-        .take(MAX_TASKS)
+        .take(limit)
         .collect();
 
     // Identifiers first, so dependencies can be remapped in one pass.
@@ -141,6 +175,7 @@ pub fn adopt(farm: &mut Farm, plan: &Plan) -> Result<Vec<Task>> {
     let mut tasks = Vec::new();
     for (index, planned) in proposed.iter().enumerate() {
         let mut task = Task::new(ids[index].clone(), planned.title.trim(), now);
+        task.parent = parent.cloned();
         task.description = planned.description.clone();
         task.kind = planned.kind;
         task.priority = planned.priority;

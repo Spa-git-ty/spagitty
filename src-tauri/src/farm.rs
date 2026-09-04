@@ -342,6 +342,7 @@ pub struct FarmSettings {
     pub autonomy: Option<Autonomy>,
     pub permissions: Option<Permissions>,
     pub max_parallel: Option<usize>,
+    pub max_attempts: Option<u32>,
     pub verification: Option<Vec<String>>,
     pub agents: Option<Vec<AgentId>>,
     pub goal_title: Option<String>,
@@ -356,6 +357,12 @@ pub fn farm_configure(state: State<'_, FarmState>, settings: FarmSettings) -> Re
         }
         if let Some(permissions) = settings.permissions {
             farm.permissions = permissions;
+        }
+        if let Some(attempts) = settings.max_attempts {
+            // One at least — a farm that may not attempt anything is a farm
+            // that does nothing — and ten at most, which is already more
+            // rounds than a task nobody has understood deserves.
+            farm.max_attempts = attempts.clamp(1, 10);
         }
         if let Some(max) = settings.max_parallel {
             // One at least, and a ceiling: a farm told to run fifty agents
@@ -622,16 +629,35 @@ pub fn farm_verify_task(state: State<'_, FarmState>, id: TaskId) -> Result<()> {
 pub fn farm_plan(state: State<'_, FarmState>, agent: Option<AgentId>) -> Result<RunId> {
     let service = state.service()?;
     let run = service.plan(agent)?;
+    collect(&service, run.clone());
+    Ok(run)
+}
+
+/// Ask an agent to break one task into smaller ones.
+///
+/// The same run, pointed at a task. Its children arrive as drafts, and the task
+/// becomes a container once they are accepted.
+#[tauri::command(async)]
+pub fn farm_decompose(
+    state: State<'_, FarmState>,
+    id: TaskId,
+    agent: Option<AgentId>,
+) -> Result<RunId> {
+    let service = state.service()?;
+    let run = service.decompose(&id, agent)?;
+    collect(&service, run.clone());
+    Ok(run)
+}
+
+/// Wait for a planning run on a thread and adopt what it produced.
+fn collect(service: &Arc<FarmService>, run: RunId) {
+    let service = service.clone();
     std::thread::Builder::new()
         .name("spagitty-farm-plan".into())
-        .spawn({
-            let run = run.clone();
-            move || {
-                let _ = service.collect_plan(&run);
-            }
+        .spawn(move || {
+            let _ = service.collect_plan(&run);
         })
         .ok();
-    Ok(run)
 }
 
 /// Stop a planning run.

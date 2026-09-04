@@ -105,6 +105,39 @@ describe('a task row that is not moving', () => {
 	});
 });
 
+describe('a task that was broken down', () => {
+	it('reads as a heading with a fraction rather than a kind', () => {
+		const view = render(
+			TaskRow,
+			props({ task: task('T-1'), progress: { done: 2, total: 5 } })
+		);
+
+		expect(view.text()).toContain('2 of 5');
+		// The kind chip is what the fraction replaces: a heading's kind of work
+		// is whatever its children are.
+		expect(view.text()).not.toContain('General');
+
+		view.destroy();
+	});
+
+	it('is indented by how deep it sits', () => {
+		const view = render(TaskRow, props({ depth: 2 }));
+
+		expect(view.get('.row').style.getPropertyValue('--depth')).toBe('2');
+
+		view.destroy();
+	});
+
+	it('is an ordinary row when nothing was cut out of it', () => {
+		const view = render(TaskRow, props({ progress: { done: 0, total: 0 } }));
+
+		expect(view.text()).toContain('General');
+		expect(view.text()).not.toContain('0 of 0');
+
+		view.destroy();
+	});
+});
+
 describe('picking proposed tasks', () => {
 	it('picks a draft without selecting the row', () => {
 		const ontoggle = vi.fn();
