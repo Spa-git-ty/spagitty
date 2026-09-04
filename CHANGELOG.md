@@ -22,6 +22,9 @@ stays backward-compatible.
 
 ### Reliability
 
+- Claim one completion watcher per run, including review runs, and keep late
+  results attached to the attempt that produced them.
+
 - Keep running agents and planners cancellable while background threads wait for
   them; contain Windows agent descendants in jobs before execution starts.
 

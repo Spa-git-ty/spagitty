@@ -219,6 +219,14 @@ impl State {
     }
 }
 
+/// The only owner allowed to reap and complete a particular run.
+struct PendingRun {
+    task: TaskId,
+    run: RunId,
+    phase: RunPhase,
+    session: Session,
+}
+
 /// One repository's farm.
 pub struct FarmService {
     repo: PathBuf,
@@ -226,8 +234,8 @@ pub struct FarmService {
     registry: Mutex<AgentRegistry>,
     observer: Arc<dyn Observer>,
     /// The agent processes running right now, by task.
-    sessions: Mutex<HashMap<TaskId, Session>>,
-    cancellations: Mutex<HashMap<TaskId, execution::Cancellation>>,
+    sessions: Mutex<HashMap<RunId, PendingRun>>,
+    cancellations: Mutex<HashMap<TaskId, (RunId, execution::Cancellation)>>,
     /// The event history, in memory.
     ///
     /// The log on disk is still the record — this is loaded from it once, when
@@ -601,18 +609,30 @@ impl FarmService {
             .expect("cancellation lock")
             .get(id)
             .cloned();
-        if let Some(cancellation) = cancellation {
+        if let Some((_, cancellation)) = cancellation {
             cancellation.cancel();
         }
         // An unclaimed session still needs its readers joined and child reaped.
         // The option is dropped outside the map lock.
-        let session = self.sessions.lock().expect("sessions lock").remove(id);
-        if session.is_some() {
-            drop(session);
-            self.cancellations
-                .lock()
-                .expect("cancellation lock")
-                .remove(id);
+        let run = self
+            .cancellations
+            .lock()
+            .expect("cancellation lock")
+            .get(id)
+            .map(|(run, _)| run.clone());
+        if let Some(run) = run {
+            let pending = self.sessions.lock().expect("sessions lock").remove(&run);
+            if pending.is_some() {
+                drop(pending);
+                self.forget_cancellation(id, &run);
+            }
+        }
+    }
+
+    fn forget_cancellation(&self, task: &TaskId, run: &RunId) {
+        let mut handles = self.cancellations.lock().expect("cancellation lock");
+        if handles.get(task).map(|(id, _)| id) == Some(run) {
+            handles.remove(task);
         }
     }
 
@@ -1022,11 +1042,16 @@ impl FarmService {
         self.cancellations
             .lock()
             .expect("cancellation lock")
-            .insert(task.clone(), session.cancellation());
-        self.sessions
-            .lock()
-            .expect("sessions lock")
-            .insert(task.clone(), session);
+            .insert(task.clone(), (run.clone(), session.cancellation()));
+        self.sessions.lock().expect("sessions lock").insert(
+            run.clone(),
+            PendingRun {
+                task: task.clone(),
+                run,
+                phase,
+                session,
+            },
+        );
         Ok(())
     }
 
@@ -1037,20 +1062,95 @@ impl FarmService {
     /// tests call it directly, which is what makes the whole pipeline testable
     /// without a scheduler thread to synchronise against.
     pub fn await_task(&self, id: &TaskId) -> Result<()> {
-        let Some(session) = self.sessions.lock().expect("sessions lock").remove(id) else {
+        let run = self
+            .sessions
+            .lock()
+            .expect("sessions lock")
+            .values()
+            .find(|pending| &pending.task == id)
+            .map(|pending| pending.run.clone());
+        let Some(run) = run else {
             return Ok(());
         };
-        let ended = session.wait();
-        // Keep the handle until the process is fully reaped, including pipes.
-        self.cancellations
+        let pending = self.sessions.lock().expect("sessions lock").remove(&run);
+        if let Some(pending) = pending {
+            self.await_claimed(pending)?;
+        }
+        Ok(())
+    }
+
+    fn await_claimed(&self, pending: PendingRun) -> Result<()> {
+        let ended = pending.session.wait();
+        let result = self.finish_run(&pending.task, &pending.run, ended);
+        self.forget_cancellation(&pending.task, &pending.run);
+        result
+    }
+
+    /// Claim before spawning. Concurrent callers cannot create duplicate
+    /// waiters, and review runs are discovered by phase rather than UI status.
+    pub fn watch_pending(self: &Arc<Self>) -> usize {
+        let mut started = 0;
+        let runs: Vec<RunId> = self
+            .sessions
             .lock()
-            .expect("cancellation lock")
-            .remove(id);
-        self.finish_run(id, ended)
+            .expect("sessions lock")
+            .values()
+            .filter(|pending| pending.phase != RunPhase::Planning)
+            .map(|pending| pending.run.clone())
+            .collect();
+        for run in runs {
+            let pending = self.sessions.lock().expect("sessions lock").remove(&run);
+            let Some(pending) = pending else {
+                continue;
+            };
+            let task = pending.task.clone();
+            let service = self.clone();
+            let report_task = task.clone();
+            let report_run = run.clone();
+            let spawned = std::thread::Builder::new()
+                .name(format!("spagitty-farm-{run}"))
+                .spawn(move || {
+                    if let Err(error) = service.await_claimed(pending) {
+                        service.report_run_error(&report_task, &report_run, error.to_string());
+                    }
+                    service.tick();
+                    service.watch_pending();
+                });
+            if let Err(error) = spawned {
+                self.forget_cancellation(&task, &run);
+                self.report_run_error(&task, &run, format!("Could not watch the run: {error}"));
+            } else {
+                started += 1;
+            }
+        }
+        started
+    }
+
+    fn report_run_error(&self, task: &TaskId, run: &RunId, message: String) {
+        let current = self
+            .state
+            .lock()
+            .expect("farm lock")
+            .runs
+            .iter()
+            .rev()
+            .find(|entry| &entry.task == task)
+            .map(|entry| entry.id.clone());
+        if current.as_ref() != Some(run) {
+            return;
+        }
+        if self
+            .farm()
+            .and_then(|farm| farm.task(task).map(|task| task.status.is_terminal()))
+            .unwrap_or(true)
+        {
+            return;
+        }
+        let _ = self.set_status(task, TaskStatus::Blocked, Some(message));
     }
 
     /// Record how a run ended and decide what happens next.
-    fn finish_run(&self, id: &TaskId, ended: execution::Ended) -> Result<()> {
+    fn finish_run(&self, id: &TaskId, run_id: &RunId, ended: execution::Ended) -> Result<()> {
         let ended = if self
             .farm()
             .and_then(|farm| farm.task(id).map(|task| task.status))
@@ -1062,11 +1162,21 @@ impl FarmService {
         };
         let (run, agent, phase, duration) = {
             let mut state = self.state.lock().expect("farm lock");
+            if state
+                .runs
+                .iter()
+                .rev()
+                .find(|run| &run.task == id)
+                .map(|run| &run.id)
+                != Some(run_id)
+            {
+                return Ok(());
+            }
             let run = state
                 .runs
                 .iter_mut()
                 .rev()
-                .find(|run| &run.task == id && run.outcome == RunOutcome::Running);
+                .find(|run| &run.id == run_id && run.outcome == RunOutcome::Running);
             let Some(run) = run else {
                 return Ok(());
             };
@@ -1541,11 +1651,16 @@ impl FarmService {
         self.cancellations
             .lock()
             .expect("cancellation lock")
-            .insert(planning_task.clone(), session.cancellation());
-        self.sessions
-            .lock()
-            .expect("sessions lock")
-            .insert(planning_task, session);
+            .insert(planning_task.clone(), (run.clone(), session.cancellation()));
+        self.sessions.lock().expect("sessions lock").insert(
+            run.clone(),
+            PendingRun {
+                task: planning_task,
+                run: run.clone(),
+                phase: RunPhase::Planning,
+                session,
+            },
+        );
         Ok(run)
     }
 
@@ -1564,22 +1679,15 @@ impl FarmService {
         // starts, stops or schedules a task takes that lock, and they run on
         // the main thread, so the window froze until the planner finished
         // (BUG-020). `await_task` has always had the shape this now copies.
-        let waiting = self
-            .sessions
-            .lock()
-            .expect("sessions lock")
-            .remove(&planning_task);
+        let waiting = self.sessions.lock().expect("sessions lock").remove(run);
         let ended = match waiting {
-            Some(session) => session.wait(),
+            Some(pending) => pending.session.wait(),
             // Nothing to wait for: the run is already over, or was never
             // started. Treated as a clean end so the transcript is still read.
             None => execution::Ended::Ok,
         };
 
-        self.cancellations
-            .lock()
-            .expect("cancellation lock")
-            .remove(&planning_task);
+        self.forget_cancellation(&planning_task, run);
         let outcome = match &ended {
             execution::Ended::Ok => RunOutcome::Completed { exit_code: 0 },
             execution::Ended::Cancelled => RunOutcome::Cancelled,
@@ -1684,7 +1792,7 @@ impl FarmService {
             .expect("cancellation lock")
             .get(&TaskId::new("planning"))
             .cloned();
-        if let Some(cancellation) = cancellation {
+        if let Some((_, cancellation)) = cancellation {
             cancellation.cancel();
         }
         Ok(())

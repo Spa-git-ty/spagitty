@@ -1118,3 +1118,68 @@ fn a_planner_remains_cancellable_while_its_plan_is_being_collected() {
     assert!(!harness.repo.path().join("planner-survived.txt").exists());
     assert!(harness.service.farm().unwrap().tasks.is_empty());
 }
+
+#[test]
+fn pending_watchers_are_claimed_once_and_cancelled_results_stay_cancelled() {
+    let harness = Harness::new();
+    harness.service.create("One watcher", "").unwrap();
+    let worker = scripted_agent(harness.bin(), "watch-once", "sleep 2");
+    let agent = worker.id.clone();
+    harness.service.save_agent(worker).unwrap();
+    let task = harness.task("Wait");
+    harness.service.run_task(&task, Some(agent)).unwrap();
+    assert_eq!(harness.service.watch_pending(), 1);
+    for _ in 0..50 {
+        assert_eq!(harness.service.watch_pending(), 0);
+    }
+    harness.service.cancel_task(&task).unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    while harness
+        .service
+        .runs()
+        .iter()
+        .any(|run| run.outcome == RunOutcome::Running)
+        && std::time::Instant::now() < deadline
+    {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(harness
+        .service
+        .runs()
+        .iter()
+        .all(|run| run.outcome == RunOutcome::Cancelled));
+    assert_eq!(harness.status(&task), TaskStatus::Cancelled);
+}
+
+#[test]
+fn completion_watching_follows_the_implementation_into_review() {
+    let harness = Harness::new();
+    harness.service.create("Watch a review", "").unwrap();
+    harness
+        .service
+        .configure(|farm| {
+            farm.autonomy = Autonomy::SemiAuto;
+            farm.verification = vec!["/bin/sh -c 'exit 0'".into()];
+        })
+        .unwrap();
+    let worker = harness.worker("watched-implementation");
+    harness.reviewer("watched-review", "approve");
+    let task = harness.task("Do and review");
+    harness.service.run_task(&task, Some(worker)).unwrap();
+    assert_eq!(harness.service.watch_pending(), 1);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    while harness.service.review_of(&task).is_none() && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(harness
+        .service
+        .review_of(&task)
+        .expect("review was never collected")
+        .approved());
+    assert_eq!(harness.status(&task), TaskStatus::Review);
+    let runs = harness.service.runs();
+    assert_eq!(runs.len(), 2);
+    assert!(runs
+        .iter()
+        .all(|run| matches!(run.outcome, RunOutcome::Completed { .. })));
+}
