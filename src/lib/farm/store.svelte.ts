@@ -254,13 +254,26 @@ export const farmStore = {
 		return (farm?.tasks ?? []).filter((task) => task.status === status);
 	},
 
-	/** Point the farm at a repository and start listening. */
+	/**
+	 * Start listening, then point the farm at a repository.
+	 *
+	 * **In that order** (BUG-022). `farm_open` does not only answer — it starts
+	 * agent detection on a thread and reports the result as an event a few
+	 * hundred milliseconds later. Subscribing afterwards left a window in which
+	 * that event was emitted with nobody listening, and the answer it carried
+	 * is the one that decides whether the farm has any agents at all. The
+	 * screen then said "Not installed" about agents sitting on `PATH`, with
+	 * Plan it disabled, until something unrelated caused a refresh.
+	 *
+	 * Subscribing first cannot lose it: the listener is armed before the work
+	 * that produces the event is asked for.
+	 */
 	async open(path: string): Promise<void> {
 		loading = true;
 		error = null;
 		try {
-			apply(await api.open(path));
 			await this.listen();
+			apply(await api.open(path));
 			// Once, on open, and never as part of a refresh: see `leftovers`.
 			await this.leftovers();
 		} catch (cause) {

@@ -40,6 +40,7 @@ function sampleTask(id: string, overrides: Partial<Task> = {}): Task {
 		description: 'A sample task',
 		status: 'ready',
 		kind: 'general',
+		parent: null,
 		priority: 'normal',
 		dependsOn: [],
 		allowedPaths: [],
@@ -84,6 +85,7 @@ function sampleFarm(tasks: Task[] = []): Farm {
 		tasks,
 		verification: ['cargo test'],
 		maxParallel: 2,
+		maxAttempts: 3,
 		createdMs: 1000,
 		updatedMs: 1000
 	};
@@ -388,6 +390,30 @@ describe('farmStore refresh & stop', () => {
 		await farmStore.open('/repo');
 
 		expect(farmStore.drafts.map((task) => task.id)).toEqual(['TASK-001', 'TASK-003']);
+	});
+
+	it('is already listening while the backend is still answering', async () => {
+		// BUG-022. `farm_open` starts agent detection on a thread and reports
+		// the result as an event a few hundred milliseconds later. Subscribing
+		// after the command returned left a window where that event — the one
+		// that decides whether the farm has any agents — was emitted with
+		// nobody listening, and the screen said "Not installed" about agents
+		// sitting on PATH until something unrelated caused a refresh.
+		await farmStore.stop();
+		eventHandler = null;
+
+		let listeningWhenAsked = false;
+		apiOpen.mockImplementationOnce(async () => {
+			listeningWhenAsked = eventHandler !== null;
+			return sampleSnapshot([]);
+		});
+
+		await farmStore.open('/repo');
+
+		expect(
+			listeningWhenAsked,
+			'the backend was asked to do work before anyone was listening for the answer'
+		).toBe(true);
 	});
 
 	it('stop cleans up event listener and clears error', async () => {
