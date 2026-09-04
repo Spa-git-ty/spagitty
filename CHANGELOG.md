@@ -14,6 +14,12 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Documentation
+
+- Correct the repository's amendments reference to the current shared book,
+  including the frozen range and the roles of Amendments 19 and 20. Direct
+  agents to read the canonical book from `AGENTS.md`.
+
 ### Added
 
 - **The Farm screen is worth watching.** `3 / 7 done` becomes a ring — what is
