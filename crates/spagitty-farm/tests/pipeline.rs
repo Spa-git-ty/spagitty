@@ -1042,3 +1042,79 @@ fn a_farm_of_two_hundred_tasks_still_serialises_small() {
         json.len()
     );
 }
+
+#[test]
+fn cancellation_reaches_a_session_already_owned_by_a_waiter() {
+    let harness = Harness::new();
+    harness.service.create("Cancel a watched run", "").unwrap();
+    let slow = scripted_agent(
+        harness.bin(),
+        "watched-worker",
+        "sleep 1; echo survived > survived.txt",
+    );
+    let agent = slow.id.clone();
+    harness.service.save_agent(slow).unwrap();
+    let task = harness.task("Stop this work");
+    harness.service.run_task(&task, Some(agent)).unwrap();
+    let worktree = harness.worktree(&task);
+    let service = harness.service.clone();
+    let waiting_task = task.clone();
+    let waiter = std::thread::spawn(move || service.await_task(&waiting_task));
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    harness.service.cancel_task(&task).unwrap();
+    waiter.join().unwrap().unwrap();
+    assert!(
+        !worktree.join("survived.txt").exists(),
+        "stopped agent kept writing"
+    );
+    assert_eq!(harness.status(&task), TaskStatus::Cancelled);
+}
+
+#[test]
+fn cancelling_the_farm_stops_an_already_watched_agent() {
+    let harness = Harness::new();
+    harness.service.create("Stop everything", "").unwrap();
+    let slow = scripted_agent(
+        harness.bin(),
+        "farm-stop-worker",
+        "sleep 1; echo survived > survived.txt",
+    );
+    let agent = slow.id.clone();
+    harness.service.save_agent(slow).unwrap();
+    let task = harness.task("Stop this work");
+    harness.service.run_task(&task, Some(agent)).unwrap();
+    let worktree = harness.worktree(&task);
+    let service = harness.service.clone();
+    let waiting_task = task.clone();
+    let waiter = std::thread::spawn(move || service.await_task(&waiting_task));
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    harness.service.cancel_farm().unwrap();
+    waiter.join().unwrap().unwrap();
+    assert!(!worktree.join("survived.txt").exists());
+    assert_eq!(harness.status(&task), TaskStatus::Cancelled);
+    assert_eq!(
+        harness.service.farm().unwrap().status,
+        FarmStatus::Cancelled
+    );
+}
+
+#[test]
+fn a_planner_remains_cancellable_while_its_plan_is_being_collected() {
+    let harness = Harness::new();
+    harness.service.create("Stop planning", "").unwrap();
+    let planner = scripted_agent(
+        harness.bin(),
+        "collected-planner",
+        "sleep 1; echo survived > planner-survived.txt",
+    );
+    let agent = planner.id.clone();
+    harness.service.save_agent(planner).unwrap();
+    let run = harness.service.plan(Some(agent)).unwrap();
+    let service = harness.service.clone();
+    let waiter = std::thread::spawn(move || service.collect_plan(&run));
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    harness.service.cancel_plan().unwrap();
+    assert!(waiter.join().unwrap().unwrap().is_empty());
+    assert!(!harness.repo.path().join("planner-survived.txt").exists());
+    assert!(harness.service.farm().unwrap().tasks.is_empty());
+}

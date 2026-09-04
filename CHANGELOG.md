@@ -14,6 +14,11 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Reliability
+
+- Keep running agents and planners cancellable while background threads wait for
+  them; contain Windows agent descendants in jobs before execution starts.
+
 ### Added
 
 - **The Farm screen is worth watching.** `3 / 7 done` becomes a ring — what is
