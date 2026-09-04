@@ -110,6 +110,29 @@ pub struct Identity {
     pub repository: bool,
 }
 
+/// One saved identity profile (FEAT-069).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IdentityProfile {
+    pub id: String,
+    pub name: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub signing_key: Option<String>,
+}
+
+/// Apply a profile's identity settings in a scope (FEAT-069).
+pub fn apply_profile(dir: &Path, scope: Scope, profile: &IdentityProfile) -> Result<()> {
+    write(dir, scope, Key::Name, &profile.author_name)?;
+    write(dir, scope, Key::Email, &profile.author_email)?;
+    if let Some(key) = &profile.signing_key {
+        if !key.trim().is_empty() {
+            shell::set_config(dir, scope.flag(), "user.signingkey", key.trim())?;
+        }
+    }
+    Ok(())
+}
+
 /// Read the identity from a repository's full configuration cascade.
 pub fn read(repo: &gix::Repository) -> Identity {
     let snapshot = repo.config_snapshot();

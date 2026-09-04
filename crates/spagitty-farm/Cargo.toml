@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+[package]
+name = "spagitty-farm"
+description = "Agent farm orchestration for Spagitty"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+# The Git side of the farm — worktrees, branches, merges — is not reimplemented
+# here. `spagitty-core::shell` already owns every mutating git operation in the
+# product, and a second implementation would be a second thing to keep honest.
+spagitty-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+# Two calls: `setpgid` on the child, and `kill` on the *group*.
+#
+# An agent is a process that spawns processes — git, npm, cargo, a language
+# server — and killing only the one Spagitty started leaves the rest alive
+# holding the pipes open, so waiting for the run to end waits for whatever the
+# agent happened to leave behind. Stopping a run has to stop the tree, and on
+# Unix that means a process group. MIT OR Apache-2.0, and already in the tree
+# under gix.
+libc = "0.2"
+
+[features]
+# Fixture repositories for the tests of the crates above this one, mirroring
+# `spagitty-core`'s own switch. The Tauri layer's farm tests want a real
+# repository to cut worktrees from.
+fixture = ["spagitty-core/fixture"]
+
+[dev-dependencies]
+# The crate's own tests cut real worktrees from real repositories.
+# Real repositories to cut worktrees from, rather than a mock git.
+spagitty-core = { workspace = true, features = ["fixture"] }
+tempfile = "3"

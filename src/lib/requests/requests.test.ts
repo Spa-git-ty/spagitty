@@ -15,6 +15,7 @@ function request(overrides: Partial<PullRequest> = {}): PullRequest {
 		id: 'pr-1',
 		number: 412,
 		title: 'Split the diff view',
+		body: 'Description text',
 		authorName: 'Ada Lovelace',
 		updated: Math.floor(Date.now() / 1000) - 3600,
 		sourceBranch: 'feature/split-view',
@@ -215,20 +216,27 @@ describe('RequestDetail', () => {
 		view.destroy();
 	});
 
-	it('disables every action and says what it needs, without naming a work item', () => {
-		// Reviewing, approving and merging all need a host, and Spagitty talks
-		// to none. A control that looks live and does nothing is worse than one
+	it('offers Review, and still says plainly that merging is not built', () => {
+		// This assertion used to be "every action is disabled", which was true
+		// while Spagitty talked to no host about one pull request. FEAT-058
+		// built the review, so the rule it was protecting is the one that
+		// survives: a control that looks live and does nothing is worse than one
 		// that explains itself.
 		requests.present([request()]);
 		const view = render(RequestDetail, {});
 
 		const buttons = view.all('button') as HTMLButtonElement[];
-		expect(buttons.length).toBeGreaterThan(0);
-		for (const button of buttons) {
-			expect(button.disabled).toBe(true);
-			// It says what is missing — a connected account — rather than quoting
-			// an identifier only this project's own record can resolve.
-			expect(button.title).toContain('connected account');
+		const enabled = buttons.filter((button) => !button.disabled);
+		const disabled = buttons.filter((button) => button.disabled);
+
+		// Something is live now, and it is the review.
+		expect(enabled.length).toBeGreaterThan(0);
+		expect(view.text()).toContain('Review');
+
+		// Whatever is still dead says why, in words rather than an identifier
+		// only this project's own record can resolve.
+		for (const button of disabled) {
+			expect(button.title).not.toBe('');
 			expect(button.title).not.toMatch(/FEAT-\d/);
 		}
 		view.destroy();

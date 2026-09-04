@@ -338,17 +338,21 @@
 		sitting in the chrome of every session would be a second, quieter answer
 		to a question Settings already asks.
 	-->
-	{#if settings.settings.showGitCommands}
-		<span class="vr" style="height: 26px"></span>
-		<button
-			class="tool"
-			title="What Spagitty has run"
-			aria-pressed={commandLog.open}
-			onclick={() => commandLog.toggle()}
-		>
-			<span aria-hidden="true">≡</span><span>Commands</span>
+	<div class="trailing">
+		{#if settings.settings.showGitCommands}
+			<button
+				class="tool"
+				title="What Spagitty has run"
+				aria-pressed={commandLog.open}
+				onclick={() => commandLog.toggle()}
+			>
+				<span aria-hidden="true">≡</span><span>Commands</span>
+			</button>
+		{/if}
+		<button class="tool settings" title="Settings" aria-label="Settings" onclick={() => goto('/settings')}>
+			<Icon name="settings" size="1.25em" />
 		</button>
-	{/if}
+	</div>
 
 	<!--
 		No Commit button. Committing is the Working copy screen's job — it has the
@@ -372,7 +376,7 @@
 		height: var(--toolbar-h);
 		flex: none;
 		display: grid;
-		grid-template-columns: 1fr auto 1fr;
+		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 		align-items: center;
 		gap: 16px;
 		padding: 0 12px;
@@ -380,17 +384,18 @@
 		border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 		/* The pane casts onto whatever screen is under it, which is what stops
 		   the toolbar and the content it sits above reading as one surface. */
-		box-shadow:
-			var(--glass-rim),
-			0 1px 3px color-mix(in srgb, var(--umbra) 8%, transparent);
+		box-shadow: none;
 		position: relative;
 		z-index: 2;
+		overflow: hidden;
 	}
 
 	/* The command log toggle rides in the third track, at its right edge. */
-	.toolbar > :global(.vr:last-of-type),
-	.toolbar > .tool {
+	.trailing {
 		justify-self: end;
+		display: flex;
+		align-items: center;
+		gap: 4px;
 	}
 
 	.location {
@@ -398,6 +403,7 @@
 		align-items: center;
 		gap: 8px;
 		min-width: 0;
+		overflow: hidden;
 	}
 
 	.repo {
@@ -405,6 +411,7 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		flex: none;
 	}
 
 	/* git's own progress line, which can be long. It gets whatever room is
@@ -423,6 +430,7 @@
 
 	.sep {
 		color: var(--muted);
+		flex: none;
 	}
 
 	/*
@@ -450,8 +458,9 @@
 		border: 1px solid var(--line);
 		border-radius: var(--r-field);
 		background: var(--sunken);
-		box-shadow: inset 0 1px 2px color-mix(in srgb, var(--umbra) 6%, transparent);
+		box-shadow: none;
 		min-width: 0;
+		max-width: 260px;
 		transition:
 			border-color var(--t-fast) var(--ease),
 			background var(--t-fast) var(--ease);
@@ -496,7 +505,40 @@
 
 	.actions {
 		display: flex;
+		flex-direction: row;
 		align-items: center;
 		gap: 16px;
+		flex-wrap: nowrap;
+		flex-shrink: 0;
+		min-width: max-content;
+	}
+
+	@media (max-width: 900px) {
+		.toolbar {
+			grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+			gap: 6px;
+			padding-inline: 8px;
+		}
+
+		.actions {
+			gap: 4px;
+		}
+
+		.actions .vr {
+			display: none;
+		}
+
+		.tool {
+			min-width: 30px;
+			padding-inline: 4px;
+		}
+
+		.tool span:last-child {
+			display: none;
+		}
+
+		.trailing .tool:not(.settings) {
+			display: none;
+		}
 	}
 </style>

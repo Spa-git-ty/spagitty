@@ -122,7 +122,9 @@ describe('command names and arguments', () => {
 			checkForUpdates: true,
 			confirmHistoryRewrite: false,
 			showGitCommands: true,
-			pruneOnFetch: false
+			pruneOnFetch: false,
+			personality: 'fullSpagitty' as const,
+			sound: 'subtle' as const
 		};
 		await api.setSettings(settings);
 		expect(invoked).toHaveBeenCalledWith('set_settings', { settings });

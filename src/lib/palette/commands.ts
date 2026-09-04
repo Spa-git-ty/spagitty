@@ -24,6 +24,10 @@ import { repo } from '$lib/repo.svelte';
 import { scale } from '$lib/scale.svelte';
 import { settings } from '$lib/settings/store.svelte';
 import { theme } from '$lib/theme.svelte';
+import { worktrees } from '$lib/worktrees/store.svelte';
+import { worktreeModal } from '$lib/worktrees/modal.svelte';
+import { submodules } from '$lib/submodules/store.svelte';
+import { submoduleModal } from '$lib/submodules/modal.svelte';
 
 /** The modifier as this platform writes it. Display only. */
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -55,7 +59,12 @@ const SCREENS: { id: string; title: string; path: string; keywords: string[] }[]
 	{ id: 'go.requests', title: 'Go to Pull requests', path: '/requests', keywords: ['pr', 'review'] },
 	{ id: 'go.conflicts', title: 'Go to Conflicts', path: '/conflicts', keywords: ['merge'] },
 	{ id: 'go.rebase', title: 'Go to Interactive rebase', path: '/rebase', keywords: ['reorder', 'squash'] },
+	{ id: 'go.farm', title: 'Go to Farm', path: '/farm', keywords: ['tasks', 'dag', 'goal'] },
+	{ id: 'go.farm.agents', title: 'Go to Farm agents', path: '/farm?pane=agents', keywords: ['agents', 'installed', 'claude', 'codex', 'cursor', 'farm'] },
+	{ id: 'go.farm.settings', title: 'Go to Farm settings', path: '/farm?pane=settings', keywords: ['farm', 'settings', 'goal', 'policy', 'agents.md'] },
+	{ id: 'go.badges', title: 'Go to Badges', path: '/badges', keywords: ['achievements', 'title', 'agents', 'delight'] },
 	{ id: 'go.repos', title: 'Go to Repositories', path: '/repos', keywords: ['open', 'clone', 'recent'] },
+	{ id: 'go.history', title: 'Go to File history', path: '/history', keywords: ['blame', 'file', 'evolution'] },
 	{ id: 'go.settings', title: 'Go to Settings', path: '/settings', keywords: ['preferences', 'options'] }
 ];
 
@@ -207,7 +216,36 @@ function repository(): Command[] {
 			group: 'Repository',
 			keywords: ['reload', 'rescan'],
 			run: () => repo.refresh()
-		})
+		}),
+		repoCommand({
+			id: 'repo.worktrees',
+			title: 'Worktrees…',
+			group: 'Repository',
+			keywords: ['worktree', 'linked', 'switch'],
+			run: () => {
+				void worktrees.fetch();
+				worktreeModal.showManager();
+			}
+		}),
+		repoCommand({
+			id: 'repo.worktree_add',
+			title: 'Add worktree…',
+			group: 'Repository',
+			keywords: ['worktree', 'create', 'new'],
+			run: () => {
+				worktreeModal.showAdd();
+			}
+		}),
+		repoCommand({
+			id: 'repo.submodules',
+			title: 'Submodules…',
+			group: 'Repository',
+			keywords: ['submodule', 'nested', 'gitmodules'],
+			run: () => {
+				void submodules.fetch();
+				submoduleModal.show();
+			}
+		}),
 	];
 }
 

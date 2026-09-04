@@ -57,9 +57,16 @@ describe('NAV_ITEMS', () => {
 		expect(OFF_RAIL[DIFF_ROUTE].code).toBe('1B');
 	});
 
-	it('starts at the graph', () => {
-		expect(NAV_ITEMS[0].href).toBe('/');
-		expect(NAV_ITEMS[0].code).toBe('1A');
+	/**
+	 * The farm is the product's own subject, and the rail's top slot is the one
+	 * place in the window a person does not have to look for. The Graph follows
+	 * it, and still owns `/`.
+	 */
+	it('starts at the farm, with the graph immediately after it', () => {
+		expect(NAV_ITEMS[0].href).toBe('/farm');
+		expect(NAV_ITEMS[0].code).toBe('1Q');
+		expect(NAV_ITEMS[1].href).toBe('/');
+		expect(NAV_ITEMS[1].code).toBe('1A');
 	});
 
 	/**
@@ -69,6 +76,9 @@ describe('NAV_ITEMS', () => {
 	 */
 	it('runs the screens in the order they are worked through', () => {
 		expect(NAV_ITEMS.map((item) => item.href)).toEqual([
+			// FEAT-073. First, because supervising the farm is the day's work
+			// and everything below it is where the farm's output is read.
+			'/farm',
 			'/',
 			'/changes',
 			'/conflicts',
@@ -85,6 +95,11 @@ describe('NAV_ITEMS', () => {
 			// what is in history, and what was just done to it — and before the
 			// divider because both are about the open repository.
 			'/reflog',
+			// FEAT-072. Last of the repository screens, because it is the only
+			// one that is not about the repository's state — it is about what
+			// has been done in it, which is a question people ask after the
+			// ones above rather than instead of them.
+			'/badges',
 			'/repos',
 			'/settings'
 		]);

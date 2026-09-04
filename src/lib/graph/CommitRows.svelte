@@ -847,12 +847,14 @@
 
 	.edge.left {
 		left: 0;
-		background: linear-gradient(to right, var(--shadow-edge), transparent);
+		border-right: 1px solid var(--line);
+		background: none;
 	}
 
 	.edge.right {
 		right: 0;
-		background: linear-gradient(to left, var(--shadow-edge), transparent);
+		border-left: 1px solid var(--line);
+		background: none;
 	}
 
 	.scroller {
@@ -953,7 +955,7 @@
 		right: 0;
 		width: 14px;
 		pointer-events: none;
-		background: linear-gradient(to left, var(--shadow-edge), transparent);
+		background: none;
 	}
 
 	/*
@@ -980,19 +982,20 @@
 	 * highlight rather than as a coloured block laid over the history.
 	 */
 	.row.selected {
-		background: linear-gradient(
-			90deg,
-			color-mix(in srgb, var(--accent) 22%, transparent) 0%,
-			var(--selection) 45%,
-			color-mix(in srgb, var(--selection) 55%, transparent) 100%
-		);
+		background: var(--selection);
 	}
 
-	/* The row the detail panel is showing, which is not the same as the set of
-	   rows a cherry-pick would act on. */
+	/*
+	 * The row the detail panel is showing, which is not the same as the set of
+	 * rows a cherry-pick would act on.
+	 *
+	 * A bar down the leading edge rather than the inset accent glow this used
+	 * to be (TASK-026): the glow was the last soft shadow on the graph, and a
+	 * flat interface marks a row with a line. It still has to be tellable from
+	 * `.selected`, which tints the whole width — so this one takes the edge.
+	 */
 	.row.focused {
-		box-shadow:
-			inset 0 0 12px color-mix(in srgb, var(--accent) 10%, transparent);
+		box-shadow: inset 2px 0 0 var(--accent);
 	}
 
 	.row.dim {
@@ -1096,9 +1099,9 @@
 		border-radius: 50%;
 		/* A ring in the row's own colour, and a shadow under it so the disc sits
 		   on the row rather than being printed on it. */
-		box-shadow:
-			0 0 0 1px var(--line),
-			0 1px 2px color-mix(in srgb, var(--umbra) 18%, transparent);
+		/* A ring in the row's own colour. Zero offset and zero blur: a border
+		   drawn with `box-shadow`, so it does not resize the disc. */
+		box-shadow: 0 0 0 1px var(--line);
 	}
 
 	.wip {

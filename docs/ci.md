@@ -11,10 +11,14 @@ the pipeline; nothing downstream runs. Definitions live in
 workflows landed with the code they gate and then waited six months for a remote
 to run on; that wait is over, and they turned out to be right.
 
-Gates 5 and 6 have still never run. Both are `main`-only, and `main` has not
-moved since before the rename, so the macOS and Windows builds remain the part
-of this pipeline that nothing has proved. Treat the first merge into `main` the
-way the first pull request was treated: as part of the work, not as a formality.
+**First `main` run: 2026-08-28.** Gate 5 built all three platforms green on the
+first merge into `main` (run `33204934146`). Gate 6 failed on that same run:
+the runner has no git identity, and `git tag -a` refused with `fatal: empty
+ident name`, so `v0.1.0` was never tagged and nothing was published — a halt,
+not a broken release. The fix (TASK-025) sets the `github-actions[bot]`
+identity in the job and, with it, moved the notes off `--generate-notes` and
+onto the changelog, as Amendment 20 requires. The fixed gate 6 has not run yet;
+it proves itself on the next merge into `main`.
 
 **One difference worth knowing** between a local run and the runner: `gitleaks`
 walks the pull request's merge ref on CI and the branch tip locally, so the
@@ -25,20 +29,39 @@ they are given.
 
 | # | Gate | Runs | Proves |
 | --- | --- | --- | --- |
-| 1 | License | `cargo deny check licenses bans sources`, `license-checker-rseidelsohn` over the npm production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with Spagitty shipping under GPL-3 |
-| 2 | Code quality | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `npm run check` | Formatting, lints and types across both languages |
-| 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `npm run coverage` | The suite passes and first-party coverage meets the Amendment 10 floor of 70% |
-| 4 | Security | `cargo deny check advisories`, `npm audit --audit-level=high`, `gitleaks` over the diff | No known-vulnerable dependency, no secret in the change |
-| 5 | Build | `npm run tauri build` on Linux, macOS and Windows | The release build works on every target, not only the one the author uses |
-| 6 | Release | tag, artifacts, generated notes | The build is published and traceable to a commit |
+| 0 | Scope | `git diff` of the push / PR against the previous tip | Whether the change ships in the application. Gates 5 and 6 read this; documentation alone is not a release |
+| 1 | License | `cargo deny check licenses bans sources`, `bunx license-checker-rseidelsohn@4` over the JS production tree, plus a check that `LICENSE`, `NOTICE` and both manifests still say GPL-3.0-or-later | Every dependency's license is identified and permitted, and nothing conflicts with Spagitty shipping under GPL-3 |
+| 2 | Code quality | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `bun run check`, plus `tools/make-icons.py --check` and `tools/make-brand.py --check` (Pillow) | Formatting, lints and types across both languages, and no drift between the brand generators and the committed art |
+| 3 | Tests and coverage | `cargo llvm-cov --workspace --fail-under-lines 70`, `bun run coverage` | The suite passes and first-party coverage holds its floor: 70% for Rust, 65% for the frontend |
+| 4 | Security | `cargo deny check advisories`, `bun audit --audit-level=high`, `gitleaks` over the diff | No known-vulnerable dependency at the high level or above, no secret in the change |
+| 5 | Build | `bun run tauri build` on Linux, macOS and Windows — **main, shipping changes only** | The release build works on every target, not only the one the author uses |
+| 6 | Release | tag, artifacts, notes read from `CHANGELOG.md` by `bun tools/release-notes.mjs` — **main, shipping changes only** | The build is published, carries its changelog section as notes (Amendment 20), and is traceable to a commit |
 
 Cheapest and most certain first, so an obvious failure never burns a full build.
 
+**Every lane builds all three platforms.** Gate 5 and the prerelease workflow
+each run `ubuntu-latest`, `macos-latest` and `windows-latest`; the draft
+workflow builds Linux, Windows, and macOS on two runners — `macos-latest` for
+Apple silicon and `macos-13` for Intel, since a build made on one does not run
+on the other. Gate 5's macOS build is Apple silicon only, so a published
+release currently has no Intel Mac download; that is recorded as an open
+question in TASK-025 rather than fixed unwatched on the blocking release path.
+
+**Nothing is signed.** There is no Apple Developer account and no code-signing
+certificate in this repository, so macOS Gatekeeper refuses a downloaded build
+on a double-click and Windows SmartScreen warns. The draft lane's release notes
+carry the one step a Mac user needs; adding real signing is a change to gate 5
+and the draft lane together, not to one of them.
+
 ## What runs where
 
-- **`main`** — all six, automatically, on every merge. Passing gate 6 publishes
-  the release. A merge into `main` is a publish; anything that must not ship yet
-  does not land there.
+- **`main`** — gates 1 to 4 on every push. Gates 5 and 6 run only when the
+  change *ships*: something under `src/`, `src-tauri/`, `crates/`, or a
+  version / lockfile / frontend config that the built application depends on.
+  Passing gate 6 publishes the release. A merge of application code into `main`
+  is a publish; a README, `docs/`, `agile/` or brand-collateral edit is not —
+  those land without rebuilding three platforms or tagging, and ride the next
+  version. The scope job (`0 · scope`) is what makes that call.
 - **`dev`** — gates 1 to 4, automatically, then the pipeline stops. Building and
   publishing an alpha from `dev` is a manual action: run the `prerelease`
   workflow and give it an alpha number. It produces `vX.Y.Z-alpha.N`, which is
@@ -66,7 +89,8 @@ Cheapest and most certain first, so an obvious failure never burns a full build.
   the right place — it does not get bolted onto whichever job is convenient.
 - The coverage floor is defined once per language: `COVERAGE_FLOOR` in the
   workflow for Rust, `test.coverage.thresholds` in `vite.config.ts` for the
-  frontend. They are the same number, and `npm run coverage` fails locally for
+  frontend. They are not the same number — the frontend carries whole screens
+  that mount but are not asserted on — and `bun run coverage` fails locally for
   the same reason it fails in CI.
 - Tags are never moved. Gate 6 refuses to publish over a tag that already
   exists and tells you to bump the version instead.
@@ -88,14 +112,17 @@ inflate the number nor deflate it.
 Gates 1 to 3 are what a change is checked against before it is committed:
 
 ```sh
+bun install --frozen-lockfile              # the dependencies, locked
 cargo deny check licenses bans sources     # gate 1, needs cargo-deny
 cargo fmt --all --check                    # gate 2
 cargo clippy --workspace --all-targets -- -D warnings
-npm run check
+bun run check
+python3 tools/make-icons.py --check        # gate 2 — brand drift (needs Pillow)
+python3 tools/make-brand.py --check
 cargo llvm-cov --workspace --ignore-filename-regex '(fixture|testing)\.rs' --summary-only
-npm run coverage                           # gate 3
+bun run coverage                           # gate 3
 cargo deny check advisories                # gate 4
-npm audit --audit-level=high
+bun audit --audit-level=high
 ```
 
 `cargo-deny` and `cargo-llvm-cov` are installed with
@@ -112,8 +139,9 @@ Recorded in the amendments book as proposals. None is in force here:
   compiles, every test passes, and the packaged app is broken.
 - Amendments compliance — verify a branch name carries a valid work item ID and
   that its `agile/` documents exist. Would sit at gate 0; costs nothing.
-- Commit and PR hygiene — conventional-commit linting, which is what would make
-  gate 6's generated notes reliable.
+- Commit and PR hygiene — conventional-commit linting. Its original payoff —
+  reliable generated notes — lapsed when gate 6 moved onto the changelog
+  (TASK-025), but tidy history remains its own argument.
 
 Cross-platform build matrix was also a candidate; it is adopted, and is what
 gate 5 already does.

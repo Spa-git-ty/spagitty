@@ -53,7 +53,9 @@ export type IconName =
 	| 'chevron-right'
 	| 'terminal'
 	| 'check'
-	| 'refresh';
+	| 'refresh'
+	| 'badge'
+	| 'farm';
 
 /**
  * The paths, keyed by name. A value is one or more `d` attributes, drawn in
@@ -125,5 +127,23 @@ export const ICONS: Record<IconName, string[]> = {
 	'chevron-right': ['M9.5 6l6 6-6 6'],
 	terminal: ['M4 4h16v16H4z', 'M8 9.5 10.5 12 8 14.5', 'M13 15h3'],
 	check: ['M5 12.5 10 17.5 19 7'],
-	refresh: ['M20 11a8 8 0 1 0-.5 4', 'M20 4v7h-7']
+	refresh: ['M20 11a8 8 0 1 0-.5 4', 'M20 4v7h-7'],
+	// A medal: a disc with a ribbon behind it. Two strokes for the ribbon
+	// rather than one V, so the join under a round cap stays clean.
+	badge: ['M12 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10z', 'M8.5 14 6 21l6-2.6L18 21l-2.5-7'],
+	// The farm: one node above, three below, connected. The same shape as a
+	// branch point in the graph, which is what a farm is — several agents
+	// working from one commit — and it reads as "many from one" at 16px, which
+	// a barn or a tractor would not.
+	farm: [
+		'M12 3.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
+		'M12 7.5v3.5',
+		'M5 11h14',
+		'M5 11v3',
+		'M12 11v3',
+		'M19 11v3',
+		'M5 16.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
+		'M12 16.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
+		'M19 16.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z'
+	]
 };

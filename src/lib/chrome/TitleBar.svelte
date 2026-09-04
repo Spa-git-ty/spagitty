@@ -176,6 +176,9 @@
 	/* Bold, because it is the one thing on this bar that is not a control: it
 	   says which program you are looking at, and everything else says state. */
 	.name {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
 		font-weight: 700;
 		letter-spacing: 0.01em;
 		white-space: nowrap;

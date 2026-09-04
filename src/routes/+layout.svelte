@@ -10,10 +10,15 @@
 	import * as api from '$lib/api';
 	import CloneModal from '$lib/clone/CloneModal.svelte';
 	import { clone } from '$lib/clone/store.svelte';
+	import WorktreesModal from '$lib/worktrees/WorktreesModal.svelte';
+	import AddWorktreeModal from '$lib/worktrees/AddWorktreeModal.svelte';
+	import SubmodulesModal from '$lib/submodules/SubmodulesModal.svelte';
 	import { network } from '$lib/network/store.svelte';
 	import { rebase } from '$lib/rebase/store.svelte';
 	import CommandLog from '$lib/commandlog/CommandLog.svelte';
 	import { commandLog } from '$lib/commandlog/store.svelte';
+	import RewardOverlay from '$lib/delight/RewardOverlay.svelte';
+	import { delight } from '$lib/delight/store.svelte';
 	import NavRail from '$lib/chrome/NavRail.svelte';
 	import ResizeEdges from '$lib/chrome/ResizeEdges.svelte';
 	import { appWindow } from '$lib/chrome/window';
@@ -216,20 +221,47 @@
 			graph.restart();
 		}
 	});
+
+	/*
+	 * The delight layer follows the open repository and the git identity
+	 * (FEAT-072).
+	 *
+	 * Both are pushed to it rather than read by it: the badge record must not
+	 * import the repository store, because almost everything that reports a git
+	 * operation is reachable from `repo` and importing it back would close a
+	 * cycle through half the frontend. The shell already knows both facts, so
+	 * the shell is where they are handed over.
+	 */
+	$effect(() => {
+		delight.bind(repo.info?.path ?? null);
+	});
+
+	$effect(() => {
+		const identity = settings.identity;
+		if (!identity) return;
+		delight.identify(
+			identity.name?.local ?? identity.name?.global ?? null,
+			identity.email?.local ?? identity.email?.global ?? null
+		);
+	});
 </script>
 
 <svelte:window onkeydown={shortcut} />
 
 <div class="app">
 	<!--
-		Everything a pane of glass can bend (FEAT-057).
+		The column the shell is laid out in.
 
-		`.app` carries the window's outline and its cast shadow, both drawn
-		*outside* its border box. A filter clips to that box, so filtering `.app`
-		would cut the window's own edge off for as long as a menu was open.
-		`.lens` is inset inside it and casts nothing, so the filter region can be
-		exactly its box and nothing visible is clipped. `liquidGlass.ts` looks
-		this element up by class.
+		It was the element a pane of glass bent (FEAT-057): `.app` carries the
+		window's outline and cast shadow, both drawn outside its border box, and
+		a filter clips to that box — so the filter went on an inner element that
+		casts nothing. The lens was retired in TASK-022 when it was measured at
+		180ms of every frame, and nothing filters anything now.
+
+		The element stays because the layout does: it holds the chrome column and
+		is the positioning context `.ground` is placed against. Folding it back
+		into `.app` is a tidy-up worth doing on its own, not as a passenger to a
+		performance fix.
 	-->
 	<div class="lens">
 		<!--
@@ -279,6 +311,9 @@
 	navigates, and a modal owned by a screen would go with it.
 -->
 <CloneModal />
+<WorktreesModal />
+<AddWorktreeModal />
+<SubmodulesModal />
 
 <!-- Reaches every command from every screen, so it belongs to the shell. -->
 <Palette />
@@ -290,6 +325,14 @@
 -->
 <DialogHost />
 <NoticeToast />
+
+<!--
+	The reward moment (FEAT-072). Mounted by the shell for the same reason as
+	the dialog and the notice: a rebase started on the Graph screen can finish
+	after the user has walked to Conflicts, and the badge it earns has to arrive
+	wherever they are.
+-->
+<RewardOverlay />
 
 <!--
 	The record of what Spagitty ran. Mounted by the shell for the same reason as
@@ -320,7 +363,10 @@
 	 *   like it has a sticker on it.
 	 */
 	.app {
+		flex: 1;
+		min-height: 0;
 		height: 100%;
+		width: 100%;
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
@@ -331,32 +377,21 @@
 		outline: 0.2px solid var(--window-edge);
 		outline-offset: -0.2px;
 		box-shadow:
-			inset 0 1px 0 var(--window-sheen),
 			0 1px 2px var(--window-contact),
-			/*
-				No negative spread. A shadow's corner radius is the box's radius
-				plus its spread, so `-4px` drew the cast with an 8px corner under
-				a 12px window — a squarer shape beneath a rounder one, which is
-				what read as wrong. Without the shrink the cast follows the
-				window exactly; the offset, blur and alpha come down together so
-				the weight of it is unchanged (FEAT-042).
-			*/
-			0 6px 18px var(--window-cast);
+			0 12px 30px var(--window-cast),
+			inset 0 1px 0 var(--window-sheen);
 	}
 
 	/*
-	 * What the glass bends (FEAT-057).
+	 * The shell's column (was the filtered element, FEAT-057, until TASK-022).
 	 *
 	 * It fills `.app` exactly and draws nothing of its own — no outline, no
-	 * shadow, no background of its own to double the one underneath. That is
-	 * what lets `liquidGlass.ts` put a filter on it: a filter clips to the
-	 * border box, and this box has nothing outside it to lose.
+	 * shadow, no background to double the one underneath. That was what let a
+	 * filter sit on it without clipping anything visible; it is now simply why
+	 * the element is invisible.
 	 *
-	 * It inherits the window's radius so that a corner stays a corner while the
-	 * filter is on, and it carries the column layout `.app` used to, because a
-	 * filtered element becomes the containing block for its fixed descendants
-	 * and the chrome has to be laid out inside the thing being filtered rather
-	 * than beside it.
+	 * It inherits the window's radius and carries the column layout, both of
+	 * which are still load-bearing.
 	 */
 	.lens {
 		flex: 1;
@@ -371,7 +406,7 @@
 	/* Square against the screen edge, and nothing to cast a shadow onto. */
 	:global(:root[data-window='maximized']) .app {
 		border-radius: 0;
-		box-shadow: inset 0 1px 0 var(--window-sheen);
+		box-shadow: none;
 	}
 
 	.main {
@@ -410,6 +445,9 @@
 	.screen-slot {
 		flex: 1;
 		min-width: 0;
+		min-height: 0;
+		height: 100%;
+		width: 100%;
 		display: flex;
 		overflow: hidden;
 	}

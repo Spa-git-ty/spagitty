@@ -201,35 +201,48 @@ describe('done', () => {
 });
 
 /**
- * FEAT-040 — what the graph's footer is allowed to say.
+ * FEAT-040 — what the workspace status area is allowed to say.
  *
  * The two lines it used to carry told the user how to operate the screen they
  * were already operating, which is the copy TASK-007 and TASK-009 removed
- * everywhere else. The assertions read the screen's source because the footer is
- * markup in a route, and a route is not a component this suite mounts.
+ * everywhere else. The assertions read the source because this is markup in
+ * chrome components, and what they are protecting is the wording.
+ *
+ * The area itself has moved since: FEAT-040 put it in the rail's foot, and
+ * FEAT-073 moved it into the status strip — one line spanning the window rather
+ * than four stacked under the screens, two of which repeated counts the rail's
+ * own rows already carry as badges. The words are what these assert, so they
+ * follow the words.
  */
-describe('the graph footer', () => {
-	const page = readFileSync('src/routes/+page.svelte', 'utf8');
-	const footer = page.slice(page.indexOf('<footer'), page.indexOf('</footer>'));
+describe('the workspace status area', () => {
+	const rail = readFileSync('src/lib/chrome/NavRail.svelte', 'utf8');
+	const strip = readFileSync('src/lib/chrome/StatusStrip.svelte', 'utf8');
 
 	it('no longer explains the screen to the person using it', () => {
-		expect(footer).not.toMatch(/drag a branch|right-click a row|double-click a row/i);
+		for (const source of [rail, strip]) {
+			expect(source).not.toMatch(/drag a branch|right-click a row|double-click a row/i);
+		}
 	});
 
 	it('says how much is changed, when it refreshed, and when it was fetched', () => {
-		expect(footer).toMatch(/changed file/);
-		expect(footer).toMatch(/refreshed \{refreshed\}/);
-		expect(footer).toMatch(/\{fetched\}/);
+		expect(strip).toMatch(/changed.*file/);
+		expect(strip).toMatch(/refreshed.*relativeTime/);
+		expect(strip).toMatch(/fetched.*relativeTime/);
 	});
 
 	it('has a word for a repository that has never been fetched', () => {
 		// An empty time, or a time invented for a fetch that never happened, is
 		// the thing this must not do.
-		expect(page).toMatch(/never fetched/);
+		expect(strip).toMatch(/never fetched/);
 	});
 
 	it('has a word for a working copy that has not been read', () => {
-		expect(footer).toMatch(/working copy not read yet/);
+		expect(strip).toMatch(/working copy not read yet/);
+	});
+
+	it('says it in one place', () => {
+		// Two copies of "how fresh is this" is how the two disagree.
+		expect(rail).not.toMatch(/never fetched|working copy not read yet/);
 	});
 });
 

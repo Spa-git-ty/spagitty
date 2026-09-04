@@ -2,11 +2,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { graph } from '$lib/graph/store.svelte';
 	import { isActive, NAV_ITEMS } from '$lib/nav';
 	import { panels } from '$lib/panels.svelte';
 	import { repo } from '$lib/repo.svelte';
-	import Btn from '$lib/ui/Btn.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 
 	/**
@@ -28,10 +26,15 @@
 		return value === null ? '·' : String(value);
 	}
 
-	const tagsLabel = $derived(counts.tags === null ? '·' : String(counts.tags));
-	const submodulesLabel = $derived(
-		counts.submodules === null ? '·' : String(counts.submodules)
-	);
+	/*
+	 * The foot is gone (it was FEAT-040's).
+	 *
+	 * It stacked four lines under the screens — the working-copy count, how
+	 * fresh the walk and the remote were, tags and submodules — and two of them
+	 * repeated counts the rows above already carry as badges. They are one line
+	 * in the status strip now, which spans the window and is where an
+	 * application says what is true of what it has open. The rail is navigation.
+	 */
 </script>
 
 <nav class="rail" class:collapsed aria-label="Screens">
@@ -45,19 +48,6 @@
 		>
 			<Icon name={collapsed ? 'chevron-right' : 'chevron-left'} size="1em" />
 		</button>
-		{#if !collapsed}
-			<!--
-				What the walk has found so far. One statement instead of the
-				three pieces of text this row used to carry — a glyph, a count
-				and the word "loading" — and the dot is what says it is still
-				running, so nothing has to move to say so.
-			-->
-			<span class="walk" class:running={!graph.complete}>
-				<span class="pulse" aria-hidden="true"></span>
-				<span class="mono">{graph.count}</span>
-				<span class="note">{graph.complete ? 'commits' : 'walking…'}</span>
-			</span>
-		{/if}
 	</div>
 
 	<!--
@@ -65,21 +55,42 @@
 		discoverable place in the rail is below a spacer, which is where it used
 		to sit. It takes the top slot instead — the one the log filter had, which
 		only duplicated the Log screen's own query bar and the Ctrl+F shortcut.
+
+		And it goes away once there is a repository open, because at that point
+		it is the loudest thing in the rail and it is offering to do something
+		nobody wants: a filled accent button, above every screen, whose job is
+		to replace the repository the person is working in. It is not lost —
+		the tab strip's `+`, the repository menu and Ctrl+O all still open one,
+		and All repositories is a row down the same rail. The rail's brightest
+		pixel now belongs to whichever screen you are on.
 	-->
-	<div class="open">
-		{#if collapsed}
+	{#if !repo.info}
+		<div class="open">
 			<button
-				class="item"
+				class="item open-repository primary"
 				title="Open repository…"
 				aria-label="Open repository…"
 				onclick={() => repo.choose()}
 			>
-				<Icon name="folder" size="1.2em" />
+				<!--
+					The icon and the label in one `.name`, exactly as every other
+					row builds itself.
+
+					They were direct children, and `.item` lays its children out
+					with `space-between` so that a screen's count can sit at the
+					far right. With nothing to push apart but an icon and a word,
+					that put the icon against the left edge and the text against
+					the right, with the whole rail's width between them. Grouping
+					them is what every other row already does, and it is why every
+					other row reads.
+				-->
+				<span class="name">
+					<Icon name="folder" size="1.2em" />
+					{#if !collapsed}<span class="responsive-label">Open repository…</span>{/if}
+				</span>
 			</button>
-		{:else}
-			<Btn primary onclick={() => repo.choose()}>Open repository…</Btn>
-		{/if}
-	</div>
+		</div>
+	{/if}
 
 	{#each NAV_ITEMS as item (item.href)}
 		{#if item.dividerBefore}
@@ -107,12 +118,6 @@
 	{/each}
 
 	<div class="spacer"></div>
-
-	{#if !collapsed}
-		<div class="foot">
-			<span class="note">Tags {tagsLabel} · Submodules {submodulesLabel}</span>
-		</div>
-	{/if}
 </nav>
 
 <style>
@@ -129,9 +134,7 @@
 		flex-direction: column;
 		background-color: var(--chrome-veil);
 		border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
-		box-shadow:
-			var(--glass-rim),
-			1px 0 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		box-shadow: none;
 		position: relative;
 		z-index: 1;
 		overflow: hidden;
@@ -171,49 +174,6 @@
 		transform: scale(0.9);
 	}
 
-	/* How far the walk has got. */
-	.walk {
-		display: inline-flex;
-		align-items: baseline;
-		gap: 6px;
-		min-width: 0;
-		color: var(--muted);
-		font-variant-numeric: tabular-nums;
-	}
-
-	/*
-	 * The dot. Still while the walk is finished, breathing while it runs — the
-	 * one piece of motion in the rail, and the only thing on this row that says
-	 * work is happening.
-	 */
-	.pulse {
-		width: 6px;
-		height: 6px;
-		flex: none;
-		align-self: center;
-		border-radius: var(--r-pill);
-		background: var(--ok);
-		box-shadow: 0 0 6px color-mix(in srgb, var(--ok) 60%, transparent);
-	}
-
-	.walk.running .pulse {
-		background: var(--accent);
-		box-shadow: 0 0 8px var(--accent-glow);
-		animation: pulse-breathe 1.6s ease-in-out infinite;
-	}
-
-	@keyframes pulse-breathe {
-		0%,
-		100% {
-			opacity: 0.35;
-			transform: scale(0.82);
-		}
-		50% {
-			opacity: 1;
-			transform: scale(1.1);
-		}
-	}
-
 	.collapse:hover {
 		color: var(--accent);
 		background: var(--accent-soft);
@@ -230,9 +190,15 @@
 		margin-inline: 4px;
 	}
 
-	.rail.collapsed .open,
-	.rail.collapsed .foot {
+	.rail.collapsed .open {
 		padding: 8px 4px;
+	}
+
+	/* Collapsed, the group holds one glyph and must not claim the row's width,
+	   or the icon centres inside a stretched box instead of inside the pill. */
+	.rail.collapsed .open-repository .name {
+		justify-content: center;
+		width: 100%;
 	}
 
 	/* Label and icon travel together; the count is what the row's spare width
@@ -274,9 +240,35 @@
 		padding: 8px;
 	}
 
+	/* With a repository open there is no `.open` block, so the first screen
+	   would butt straight up against the head's rule. It takes the padding the
+	   button used to provide. */
+	.head + .item {
+		margin-top: 7px;
+	}
+
 	.open :global(.btn) {
 		width: 100%;
 		justify-content: center;
+	}
+
+	/*
+	 * The one item that is a button rather than a destination.
+	 *
+	 * No `justify-content` of its own: it inherits `.item`'s, and its icon and
+	 * label are grouped in a `.name` like every other row's, so the group sits
+	 * at the leading edge and the collapsed rule still centres it.
+	 */
+	.open-repository {
+		background: var(--accent);
+		color: var(--on-accent);
+		font-weight: 650;
+	}
+
+	.open-repository:hover {
+		background: var(--accent-lift);
+		color: var(--on-accent);
+		transform: none;
 	}
 
 	/*
@@ -338,11 +330,34 @@
 		flex: 1;
 	}
 
-	.foot {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-		padding: 8px;
-		align-items: flex-start;
+	/* A tiling compositor can make a window narrower than the application's
+	   requested minimum. Compact the chrome instead of squeezing the workspace. */
+	@media (max-width: 900px) {
+		.rail {
+			width: 48px;
+		}
+
+		.head {
+			justify-content: center;
+			padding: 8px 4px;
+		}
+
+		.count,
+		.name > span,
+		.responsive-label {
+			display: none;
+		}
+
+		.open {
+			padding: 8px 4px;
+		}
+
+		.item,
+		.open-repository {
+			justify-content: center;
+			width: calc(100% - 8px);
+			margin-inline: 4px;
+			padding-inline: 0;
+		}
 	}
 </style>

@@ -107,10 +107,24 @@ export const repo = {
 		counts = { ...counts, commits: n };
 	},
 
+	/**
+	 * Close the repository. Nothing is open afterwards.
+	 *
+	 * The generation moves, exactly as it does on `open` (BUG-019). It is the
+	 * signal every screen keys off to notice the repository underneath it has
+	 * changed — the shell restarts the walk on it, and the screens that cache
+	 * per repository re-sync on it. Without the bump the state cleared here and
+	 * the state held out there disagreed: no repository, and a graph still full
+	 * of its commits.
+	 *
+	 * `graph.restart()` then resets to nothing and returns, because there is no
+	 * token to walk with, which is exactly what closing should leave behind.
+	 */
 	async close(): Promise<void> {
 		await api.closeRepo();
 		info = null;
 		token = null;
 		counts = NO_COUNTS;
+		generation += 1;
 	}
 };

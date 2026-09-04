@@ -404,6 +404,78 @@ pub fn unset_config(repo: &Path, scope: &str, key: &str) -> Result<()> {
     }
 }
 
+/// Read a git config key (FEAT-068).
+pub fn get_config(repo: &Path, key: &str) -> Result<Option<String>> {
+    match run(repo, &["config", "--get", key]) {
+        Ok(val) => {
+            let trimmed = val.trim().to_string();
+            if trimmed.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(trimmed))
+            }
+        }
+        Err(Error::Git { .. }) => Ok(None),
+        Err(other) => Err(other),
+    }
+}
+
+/// Launch git difftool for a file or revision without blocking (FEAT-068).
+pub fn launch_difftool(
+    repo: &Path,
+    path: &str,
+    tool: Option<&str>,
+    commit: Option<&str>,
+) -> Result<()> {
+    let mut args = vec!["difftool", "--no-prompt", "-y"];
+    if let Some(t) = tool {
+        if !t.is_empty() {
+            args.push("-t");
+            args.push(t);
+        }
+    }
+    if let Some(c) = commit {
+        if !c.is_empty() {
+            args.push(c);
+        }
+    }
+    args.push("--");
+    args.push(path);
+
+    let mut cmd = command(repo, &args);
+    cmd.stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    let _ = cmd.spawn().map_err(|e| Error::Git {
+        command: format!("git {}", args.join(" ")),
+        stderr: e.to_string(),
+    })?;
+    Ok(())
+}
+
+/// Launch git mergetool for a conflicted path without blocking (FEAT-068).
+pub fn launch_mergetool(repo: &Path, path: &str, tool: Option<&str>) -> Result<()> {
+    let mut args = vec!["mergetool", "--no-prompt", "-y"];
+    if let Some(t) = tool {
+        if !t.is_empty() {
+            args.push("-t");
+            args.push(t);
+        }
+    }
+    args.push("--");
+    args.push(path);
+
+    let mut cmd = command(repo, &args);
+    cmd.stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    let _ = cmd.spawn().map_err(|e| Error::Git {
+        command: format!("git {}", args.join(" ")),
+        stderr: e.to_string(),
+    })?;
+    Ok(())
+}
+
 /// Start a clone and hand the caller the running process.
 ///
 /// The one function here that does not wait for git to finish. A clone can take
@@ -1008,6 +1080,153 @@ fn push_args<'a>(remote: &'a str, refspec: &'a str, force: bool) -> Vec<&'a str>
         }
     }
     args
+}
+
+/// List linked worktrees in porcelain format (FEAT-062).
+pub fn worktree_list(repo: &Path) -> Result<String> {
+    run(repo, &["worktree", "list", "--porcelain"])
+}
+
+/// Add a worktree pointing to a branch or path (FEAT-062).
+pub fn worktree_add(
+    repo: &Path,
+    target: &Path,
+    branch: Option<&str>,
+    new_branch: Option<&str>,
+    detach: bool,
+) -> Result<()> {
+    let target_str = target.to_str().ok_or_else(|| Error::Git {
+        command: "worktree add".into(),
+        stderr: "target path is not valid utf-8".into(),
+    })?;
+    let mut args = vec!["worktree", "add"];
+    if detach {
+        args.push("--detach");
+    }
+    if let Some(nb) = new_branch {
+        if !nb.is_empty() {
+            args.push("-b");
+            args.push(nb);
+        }
+    }
+    args.push(target_str);
+    if let Some(b) = branch {
+        if !b.is_empty() {
+            args.push(b);
+        }
+    }
+    run(repo, &args)?;
+    Ok(())
+}
+
+/// Remove a worktree (FEAT-062).
+pub fn worktree_remove(repo: &Path, target: &Path, force: bool) -> Result<()> {
+    let target_str = target.to_str().ok_or_else(|| Error::Git {
+        command: "worktree remove".into(),
+        stderr: "target path is not valid utf-8".into(),
+    })?;
+    let mut args = vec!["worktree", "remove"];
+    if force {
+        args.push("--force");
+    }
+    args.push(target_str);
+    run(repo, &args)?;
+    Ok(())
+}
+
+/// Lock a worktree against pruning (FEAT-062).
+pub fn worktree_lock(repo: &Path, target: &Path, reason: Option<&str>) -> Result<()> {
+    let target_str = target.to_str().ok_or_else(|| Error::Git {
+        command: "worktree lock".into(),
+        stderr: "target path is not valid utf-8".into(),
+    })?;
+    let mut args = vec!["worktree", "lock"];
+    if let Some(r) = reason {
+        if !r.is_empty() {
+            args.push("--reason");
+            args.push(r);
+        }
+    }
+    args.push(target_str);
+    run(repo, &args)?;
+    Ok(())
+}
+
+/// Unlock a locked worktree (FEAT-062).
+pub fn worktree_unlock(repo: &Path, target: &Path) -> Result<()> {
+    let target_str = target.to_str().ok_or_else(|| Error::Git {
+        command: "worktree unlock".into(),
+        stderr: "target path is not valid utf-8".into(),
+    })?;
+    run(repo, &["worktree", "unlock", target_str])?;
+    Ok(())
+}
+
+/// Prune stale worktree administrative metadata (FEAT-062).
+pub fn worktree_prune(repo: &Path) -> Result<()> {
+    run(repo, &["worktree", "prune"])?;
+    Ok(())
+}
+
+/// Read commit history touching a single path, following renames (FEAT-063).
+pub fn file_history(repo: &Path, path: &str, limit: usize) -> Result<String> {
+    let limit_str = format!("-{}", limit.max(1));
+    run(
+        repo,
+        &[
+            "log",
+            "--follow",
+            &limit_str,
+            "--format=%H%x00%h%x00%an%x00%ae%x00%at%x00%s",
+            "--",
+            path,
+        ],
+    )
+}
+
+/// Read submodule status (FEAT-067).
+pub fn submodule_status(repo: &Path) -> Result<String> {
+    run(repo, &["submodule", "status"])
+}
+
+/// Update submodules recursively (FEAT-067).
+pub fn submodule_update(
+    repo: &Path,
+    paths: &[String],
+    init: bool,
+    recursive: bool,
+) -> Result<String> {
+    let mut args = vec!["submodule", "update"];
+    if init {
+        args.push("--init");
+    }
+    if recursive {
+        args.push("--recursive");
+    }
+    for p in paths {
+        args.push(p.as_str());
+    }
+    run(repo, &args)
+}
+
+/// Sync submodule URLs from .gitmodules (FEAT-067).
+pub fn submodule_sync(repo: &Path, recursive: bool) -> Result<String> {
+    let mut args = vec!["submodule", "sync"];
+    if recursive {
+        args.push("--recursive");
+    }
+    run(repo, &args)
+}
+
+/// De-initialize a submodule (FEAT-067).
+pub fn submodule_deinit(repo: &Path, path: &str, force: bool) -> Result<String> {
+    let mut args = vec!["submodule", "deinit"];
+    if force {
+        args.push("-f");
+    }
+    args.push("--");
+    args.push(path);
+    run(repo, &args)
 }
 
 #[cfg(test)]

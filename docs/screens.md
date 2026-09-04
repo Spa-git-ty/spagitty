@@ -19,19 +19,30 @@ under Amendment 11.
 | 1E | Interactive rebase | `/rebase` | yes | Built | FEAT-009 |
 | 1F | Branches | `/branches` | yes | Built | FEAT-004 |
 | 1G | Stash | `/stash` | yes | Built | FEAT-005 |
-| 1H | Pull requests | `/requests` | yes | Built | FEAT-010, FEAT-017 |
+| 1H | Pull requests | `/requests` | yes | Built | FEAT-010, FEAT-017, FEAT-058 |
 | 1I | Log search | `/search` | yes | Built | FEAT-007 |
 | 1J | All repositories | `/repos` | yes | Built | FEAT-006 |
 | 1K | Settings | `/settings` | yes | Built | FEAT-011 |
 | 1L | Clone | modal | no | Built | FEAT-012 |
 | 1M | Reflog | `/reflog` | yes | Built | FEAT-050 |
 | 1N | Tags | `/tags` | yes | Built | FEAT-051 |
+| 1O | File history | `/history` | no | Built | FEAT-063 |
+| 1P | Badges | `/badges` | yes | Built | FEAT-072 |
+| 1Q | Farm | `/farm` | yes | Built | FEAT-073 |
 
 **Every screen in the handoff is built**, and 1A–1L is the whole of it. 1M and
 1N were not in the handoff at all: the Reflog and Tags came out of the GitKraken
 gap analysis rather than the design, and they are numbered after the handoff's
 run rather than inserted into it, so that a code still says where a screen came
 from.
+
+1P came from neither. Every other screen here answers a question about the state
+of a repository; Badges answers what has been *done* in one, and by whom.
+
+1Q is the first screen about work that has not happened yet — a goal, the tasks
+it was cut into, and the agents working them. It takes the rail's top slot: it
+is the product's own subject, and everything below it in the rail is where the
+farm's output is read.
 
 What remains deferred is named on the screen that defers it, in place rather
 than being absent — a conflicted stash apply, and the forges Spagitty has no
@@ -466,7 +477,36 @@ per pull request for the line counts, the review decision and the checks —
 ninety-one requests for thirty open ones, against a budget shared with
 everything else the token does.
 
-Read-only, by decision. Nothing approves, merges, comments or closes.
+**The files, commits, and review workspace** (FEAT-058, FEAT-059). Opening a
+pull request transitions to a dedicated full-window PR workspace view. The top
+header carries the PR title (with compact sizing and smooth, slow hover auto-scroll
+when long), author, relative update time, status chip, checks rollup, and commit
+count, alongside a return button.
+
+The left pane features a leading **CHANGELOG** entry that renders the PR's formatted
+Markdown description and changelog in the main view, followed by collapsible
+accordion sections for **All Changed Files** and **List Of Commits**. Commits display
+fixed-width summaries that smoothly scroll (marquee on hover) to reveal long messages
+without truncation, and the entire commit row is clickable to expand and list
+per-commit changed files.
+
+The center diff pane supports both unified and split diffs. Each diff line offers
+an inline review comment trigger on hover. Review comments and local drafts render
+directly beneath their associated diff lines. Draft comments automatically persist
+in local browser storage (`localStorage`) so no review work is lost on network
+hiccups or application restarts.
+
+**Reviewer vs Developer modes.** Reviewers can compose local draft inline comments,
+inspect all threads, and publish reviews (Approve, Request Changes, Comment) with
+draft comments batched together in a single submission. Authors are prevented from
+approving their own PRs. Developers can review feedback, reply directly to inline
+comment threads, and mark change requests as resolved.
+
+The PR list screen renders a smooth skeleton shimmer while credentials decrypt and
+forges load, with the previous side panel removed for an uncluttered workspace.
+The list and comments are immediately refreshed after a review is submitted.
+
+Merging is still not built, and the button still says so.
 
 Failures are four different sentences, because they are four different
 decisions for the reader: could not reach the host, the host is rate limiting
@@ -553,11 +593,21 @@ and never the directory.
 
 **Built.** `src/routes/settings/+page.svelte`, `src/lib/settings/`.
 
-Five sections behind a chip index — You, Accounts, Behaviour, Appearance,
-License — because these are read rarely and changed rarely, and one route that
-says which part of itself is showing is easier to link to than five rail
-entries. The section is in the URL fragment, so `/settings#accounts` lands where
-the Pull requests screen points.
+Sections behind a chip index — You, Remotes, External Tools, Behaviour,
+Personality, God mode, Appearance, License — because these are read rarely and
+changed rarely, and one route that says which part of itself is showing is
+easier to link to than eight rail entries. The section is in the URL fragment,
+so `/settings#accounts` lands where the Pull requests screen points.
+
+**You holds everything about who you are**: the identity, the signing key, the
+saved profiles and the connected hosting accounts. Accounts was its own chip
+until it turned out to be a chip with no branch behind it — it fell through the
+screen's closing `{:else}` and drew the License section, while `AccountsSection`
+was being rendered under You the whole time. The chip is gone, `#accounts` now
+resolves to You so the two links the Pull requests screen carries still arrive
+at the accounts, and the screen has no catch-all left to hide the next one:
+every section is an explicit branch, and `sections.test.ts` reads the route and
+fails if a chip is ever added without one.
 
 The last section was called **Advanced** until TASK-007. It has only ever held
 the version, the build, the project's licence and its dependencies' licences, so
@@ -566,7 +616,22 @@ fragment and selects the renamed section, because a link written before the
 rename doing nothing at all is worse than one that is merely out of date.
 
 **Nothing here needs an open repository.** With none, the identity falls back to
-the global scope alone and every other section is unaffected.
+the global scope alone and every other section is unaffected. **God mode** is
+the one exception and says so: previews and sounds work without a repository,
+and everything that writes a badge record is disabled because there is nowhere
+to write it.
+
+**God mode** (FEAT-072) drives the delight layer by hand. Every other badge in
+Spagitty takes real work to see, which is the point of them and also the
+problem: nobody can check that Git Lord looks right without earning Git Lord,
+and nobody is going to resolve ten conflicts to find out whether a sound is too
+loud. Four groups, in order of what they cost — preview a card (writes
+nothing), fire an event the application really produces (through the real
+rules), grant or revoke straight into the record (the only writes in the
+application that bypass the engine), and whole-record operations. The
+grant/revoke writes live in `delight` rather than in the section that draws
+them, so they can be read against the code that awards the badges people
+earned.
 
 **Appearance is the only place the theme is set.** Four families — Catppuccin,
 Dracula, Tokyo Night, Gruvbox — each with a light and a dark variant, named the
@@ -635,14 +700,15 @@ version, the license, the commit stamped in at build time, and the trademark
 notice were in the stub's footer from the first commit. They moved into this
 section rather than disappearing while it was rebuilt.
 
-The dependency license list is **generated at build time from the two
-lockfiles**, not typed — a hand-written list is wrong by the next update.
-`src-tauri/licenses.rs` reads `cargo metadata` for the Rust half and
-`package-lock.json` for the npm half, and lists only what is *linked*: build and
-development dependencies are not distributed, so describing them as part of the
-binary would be wrong. `cargo-about` was the plan and was dropped — requiring a
-build tool on every machine and every CI runner is a cost this avoids, since
-cargo already reads the lockfile.
+The dependency license list is **generated at build time**, not typed — a
+hand-written list is wrong by the next update. `src-tauri/licenses.rs` reads
+`cargo metadata` for the Rust half and the installed frontend tree for the JS
+half, walking the production dependencies of the root `package.json` through
+`node_modules` (what `bun.lock` pins), and lists only what is *linked*: build
+and development dependencies are not distributed, so describing them as part of
+the binary would be wrong. `cargo-about` was the plan and was dropped —
+requiring a build tool on every machine and every CI runner is a cost this
+avoids, since cargo already reads the lockfile.
 
 A list that cannot be generated **degrades rather than failing the build**. A
 checkout with no `node_modules`, or an environment where `cargo metadata` cannot
@@ -698,3 +764,79 @@ it.
 **A failed clone leaves no entry in the repository list**, and that falls out of
 the existing design rather than needing a rule: the list is written by opening a
 repository, and the clone offers to open only what succeeded.
+
+## 1O — File history
+
+A dedicated view for inspecting a single file's commit evolution and line attribution (FEAT-063).
+
+**The commit timeline follows renames.** `history::file_commits` walks commits touching the selected path via `git log --follow`, displaying author name, time, summary, and short hash.
+
+**Interactive line attribution.** The right pane renders line-by-line blame metadata (author name, commit SHA, timestamp) alongside file content. Hovering a commit in the timeline or blame gutter highlights every line introduced by that commit.
+
+## 1P — Badges
+
+**Built.** `src/routes/badges/+page.svelte`, `src/lib/delight/` (FEAT-072).
+
+What has been earned in this repository, and by whom. It is the one screen that
+is not about the state of a repository, which is also why it survives having
+none open with a sentence rather than a blank — "none of this has happened yet"
+is a real answer.
+
+**Per repository, and per actor.** A badge earned in one codebase says nothing
+about another, and an aggregate across all of them would flatter whoever has the
+most repositories. A human is keyed on their git email, so switching an identity
+profile (FEAT-069) switches record; an agent is keyed on its own slug and is
+credited from the `Co-authored-by` trailer its commits already carry.
+
+**A secret badge gives nothing away.** It is drawn as a slot with `???` in it —
+shown rather than omitted, because a list that simply ended would say the
+collection was complete. The header reads `n / m+?` for the same reason: a total
+that let the secrets be worked out by arithmetic would remove the point of
+having any.
+
+**The Hall of Shame is a section, not a verdict.** Committing straight to `main`
+is acknowledged, never celebrated: a shame badge gets no reward moment, cannot
+be equipped as a title, and is left out of the markdown that leaves the
+application. It is hidden entirely at the Professional personality.
+
+**The agent table has no human on it.** Ranking the person at the keyboard
+against the models they are supervising turns a useful comparison — which of
+these does well in *this* repository — into a productivity leaderboard, which is
+the thing the feature exists not to build. Agents are ordered by first-pass rate
+rather than by volume, because volume ranks whoever was given the most work.
+
+## 1Q — Farm
+
+**Built.** `src/routes/farm/+page.svelte`, `src/lib/farm/`, `crates/spagitty-farm`
+(FEAT-073).
+
+Supervising a small engineering team from inside the Git client. The plan is on
+the left, the selected task in the middle, and what just happened along the
+bottom — the three questions a supervisor has, answerable without navigating
+between them. A person who has to move between those three is reading a log.
+
+**Nothing polls.** A farm changes when an agent says something, which is at a
+model's pace and on no schedule. The backend emits, the store applies, and the
+screen is a function of the store; a snapshot is refetched shortly after a burst
+so nothing drifts if an event was missed.
+
+**A branch and a worktree per task**, named `spagitty-farm/<task>/<provider>`.
+The name is derived rather than chosen, in one place, because it is how the
+graph, the worktree list and this screen find each other. Nothing an agent does
+reaches the working copy, and deleting a task keeps the commits on its branch.
+
+**An agent saying "done" is not done.** Verification runs the repository's own
+commands in the task's worktree; review is performed by a different agent than
+the one that wrote the change. A task that reached review with nothing
+configured to check it says so, in those words, rather than reading as passed.
+
+**The starter page answers three questions in the order they are asked** — what
+a farm is, how to start one, and whether this machine can run one. The goal
+field is on it, so starting a farm needs one sentence and no navigation. The
+readiness rows say whether an agent was found, whether the repository has an
+`AGENTS.md` for one, and whether anything verifies the work; none of them blocks
+starting a farm, because a farm with no agent is still a plan.
+
+**Spagitty runs agents; it does not contain them.** Claude Code, Codex, Cursor
+and Oh My Pi are detected on `PATH`, and anything else with a command line can
+be added by hand. There is no model here and no key.

@@ -4378,12 +4378,13 @@ dependencies = [
 
 [[package]]
 name = "spagitty"
-version = "0.1.0"
+version = "0.4.1-alpha"
 dependencies = [
  "notify",
  "serde",
  "serde_json",
  "spagitty-core",
+ "spagitty-farm",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -4392,7 +4393,7 @@ dependencies = [
 
 [[package]]
 name = "spagitty-core"
-version = "0.1.0"
+version = "0.4.1-alpha"
 dependencies = [
  "gix",
  "keyring",
@@ -4401,6 +4402,18 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "ureq",
+]
+
+[[package]]
+name = "spagitty-farm"
+version = "0.4.1-alpha"
+dependencies = [
+ "libc",
+ "serde",
+ "serde_json",
+ "spagitty-core",
+ "tempfile",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

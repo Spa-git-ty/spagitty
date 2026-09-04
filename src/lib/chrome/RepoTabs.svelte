@@ -13,6 +13,8 @@
 	import { notice } from '$lib/ui/notice.svelte';
 	import { workspace } from '$lib/workspace.svelte';
 	import type { RepoSummary } from '$lib/types';
+	import { worktrees } from '$lib/worktrees/store.svelte';
+	import { worktreeModal } from '$lib/worktrees/modal.svelte';
 
 	/**
 	 * The repositories open as tabs.
@@ -58,7 +60,19 @@
 		if (wasActive && repo.info?.path === path) workspace.remember(path, here());
 
 		const next = workspace.close(path);
-		if (wasActive && next) void switchTo(next);
+		if (!wasActive) return;
+
+		// The tab that was showing has gone. Either something else takes its
+		// place, or there is nothing left and the repository itself closes
+		// (BUG-019).
+		//
+		// This used to be `if (wasActive && next)` with no other branch, so
+		// closing the last tab took the strip away and left the repository open
+		// behind it: the toolbar still naming it, the rail still counting its
+		// branches, the graph still full of its commits, and no tab anywhere to
+		// close a second time.
+		if (next) void switchTo(next);
+		else void repo.close();
 	}
 
 	async function openMenu(event: MouseEvent): Promise<void> {
@@ -86,6 +100,17 @@
 			{ id: 'open', label: 'Open repository…', run: () => void repo.choose() },
 			{ id: 'clone', label: 'Clone…', run: () => clone.show() }
 		];
+
+		if (repo.info) {
+			items.push({
+				id: 'worktrees',
+				label: 'Worktrees…',
+				run: () => {
+					void worktrees.fetch();
+					worktreeModal.showManager();
+				}
+			});
+		}
 
 		// Only the ones not already open: a menu offering to open the tab you are
 		// looking at teaches nothing.
@@ -235,10 +260,8 @@
 		font-weight: 550;
 		border: 1px solid var(--line);
 		border-bottom: none;
-		box-shadow:
-			inset 0 -2px 0 var(--accent),
-			var(--sheen),
-			0 -1px 3px color-mix(in srgb, var(--umbra) 6%, transparent);
+		/* The accent underline is a line, not a shadow: it stays. */
+		box-shadow: inset 0 -2px 0 var(--accent);
 	}
 
 	.label {

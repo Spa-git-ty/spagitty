@@ -27,8 +27,8 @@
 	--line: rgba(76, 79, 105, 0.26);
 	--soft: rgba(76, 79, 105, 0.12);
 	--placeholder: rgba(76, 79, 105, 0.3);
-	--accent: #1e66f5;
-	--selection: rgba(30, 102, 245, 0.14);
+	--accent: #c05621;
+	--selection: rgba(192, 86, 33, 0.14);
 	--stripe: rgba(76, 79, 105, 0.05);
 
 	/*
@@ -91,7 +91,9 @@
 	 * `geometry()` measures the pane's computed radius, so the refraction ring
 	 * changes shape with the corner.
 	 */
-	--r-panel: 8px;
+	--r-panel: 14px;
+	/* Transient surfaces sit above the workspace and use the softest geometry. */
+	--r-floating: 18px;
 	/*
 	 * The window's own corner. Larger than a panel's, because it is read against
 	 * the whole screen rather than against the surface beside it — the same
@@ -163,8 +165,8 @@
 	 */
 	--shadow-edge: rgba(205, 214, 244, 0.11);
 	--placeholder: rgba(205, 214, 244, 0.26);
-	--accent: #89b4fa;
-	--selection: rgba(137, 180, 250, 0.18);
+	--accent: #eeb04d;
+	--selection: rgba(238, 176, 77, 0.18);
 	--stripe: rgba(205, 214, 244, 0.05);
 	--on-accent: #1e1e2e;
 	--danger: #f38ba8;
@@ -241,18 +243,14 @@
 	 * radius — and a hover that changes a shadow re-runs it. Two layers still
 	 * give the contact-plus-height read that one cannot.
 	 */
-	--shadow-1:
-		0 1px 1px color-mix(in srgb, var(--umbra) 9%, transparent),
-		0 2px 5px color-mix(in srgb, var(--umbra) 9%, transparent);
-	--shadow-2:
-		0 1px 2px color-mix(in srgb, var(--umbra) 10%, transparent),
-		0 6px 14px color-mix(in srgb, var(--umbra) 12%, transparent);
+	--shadow-1: 0 1px 3px color-mix(in srgb, var(--umbra) 10%, transparent);
+	--shadow-2: 0 4px 12px color-mix(in srgb, var(--umbra) 12%, transparent);
 	--shadow-3:
-		0 2px 4px color-mix(in srgb, var(--umbra) 12%, transparent),
-		0 10px 24px color-mix(in srgb, var(--umbra) 20%, transparent);
+		0 10px 30px color-mix(in srgb, var(--umbra) 16%, transparent),
+		0 2px 8px color-mix(in srgb, var(--umbra) 10%, transparent);
 
 	/* The catch of light along the top edge of a raised surface. */
-	--sheen: inset 0 1px 0 color-mix(in srgb, #fff 62%, transparent);
+	--sheen: inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent);
 
 	/* Accent derivatives. Its tints and its halo. */
 	--accent-lift: color-mix(in srgb, var(--accent) 90%, #fff);
@@ -307,16 +305,24 @@
 
 	--umbra: #000;
 
-	--shadow-1:
-		0 1px 2px color-mix(in srgb, var(--umbra) 34%, transparent),
-		0 2px 5px color-mix(in srgb, var(--umbra) 26%, transparent);
-	--shadow-2:
-		0 1px 2px color-mix(in srgb, var(--umbra) 38%, transparent),
-		0 6px 14px color-mix(in srgb, var(--umbra) 36%, transparent);
+	/*
+	 * Flat in the dark too (TASK-026).
+	 *
+	 * TASK-023 flattened the interface on the author's instruction and set these
+	 * four to `none` — but only on the light `:root`. The dark theme kept its
+	 * own real values here, so every pane that reads `--shadow-3` or `--sheen`
+	 * alone still cast and still caught light, in one theme out of two. The
+	 * paragraph above this block, about separation in the dark coming from
+	 * shadow density, describes a decision that has since been overruled.
+	 *
+	 * Separation in the dark now comes from the surfaces themselves, which do
+	 * still step toward the theme's own ink, and from the borders TASK-023 kept.
+	 */
+	--shadow-1: 0 1px 4px color-mix(in srgb, #000 22%, transparent);
+	--shadow-2: 0 5px 14px color-mix(in srgb, #000 26%, transparent);
 	--shadow-3:
-		0 2px 5px color-mix(in srgb, var(--umbra) 44%, transparent),
-		0 12px 26px color-mix(in srgb, var(--umbra) 50%, transparent);
-
+		0 12px 32px color-mix(in srgb, #000 34%, transparent),
+		0 2px 8px color-mix(in srgb, #000 24%, transparent);
 	--sheen: inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent);
 
 	/* A light accent needs its border to *darken* far less, or the bottom edge
@@ -356,7 +362,14 @@
 :root {
 	--glass-thin: color-mix(in srgb, var(--panel) 62%, transparent);
 	--glass: color-mix(in srgb, var(--surface) 72%, transparent);
-	--glass-thick: color-mix(in srgb, var(--surface-2) 82%, transparent);
+	/*
+	 * 68%, not 82%. A tint that covers four fifths of what is behind it leaves
+	 * the frost nothing to be made of, and a pane whose backdrop cannot be seen
+	 * is not glass — it is a rectangle painted the colour of the surface. The
+	 * text over it stays legible because the blur behind it is 10px of a
+	 * commit list, which is a smooth field rather than a busy one (TASK-024).
+	 */
+	--glass-thick: color-mix(in srgb, var(--surface-2) 68%, transparent);
 
 	/*
 	 * The cheap half of the material, and what almost everything uses.
@@ -391,7 +404,28 @@
 	 */
 	--blur-thin: blur(16px) saturate(180%);
 	--blur: blur(24px) saturate(200%);
-	--blur-thick: blur(32px) saturate(210%);
+	/*
+	 * The thick panes — menu, dialog, palette, toast, command log — carry the
+	 * material the author settled at the window (TASK-020), as a
+	 * `backdrop-filter` rather than through an SVG lens (TASK-022).
+	 *
+	 * **The radius is 10px and stays 10px.** It is the one number in this
+	 * material that has been measured on this renderer: TASK-022 clocked
+	 * `blur(10px)` at 16.0ms a frame, indistinguishable from no pane at all,
+	 * where the lens it replaced cost 196ms. Widening a blur is what a blur
+	 * costs, and nothing here is worth spending that budget again.
+	 *
+	 * `saturate` is where the material comes from instead, and it is a per-pixel
+	 * matrix rather than a kernel — it costs effectively nothing at any value.
+	 * It was `saturate(0)` from TASK-020 until TASK-024, which is the note this
+	 * paragraph replaces: at zero, the backdrop arrives as grey, and a grey
+	 * backdrop under a tint that already hides four fifths of it is
+	 * indistinguishable from a plain translucent rectangle. That is precisely
+	 * what the author reported seeing. Above 100% the colour behind the pane
+	 * survives the blur, which is what reads as *wet* — the note on the two
+	 * thinner grades above says the same thing and was right about it.
+	 */
+	--blur-thick: blur(10px) saturate(170%);
 
 	/*
 	 * The edge of a pane of glass — thick enough to bend light.
@@ -407,70 +441,25 @@
 	 */
 	--glass-edge: color-mix(in srgb, #fff 52%, transparent);
 	--glass-edge-low: color-mix(in srgb, var(--umbra) 14%, transparent);
-	--glass-rim:
-		inset 0 1px 0 var(--glass-edge),
-		inset 1px 0 0 color-mix(in srgb, #fff 26%, transparent),
-		inset -1px 0 0 color-mix(in srgb, #fff 10%, transparent),
-		inset 0 7px 10px -7px color-mix(in srgb, #fff 22%, transparent),
-		inset 0 -1px 0 var(--glass-edge-low),
-		inset 0 -9px 14px -11px color-mix(in srgb, var(--umbra) 16%, transparent);
+	--glass-rim: none;
+	--glass-rim-thick: none;
+	--glass-sheen: none;
 
 	/*
-	 * The same edge, for glass that is actually thick — the menu, the dialog,
-	 * the palette, the toast, the command log.
+	 * The edge, as a border rather than as a rim (TASK-024).
 	 *
-	 * **Nothing wears this any more.** It was a stand-in: the note below says
-	 * the shoulder is drawn because WebKitGTK cannot refract, and FEAT-057 then
-	 * made refraction real. Every pane was wearing both, and the drawn one was
-	 * the louder — five white gradients bleeding in from the edges, at fixed
-	 * alphas that no glass setting could turn down. Turning the real material
-	 * down to `strength 6` and `saturate 0` left the painted edge exactly as
-	 * bright as it had always been, which is how it was noticed.
+	 * `--glass-rim` and `--glass-sheen` were box-shadows and a gradient, and
+	 * TASK-023 switched all three off when the author asked for a flat
+	 * interface with no shadows and no gradient washes. That is what a floating
+	 * pane lost its thickness to: with no edge at all, a translucent fill reads
+	 * as a hole rather than as a pane laid over something.
 	 *
-	 * The panes now carry their tint, their cast shadow, and the refracted ring
-	 * the lens actually computes. The token is kept, unused, because the note
-	 * under it is the record of why the drawn shoulder existed and because
-	 * putting it back is one declaration if the real ring turns out not to
-	 * carry an edge on its own.
-	 *
-	 * Real thick glass refracts: what is behind it is displaced outward toward
-	 * the rim, hardest in the band where the shoulder curves away. WebKitGTK
-	 * cannot do that — it parses `backdrop-filter: url(#filter)` and renders
-	 * nothing for it, so an SVG displacement map is not on the table, and the
-	 * WebGL approach the reference implementations take would mean
-	 * re-rasterising the DOM every frame for a window that also draws a commit
-	 * graph.
-	 *
-	 * So the shoulder is drawn instead of computed, as a deeper, wider version
-	 * of the rim above: light entering across the top of the band, the pane's
-	 * own weight pooling under the bottom of it, and a soft return up each
-	 * side. Insets follow `border-radius`, which is why this is box-shadow and
-	 * not a background gradient — a gradient goes straight across a rounded
-	 * corner and the illusion dies there.
+	 * A border gives the edge back without giving the shadow back. It is one
+	 * flat hairline — the thing TASK-023 kept, not the thing it removed — and
+	 * the top is lit while the rest is not, because light arriving from above a
+	 * pane is what says the pane has a near face and a far one.
 	 */
-	--glass-rim-thick:
-		inset 0 1px 0 color-mix(in srgb, #fff 70%, transparent),
-		inset 0 0 0 1px color-mix(in srgb, #fff 16%, transparent),
-		inset 0 10px 18px -12px color-mix(in srgb, #fff 46%, transparent),
-		inset 7px 0 16px -14px color-mix(in srgb, #fff 34%, transparent),
-		inset -7px 0 16px -14px color-mix(in srgb, #fff 22%, transparent),
-		inset 0 -1px 0 var(--glass-edge-low),
-		inset 0 -13px 20px -14px color-mix(in srgb, var(--umbra) 26%, transparent);
-
-	/*
-	 * The light that bends *through* a pane, not off it.
-	 *
-	 * Kept as a token because the rim treatments are built from it, but no
-	 * surface paints it as a wash any more: corner pools and diagonal stripes
-	 * are gloss, which is the tell of a plastic case rather than a material.
-	 * One very quiet lift toward the upper edge, gone by a third of the way
-	 * down, is all the pane gets.
-	 */
-	--glass-sheen: linear-gradient(
-		172deg,
-		color-mix(in srgb, #fff 7%, transparent) 0%,
-		transparent 34%
-	);
+	--glass-edge-line: 1px solid var(--glass-edge-low);
 }
 
 /*
@@ -483,35 +472,18 @@
 :root[data-theme='dark'] {
 	--glass-thin: color-mix(in srgb, var(--panel) 66%, transparent);
 	--glass: color-mix(in srgb, var(--surface) 76%, transparent);
-	--glass-thick: color-mix(in srgb, var(--surface-2) 86%, transparent);
+	/* 72% rather than 68%: smoked glass over a dark screen needs a little more
+	   body than frosted glass over a light one, or the pane reads as a smudge. */
+	--glass-thick: color-mix(in srgb, var(--surface-2) 72%, transparent);
 
 	--chrome-veil: color-mix(in srgb, var(--panel) 90%, transparent);
 	--surface-veil: color-mix(in srgb, var(--surface) 92%, transparent);
 
 	--glass-edge: color-mix(in srgb, #fff 16%, transparent);
 	--glass-edge-low: color-mix(in srgb, #000 34%, transparent);
-	--glass-rim:
-		inset 0 1px 0 var(--glass-edge),
-		inset 1px 0 0 color-mix(in srgb, #fff 8%, transparent),
-		inset -1px 0 0 color-mix(in srgb, #fff 3%, transparent),
-		inset 0 7px 10px -7px color-mix(in srgb, #fff 7%, transparent),
-		inset 0 -1px 0 var(--glass-edge-low),
-		inset 0 -9px 14px -11px color-mix(in srgb, #000 26%, transparent);
-
-	--glass-rim-thick:
-		inset 0 1px 0 color-mix(in srgb, #fff 24%, transparent),
-		inset 0 0 0 1px color-mix(in srgb, #fff 6%, transparent),
-		inset 0 10px 18px -12px color-mix(in srgb, #fff 16%, transparent),
-		inset 7px 0 16px -14px color-mix(in srgb, #fff 12%, transparent),
-		inset -7px 0 16px -14px color-mix(in srgb, #fff 7%, transparent),
-		inset 0 -1px 0 var(--glass-edge-low),
-		inset 0 -13px 20px -14px color-mix(in srgb, #000 40%, transparent);
-
-	--glass-sheen: linear-gradient(
-		172deg,
-		color-mix(in srgb, #fff 4%, transparent) 0%,
-		transparent 32%
-	);
+	--glass-rim: none;
+	--glass-rim-thick: none;
+	--glass-sheen: none;
 }
 
 /*
@@ -526,7 +498,8 @@
 .glass-thin,
 .glass-thick {
 	box-shadow: var(--glass-rim);
-	border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+	border: var(--glass-edge-line);
+	border-top-color: var(--glass-edge);
 }
 
 .glass-thin {
@@ -599,6 +572,11 @@ body {
 #app,
 body > div {
 	height: 100%;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	padding: var(--window-gap);
 }
 
 /*
@@ -608,11 +586,6 @@ body > div {
  */
 :root {
 	--window-gap: 10px;
-}
-
-body > div {
-	padding: var(--window-gap);
-	box-sizing: border-box;
 }
 
 :root[data-window="maximized"] {
@@ -674,7 +647,7 @@ a {
  * wireframe they *are*; depth reads as depth.
  */
 .card {
-	background-color: var(--surface-veil);
+	background-color: var(--surface);
 	border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
 	border-radius: var(--r-panel);
 	box-shadow: var(--glass-rim), var(--shadow-1);
@@ -697,7 +670,7 @@ a {
 	backdrop-filter: var(--blur-thick);
 	-webkit-backdrop-filter: var(--blur-thick);
 	border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
-	border-radius: var(--r-panel);
+	border-radius: var(--r-floating);
 	box-shadow: var(--glass-rim), var(--shadow-3);
 }
 
@@ -710,12 +683,7 @@ a {
 .ph {
 	height: 6px;
 	border-radius: var(--r-pill);
-	background: linear-gradient(
-		90deg,
-		color-mix(in srgb, var(--placeholder) 65%, transparent),
-		var(--placeholder),
-		color-mix(in srgb, var(--placeholder) 65%, transparent)
-	);
+	background: var(--placeholder);
 }
 
 :focus-visible {
@@ -740,15 +708,66 @@ textarea,
 select {
 	font: inherit;
 	color: var(--ink);
-	background: var(--sunken);
+	/* `background-color`, not the `background` shorthand: the select below
+	   draws its chevron with `background-image`, and the shorthand would wipe
+	   it out on every hover and focus. */
+	background-color: var(--sunken);
 	border: 1px solid var(--line);
 	border-radius: var(--r-field);
 	padding: 4px 8px;
-	box-shadow: inset 0 1px 2px color-mix(in srgb, var(--umbra) 6%, transparent);
+	box-shadow: none;
 	transition:
 		border-color var(--t-fast) var(--ease),
-		box-shadow var(--t-fast) var(--ease),
-		background var(--t-fast) var(--ease);
+		background-color var(--t-fast) var(--ease);
+}
+
+/*
+ * A select is a native widget until it is told not to be.
+ *
+ * Everything above applies to an `<input>` and is quietly ignored by a
+ * `<select>`: WebKitGTK paints the platform's own control, which on this
+ * desktop is a **white** field with a grey label. The rule set said `--sunken`
+ * and the widget said otherwise, so the External Tools screen had two bright
+ * white boxes sitting in a dark window — and so did the branch picker in the
+ * worktree modal and both pickers in the pull-request modal, which nobody had
+ * noticed for the same reason nobody notices anything about a `<select>`.
+ *
+ * `appearance: none` gives the box back, and taking the box means drawing the
+ * arrow. It is two gradients rather than an SVG because a data URI cannot read
+ * a custom property: an inlined chevron would be one hard-coded colour in every
+ * theme, which is the exact defect this rule exists to fix.
+ */
+select {
+	appearance: none;
+	-webkit-appearance: none;
+	/* Room for the arrow, so a long option name never runs under it. */
+	padding-right: 26px;
+	background-image:
+		linear-gradient(45deg, transparent 50%, currentcolor 50%),
+		linear-gradient(135deg, currentcolor 50%, transparent 50%);
+	background-position:
+		right 13px center,
+		right 9px center;
+	background-size:
+		4px 4px,
+		4px 4px;
+	background-repeat: no-repeat;
+	/* The arrow is drawn in `currentcolor`, so it follows the field's ink
+	   rather than being a second colour to keep in step. Muted, because it is a
+	   control affordance and not part of the value. */
+	color: var(--ink);
+}
+
+/*
+ * The open list is drawn by the platform, not by the page.
+ *
+ * These two properties are the whole of what a webview will honour inside a
+ * native popup, and they are worth setting even though the result is not fully
+ * ours: without them the list is white on a dark theme.
+ */
+select option {
+	background-color: var(--panel);
+	color: var(--ink);
 }
 
 input:hover:not(:disabled),
@@ -762,7 +781,7 @@ textarea:focus,
 select:focus {
 	outline: none;
 	border-color: var(--accent);
-	background: color-mix(in srgb, var(--sunken) 82%, var(--accent) 4%);
+	background-color: color-mix(in srgb, var(--sunken) 82%, var(--accent) 4%);
 	box-shadow: 0 0 0 3px var(--ring);
 }
 
@@ -872,60 +891,33 @@ input[type='radio'] {
 	--glow-head: color-mix(in srgb, var(--accent) 45%, white);
 
 	position: relative;
-	border: 2px solid transparent;
-	/*
-	 * The fill is a flat accent — the ring is the effect, and a shaded fill
-	 * under it reads as gloss. The colour has to be the *last* layer:
-	 * `background` only accepts a colour in the final layer, and an accent in
-	 * the first one invalidates the whole declaration — no fill, and
-	 * `--on-accent` text straight onto the page.
-	 */
-	background:
-		conic-gradient(
-				from var(--glow-angle),
-				var(--accent) 0turn,
-				var(--accent) 0.18turn,
-				var(--glow-head) 0.5turn,
-				var(--accent) 0.82turn,
-				var(--accent) 1turn
-			)
-			border-box,
-		var(--accent) padding-box;
-	/*
-	 * The halo is held still. It used to breathe — `box-shadow` animated from
-	 * nothing to a 12px blur and back, sixty times a second, forever, on a
-	 * button that is on screen the whole session. A blurred shadow is
-	 * rasterized on the CPU in this window, so that was a Gaussian blur per
-	 * frame for an effect the eye reads as "it glows" either way.
-	 */
-	box-shadow: 0 0 10px 1px var(--glow-halo);
-	/*
-	 * Slow enough that the head drifts rather than sweeps. At the old 3.2s a
-	 * lap the eye tracked it as a moving object and kept being pulled back;
-	 * at this speed it is a change in the light on the button.
-	 */
-	animation: glow-travel 7s linear infinite;
+	border: 1px solid color-mix(in srgb, var(--accent-deep) 80%, transparent);
+	background: var(--accent);
+	box-shadow: none;
+	animation: none;
 }
 
 /* A control that cannot be pressed is not the thing to do next. */
 .glow:disabled {
 	animation: none;
-	background: var(--accent) padding-box;
+	background: var(--accent);
 	border-color: var(--line);
 	box-shadow: none;
 }
 
-/*
- * Respected without exception. A light moving in the corner of the eye is
- * exactly what this setting exists to stop, and the button is still clearly the
- * primary one without it — it keeps the accent fill and a static ring.
- */
 @media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+
 	.glow {
 		animation: none;
-		background:
-			linear-gradient(var(--glow-head), var(--accent)) border-box,
-			var(--accent) padding-box;
+		background: var(--accent);
 	}
 }
 
@@ -994,4 +986,39 @@ input[type='radio'] {
 		transition-duration: 0.001ms !important;
 		scroll-behavior: auto !important;
 	}
+}
+
+/* Syntax highlighting tokens (FEAT-064) */
+.tok-keyword {
+	color: var(--lane-3, #d20f39);
+	font-weight: 500;
+}
+
+.tok-string {
+	color: var(--ok, #2e7d1f);
+}
+
+.tok-number {
+	color: var(--warn, #bc6a00);
+}
+
+.tok-comment {
+	color: var(--muted, rgba(76, 79, 105, 0.72));
+	font-style: italic;
+}
+
+.tok-fn {
+	color: var(--lane-1, #1e66f5);
+}
+
+.tok-type {
+	color: var(--lane-2, #8839ef);
+}
+
+.tok-operator {
+	color: var(--lane-4, #179299);
+}
+
+.tok-punctuation {
+	color: var(--muted, rgba(76, 79, 105, 0.6));
 }

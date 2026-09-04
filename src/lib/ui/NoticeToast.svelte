@@ -39,21 +39,22 @@
 		background-color: var(--glass-thick);
 		backdrop-filter: var(--blur-thick);
 		-webkit-backdrop-filter: var(--blur-thick);
+		/* The pane's own edge, lit along the top (TASK-024). The shorthand comes
+		   first on purpose: the stripe below re-declares the left side, and
+		   writing it the other way round would paint over the stripe. */
+		border: var(--glass-edge-line);
+		border-top-color: var(--glass-edge);
 		/* The stripe says which kind of news this is, and it is the palette's own
 		   green or red rather than a graph lane, which was cyan on Dracula. */
 		border-left: 3px solid var(--ok);
-		border-radius: var(--r-panel);
+		border-radius: var(--r-floating);
 		box-shadow: var(--shadow-3);
 		/* It arrives from the corner it lives in. */
 		animation: rise-in var(--t-enter-liquid) var(--spring-liquid);
-		/* A tint of the same colour behind it, so the meaning is carried by more
-		   than three pixels down one edge. */
-		background-image: linear-gradient(90deg, var(--ok-soft), transparent 42%);
 	}
 
 	.notice.error {
 		border-left-color: var(--danger);
-		background-image: linear-gradient(90deg, var(--danger-soft), transparent 42%);
 	}
 
 	.text {

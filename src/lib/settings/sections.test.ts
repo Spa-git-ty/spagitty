@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { click, flushSync, render } from '../../testing/mount';
 import type { Identity, IdentityValue, Licenses } from '$lib/types';
@@ -29,6 +30,7 @@ import LicenseSection from './LicenseSection.svelte';
 import AppearanceSection from './AppearanceSection.svelte';
 import BehaviourSection from './BehaviourSection.svelte';
 import UpdateSection from './UpdateSection.svelte';
+import { SECTIONS } from './store.svelte';
 import IdentitySection from './IdentitySection.svelte';
 import { settings } from './store.svelte';
 
@@ -77,12 +79,55 @@ beforeEach(async () => {
 	settingsCall.mockResolvedValue({
 		checkForUpdates: true,
 		confirmHistoryRewrite: true,
-		showGitCommands: false, pruneOnFetch: false
+		showGitCommands: false, pruneOnFetch: false,
+			personality: 'balanced',
+			sound: 'off'
 	});
 	licenses.mockResolvedValue(LIST);
 	about.mockResolvedValue({ version: '0.1.0', commit: 'abc1234', license: 'GPL-3.0-or-later' });
 	theme.setFamily('catppuccin');
 	theme.setMode('light');
+});
+
+/**
+ * Every chip has somewhere to go.
+ *
+ * `accounts` was a chip with no branch behind it: the Settings screen's final
+ * `{:else}` renders the License section, so pressing Accounts showed licences
+ * while the accounts themselves were drawn under You the whole time. Nothing
+ * failed, nothing warned, and the screen had been shipped like that.
+ *
+ * The assertion reads the route's source because a route is not a component
+ * this suite mounts — the same arrangement `graph/store.test.ts` uses for the
+ * nav rail's copy.
+ */
+describe('the section index and the screen agree', () => {
+	const screen = readFileSync('src/routes/settings/+page.svelte', 'utf8');
+
+	it('gives every chip a branch that renders it', () => {
+		const missing = SECTIONS.filter(
+			(section) => !screen.includes(`settings.section === '${section.id}'`)
+		).map((section) => section.id);
+
+		expect(
+			missing,
+			'these chips fall through to the catch-all and draw the wrong section'
+		).toEqual([]);
+	});
+
+	it('names no section the index does not have', () => {
+		const branched = [...screen.matchAll(/settings\.section === '([a-z]+)'/g)].map(
+			(match) => match[1]
+		);
+		const known = new Set<string>(SECTIONS.map((section) => section.id));
+
+		expect(branched.filter((id) => !known.has(id))).toEqual([]);
+	});
+
+	it('has no Accounts chip, because connecting a host is part of You', () => {
+		expect(SECTIONS.map((section) => section.id)).not.toContain('accounts');
+		expect(screen, 'and the section is still drawn').toContain('<AccountsSection />');
+	});
 });
 
 describe('IdentitySection', () => {
@@ -177,7 +222,9 @@ describe('BehaviourSection', () => {
 			checkForUpdates: true,
 			confirmHistoryRewrite: false,
 			showGitCommands: false,
-			pruneOnFetch: false
+			pruneOnFetch: false,
+			personality: 'balanced',
+			sound: 'off'
 		});
 		mounted.destroy();
 	});
@@ -187,7 +234,9 @@ describe('BehaviourSection', () => {
 			checkForUpdates: true,
 			confirmHistoryRewrite: false,
 			showGitCommands: true,
-			pruneOnFetch: false
+			pruneOnFetch: false,
+			personality: 'balanced',
+			sound: 'off'
 		});
 		await settings.load();
 		const mounted = render(BehaviourSection, {});

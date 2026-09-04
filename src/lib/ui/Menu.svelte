@@ -2,7 +2,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { isEntry, type MenuItem } from '$lib/ui/menu';
-	import { liquidGlass } from '$lib/ui/liquidGlass';
 
 	/**
 	 * A floating menu, positioned at a point.
@@ -102,6 +101,10 @@
 				: (current + delta + usable.length) % usable.length;
 
 		cursor = entries.indexOf(usable[next]);
+		void tick().then(() => {
+			const at = element?.querySelector('.entry.at') as HTMLElement | null;
+			at?.scrollIntoView({ block: 'nearest' });
+		});
 	}
 
 	/**
@@ -168,7 +171,6 @@
 	bind:this={element}
 	class="menu"
 	class:measuring={placed === null}
-	use:liquidGlass
 	style="left: {placed?.left ?? x}px; top: {placed?.top ?? y}px"
 	role="menu"
 	aria-label={label}
@@ -214,11 +216,17 @@
 		z-index: 50;
 		min-width: 200px;
 		max-width: 340px;
+		max-height: min(420px, calc(100vh - 64px));
+		overflow-y: auto;
+		overscroll-behavior: contain;
 		padding: 5px;
 		background-color: var(--glass-thick);
 		backdrop-filter: var(--blur-thick);
 		-webkit-backdrop-filter: var(--blur-thick);
-		border-radius: var(--r-panel);
+		/* The pane's own edge, lit along the top (TASK-024). */
+		border: var(--glass-edge-line);
+		border-top-color: var(--glass-edge);
+		border-radius: var(--r-floating);
 		box-shadow: var(--shadow-3);
 		outline: none;
 		/* It appears at the pointer, so it grows from where it was asked for

@@ -3,9 +3,12 @@
 # The pipeline, as six ordered gates. A gate that fails stops everything
 # downstream — that is what `needs:` buys here, and it is the point.
 #
-#   1 license -> 2 quality -> 3 tests -> 4 security -> 5 build -> 6 release
+#   0 scope -> 1 license -> 2 quality -> 3 tests -> 4 security -> 5 build -> 6 release
 #
-# `main` runs all six: a merge into main is a publish.
+# `main` runs 1 to 4 on every push. Gates 5 and 6 run only when the change
+# ships in the application — a merge into main is a publish *of a release*,
+# not of every README edit. Documentation, agile records and brand collateral
+# land without rebuilding or tagging; they ride the next version.
 # `dev` runs 1 to 4 and stops. Producing a dev build is a manual action, in
 # .github/workflows/prerelease.yml.
 #
@@ -29,10 +32,72 @@ env:
   COVERAGE_FLOOR: 70
 
 jobs:
+  # --- Scope --------------------------------------------------------------
+  # Decide whether this change is something people download. Gates 5 and 6
+  # read the answer; gates 1 to 4 always run so a docs edit that breaks the
+  # brand check or the licence files still fails.
+  scope:
+    name: 0 · scope
+    runs-on: ubuntu-latest
+    outputs:
+      ship: ${{ steps.classify.outputs.ship }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify whether this change ships
+        id: classify
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags origin "${{ github.base_ref }}"
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            before="${{ github.event.before }}"
+            # A brand-new branch has no previous tip; treat it as shipping so
+            # the first push cannot slip past a release by accident.
+            if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+              echo "ship=true" >> "$GITHUB_OUTPUT"
+              echo "no previous tip — treating as a shipping change"
+              exit 0
+            fi
+            range="$before...${{ github.sha }}"
+          fi
+
+          mapfile -t files < <(git diff --name-only "$range")
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "ship=false" >> "$GITHUB_OUTPUT"
+            echo "no files changed"
+            exit 0
+          fi
+
+          printf 'changed:\n'
+          printf '  %s\n' "${files[@]}"
+
+          ship=false
+          for f in "${files[@]}"; do
+            case "$f" in
+              src/*|src-tauri/*|crates/*) ship=true ;;
+              package.json|Cargo.toml|Cargo.lock|bun.lock|bun.lockb) ship=true ;;
+              vite.config.ts|vite.config.js|svelte.config.js|svelte.config.ts|tsconfig.json) ship=true ;;
+              */Cargo.toml) ship=true ;;
+            esac
+          done
+
+          echo "ship=$ship" >> "$GITHUB_OUTPUT"
+          if [ "$ship" = true ]; then
+            echo "shipping change — gates 5 and 6 will run on main"
+          else
+            echo "documentation / record / collateral only — gates 5 and 6 stay off"
+          fi
+
   # --- Gate 1 -------------------------------------------------------------
   # Cheapest and most certain first, so an obvious failure never burns a build.
   license:
     name: 1 · licenses
+    needs: scope
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,16 +117,15 @@ jobs:
         with:
           command: check licenses bans sources
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
+          bun-version: 1.4.0
 
-      - run: npm ci
+      - run: bun install --frozen-lockfile
 
-      - name: npm dependency licenses
+      - name: JS dependency licenses
         run: |
-          npx --yes license-checker-rseidelsohn@4 \
+          bunx license-checker-rseidelsohn@4 \
             --production \
             --onlyAllow "MIT;ISC;BSD-2-Clause;BSD-3-Clause;Apache-2.0;0BSD;CC0-1.0;Unlicense;BlueOak-1.0.0;Python-2.0" \
             --excludePrivatePackages
@@ -82,12 +146,22 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run check
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+
+      # The app icon and the brand collateral are generated from a fixed
+      # geometry by Pillow scripts. If the committed bytes drift from what the
+      # scripts produce, the identity has been hand-edited or the generator
+      # broken — a drift error, not a warning, because a mangled icon ships in
+      # every build from here on. docs/branding.md has the full tree.
+      - name: Brand and icon assets are current
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 tools/make-icons.py --check
+          python3 tools/make-brand.py --check
 
   # --- Gate 3 -------------------------------------------------------------
   tests:
@@ -103,6 +177,14 @@ jobs:
       - uses: taiki-e/install-action@cargo-llvm-cov
       - uses: ./.github/actions/linux-deps
 
+      # The About screen's dependency list (src-tauri/licenses.rs) reads the
+      # installed frontend tree, so the JS install comes before the Rust
+      # coverage run.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+
       - name: Rust tests and coverage
         run: |
           cargo llvm-cov --workspace \
@@ -110,16 +192,10 @@ jobs:
             --fail-under-lines "$COVERAGE_FLOOR" \
             --summary-only
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-
       # The thresholds live in vite.config.ts, so the same floor applies
       # locally and here.
       - name: Frontend tests and coverage
-        run: npm run coverage
+        run: bun run coverage
 
   # --- Gate 4 -------------------------------------------------------------
   security:
@@ -139,13 +215,12 @@ jobs:
         with:
           command: check advisories
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - name: npm advisories
-        run: npm audit --audit-level=high
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: JS advisories
+        run: bun audit --audit-level=high
 
       # gitleaks itself, not gitleaks-action.
       #
@@ -166,11 +241,17 @@ jobs:
           ./gitleaks detect --source . --redact --verbose --exit-code 1
 
   # --- Gate 5 -------------------------------------------------------------
-  # main only. `dev` stops after gate 4; its build is triggered by hand.
+  # main only, and only when the change ships in the application. `dev` stops
+  # after gate 4; its build is triggered by hand. A README or agile edit is not
+  # a release — rebuilding three platforms and failing on an already-tagged
+  # version is the wrong response to documentation.
   build:
     name: 5 · build
-    needs: security
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [security, scope]
+    if: >
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      needs.scope.outputs.ship == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -186,27 +267,34 @@ jobs:
       - uses: ./.github/actions/linux-deps
         if: matrix.os == 'ubuntu-latest'
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
 
-      - run: npm run tauri build
+      - run: bun run tauri build
+
+      # Only the downloads, never the whole bundle tree — see the action for
+      # what uploading the tree did to the v0.2.0 release.
+      - uses: ./.github/actions/release-assets
 
       - uses: actions/upload-artifact@v4
         with:
           name: spagitty-${{ matrix.os }}
-          path: |
-            target/release/bundle/**
-            src-tauri/target/release/bundle/**
-          if-no-files-found: warn
+          path: out/**
+          # A build that produced nothing used to pass this step with a
+          # warning, and gate 6 would then publish a release with no downloads
+          # in it. A build that bundles nothing is a failed build.
+          if-no-files-found: error
 
   # --- Gate 6 -------------------------------------------------------------
   release:
     name: 6 · release
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [build, scope]
+    if: >
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      needs.scope.outputs.ship == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -219,10 +307,15 @@ jobs:
         with:
           path: artifacts
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
       - name: Read the version out of the manifest
         id: version
         run: |
-          version=$(node -p "require('./package.json').version")
+          version=$(bun -e "console.log(require('./package.json').version)")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
       # A tag that already exists is a release that already happened. Moving it
@@ -234,13 +327,49 @@ jobs:
             exit 1
           fi
 
+      # Amendment 20: the notes are the version's changelog section, not notes
+      # generated from the commit log. No section, no release — the gate fails
+      # before anything is tagged, which is the right order to fail in.
+      - name: Read the notes out of the changelog
+        run: |
+          bun tools/release-notes.mjs "${{ steps.version.outputs.version }}" > notes.md
+          cat notes.md
+
+      # Everything that can be checked is checked before the tag is pushed,
+      # because a pushed tag cannot be taken back (Amendment 14) and a version
+      # whose tag exists can never be released. v0.2.0 is tagged and has no
+      # release for exactly this reason: the asset upload failed *after* the
+      # push, and there is no second attempt at a version.
+      - name: The assets can actually be attached
+        id: assets
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find artifacts -type f | sort)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::gate 5 uploaded no artifacts, so there is nothing to release"
+            exit 1
+          fi
+          clashes=$(basename -a "${files[@]}" | sort | uniq -d)
+          if [ -n "$clashes" ]; then
+            echo "::error::these names appear more than once, and a release can hold each only once: $(echo $clashes | tr '\n' ' ')"
+            exit 1
+          fi
+          printf '%s\n' "${files[@]}"
+          echo "files=${files[*]}" >> "$GITHUB_OUTPUT"
+
+      # The runner has no git identity of its own, and an annotated tag needs
+      # one — this failed the first main release with "empty ident name".
+      # The bot identity is scoped to this repository, not set globally.
       - name: Tag and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${{ steps.version.outputs.tag }}" -m "Spagitty ${{ steps.version.outputs.tag }}"
           git push origin "${{ steps.version.outputs.tag }}"
           gh release create "${{ steps.version.outputs.tag }}" \
             --title "Spagitty ${{ steps.version.outputs.tag }}" \
-            --generate-notes \
-            $(find artifacts -type f | tr '\n' ' ')
+            --notes-file notes.md \
+            ${{ steps.assets.outputs.files }}

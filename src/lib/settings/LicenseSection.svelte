@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script lang="ts">
+	import BrandMark from '$lib/ui/BrandMark.svelte';
 	import { version } from '$lib/version';
 	import { describeLicense, matching, undeclared } from './describe';
 	import { settings } from './store.svelte';
@@ -27,9 +28,12 @@
 </script>
 
 <section class="section">
-	<header>
-		<h2 class="heading">License · About</h2>
-		<span class="note">This build, and every dependency in it.</span>
+	<header class="about-header">
+		<BrandMark size={36} />
+		<div>
+			<h2 class="heading">Spagitty · About &amp; License</h2>
+			<span class="note">This build, and every dependency in it.</span>
+		</div>
 	</header>
 
 	<dl class="facts">
@@ -133,6 +137,12 @@
 		max-width: 760px;
 	}
 
+	.about-header {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-bottom: 4px;
+	}
 	.heading {
 		margin: 0;
 		font-size: var(--fs-ui);

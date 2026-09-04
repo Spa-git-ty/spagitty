@@ -39,6 +39,7 @@ let ran = $state(false);
 let author = $state('');
 let message = $state('');
 let path = $state('');
+let diffContent = $state('');
 let since = $state('');
 let until = $state('');
 
@@ -78,6 +79,7 @@ function current(): SearchQuery {
 		author: trimmed(author),
 		message: trimmed(message),
 		path: trimmed(path),
+		diffContent: trimmed(diffContent),
 		since: toSeconds(since, false),
 		until: toSeconds(until, true)
 	};
@@ -85,7 +87,7 @@ function current(): SearchQuery {
 
 function isEmpty(query: SearchQuery): boolean {
 	return (
-		!query.author && !query.message && !query.path && query.since == null && query.until == null
+		!query.author && !query.message && !query.path && !query.diffContent && query.since == null && query.until == null
 	);
 }
 
@@ -97,6 +99,7 @@ function chipsFor(query: SearchQuery): Array<{ key: keyof SearchQuery; label: st
 	const out: Array<{ key: keyof SearchQuery; label: string }> = [];
 	if (query.author) out.push({ key: 'author', label: `author:${query.author}` });
 	if (query.path) out.push({ key: 'path', label: `path:${query.path}` });
+	if (query.diffContent) out.push({ key: 'diffContent', label: `diff:${query.diffContent}` });
 	if (query.message) out.push({ key: 'message', label: `message:${query.message}` });
 	if (query.since != null) out.push({ key: 'since', label: `since:${since.trim()}` });
 	if (query.until != null) out.push({ key: 'until', label: `until:${until.trim()}` });
@@ -112,6 +115,7 @@ function chipsFor(query: SearchQuery): Array<{ key: keyof SearchQuery; label: st
  */
 function narrowest(query: SearchQuery): string | null {
 	if (query.path) return `path:${query.path}`;
+	if (query.diffContent) return `diff:${query.diffContent}`;
 	if (query.message) return `message:${query.message}`;
 	if (query.author) return `author:${query.author}`;
 	if (query.since != null || query.until != null) return 'the date range';
@@ -165,6 +169,12 @@ export const search = {
 	},
 	set path(value: string) {
 		path = value;
+	},
+	get diffContent(): string {
+		return diffContent;
+	},
+	set diffContent(value: string) {
+		diffContent = value;
 	},
 	get since(): string {
 		return since;
@@ -277,6 +287,7 @@ export const search = {
 		if (key === 'author') author = '';
 		if (key === 'message') message = '';
 		if (key === 'path') path = '';
+		if (key === 'diffContent') diffContent = '';
 		if (key === 'since') since = '';
 		if (key === 'until') until = '';
 		if (this.empty) {
@@ -368,6 +379,7 @@ export const search = {
 		message = '';
 		path = '';
 		since = '';
+		diffContent = '';
 		until = '';
 		try {
 			await api.searchStop();

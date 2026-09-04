@@ -77,7 +77,7 @@
 
 	.summary {
 		margin: 4px 0 0;
-		font-size: var(--fs-body);
+		font-size: var(--fs-ui);
 		font-weight: inherit;
 	}
 

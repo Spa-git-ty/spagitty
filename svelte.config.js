@@ -13,7 +13,10 @@ const config = {
 	preprocess: vitePreprocess(),
 	kit: {
 		adapter: adapter({ fallback: 'index.html', strict: false }),
-		alias: { $lib: 'src/lib' }
+		alias: { $lib: 'src/lib' },
+		// Only the compact, release-ready logo variants are public UI assets.
+		// The source previews and fonts alongside them remain out of the bundle.
+		files: { assets: 'assets/brand/favicon' }
 	}
 };
 

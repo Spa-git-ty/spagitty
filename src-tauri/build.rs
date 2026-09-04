@@ -17,8 +17,9 @@ fn main() {
     println!("cargo:rustc-env=SPAGITTY_COMMIT={sha}");
 
     // The other half of the same obligation: what this binary is made of. The
-    // list is generated from the lockfiles rather than typed, and a build that
-    // cannot generate it still builds — see `licenses.rs`.
+    // list is generated from `Cargo.lock` and the installed frontend tree
+    // rather than typed, and a build that cannot generate it still builds —
+    // see `licenses.rs`.
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("a manifest dir"));
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").expect("an out dir"));
     licenses::generate(&manifest_dir, &out_dir);

@@ -14,7 +14,8 @@ use spagitty_core::branches::{self, BranchRow};
 use spagitty_core::clone::{self, Plan};
 use spagitty_core::conflicts::{self, ConflictSides, ConflictState};
 use spagitty_core::diff::{self, CommitDetail, CommitDiff, FileDiff, Side};
-use spagitty_core::forge::{self, Account, Kind, PullRequest, Repo};
+use spagitty_core::forge::review::ReviewVerdict;
+use spagitty_core::forge::{self, Account, Kind, MergeMethod, PullRequest, Repo};
 use spagitty_core::graph::ROW_PITCH;
 use spagitty_core::identity::{self, Identity, Key, Scope};
 use spagitty_core::ops::{self, Integration, ResetMode, StashAction};
@@ -29,9 +30,12 @@ use spagitty_core::shell::PullMode;
 use spagitty_core::signing::{self, Signing};
 use spagitty_core::stash::{self, StashEntry};
 use spagitty_core::status::{self, RepoCounts, WorkingCopy};
+use spagitty_core::submodules::{self, Submodule};
 use spagitty_core::tags;
+use spagitty_core::tools::{self, ExternalToolsConfig};
 use spagitty_core::update;
 use spagitty_core::work;
+use spagitty_core::worktrees::{self, Worktree};
 use spagitty_core::{Error, Result};
 use tauri::{AppHandle, Manager, Runtime, State};
 
@@ -40,6 +44,7 @@ use crate::accounts;
 use crate::clone_worker::{self, CloneWorker};
 use crate::graph_worker::{self, GraphWorker};
 use crate::network_worker::{self, NetworkWorker};
+use crate::profiles;
 use crate::rebase_worker::{self, RebaseWorker};
 use crate::recents;
 use crate::search_worker::{self, SearchWorker};
@@ -281,6 +286,29 @@ pub fn working_copy(state: State<'_, AppState>) -> Result<WorkingCopy> {
 pub fn working_diff(state: State<'_, AppState>, path: String, side: Side) -> Result<FileDiff> {
     state.with_session(|session| {
         diff::working_file_diff(&session.repo.to_thread_local(), &path, side)
+    })
+}
+
+/// Detailed binary / image diff metadata for a commit file (FEAT-065).
+#[tauri::command]
+pub fn binary_file_diff(
+    state: State<'_, AppState>,
+    id: String,
+    path: String,
+) -> Result<diff::BinaryDiff> {
+    state
+        .with_session(|session| diff::binary_file_diff(&session.repo.to_thread_local(), &id, &path))
+}
+
+/// Detailed binary / image diff metadata for working copy (FEAT-065).
+#[tauri::command]
+pub fn binary_working_diff(
+    state: State<'_, AppState>,
+    path: String,
+    side: Side,
+) -> Result<diff::BinaryDiff> {
+    state.with_session(|session| {
+        diff::binary_working_diff(&session.repo.to_thread_local(), &path, side)
     })
 }
 
@@ -738,6 +766,16 @@ pub fn blame(state: State<'_, AppState>, path: String, revision: String) -> Resu
     state.with_session(|session| blame::file(&session.repo.to_thread_local(), &path, &revision))
 }
 
+/// Read commit history for a single file path (FEAT-063).
+#[tauri::command]
+pub fn file_history(
+    state: State<'_, AppState>,
+    path: String,
+    limit: usize,
+) -> Result<Vec<blame::FileHistoryEntry>> {
+    state.with_session(|session| blame::history(&session.repo.to_thread_local(), &path, limit))
+}
+
 /// What operation is in progress, and every conflicted path.
 ///
 /// Reads only. Taking a side, editing the merged result and marking a file
@@ -898,6 +936,106 @@ pub fn remote_rename(state: State<'_, AppState>, from: String, to: String) -> Re
     state.with_session(|session| remotes::rename(&session.repo.to_thread_local(), &from, &to))
 }
 
+/// List all submodules for the open repository (FEAT-067).
+#[tauri::command]
+pub fn submodules(state: State<'_, AppState>) -> Result<Vec<Submodule>> {
+    state.with_session(|session| submodules::list(&session.repo.to_thread_local()))
+}
+
+/// Update submodules recursively (FEAT-067).
+#[tauri::command]
+pub fn submodule_update(
+    state: State<'_, AppState>,
+    paths: Vec<String>,
+    init: bool,
+    recursive: bool,
+) -> Result<String> {
+    state.with_session(|session| {
+        submodules::update(&session.repo.to_thread_local(), &paths, init, recursive)
+    })
+}
+
+/// Sync submodule URLs from .gitmodules (FEAT-067).
+#[tauri::command]
+pub fn submodule_sync(state: State<'_, AppState>, recursive: bool) -> Result<String> {
+    state.with_session(|session| submodules::sync(&session.repo.to_thread_local(), recursive))
+}
+
+/// De-initialize a submodule (FEAT-067).
+#[tauri::command]
+pub fn submodule_deinit(state: State<'_, AppState>, path: String, force: bool) -> Result<String> {
+    state.with_session(|session| submodules::deinit(&session.repo.to_thread_local(), &path, force))
+}
+
+/// Read configured and available external diff/merge tools (FEAT-068).
+///
+/// Falls back to global configuration from ~/.gitconfig if no repository is open.
+#[tauri::command]
+pub fn external_tools_config(state: State<'_, AppState>) -> Result<ExternalToolsConfig> {
+    let guard = state.session.lock().expect("session lock");
+    match guard.as_ref() {
+        Some(session) => tools::get_config(&session.repo.to_thread_local()),
+        None => tools::get_config_global(),
+    }
+}
+
+/// Set configured external tool (FEAT-068).
+///
+/// If no repository is open, writes to global configuration (~/.gitconfig).
+#[tauri::command]
+pub fn set_external_tool(
+    state: State<'_, AppState>,
+    tool_type: String,
+    tool_name: Option<String>,
+    global: bool,
+) -> Result<()> {
+    let guard = state.session.lock().expect("session lock");
+    match guard.as_ref() {
+        Some(session) => tools::set_tool(
+            &session.repo.to_thread_local(),
+            &tool_type,
+            tool_name.as_deref(),
+            global,
+        ),
+        None => {
+            if !global {
+                return Err(Error::NoRepository);
+            }
+            tools::set_tool_global(&tool_type, tool_name.as_deref())
+        }
+    }
+}
+
+/// Launch external diff tool (FEAT-068).
+#[tauri::command]
+pub fn launch_external_diff(
+    state: State<'_, AppState>,
+    path: String,
+    tool: Option<String>,
+    commit: Option<String>,
+) -> Result<()> {
+    state.with_session(|session| {
+        tools::launch_diff(
+            &session.repo.to_thread_local(),
+            &path,
+            tool.as_deref(),
+            commit.as_deref(),
+        )
+    })
+}
+
+/// Launch external merge tool (FEAT-068).
+#[tauri::command]
+pub fn launch_external_merge(
+    state: State<'_, AppState>,
+    path: String,
+    tool: Option<String>,
+) -> Result<()> {
+    state.with_session(|session| {
+        tools::launch_merge(&session.repo.to_thread_local(), &path, tool.as_deref())
+    })
+}
+
 /// Remove a remote, its tracking refs, and the upstreams pointing at it.
 #[tauri::command]
 pub fn remote_remove(state: State<'_, AppState>, name: String) -> Result<()> {
@@ -908,6 +1046,74 @@ pub fn remote_remove(state: State<'_, AppState>, name: String) -> Result<()> {
 #[tauri::command]
 pub fn remote_set_url(state: State<'_, AppState>, name: String, url: String) -> Result<()> {
     state.with_session(|session| remotes::set_url(&session.repo.to_thread_local(), &name, &url))
+}
+
+/// List all worktrees for the open repository (FEAT-062).
+#[tauri::command]
+pub fn worktrees(state: State<'_, AppState>) -> Result<Vec<Worktree>> {
+    state.with_session(|session| worktrees::list(&session.repo.to_thread_local()))
+}
+
+/// Add a new linked worktree (FEAT-062).
+#[tauri::command]
+pub fn worktree_add(
+    state: State<'_, AppState>,
+    path: String,
+    branch: Option<String>,
+    new_branch: Option<String>,
+    detach: bool,
+) -> Result<Worktree> {
+    state.with_session(|session| {
+        worktrees::add(
+            &session.repo.to_thread_local(),
+            std::path::Path::new(&path),
+            branch.as_deref(),
+            new_branch.as_deref(),
+            detach,
+        )
+    })
+}
+
+/// Remove a worktree (FEAT-062).
+#[tauri::command]
+pub fn worktree_remove(state: State<'_, AppState>, path: String, force: bool) -> Result<()> {
+    state.with_session(|session| {
+        worktrees::remove(
+            &session.repo.to_thread_local(),
+            std::path::Path::new(&path),
+            force,
+        )
+    })
+}
+
+/// Lock a worktree against pruning (FEAT-062).
+#[tauri::command]
+pub fn worktree_lock(
+    state: State<'_, AppState>,
+    path: String,
+    reason: Option<String>,
+) -> Result<()> {
+    state.with_session(|session| {
+        worktrees::lock(
+            &session.repo.to_thread_local(),
+            std::path::Path::new(&path),
+            reason.as_deref(),
+        )
+    })
+}
+
+/// Unlock a locked worktree (FEAT-062).
+#[tauri::command]
+pub fn worktree_unlock(state: State<'_, AppState>, path: String) -> Result<()> {
+    state.with_session(|session| {
+        worktrees::unlock(&session.repo.to_thread_local(), std::path::Path::new(&path))
+    })
+}
+
+/// Prune stale worktrees (FEAT-062).
+#[tauri::command]
+pub fn worktree_prune(state: State<'_, AppState>) -> Result<()> {
+    state.with_session(|session| worktrees::prune(&session.repo.to_thread_local()))
 }
 
 /// Every remembered repository, as a card.
@@ -1070,6 +1276,58 @@ pub fn set_identity(
     identity(state)
 }
 
+/// Read all saved identity profiles (FEAT-069).
+#[tauri::command]
+pub fn identity_profiles<R: Runtime>(app: AppHandle<R>) -> Vec<identity::IdentityProfile> {
+    profiles::load(&app)
+}
+
+/// Save an identity profile (FEAT-069).
+#[tauri::command]
+pub fn save_identity_profile<R: Runtime>(
+    app: AppHandle<R>,
+    profile: identity::IdentityProfile,
+) -> Result<()> {
+    profiles::save(&app, profile);
+    Ok(())
+}
+
+/// Delete an identity profile (FEAT-069).
+#[tauri::command]
+pub fn delete_identity_profile<R: Runtime>(app: AppHandle<R>, id: String) -> Result<()> {
+    profiles::delete(&app, &id);
+    Ok(())
+}
+
+/// Apply an identity profile to the current repository or globally (FEAT-069).
+#[tauri::command]
+pub fn apply_identity_profile(
+    state: State<'_, AppState>,
+    profile: identity::IdentityProfile,
+    global: bool,
+) -> Result<Identity> {
+    let scope = if global {
+        identity::Scope::Global
+    } else {
+        identity::Scope::Local
+    };
+    let open = state
+        .session
+        .lock()
+        .expect("session lock")
+        .as_ref()
+        .map(|session| session.path.clone());
+
+    let directory = match (scope, open) {
+        (_, Some(path)) => path,
+        (identity::Scope::Local, None) => return Err(Error::NoRepository),
+        (identity::Scope::Global, None) => std::env::current_dir()?,
+    };
+
+    identity::apply_profile(&directory, scope, &profile)?;
+    identity(state)
+}
+
 /// Spagitty's own behaviour toggles.
 /// Which repository on a hosting service the open one points at (FEAT-017).
 ///
@@ -1155,19 +1413,21 @@ pub fn forge_disconnect<R: Runtime>(
     Ok(accounts::forget(&app, &host, &user))
 }
 
-/// The open pull requests for the open repository.
+/// What every forge call needs before it can make one: which repository, whose
+/// token, and who that token belongs to.
 ///
-/// Errors rather than an empty list when something is wrong, so the screen can
-/// say whether it is offline, rate limited, or looking at a repository nobody
-/// has connected an account for. An empty list means there are none.
-#[tauri::command]
-pub async fn pull_requests<R: Runtime>(
-    app: AppHandle<R>,
+/// Gathered in one place because the order matters and is easy to get wrong.
+/// Everything local happens here — the session, the account file, the
+/// keychain — and the caller then goes to the network on a thread of its own.
+/// Reading the session takes a lock, and **a lock must never be held across an
+/// await**, so this function takes `State` and gives it up before returning.
+///
+/// The three ways it can fail are three different sentences, because they are
+/// three different things for the reader to do about them.
+fn forge_credentials<R: Runtime>(
+    app: &AppHandle<R>,
     state: State<'_, AppState>,
-) -> Result<Vec<PullRequest>> {
-    // Everything local first — the session, the account file, the keychain —
-    // and only then the network, on a thread of its own. Reading the session
-    // takes a lock, and a lock must never be held across an await.
+) -> Result<(Repo, String, String)> {
     let Some(repo) = forge_repo(state)? else {
         return Err(Error::Forge {
             host: String::new(),
@@ -1175,7 +1435,7 @@ pub async fn pull_requests<R: Runtime>(
         });
     };
 
-    let connected = accounts::load(&app);
+    let connected = accounts::load(app);
     let Some(account) = accounts::for_host(&connected, &repo.host) else {
         return Err(Error::ForgeUnauthorized {
             host: repo.host.clone(),
@@ -1191,7 +1451,165 @@ pub async fn pull_requests<R: Runtime>(
     };
 
     let user = account.user.clone();
+    Ok((repo, token, user))
+}
+
+/// The open pull requests for the open repository.
+///
+/// Errors rather than an empty list when something is wrong, so the screen can
+/// say whether it is offline, rate limited, or looking at a repository nobody
+/// has connected an account for. An empty list means there are none.
+#[tauri::command]
+pub async fn pull_requests<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+) -> Result<Vec<PullRequest>> {
+    let (repo, token, user) = forge_credentials(&app, state)?;
     off_thread(move || forge::pull_requests(&repo, &token, &user)).await
+}
+
+/// Create a new pull request on the configured forge (FEAT-070).
+#[tauri::command]
+pub async fn create_pull_request<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    title: String,
+    body: String,
+    head: String,
+    base: String,
+    draft: bool,
+) -> Result<PullRequest> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || {
+        forge::create_pull_request(&repo, &token, &title, &body, &head, &base, draft)
+    })
+    .await
+}
+
+/// The files one pull request changes, with the host's own diff of each.
+///
+/// The diff is the host's, not a local one: the head branch of a pull request
+/// is usually not fetched, and fetching it to render a file list would turn
+/// reading a review into a network operation on the repository (FEAT-058).
+#[tauri::command]
+pub async fn pull_request_files<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+) -> Result<Vec<FileDiff>> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::pull_request_files(&repo, &token, number)).await
+}
+
+#[tauri::command]
+pub async fn pull_request_commits<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+) -> Result<Vec<forge::review::PullRequestCommit>> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::pull_request_commits(&repo, &token, number)).await
+}
+
+#[tauri::command]
+pub async fn commit_files<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    sha: String,
+) -> Result<Vec<FileDiff>> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::commit_files(&repo, &token, &sha)).await
+}
+
+#[tauri::command]
+pub async fn pull_request_comments<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+) -> Result<Vec<forge::review::PullRequestComment>> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::pull_request_comments(&repo, &token, number)).await
+}
+
+#[tauri::command]
+pub async fn submit_review<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+    verdict: ReviewVerdict,
+    comment: String,
+    draft_comments: Option<Vec<forge::review::DraftComment>>,
+) -> Result<()> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    let drafts = draft_comments.unwrap_or_default();
+    off_thread(move || {
+        forge::review::submit_review_with_comments(
+            &repo, &token, number, verdict, &comment, &drafts,
+        )
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn reply_comment<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+    comment_id: u64,
+    body: String,
+) -> Result<forge::review::PullRequestComment> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::reply_comment(&repo, &token, number, comment_id, &body)).await
+}
+
+/// Merge a pull request on the configured forge (FEAT-071).
+#[tauri::command]
+pub async fn merge_pull_request<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+    method: MergeMethod,
+    commit_title: Option<String>,
+    commit_message: Option<String>,
+) -> Result<()> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || {
+        forge::review::merge_pull_request(
+            &repo,
+            &token,
+            number,
+            method,
+            commit_title.as_deref(),
+            commit_message.as_deref(),
+        )
+    })
+    .await
+}
+
+/// Close / reject a pull request without merging (FEAT-071).
+#[tauri::command]
+pub async fn close_pull_request<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+) -> Result<()> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::close_pull_request(&repo, &token, number)).await
+}
+
+/// Toggle draft / ready-for-review status on a pull request (FEAT-071).
+#[tauri::command]
+pub async fn set_pr_draft<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    number: u64,
+    id: String,
+    title: String,
+    draft: bool,
+) -> Result<()> {
+    let (repo, token, _) = forge_credentials(&app, state)?;
+    off_thread(move || forge::review::set_draft_status(&repo, &token, number, &id, &title, draft))
+        .await
 }
 
 /// Is there a newer Spagitty than this one?

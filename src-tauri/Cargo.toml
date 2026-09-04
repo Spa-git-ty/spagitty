@@ -17,12 +17,13 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
-# The build script reads `cargo metadata` and `package-lock.json` to generate
-# the dependency license list. Already a runtime dependency; no new tool.
+# The build script reads `cargo metadata` and the installed frontend tree to
+# generate the dependency license list. Already a runtime dependency; no new tool.
 serde_json = { workspace = true }
 
 [dependencies]
 spagitty-core = { workspace = true }
+spagitty-farm = { workspace = true }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 serde = { workspace = true }
@@ -35,5 +36,6 @@ notify = "8"
 tauri = { version = "2", features = ["test"] }
 # Real repositories to walk, rather than a second fixture builder here.
 spagitty-core = { workspace = true, features = ["fixture"] }
+spagitty-farm = { workspace = true, features = ["fixture"] }
 # The isolated configuration directory the tests point HOME at.
 tempfile = "3"

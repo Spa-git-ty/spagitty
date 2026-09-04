@@ -49,7 +49,9 @@ function anIdentity(overrides: Partial<Identity> = {}): Identity {
 const STORED: Settings = {
 	checkForUpdates: true,
 	confirmHistoryRewrite: true,
-	showGitCommands: false, pruneOnFetch: false
+	showGitCommands: false, pruneOnFetch: false,
+			personality: 'balanced',
+			sound: 'off'
 };
 
 const LIST: Licenses = {
@@ -263,9 +265,13 @@ describe('sections', () => {
 	});
 
 	it('follows a fragment, which is how Pull requests links to Accounts', () => {
+		// `accounts` is not a section any more — it is a block inside You, where
+		// it had always been rendered. The two buttons on the Pull requests
+		// screen still point at `#accounts`, so the fragment has to keep
+		// arriving somewhere the accounts actually are.
 		settings.showFromHash('#accounts');
 
-		expect(settings.section).toBe('accounts');
+		expect(settings.section).toBe('you');
 	});
 
 	it('ignores a fragment that names nothing, rather than blanking the screen', () => {
@@ -327,7 +333,9 @@ describe('checking for a newer Spagitty', () => {
 			checkForUpdates: false,
 			confirmHistoryRewrite: true,
 			showGitCommands: false,
-			pruneOnFetch: false
+			pruneOnFetch: false,
+			personality: 'balanced',
+			sound: 'off'
 		});
 		await settings.load();
 		checkUpdate.mockResolvedValueOnce(RELEASED);

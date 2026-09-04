@@ -112,6 +112,21 @@ rather than an audit.
 | [FEAT-056](items/FEAT-056-hide-the-detail-panel.md) | The detail panel can be put away | 1A, 1H | Done |
 | [FEAT-055](items/FEAT-055-the-window-paints-on-the-path-that-works.md) | The window paints on the path that works | — | Done |
 | [FEAT-057](items/FEAT-057-liquid-glass.md) | Liquid glass: the pane that bends what is behind it | all | Done |
+| [FEAT-058](items/FEAT-058-pull-request-files-and-review.md) | A pull request you can read and answer | 1H | Done |
+| [FEAT-059](items/FEAT-059-pull-request-review-workspace.md) | Dedicated pull request review workspace | 1H | Done |
+| [FEAT-060](items/FEAT-060-spagitty-brand.md) | Spagitty, with a face: the brand | brand | Done |
+| [FEAT-061](items/FEAT-061-brand-guide-and-showcase.md) | Brand guide and interactive showcase | brand | Done |
+| [FEAT-062](items/FEAT-062-worktrees-management.md) | Worktrees management | 1J, chrome | Done |
+| [FEAT-063](items/FEAT-063-file-history-and-blame.md) | File history and blame view | 1I, 1O | Done |
+| [FEAT-064](items/FEAT-064-diff-syntax-highlighting.md) | Diff syntax highlighting | 1B, 1C, 1G, 1H | Done |
+| [FEAT-065](items/FEAT-065-image-and-binary-diffs.md) | Image and binary diffs | 1B, 1C, 1G | Done |
+| [FEAT-066](items/FEAT-066-diff-content-search.md) | Diff content search | 1I | Done |
+| [FEAT-067](items/FEAT-067-submodules-management.md) | Submodules management | 1F, settings | Done |
+| [FEAT-068](items/FEAT-068-external-diff-merge-tools.md) | External diff and merge tool launchers | 1K | Done |
+| [FEAT-069](items/FEAT-069-multi-identity-profiles.md) | Multi-identity profiles | 1K, chrome | Done |
+| [FEAT-070](items/FEAT-070-extended-forge-integration.md) | Extended forge integration | 1H, 1K | Done |
+| [FEAT-072](items/FEAT-072-delight-layer.md) | The delight layer: badges, titles and reward moments | 1P, 1K, chrome | Done |
+| [FEAT-073](items/FEAT-073-agent-farm.md) | The agent farm: running and shepherding agents from inside Spagitty | 1Q, 1K, chrome | Done |
 
 ## Bugs
 
@@ -136,6 +151,7 @@ rather than an audit.
 | [BUG-016](items/BUG-016-graph-columns-stop-at-the-last-row.md) | The graph's columns stop at the last commit row | 1A | Fixed |
 | [BUG-017](items/BUG-017-the-lens-wipes-the-window.md) | The lens wipes the right column and the bottom of the window | all | Fixed |
 | [BUG-018](items/BUG-018-a-menu-cannot-be-dismissed.md) | A menu cannot be dismissed, and the next one is drawn over it | all | Fixed |
+| [BUG-019](items/BUG-019-closing-the-last-tab-leaves-the-repository-open.md) | Closing the last tab leaves the repository open | chrome | Fixed |
 
 `BUG-009b` carries a suffix rather than the next number because it is the same
 report, reopened on a corrected diagnosis, and BUG-009's own document keeps the
@@ -164,6 +180,16 @@ of its own.
 | [TASK-017](items/TASK-017-flow-restore.md) | Seventy-one commits with no path back to `main` | — | Done |
 | [TASK-018](items/TASK-018-first-ci-run.md) | Four gates that have never seen this code | — | Done |
 | [TASK-019](items/TASK-019-resume-session.md) | The launch sequence lives where no test can reach it | — | Done |
+| [TASK-020](items/TASK-020-the-glass-material-settled.md) | The glass material, settled at the window | all | Done |
+| [TASK-021](items/TASK-021-centre-the-name-in-the-title-bar.md) | Centre the name in the title bar | chrome | Done |
+| [TASK-022](items/TASK-022-the-glass-goes-back-on-the-gpu.md) | The glass goes back on the GPU | all | Done |
+| [TASK-023](items/TASK-023-flat-ui-remove-gradients.md) | Flatten UI and remove gradients | all | Done |
+| [TASK-024](items/TASK-024-the-glass-reads-as-glass.md) | The glass reads as glass again | all | Done |
+| [TASK-025](items/TASK-025-release-lane-amendment-20.md) | The release lane obeys Amendment 20 | — | Done |
+| [TASK-026](items/TASK-026-remove-every-remaining-shadow.md) | Remove every remaining shadow | all | Done |
+| [TASK-027](items/TASK-027-migrate-the-js-toolchain-to-bun.md) | Migrate the JS toolchain to bun | — | Done |
+| [TASK-028](items/TASK-028-reconcile-working-record-and-docs.md) | Reconcile working record and docs | — | Done |
+| [TASK-029](items/TASK-029-candidate-feature-backlog.md) | Candidate feature backlog items | — | Done |
 
 ## Skipped identifiers
 
@@ -189,3 +215,4 @@ missing documents are not listed here, and fails again if a row here is stale.
 | FEAT-055 | plan, automated, sweep | A rendering-path decision measured on one machine and written as a policy function with a unit test per row of the table. What is missing is a second machine: the plan and sweep are worth writing when somebody with different hardware can confirm or contradict it. |
 | FEAT-056 | plan, automated, sweep | A toggle and a set beside the widths, covered incidentally by the layout round-trip in `panels.test.ts`. The plan and sweep are worth writing when the Graph and Pull requests screens get their own component tests to point at. |
 | BUG-001 | plan, automated, sweep | Fixed inside FEAT-003's change before it had a branch of its own; its item document says so. No separate work to plan. |
+| FEAT-073 | plan, automated, sweep | The crate landed with its own Rust tests and the screen with component tests, and the item document records the decisions a plan would have argued in advance. What is missing is the record written *before* the code, which cannot be back-dated honestly; the sweep is owed the first time a farm is driven end to end on a repository that is not this one. |

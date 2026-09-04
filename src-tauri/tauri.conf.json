@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Spagitty",
-  "version": "0.1.0",
+  "version": "0.4.1-alpha",
   "identifier": "dev.spagitty.app",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "bun run build",
     "frontendDist": "../build"
   },
   "app": {
@@ -15,8 +15,6 @@
         "title": "Spagitty",
         "width": 1280,
         "height": 800,
-        "minWidth": 1024,
-        "minHeight": 640,
         "resizable": true,
         "fullscreen": false,
         "decorations": false,
@@ -39,6 +37,11 @@
       "icons/icon.ico"
     ],
     "longDescription": "A cross-platform desktop Git client. Free software under GPL-3.0-or-later. Not affiliated with the Git project or the Software Freedom Conservancy.",
-    "shortDescription": "Desktop Git client"
+    "shortDescription": "Desktop Git client",
+    "windows": {
+      "wix": {
+        "version": "0.4.1.0"
+      }
+    }
   }
 }

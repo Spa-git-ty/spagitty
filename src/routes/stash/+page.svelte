@@ -194,9 +194,7 @@
 		padding: 10px 12px;
 		background-color: var(--chrome-veil);
 		border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
-		box-shadow:
-			var(--glass-rim),
-			0 1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		box-shadow: none;
 		position: relative;
 		z-index: 1;
 	}
@@ -206,7 +204,7 @@
 		padding: 8px 12px;
 		background-color: var(--chrome-veil);
 		border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
-		box-shadow: 0 -1px 3px color-mix(in srgb, var(--umbra) 7%, transparent);
+		box-shadow: none;
 		position: relative;
 		z-index: 1;
 	}
