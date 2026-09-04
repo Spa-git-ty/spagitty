@@ -227,6 +227,7 @@ pub struct FarmService {
     observer: Arc<dyn Observer>,
     /// The agent processes running right now, by task.
     sessions: Mutex<HashMap<TaskId, Session>>,
+    cancellations: Mutex<HashMap<TaskId, execution::Cancellation>>,
     /// The event history, in memory.
     ///
     /// The log on disk is still the record — this is loaded from it once, when
@@ -266,6 +267,7 @@ impl FarmService {
             registry: Mutex::new(registry),
             observer,
             sessions: Mutex::new(HashMap::new()),
+            cancellations: Mutex::new(HashMap::new()),
             recent: Mutex::new(store::load_events(&repo_for_events).into()),
         };
         service.recover();
@@ -587,15 +589,31 @@ impl FarmService {
 
     /// Stop whatever is running for this task and cancel it.
     pub fn cancel_task(&self, id: &TaskId) -> Result<()> {
-        // Out of the map first, cancelled after — the sessions lock is not held
-        // while the child is signalled and, more to the point, not held while
-        // the `Session` is dropped, which joins its reader threads and reaps
-        // the process. See [`Self::collect_plan`] for what holding it costs.
-        let running = self.sessions.lock().expect("sessions lock").remove(id);
-        if let Some(session) = running {
-            session.cancel();
+        self.set_status(id, TaskStatus::Cancelled, Some("Stopped by hand.".into()))?;
+        self.stop_session(id);
+        Ok(())
+    }
+
+    fn stop_session(&self, id: &TaskId) {
+        let cancellation = self
+            .cancellations
+            .lock()
+            .expect("cancellation lock")
+            .get(id)
+            .cloned();
+        if let Some(cancellation) = cancellation {
+            cancellation.cancel();
         }
-        self.set_status(id, TaskStatus::Cancelled, Some("Stopped by hand.".into()))
+        // An unclaimed session still needs its readers joined and child reaped.
+        // The option is dropped outside the map lock.
+        let session = self.sessions.lock().expect("sessions lock").remove(id);
+        if session.is_some() {
+            drop(session);
+            self.cancellations
+                .lock()
+                .expect("cancellation lock")
+                .remove(id);
+        }
     }
 
     /// Put a failed or blocked task back in the queue for another attempt.
@@ -603,6 +621,14 @@ impl FarmService {
     /// The attempt counter is *not* reset. A person retrying a task three times
     /// is making a decision; a farm that forgot each time would loop.
     pub fn retry_task(&self, id: &TaskId) -> Result<()> {
+        if self
+            .cancellations
+            .lock()
+            .expect("cancellation lock")
+            .contains_key(id)
+        {
+            return Err(Error::Refused("The previous run is still stopping.".into()));
+        }
         let mut state = self.state.lock().expect("farm lock");
         let farm = state.farm.as_mut().ok_or(Error::NoFarm)?;
         let task = farm
@@ -683,19 +709,6 @@ impl FarmService {
 
     /// Stop every running agent and cancel every unfinished task.
     pub fn cancel_farm(&self) -> Result<()> {
-        let running: Vec<TaskId> = self
-            .sessions
-            .lock()
-            .expect("sessions lock")
-            .keys()
-            .cloned()
-            .collect();
-        for task in running {
-            let session = self.sessions.lock().expect("sessions lock").remove(&task);
-            if let Some(session) = session {
-                session.cancel();
-            }
-        }
         let unfinished: Vec<TaskId> = self
             .farm()
             .map(|farm| {
@@ -712,6 +725,16 @@ impl FarmService {
                 TaskStatus::Cancelled,
                 Some("The farm was stopped.".into()),
             );
+        }
+        let running: Vec<TaskId> = self
+            .cancellations
+            .lock()
+            .expect("cancellation lock")
+            .keys()
+            .cloned()
+            .collect();
+        for task in running {
+            self.stop_session(&task);
         }
         self.set_farm_status(FarmStatus::Cancelled)
     }
@@ -996,6 +1019,10 @@ impl FarmService {
             self.set_status(&task, TaskStatus::Running, None)?;
         }
 
+        self.cancellations
+            .lock()
+            .expect("cancellation lock")
+            .insert(task.clone(), session.cancellation());
         self.sessions
             .lock()
             .expect("sessions lock")
@@ -1014,11 +1041,25 @@ impl FarmService {
             return Ok(());
         };
         let ended = session.wait();
+        // Keep the handle until the process is fully reaped, including pipes.
+        self.cancellations
+            .lock()
+            .expect("cancellation lock")
+            .remove(id);
         self.finish_run(id, ended)
     }
 
     /// Record how a run ended and decide what happens next.
     fn finish_run(&self, id: &TaskId, ended: execution::Ended) -> Result<()> {
+        let ended = if self
+            .farm()
+            .and_then(|farm| farm.task(id).map(|task| task.status))
+            == Some(TaskStatus::Cancelled)
+        {
+            execution::Ended::Cancelled
+        } else {
+            ended
+        };
         let (run, agent, phase, duration) = {
             let mut state = self.state.lock().expect("farm lock");
             let run = state
@@ -1497,6 +1538,10 @@ impl FarmService {
             });
             state.heard.insert(run.clone(), heard);
         }
+        self.cancellations
+            .lock()
+            .expect("cancellation lock")
+            .insert(planning_task.clone(), session.cancellation());
         self.sessions
             .lock()
             .expect("sessions lock")
@@ -1531,6 +1576,10 @@ impl FarmService {
             None => execution::Ended::Ok,
         };
 
+        self.cancellations
+            .lock()
+            .expect("cancellation lock")
+            .remove(&planning_task);
         let outcome = match &ended {
             execution::Ended::Ok => RunOutcome::Completed { exit_code: 0 },
             execution::Ended::Cancelled => RunOutcome::Cancelled,
@@ -1629,13 +1678,14 @@ impl FarmService {
     /// The lock is held across `cancel`, which sends a signal and returns; it
     /// never waits for the process, which is the distinction BUG-020 turned on.
     pub fn cancel_plan(&self) -> Result<()> {
-        if let Some(session) = self
-            .sessions
+        let cancellation = self
+            .cancellations
             .lock()
-            .expect("sessions lock")
+            .expect("cancellation lock")
             .get(&TaskId::new("planning"))
-        {
-            session.cancel();
+            .cloned();
+        if let Some(cancellation) = cancellation {
+            cancellation.cancel();
         }
         Ok(())
     }
