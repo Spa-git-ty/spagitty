@@ -141,7 +141,6 @@ mod tests {
         assert_eq!(odd.duration_ms(), Some(0));
     }
 
-
     #[test]
     fn a_finished_run_is_not_quiet_it_is_finished() {
         let done = run(RunOutcome::Completed { exit_code: 0 }, Some(5_000));
