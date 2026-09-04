@@ -23,6 +23,7 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::execution::narrate::{Narrator, Verbatim};
 use crate::model::{AgentAvailability, AgentDefinition, AgentProvider};
 
 /// What the runner needs to start one agent.
@@ -118,6 +119,17 @@ pub trait AgentAdapter: Send + Sync {
 
     /// Build the command line for one run.
     fn command(&self, definition: &AgentDefinition, request: &AgentRunRequest) -> AgentCommand;
+
+    /// How this provider's output should be read.
+    ///
+    /// The default is verbatim, which is right for a provider that narrates its
+    /// own work in plain text and for a custom agent, which is whatever the
+    /// user pointed at. A provider whose command line above asks for a machine
+    /// format overrides this with the narrator that reads it — the two belong
+    /// to the same decision and are kept next to each other for that reason.
+    fn narrator(&self) -> Box<dyn Narrator> {
+        Box::new(Verbatim)
+    }
 
     /// Does this provider need a terminal?
     ///

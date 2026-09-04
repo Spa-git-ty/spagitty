@@ -107,6 +107,24 @@ impl Sink for RunSink {
     }
 }
 
+/// One process the farm is about to start.
+///
+/// A struct rather than seven parameters. They arrive together, they are all
+/// required, and half of them are identifiers of the same shape — which is
+/// exactly the argument list where a caller silently swaps two and nothing
+/// complains.
+struct Launch {
+    run: RunId,
+    task: TaskId,
+    agent: AgentId,
+    phase: RunPhase,
+    command: crate::agent::AgentCommand,
+    /// Where the process runs: a task's own worktree, never the user's checkout.
+    workdir: PathBuf,
+    /// How to read what it prints. See [`crate::execution::narrate`].
+    narrator: Box<dyn execution::narrate::Narrator>,
+}
+
 /// The mutable heart of a farm.
 #[derive(Debug, Default)]
 struct State {
@@ -695,26 +713,28 @@ impl FarmService {
             },
         );
 
-        self.spawn_run(
+        self.spawn_run(Launch {
             run,
-            task.id,
-            definition.id,
-            RunPhase::Implementation,
+            task: task.id,
+            phase: RunPhase::Implementation,
             command,
-            workspace.path,
-        )
+            workdir: workspace.path,
+            narrator: adapter_for(definition.provider).narrator(),
+            agent: definition.id,
+        })
     }
 
     /// Start a process and the thread that waits for it.
-    fn spawn_run(
-        &self,
-        run: RunId,
-        task: TaskId,
-        agent: AgentId,
-        phase: RunPhase,
-        command: crate::agent::AgentCommand,
-        workdir: PathBuf,
-    ) -> Result<()> {
+    fn spawn_run(&self, launch: Launch) -> Result<()> {
+        let Launch {
+            run,
+            task,
+            agent,
+            phase,
+            command,
+            workdir,
+            narrator,
+        } = launch;
         let log = execution::log::log_path(&self.repo, &task, &run);
         let transcript = TranscriptWriter::create(&log)?;
 
@@ -724,7 +744,7 @@ impl FarmService {
             task: task.clone(),
         });
 
-        let session = execution::start(&command, &workdir, transcript, sink)?;
+        let session = execution::start(&command, &workdir, transcript, sink, narrator)?;
 
         {
             let mut state = self.state.lock().expect("farm lock");
@@ -985,14 +1005,15 @@ impl FarmService {
         );
         // `spawn_run` sets the task to Running, which is what the interface
         // should show: an agent is executing against this task.
-        self.spawn_run(
+        self.spawn_run(Launch {
             run,
-            id.clone(),
-            reviewer.id,
-            RunPhase::Review,
+            task: id.clone(),
+            phase: RunPhase::Review,
             command,
             workdir,
-        )
+            narrator: adapter_for(reviewer.provider).narrator(),
+            agent: reviewer.id,
+        })
     }
 
     fn conclude_review(&self, id: &TaskId, reviewer: &AgentId, transcript: &str) -> Result<()> {
@@ -1177,7 +1198,13 @@ impl FarmService {
         // The planner runs in the repository itself, read-only. It is told not
         // to change anything, and it has no worktree of its own because it is
         // not producing a change to review.
-        let session = execution::start(&command, &self.repo, transcript, sink)?;
+        let session = execution::start(
+            &command,
+            &self.repo,
+            transcript,
+            sink,
+            adapter_for(definition.provider).narrator(),
+        )?;
 
         self.emit(FarmEvent::AgentStarted {
             run: run.clone(),
@@ -1227,15 +1254,46 @@ impl FarmService {
             .lock()
             .expect("sessions lock")
             .remove(&planning_task);
-        if let Some(session) = waiting {
-            session.wait();
-        }
+        let ended = match waiting {
+            Some(session) => session.wait(),
+            // Nothing to wait for: the run is already over, or was never
+            // started. Treated as a clean end so the transcript is still read.
+            None => execution::Ended::Ok,
+        };
+
+        let outcome = match &ended {
+            execution::Ended::Ok => RunOutcome::Completed { exit_code: 0 },
+            execution::Ended::Cancelled => RunOutcome::Cancelled,
+            execution::Ended::Failed { code, message } => RunOutcome::Failed {
+                exit_code: *code,
+                reason: message.clone(),
+            },
+        };
         {
             let mut state = self.state.lock().expect("farm lock");
             if let Some(entry) = state.runs.iter_mut().find(|entry| &entry.id == run) {
-                entry.outcome = RunOutcome::Completed { exit_code: 0 };
+                entry.outcome = outcome;
                 entry.ended_ms = Some(now_ms());
             }
+        }
+
+        self.emit(FarmEvent::AgentStopped {
+            run: run.clone(),
+            task: planning_task.clone(),
+            ok: ended == execution::Ended::Ok,
+            reason: match &ended {
+                execution::Ended::Failed { message, .. } => Some(message.clone()),
+                execution::Ended::Cancelled => Some("Stopped by hand.".into()),
+                execution::Ended::Ok => None,
+            },
+        });
+
+        // A cancelled planner has said half of something. Adopting that would
+        // put an arbitrary prefix of a decomposition into the plan, which is
+        // worse than nothing: the tasks look deliberate.
+        if ended == execution::Ended::Cancelled {
+            self.set_farm_status(FarmStatus::Idle)?;
+            return Ok(Vec::new());
         }
 
         let transcript =
@@ -1252,6 +1310,23 @@ impl FarmService {
             tasks
         };
 
+        // A planning run that produced nothing used to end in silence: the
+        // status chip went back to Idle and the plan stayed empty, with no way
+        // to tell that from a planner that had not been asked. Whatever went
+        // wrong — a refusal, a rate limit, an answer with no plan block — the
+        // transcript has it, and the screen now says where to look.
+        if tasks.is_empty() {
+            self.emit(FarmEvent::Failed {
+                message: match &ended {
+                    execution::Ended::Failed { message, .. } => {
+                        format!("The planner did not finish: {message}")
+                    }
+                    _ => "The planner produced no tasks. Its transcript says what it did instead."
+                        .to_string(),
+                },
+            });
+        }
+
         for task in &tasks {
             self.emit(FarmEvent::TaskCreated {
                 task: task.id.clone(),
@@ -1260,6 +1335,28 @@ impl FarmService {
         }
         self.emit_farm_status();
         Ok(tasks)
+    }
+
+    /// Stop a planning run.
+    ///
+    /// The session is signalled but *not* removed: the thread inside
+    /// [`Self::collect_plan`] owns it and is waiting on it, and it is that
+    /// thread which decides what a cancelled plan means. Taking it away here
+    /// would leave the collector reading a half-written transcript with nothing
+    /// telling it the run had been stopped.
+    ///
+    /// The lock is held across `cancel`, which sends a signal and returns; it
+    /// never waits for the process, which is the distinction BUG-020 turned on.
+    pub fn cancel_plan(&self) -> Result<()> {
+        if let Some(session) = self
+            .sessions
+            .lock()
+            .expect("sessions lock")
+            .get(&TaskId::new("planning"))
+        {
+            session.cancel();
+        }
+        Ok(())
     }
 
     // ── Recovery ─────────────────────────────────────────────────────────

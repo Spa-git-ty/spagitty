@@ -44,6 +44,15 @@ import type {
 export const EVENT = 'farm-event';
 
 /**
+ * The task identifier a planning run's output is filed under.
+ *
+ * A planning run has no task — it is what produces the tasks — so the backend
+ * files it under this fixed identifier. It is not in `farm.tasks`, which is why
+ * a planning run was invisible until something asked for it by name.
+ */
+export const PLANNING_TASK = 'planning';
+
+/**
  * How many activity lines are kept.
  *
  * Three hundred: more than a screenful of history, few enough that appending to
@@ -203,6 +212,24 @@ export const farmStore = {
 	/** The lines one task's agent has produced this session. */
 	transcript(task: string): string[] {
 		return transcripts[task] ?? [];
+	},
+
+	/** What the planner has said so far, this session. */
+	get planning(): string[] {
+		return transcripts[PLANNING_TASK] ?? [];
+	},
+
+	/**
+	 * The planning run in flight, if there is one.
+	 *
+	 * Read from `runs` rather than remembered when the status changed, so it
+	 * survives the screen being left and come back to, and so the elapsed time
+	 * is the run's own rather than the screen's.
+	 */
+	get planningRun(): AgentRun | null {
+		return (
+			runs.find((run) => run.phase === 'planning' && run.outcome.state === 'running') ?? null
+		);
 	},
 
 	/** Tasks in a given status. */

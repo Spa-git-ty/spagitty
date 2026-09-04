@@ -7,6 +7,7 @@
 	import TaskDetailPanel from '$lib/farm/components/TaskDetail.svelte';
 	import TaskEditor from '$lib/farm/components/TaskEditor.svelte';
 	import TaskRow from '$lib/farm/components/TaskRow.svelte';
+	import PlanningCard from '$lib/farm/components/PlanningCard.svelte';
 	import Starter from '$lib/farm/components/Starter.svelte';
 	import { AUTONOMY_LEVELS, eventLine, FARM_STATUS_LABELS, PROVIDER_LABELS } from '$lib/farm/describe';
 	import { lines, text } from '$lib/farm/options';
@@ -30,7 +31,9 @@
 	 *
 	 * The screen has no timers. Everything arrives on the farm's event channel,
 	 * which the store subscribes to — see its header for why polling is the
-	 * wrong shape for something that moves at a model's pace.
+	 * wrong shape for something that moves at a model's pace. The one exception
+	 * is the elapsed clock inside `PlanningCard`, which counts something no
+	 * event will ever report.
 	 */
 
 	type Pane = 'tasks' | 'agents' | 'settings';
@@ -59,6 +62,8 @@
 	const tasks = $derived(farmStore.tasks);
 	const progress = $derived(farmStore.progress);
 	const usable = $derived(farmStore.usable);
+	/** The planning run in flight, if there is one. */
+	const planning = $derived(farmStore.planningRun);
 	/** The activity strip: everything except the transcript flood. */
 	const activity = $derived(farmStore.activity.filter((event) => event.kind !== 'agentOutput'));
 
@@ -212,6 +217,15 @@
 			<Chip active={pane === 'settings'} onclick={() => (pane = 'settings')}>Settings</Chip>
 		</div>
 	</header>
+
+	{#if planning}
+		<PlanningCard
+			lines={farmStore.planning}
+			startedMs={planning.startedMs}
+			{busy}
+			oncancel={() => act('Could not stop the planner', api.cancelPlan)}
+		/>
+	{/if}
 
 	<div class="body">
 		{#if repo.info === null}

@@ -138,6 +138,16 @@ export function plan(agent: string | null): Promise<string> {
 	return invoke('farm_plan', { agent });
 }
 
+/**
+ * Stop a planning run.
+ *
+ * Not `cancel()`, which stops the whole farm. Changing your mind about a
+ * decomposition is not changing your mind about the work.
+ */
+export function cancelPlan(): Promise<void> {
+	return invoke('farm_cancel_plan');
+}
+
 export function sweep(): Promise<StaleWorkspace[]> {
 	return invoke('farm_sweep');
 }
