@@ -14,6 +14,13 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A flaky test stops failing the pipeline.** One of `spagitty-core`'s clone
+  tests read the process-wide git-command record and could pick up a *different*
+  test's clone, failing on a change that had nothing to do with it. It failed
+  about half the time when the three clone tests ran together.
+
 ## [0.4.1-alpha] - 2026-09-03
 
 The farm shipped in `0.4.0-alpha` with the brand's amber on every palette and
