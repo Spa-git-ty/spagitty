@@ -30,6 +30,15 @@
 	const width = $derived(panels.size(panel));
 
 	/**
+	 * A drawer is dragged up and down; everything else, left and right.
+	 *
+	 * The only differences are which coordinate is read and which edge it is
+	 * measured from. Clamping, persistence and the keyboard are one problem
+	 * (FEAT-074).
+	 */
+	const vertical = $derived(PANELS[panel].side === 'bottom');
+
+	/**
 	 * Resize from the panel's own edge, not the window's.
 	 *
 	 * The panel being sized is always the splitter's immediate neighbour — the
@@ -38,7 +47,7 @@
 	 * would work for the rail and break for anything nested inside a screen,
 	 * where the rail's width sits between the window edge and the panel.
 	 */
-	function apply(clientX: number, element: HTMLElement) {
+	function apply(event: PointerEvent, element: HTMLElement) {
 		const left = PANELS[panel].side === 'left';
 		const neighbour = (left ? element.previousElementSibling : element.nextElementSibling) as
 			| HTMLElement
@@ -47,7 +56,11 @@
 		const box = neighbour?.getBoundingClientRect();
 		if (!box) return;
 
-		panels.set(panel, left ? clientX - box.left : box.right - clientX);
+		if (vertical) {
+			panels.set(panel, box.bottom - event.clientY);
+			return;
+		}
+		panels.set(panel, left ? event.clientX - box.left : box.right - event.clientX);
 	}
 
 	function onpointerdown(event: PointerEvent) {
@@ -59,7 +72,7 @@
 
 	function onpointermove(event: PointerEvent) {
 		if (!dragging) return;
-		apply(event.clientX, event.currentTarget as HTMLElement);
+		apply(event, event.currentTarget as HTMLElement);
 	}
 
 	function onpointerup(event: PointerEvent) {
@@ -69,22 +82,30 @@
 		panels.commit();
 	}
 
-	/** Keyboard resizing, so this is not a mouse-only control. */
+	/**
+	 * Keyboard resizing, so this is not a mouse-only control.
+	 *
+	 * The arrows that move the divider are the ones that point along it: left
+	 * and right for a column, up and down for a drawer. A key that would move
+	 * the divider sideways when it cannot go sideways is left to the page.
+	 */
 	function onkeydown(event: KeyboardEvent) {
 		if (locked) return;
-		const step = event.shiftKey ? 32 : 8;
-		let delta = 0;
-		if (event.key === 'ArrowLeft') delta = -step;
-		else if (event.key === 'ArrowRight') delta = step;
-		else if (event.key === 'Home') {
+		if (event.key === 'Home') {
 			panels.reset();
 			return;
-		} else return;
+		}
+		const step = event.shiftKey ? 32 : 8;
+		const towards: Record<string, number> = vertical
+			? { ArrowUp: step, ArrowDown: -step }
+			: { ArrowLeft: -step, ArrowRight: step };
+		const delta = towards[event.key];
+		if (delta === undefined) return;
 
 		event.preventDefault();
-		const towards = panel === 'rail' ? delta : -delta;
-		if (panel === 'rail') panels.setRail(width + towards);
-		else panels.setDetail(width + towards);
+		// A left-anchored panel grows the way the pointer moves; everything
+		// else grows against it.
+		panels.set(panel, width + (PANELS[panel].side === 'left' ? delta : -delta));
 		panels.commit();
 	}
 </script>
@@ -98,10 +119,11 @@
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
 	class="splitter {panel}"
+	class:vertical
 	class:dragging
 	class:locked
 	role="separator"
-	aria-orientation="vertical"
+	aria-orientation={vertical ? 'horizontal' : 'vertical'}
 	aria-label={label}
 	aria-valuenow={width}
 	tabindex="0"
@@ -133,6 +155,15 @@
 		touch-action: none;
 	}
 
+	/* A drawer's divider is the same handle turned through ninety degrees. */
+	.splitter.vertical {
+		width: auto;
+		height: 7px;
+		margin-inline: 0;
+		margin-block: -4px;
+		cursor: row-resize;
+	}
+
 	/* A hairline that only shows while the divider is in use, so the resting
 	   state stays exactly as designed. */
 	.splitter::after {
@@ -147,6 +178,16 @@
 		transition:
 			background var(--t-fast) var(--ease),
 			box-shadow var(--t-fast) var(--ease);
+	}
+
+	.splitter.vertical::after {
+		inset-block: auto;
+		inset-inline: 0;
+		top: 50%;
+		left: auto;
+		width: auto;
+		height: 2px;
+		transform: translateY(-50%);
 	}
 
 	/*

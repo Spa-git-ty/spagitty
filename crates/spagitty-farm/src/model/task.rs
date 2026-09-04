@@ -69,6 +69,15 @@ impl TaskStatus {
         )
     }
 
+    /// In the queue: the scheduler would start this if it could.
+    ///
+    /// `Waiting` is in and `Draft` is not — a draft is not in the plan, which
+    /// is a decision somebody has yet to make rather than a queue the farm is
+    /// failing to serve.
+    pub fn is_queued(self) -> bool {
+        matches!(self, TaskStatus::Ready | TaskStatus::Waiting)
+    }
+
     /// Something is running or waiting on this task, so its worktree must stay.
     pub fn is_active(self) -> bool {
         matches!(
