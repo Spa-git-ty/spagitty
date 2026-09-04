@@ -828,6 +828,21 @@ bottom and lets go the moment they scroll up. **Hold** is a decision — it
 freezes the list so a line can be read while it is still arriving, and counts
 what arrived while it was held, so holding is never losing.
 
+**The header is a ring, and the strip above the plan says who is working**
+(FEAT-077). What is finished fills the ring, what is running is a brighter arc
+at its leading edge, and anything blocked colours the remainder — an unfinished
+farm and a stuck one are not the same state. One chip per working agent names
+what it is on and for how long, and the strip is absent when nothing runs.
+
+**A quiet run says so, and is never stopped for you.** After six minutes without
+a word the chip and the row say how long it has been silent and the pulse stops.
+A model may think for a long time; killing it throws the work away, so the farm
+flags and leaves the decision where it belongs.
+
+**Finished work is scored.** A task taken to Done hands the delight layer
+(FEAT-072) what it needs to credit the agent that did it — including that
+"nothing checked it" is not a pass.
+
 **A planning run is visible while it runs.** A card under the header carries how
 long it has been going, the last thing the planner said, and a control that
 stops the planner without cancelling the farm (BUG-021).

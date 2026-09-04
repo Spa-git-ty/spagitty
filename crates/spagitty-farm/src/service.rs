@@ -34,6 +34,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use spagitty_core::shell;
@@ -95,10 +96,17 @@ struct RunSink {
     observer: Arc<dyn Observer>,
     run: RunId,
     task: TaskId,
+    /// When this run last said something, shared with the service (FEAT-077).
+    ///
+    /// An atomic rather than a lock: this is written once per line of output,
+    /// which for a talkative agent is thousands of times, and it is read when
+    /// somebody asks for the runs. Nothing waits on it.
+    heard: Arc<AtomicU64>,
 }
 
 impl Sink for RunSink {
     fn line(&self, text: &str) {
+        self.heard.store(now_ms(), Ordering::Relaxed);
         // Stamped here rather than when it reaches a screen: this is the moment
         // the agent said it, and a transcript timed by when the webview
         // happened to render it would be a transcript of the interface.
@@ -142,6 +150,9 @@ struct State {
     change_requests: HashMap<TaskId, String>,
     verifications: HashMap<TaskId, Verification>,
     reviews: HashMap<TaskId, Review>,
+    /// When each run last said something, by run (FEAT-077). Written by the
+    /// sink on the reader thread, read when the runs are asked for.
+    heard: HashMap<RunId, Arc<AtomicU64>>,
     /// The task a planning run is breaking down, when it is breaking one down
     /// rather than planning the goal (FEAT-076).
     ///
@@ -338,8 +349,21 @@ impl FarmService {
             .collect()
     }
 
+    /// Every run, with when each last spoke folded in.
     pub fn runs(&self) -> Vec<AgentRun> {
-        self.state.lock().expect("farm lock").runs.clone()
+        let state = self.state.lock().expect("farm lock");
+        state
+            .runs
+            .iter()
+            .map(|run| {
+                let mut run = run.clone();
+                if let Some(heard) = state.heard.get(&run.id) {
+                    let at = heard.load(Ordering::Relaxed);
+                    run.last_output_ms = (at > 0).then_some(at);
+                }
+                run
+            })
+            .collect()
     }
 
     /// Why each queued task is not running, by task.
@@ -870,10 +894,14 @@ impl FarmService {
         let log = execution::log::log_path(&self.repo, &task, &run);
         let transcript = TranscriptWriter::create(&log)?;
 
+        // One clock per run, shared between the sink that writes it and the
+        // state that reads it (FEAT-077).
+        let heard = Arc::new(AtomicU64::new(0));
         let sink = Arc::new(RunSink {
             observer: self.observer.clone(),
             run: run.clone(),
             task: task.clone(),
+            heard: heard.clone(),
         });
 
         let session = execution::start(&command, &workdir, transcript, sink, narrator)?;
@@ -892,7 +920,9 @@ impl FarmService {
                 started_ms: now_ms(),
                 ended_ms: None,
                 log_file: Some(log.to_string_lossy().into_owned()),
+                last_output_ms: None,
             });
+            state.heard.insert(run.clone(), heard);
         }
 
         self.emit(FarmEvent::AgentStarted {
@@ -1369,10 +1399,12 @@ impl FarmService {
 
         let log = execution::log::log_path(&self.repo, &planning_task, &run);
         let transcript = TranscriptWriter::create(&log)?;
+        let heard = Arc::new(AtomicU64::new(0));
         let sink = Arc::new(RunSink {
             observer: self.observer.clone(),
             run: run.clone(),
             task: planning_task.clone(),
+            heard: heard.clone(),
         });
         // The planner runs in the repository itself, read-only. It is told not
         // to change anything, and it has no worktree of its own because it is
@@ -1404,7 +1436,9 @@ impl FarmService {
                 started_ms: now_ms(),
                 ended_ms: None,
                 log_file: Some(log.to_string_lossy().into_owned()),
+                last_output_ms: None,
             });
+            state.heard.insert(run.clone(), heard);
         }
         self.sessions
             .lock()

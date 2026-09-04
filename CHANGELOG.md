@@ -16,6 +16,20 @@ stays backward-compatible.
 
 ### Added
 
+- **The Farm screen is worth watching.** `3 / 7 done` becomes a ring — what is
+  finished fills it, what is running is a brighter arc at its leading edge, and
+  anything blocked colours the rest, so a farm that is working looks different
+  from one that stopped at the same point. Above the plan, one chip per working
+  agent says who is on what and for how long, and disappears when nothing is
+  running.
+- **A run that has gone quiet says so.** After six minutes without a word the
+  chip and the task row say how long it has been silent and the pulse stops.
+  Nothing is stopped for you: a model may think for a long time, and killing it
+  throws the work away.
+- **Agents earn their badges from the farm now.** A task taken all the way to
+  Done scores the agent that did it — whether the checks really passed, whether
+  the reviewer approved, how many times it was sent back — which is the event
+  the badge catalogue has been waiting for since it was written.
 - **Every task says who asked for it.** A farm mixes work you decided on with
   work a model produced, and after twenty tasks they looked identical. Your own
   tasks stay unmarked; anything an agent asked for carries one quiet mark, and

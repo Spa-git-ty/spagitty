@@ -206,6 +206,14 @@ export interface AgentRun {
 	startedMs: number;
 	endedMs: number | null;
 	logFile: string | null;
+	/**
+	 * When this run last said anything (FEAT-077).
+	 *
+	 * A model can think for a long time, so silence is not failure — but a run
+	 * silent for six minutes and one that died four minutes ago look identical,
+	 * and only one is worth interrupting.
+	 */
+	lastOutputMs: number | null;
 }
 
 export interface CommandResult {
