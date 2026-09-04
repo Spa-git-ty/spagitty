@@ -398,7 +398,9 @@ mod tests {
         let adopted = adopt(
             &mut farm,
             &planner_agent(),
-            &plan(r#"{"tasks":[{"title":"A"}]}"#)).unwrap();
+            &plan(r#"{"tasks":[{"title":"A"}]}"#),
+        )
+        .unwrap();
         assert_eq!(adopted[0].status, TaskStatus::Draft);
     }
 
@@ -484,12 +486,16 @@ mod tests {
         let first = adopt(
             &mut farm,
             &planner_agent(),
-            &plan(r#"{"tasks":[{"title":"A"}]}"#)).unwrap();
+            &plan(r#"{"tasks":[{"title":"A"}]}"#),
+        )
+        .unwrap();
         farm.tasks.extend(first);
         let second = adopt(
             &mut farm,
             &planner_agent(),
-            &plan(r#"{"tasks":[{"title":"B"}]}"#)).unwrap();
+            &plan(r#"{"tasks":[{"title":"B"}]}"#),
+        )
+        .unwrap();
         assert_eq!(second[0].id, task_id(2));
     }
 }

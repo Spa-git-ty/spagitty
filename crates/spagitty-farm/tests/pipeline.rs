@@ -913,7 +913,9 @@ fn deleting_a_heading_does_not_delete_what_was_under_it() {
     let farm = harness.service.farm().unwrap();
     assert!(farm.task(&big).is_none());
     for child in &children {
-        let child = farm.task(&child.id).expect("a child was deleted with its heading");
+        let child = farm
+            .task(&child.id)
+            .expect("a child was deleted with its heading");
         // Work in its own right now, not an orphan pointing at nothing.
         assert_eq!(child.parent, None);
     }
@@ -927,7 +929,10 @@ fn only_one_thing_is_planned_at_a_time() {
     let first = harness.task("One");
     let second = harness.task("Two");
 
-    let run = harness.service.decompose(&first, Some(agent.clone())).unwrap();
+    let run = harness
+        .service
+        .decompose(&first, Some(agent.clone()))
+        .unwrap();
     // The second would share the planning session slot and collect the first
     // one's transcript.
     let error = harness
@@ -961,7 +966,12 @@ fn a_planned_task_names_the_agent_that_planned_it() {
     let run = harness.service.plan(Some(agent.clone())).unwrap();
     let planned = harness.service.collect_plan(&run).unwrap();
 
-    assert_eq!(planned[0].origin, TaskOrigin::Planned { agent: agent.clone() });
+    assert_eq!(
+        planned[0].origin,
+        TaskOrigin::Planned {
+            agent: agent.clone()
+        }
+    );
     assert!(planned[0].origin.is_agents());
     assert_eq!(planned[0].origin.agent(), Some(&agent));
 }
@@ -973,7 +983,10 @@ fn a_subtask_says_which_task_it_was_cut_out_of() {
     let agent = splitter(&harness, "planner-origin-sub");
     let big = harness.task("Rework the auth module");
 
-    let run = harness.service.decompose(&big, Some(agent.clone())).unwrap();
+    let run = harness
+        .service
+        .decompose(&big, Some(agent.clone()))
+        .unwrap();
     let children = harness.service.collect_plan(&run).unwrap();
 
     assert_eq!(
@@ -990,9 +1003,8 @@ fn an_existing_farm_reads_as_the_persons_own_work() {
     // A task saved before origins existed has no `origin` field. The only ways
     // to make one then were typing it or accepting a plan, and both are a
     // person's decision — so the default is the honest reading, not a guess.
-    let task: Task = serde_json::from_str(
-        r#"{"id":"TASK-0001","title":"Old","status":"ready","createdMs":0}"#,
-    )
-    .unwrap();
+    let task: Task =
+        serde_json::from_str(r#"{"id":"TASK-0001","title":"Old","status":"ready","createdMs":0}"#)
+            .unwrap();
     assert_eq!(task.origin, TaskOrigin::Person);
 }

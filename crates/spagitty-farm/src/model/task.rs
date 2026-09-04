@@ -215,7 +215,10 @@ pub enum TaskOrigin {
     Subtask { agent: AgentId, parent: TaskId },
     /// Offered by an agent while it was doing something else, and never asked
     /// for by anybody.
-    Proposed { agent: Option<AgentId>, from: TaskId },
+    Proposed {
+        agent: Option<AgentId>,
+        from: TaskId,
+    },
 }
 
 impl Default for TaskOrigin {
