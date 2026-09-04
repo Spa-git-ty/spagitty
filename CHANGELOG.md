@@ -16,6 +16,19 @@ stays backward-compatible.
 
 ### Added
 
+- **Every task says who asked for it.** A farm mixes work you decided on with
+  work a model produced, and after twenty tasks they looked identical. Your own
+  tasks stay unmarked; anything an agent asked for carries one quiet mark, and
+  its panel says which agent and why — cut out of the goal, cut out of another
+  task, or proposed while working on something else and asked for by nobody.
+  Tasks from an existing farm read as yours, because at the time they were.
+- **A task that turns out to be too big can be broken down.** **Break it down**
+  asks an agent to cut one task into smaller ones; they arrive as a proposed
+  plan under it, and the task becomes a heading that finishes when they do.
+  Deleting the heading keeps the work that was under it. A plan may hold 24
+  tasks rather than 12, a farm may run 8 agents at once rather than 4, and how
+  many attempts a task gets before it needs a person is a setting rather than a
+  constant.
 - **A proposed plan is accepted in one action.** A planner's tasks arrive as
   drafts so a person reads a decomposition before five agents act on it — but
   approving one meant opening each task and pressing a button in its panel, and

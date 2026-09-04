@@ -194,6 +194,56 @@ pub enum TaskPriority {
     Low,
 }
 
+/// Who asked for a task, and why it exists (FEAT-078).
+///
+/// A farm mixes work a person decided on with work a model proposed, and by the
+/// time there are twenty tasks they are indistinguishable — which matters,
+/// because they are not owed the same trust. A task you wrote is a decision; a
+/// task an agent cut out of another one is a suggestion that happened to be
+/// convenient, and it is worth being able to see which is which at a glance.
+///
+/// Carried on the task rather than derived from the event log: the log is
+/// bounded and a task outlives it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum TaskOrigin {
+    /// Typed by a person, in the task editor.
+    Person,
+    /// Cut from the goal by a planning run.
+    Planned { agent: AgentId },
+    /// Cut out of another task, when it turned out to be too big.
+    Subtask { agent: AgentId, parent: TaskId },
+    /// Offered by an agent while it was doing something else, and never asked
+    /// for by anybody.
+    Proposed { agent: Option<AgentId>, from: TaskId },
+}
+
+impl Default for TaskOrigin {
+    /// A task with no recorded origin is a task from before this existed, and
+    /// the honest reading of that is "a person put it there": the only way to
+    /// create one then was to type it or to accept a plan, and a plan's tasks
+    /// were accepted by a person too.
+    fn default() -> Self {
+        TaskOrigin::Person
+    }
+}
+
+impl TaskOrigin {
+    /// True when a model asked for this rather than a person.
+    pub fn is_agents(&self) -> bool {
+        !matches!(self, TaskOrigin::Person)
+    }
+
+    /// The agent that asked for it, if one did.
+    pub fn agent(&self) -> Option<&AgentId> {
+        match self {
+            TaskOrigin::Person => None,
+            TaskOrigin::Planned { agent } | TaskOrigin::Subtask { agent, .. } => Some(agent),
+            TaskOrigin::Proposed { agent, .. } => agent.as_ref(),
+        }
+    }
+}
+
 /// One task.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -220,6 +270,9 @@ pub struct Task {
     /// saying so, and therefore no way for the two to disagree (FEAT-076).
     #[serde(default)]
     pub parent: Option<TaskId>,
+    /// Who asked for this task (FEAT-078).
+    #[serde(default)]
+    pub origin: TaskOrigin,
     /// Who is doing it. `None` until routing or the user picks.
     #[serde(default)]
     pub assigned_agent: Option<AgentId>,
@@ -276,6 +329,7 @@ impl Task {
             priority: TaskPriority::default(),
             depends_on: Vec::new(),
             parent: None,
+            origin: TaskOrigin::default(),
             assigned_agent: None,
             implemented_by: None,
             allowed_paths: Vec::new(),

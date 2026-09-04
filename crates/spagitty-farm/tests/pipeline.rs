@@ -938,3 +938,61 @@ fn only_one_thing_is_planned_at_a_time() {
 
     harness.service.collect_plan(&run).unwrap();
 }
+
+// ── Who asked for a task (FEAT-078) ──────────────────────────────────────
+
+#[test]
+fn a_task_a_person_typed_is_recorded_as_theirs() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let mine = harness.task("Something I decided on");
+
+    let task = harness.service.farm().unwrap().task(&mine).unwrap().clone();
+    assert_eq!(task.origin, TaskOrigin::Person);
+    assert!(!task.origin.is_agents());
+}
+
+#[test]
+fn a_planned_task_names_the_agent_that_planned_it() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-origin");
+
+    let run = harness.service.plan(Some(agent.clone())).unwrap();
+    let planned = harness.service.collect_plan(&run).unwrap();
+
+    assert_eq!(planned[0].origin, TaskOrigin::Planned { agent: agent.clone() });
+    assert!(planned[0].origin.is_agents());
+    assert_eq!(planned[0].origin.agent(), Some(&agent));
+}
+
+#[test]
+fn a_subtask_says_which_task_it_was_cut_out_of() {
+    let harness = Harness::new();
+    harness.service.create("Ship it", "").unwrap();
+    let agent = splitter(&harness, "planner-origin-sub");
+    let big = harness.task("Rework the auth module");
+
+    let run = harness.service.decompose(&big, Some(agent.clone())).unwrap();
+    let children = harness.service.collect_plan(&run).unwrap();
+
+    assert_eq!(
+        children[0].origin,
+        TaskOrigin::Subtask {
+            agent,
+            parent: big.clone()
+        }
+    );
+}
+
+#[test]
+fn an_existing_farm_reads_as_the_persons_own_work() {
+    // A task saved before origins existed has no `origin` field. The only ways
+    // to make one then were typing it or accepting a plan, and both are a
+    // person's decision — so the default is the honest reading, not a guess.
+    let task: Task = serde_json::from_str(
+        r#"{"id":"TASK-0001","title":"Old","status":"ready","createdMs":0}"#,
+    )
+    .unwrap();
+    assert_eq!(task.origin, TaskOrigin::Person);
+}

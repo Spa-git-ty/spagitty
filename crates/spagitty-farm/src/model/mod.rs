@@ -33,7 +33,7 @@ pub use farm::{Autonomy, Farm, FarmStatus, Permissions};
 pub use goal::Goal;
 pub use handoff::{Handoff, HandoffStatus, ProposedTask, TestOutcome, TestReport};
 pub use run::{AgentRun, RunOutcome, RunPhase};
-pub use task::{Task, TaskKind, TaskPriority, TaskStatus};
+pub use task::{Task, TaskKind, TaskOrigin, TaskPriority, TaskStatus};
 
 use std::fmt;
 

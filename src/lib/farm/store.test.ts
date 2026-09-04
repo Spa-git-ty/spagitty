@@ -41,6 +41,7 @@ function sampleTask(id: string, overrides: Partial<Task> = {}): Task {
 		status: 'ready',
 		kind: 'general',
 		parent: null,
+		origin: { kind: 'person' },
 		priority: 'normal',
 		dependsOn: [],
 		allowedPaths: [],

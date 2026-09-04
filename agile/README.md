@@ -130,6 +130,7 @@ rather than an audit.
 | [FEAT-074](items/FEAT-074-the-activity-drawer.md) | The activity drawer: a log worth reading | Farm (1Q) | Done |
 | [FEAT-075](items/FEAT-075-the-queue-explains-itself.md) | The queue explains itself | Farm (1Q) | Done |
 | [FEAT-076](items/FEAT-076-the-farm-takes-on-large-work.md) | The farm takes on large work | Farm (1Q) | Done |
+| [FEAT-078](items/FEAT-078-who-asked-for-this-task.md) | Who asked for this task | Farm (1Q) | Done |
 
 ## Bugs
 
