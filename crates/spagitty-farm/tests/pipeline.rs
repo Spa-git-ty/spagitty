@@ -913,7 +913,9 @@ fn deleting_a_heading_does_not_delete_what_was_under_it() {
     let farm = harness.service.farm().unwrap();
     assert!(farm.task(&big).is_none());
     for child in &children {
-        let child = farm.task(&child.id).expect("a child was deleted with its heading");
+        let child = farm
+            .task(&child.id)
+            .expect("a child was deleted with its heading");
         // Work in its own right now, not an orphan pointing at nothing.
         assert_eq!(child.parent, None);
     }
@@ -927,7 +929,10 @@ fn only_one_thing_is_planned_at_a_time() {
     let first = harness.task("One");
     let second = harness.task("Two");
 
-    let run = harness.service.decompose(&first, Some(agent.clone())).unwrap();
+    let run = harness
+        .service
+        .decompose(&first, Some(agent.clone()))
+        .unwrap();
     // The second would share the planning session slot and collect the first
     // one's transcript.
     let error = harness

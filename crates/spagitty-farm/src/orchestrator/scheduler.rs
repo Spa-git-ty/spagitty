@@ -689,7 +689,11 @@ mod tests {
 
     #[test]
     fn a_container_with_one_child_stuck_is_blocked() {
-        for stuck in [TaskStatus::Failed, TaskStatus::Cancelled, TaskStatus::Blocked] {
+        for stuck in [
+            TaskStatus::Failed,
+            TaskStatus::Cancelled,
+            TaskStatus::Blocked,
+        ] {
             let farm = farm(vec![
                 task(1, TaskStatus::Ready),
                 child(2, 1, TaskStatus::Done),
@@ -700,10 +704,16 @@ mod tests {
                 .any(|decision| {
                     matches!(
                         decision,
-                        Decision::Settle { status: TaskStatus::Blocked, .. }
+                        Decision::Settle {
+                            status: TaskStatus::Blocked,
+                            ..
+                        }
                     )
                 });
-            assert!(settled, "a child that is {stuck:?} did not block its container");
+            assert!(
+                settled,
+                "a child that is {stuck:?} did not block its container"
+            );
         }
     }
 
@@ -711,7 +721,10 @@ mod tests {
     fn a_container_settles_even_while_the_farm_is_paused() {
         // Pausing does not un-finish the children, and a heading that stays
         // Ready over five Done tasks is a lie about the state of the work.
-        let mut farm = farm(vec![task(1, TaskStatus::Ready), child(2, 1, TaskStatus::Done)]);
+        let mut farm = farm(vec![
+            task(1, TaskStatus::Ready),
+            child(2, 1, TaskStatus::Done),
+        ]);
         farm.status = FarmStatus::Paused;
         assert!(decide(&farm, &registry(), &Leases::default())
             .iter()
@@ -739,7 +752,9 @@ mod tests {
         farm.max_parallel = 1;
         let reasons = why(&farm, &Leases::default());
         assert!(
-            !reasons.iter().any(|(task, _)| task == &task_id(1).to_string()),
+            !reasons
+                .iter()
+                .any(|(task, _)| task == &task_id(1).to_string()),
             "{reasons:?}"
         );
     }
@@ -751,7 +766,9 @@ mod tests {
         let mut farm = farm(vec![tried]);
 
         farm.max_attempts = 3;
-        assert!(why(&farm, &Leases::default())[0].1.contains("needs a person"));
+        assert!(why(&farm, &Leases::default())[0]
+            .1
+            .contains("needs a person"));
 
         // The same task, on a farm given more rope, is simply queued.
         farm.max_attempts = 5;
