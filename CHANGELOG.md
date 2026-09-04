@@ -14,6 +14,17 @@ stays backward-compatible.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The window no longer freezes while the farm plans.** Asking an agent to
+  break a goal into tasks locked the whole application — every screen, the
+  menus, the window itself — until the planner finished, typically minutes. The
+  planning run was waited on with the farm's session lock held, and every
+  command that starts, stops or schedules a task needs that lock and ran on the
+  main thread. Stop was locked out too, which is the control a person reaches
+  for when nothing responds. The farm's commands now run off the main thread,
+  and no lock is held across a wait, a cancel, or reaping an agent's process.
+
 ## [0.4.1-alpha] - 2026-09-03
 
 The farm shipped in `0.4.0-alpha` with the brand's amber on every palette and
