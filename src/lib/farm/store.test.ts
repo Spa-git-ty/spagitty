@@ -20,6 +20,7 @@ vi.mock('@tauri-apps/api/event', () => ({
 vi.mock('./api', () => ({
 	open: vi.fn(),
 	snapshot: vi.fn(),
+	stale: vi.fn(() => Promise.resolve([])),
 	failure: vi.fn((err: unknown) => ({
 		kind: 'testError',
 		message: typeof err === 'string' ? err : (err as Error)?.message ?? 'failed'
@@ -39,6 +40,7 @@ function sampleTask(id: string, overrides: Partial<Task> = {}): Task {
 		description: 'A sample task',
 		status: 'ready',
 		kind: 'general',
+		parent: null,
 		priority: 'normal',
 		dependsOn: [],
 		allowedPaths: [],
@@ -83,6 +85,7 @@ function sampleFarm(tasks: Task[] = []): Farm {
 		tasks,
 		verification: ['cargo test'],
 		maxParallel: 2,
+		maxAttempts: 3,
 		createdMs: 1000,
 		updatedMs: 1000
 	};
@@ -162,7 +165,6 @@ function sampleSnapshot(tasks: Task[] = []): FarmSnapshot {
 			sources: [{ path: 'AGENTS.md', authoritative: true, bytes: 42 }],
 			text: '# Rules'
 		},
-		stale: [],
 		scoreboard: [
 			{
 				agent: 'claude-1',
@@ -173,7 +175,8 @@ function sampleSnapshot(tasks: Task[] = []): FarmSnapshot {
 				averageMs: 5000
 			}
 		],
-		events: []
+		events: [],
+		waiting: {}
 	};
 }
 
@@ -239,18 +242,21 @@ describe('farmStore.open & getters', () => {
 describe('farmStore events & absorb', () => {
 	it('absorbs agentOutput events into transcripts per task', () => {
 		farmStore.absorb({
+			atMs: 1_700_000_000_000,
 			kind: 'agentOutput',
 			task: 'TASK-001',
 			run: 'run-1',
 			line: 'Compiling project...'
 		});
 		farmStore.absorb({
+			atMs: 1_700_000_000_000,
 			kind: 'agentOutput',
 			task: 'TASK-001',
 			run: 'run-1',
 			line: 'Done.'
 		});
 		farmStore.absorb({
+			atMs: 1_700_000_000_000,
 			kind: 'agentOutput',
 			task: 'TASK-002',
 			run: 'run-2',
@@ -268,12 +274,14 @@ describe('farmStore events & absorb', () => {
 		await farmStore.open('/repo');
 
 		farmStore.absorb({
+			atMs: 1_700_000_000_000,
 			kind: 'farmStatusChanged',
 			status: 'paused'
 		});
 		expect(farmStore.farm?.status).toBe('paused');
 
 		farmStore.absorb({
+			atMs: 1_700_000_000_000,
 			kind: 'taskStatusChanged',
 			task: 'TASK-001',
 			status: 'running',
@@ -301,6 +309,145 @@ describe('farmStore refresh & stop', () => {
 		await farmStore.refresh();
 		expect(farmStore.error).toBe('Network disconnected');
 		expect(farmStore.tasks.length).toBe(1);
+	});
+
+	it('does not ask the backend anything when a transcript line arrives', async () => {
+		// TASK-030. A run produces thousands of these, none of which change
+		// anything a snapshot reports, and each one used to restart the
+		// debounce — so the refresh that did matter never ran until the agent
+		// stopped talking.
+		// A live subscription, not `absorb` by hand: what is being tested is
+		// what the listener decides to do, and `listen` is a no-op if the store
+		// is already subscribed from an earlier test.
+		await farmStore.stop();
+		apiOpen.mockResolvedValueOnce(sampleSnapshot([]));
+		await farmStore.open('/repo');
+		expect(eventHandler, 'no subscription; the rest would assert nothing').not.toBeNull();
+
+		vi.useFakeTimers();
+		try {
+			apiSnapshot.mockClear();
+
+			eventHandler?.({
+				payload: { kind: 'agentOutput', run: 'r1', task: 'TASK-001', line: 'working' }
+			});
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(apiSnapshot).not.toHaveBeenCalled();
+			// It is still applied locally: the pane fills as the agent talks.
+			expect(farmStore.transcript('TASK-001')).toEqual(['working']);
+
+			// Anything else still refreshes.
+			apiSnapshot.mockResolvedValueOnce(sampleSnapshot([]));
+			eventHandler?.({
+				payload: { kind: 'taskStatusChanged', task: 'TASK-001', status: 'done', note: null }
+			});
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(apiSnapshot).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('reads leftover worktrees on open, and not on every refresh', async () => {
+		// TASK-030: the scan runs `git worktree list`, and a refresh happens
+		// after every burst of events.
+		apiOpen.mockResolvedValueOnce(sampleSnapshot([]));
+		vi.mocked(api.stale).mockResolvedValueOnce([
+			{ task: 'TASK-009', path: '/repo/.spagitty/farm/task-009', branch: 'spagitty-farm/x' }
+		]);
+		await farmStore.open('/repo');
+		expect(farmStore.stale).toHaveLength(1);
+
+		vi.mocked(api.stale).mockClear();
+		apiSnapshot.mockResolvedValueOnce(sampleSnapshot([]));
+		await farmStore.refresh();
+		expect(api.stale).not.toHaveBeenCalled();
+		// And what was read on open is still on screen.
+		expect(farmStore.stale).toHaveLength(1);
+	});
+
+	it('answers why a queued task is not running, from the backend', async () => {
+		// FEAT-075. The reason depends on path leases and agent availability,
+		// which only the scheduler holds — so the screen asks rather than
+		// guessing.
+		const snapshot = sampleSnapshot([sampleTask('TASK-001', { status: 'ready' })]);
+		snapshot.waiting = { 'TASK-001': 'TASK-002 is working on the same files.' };
+		apiOpen.mockResolvedValueOnce(snapshot);
+		await farmStore.open('/repo');
+
+		expect(farmStore.waitingFor('TASK-001')).toBe('TASK-002 is working on the same files.');
+		expect(farmStore.waitingFor('TASK-999')).toBeNull();
+	});
+
+	it('lists the drafts a planner proposed', async () => {
+		apiOpen.mockResolvedValueOnce(
+			sampleSnapshot([
+				sampleTask('TASK-001', { status: 'draft' }),
+				sampleTask('TASK-002', { status: 'ready' }),
+				sampleTask('TASK-003', { status: 'draft' })
+			])
+		);
+		await farmStore.open('/repo');
+
+		expect(farmStore.drafts.map((task) => task.id)).toEqual(['TASK-001', 'TASK-003']);
+	});
+
+	it('reads the task list as an outline, parents then children', async () => {
+		// FEAT-076. The list renders as rows, so what it needs is a depth per
+		// row rather than a tree.
+		apiOpen.mockResolvedValueOnce(
+			sampleSnapshot([
+				sampleTask('TASK-001'),
+				sampleTask('TASK-002'),
+				sampleTask('TASK-003', { parent: 'TASK-001', status: 'done' }),
+				sampleTask('TASK-004', { parent: 'TASK-001' })
+			])
+		);
+		await farmStore.open('/repo');
+
+		expect(farmStore.outline.map((row) => [row.task.id, row.depth])).toEqual([
+			['TASK-001', 0],
+			['TASK-003', 1],
+			['TASK-004', 1],
+			['TASK-002', 0]
+		]);
+		// The heading counts what is under it.
+		expect(farmStore.outline[0]).toMatchObject({ done: 1, total: 2 });
+		// A task nothing was cut out of has no fraction to show.
+		expect(farmStore.outline[3]).toMatchObject({ done: 0, total: 0 });
+	});
+
+	it('shows a task whose heading was deleted rather than losing it', async () => {
+		apiOpen.mockResolvedValueOnce(
+			sampleSnapshot([sampleTask('TASK-009', { parent: 'TASK-GONE' })])
+		);
+		await farmStore.open('/repo');
+
+		expect(farmStore.outline.map((row) => [row.task.id, row.depth])).toEqual([['TASK-009', 0]]);
+	});
+
+	it('is already listening while the backend is still answering', async () => {
+		// BUG-022. `farm_open` starts agent detection on a thread and reports
+		// the result as an event a few hundred milliseconds later. Subscribing
+		// after the command returned left a window where that event — the one
+		// that decides whether the farm has any agents — was emitted with
+		// nobody listening, and the screen said "Not installed" about agents
+		// sitting on PATH until something unrelated caused a refresh.
+		await farmStore.stop();
+		eventHandler = null;
+
+		let listeningWhenAsked = false;
+		apiOpen.mockImplementationOnce(async () => {
+			listeningWhenAsked = eventHandler !== null;
+			return sampleSnapshot([]);
+		});
+
+		await farmStore.open('/repo');
+
+		expect(
+			listeningWhenAsked,
+			'the backend was asked to do work before anyone was listening for the answer'
+		).toBe(true);
 	});
 
 	it('stop cleans up event listener and clears error', async () => {

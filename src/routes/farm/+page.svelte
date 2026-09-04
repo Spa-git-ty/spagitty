@@ -7,14 +7,18 @@
 	import TaskDetailPanel from '$lib/farm/components/TaskDetail.svelte';
 	import TaskEditor from '$lib/farm/components/TaskEditor.svelte';
 	import TaskRow from '$lib/farm/components/TaskRow.svelte';
+	import ActivityDrawer from '$lib/farm/components/ActivityDrawer.svelte';
+	import PlanningCard from '$lib/farm/components/PlanningCard.svelte';
 	import Starter from '$lib/farm/components/Starter.svelte';
-	import { AUTONOMY_LEVELS, eventLine, FARM_STATUS_LABELS, PROVIDER_LABELS } from '$lib/farm/describe';
+	import { AUTONOMY_LEVELS, FARM_STATUS_LABELS, PROVIDER_LABELS } from '$lib/farm/describe';
 	import { lines, text } from '$lib/farm/options';
 	import { farmStore } from '$lib/farm/store.svelte';
 	import type { Task, TaskDetail, TaskDraft } from '$lib/farm/types';
 	import { repo } from '$lib/repo.svelte';
+	import { panels } from '$lib/panels.svelte';
 	import Btn from '$lib/ui/Btn.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
+	import Splitter from '$lib/ui/Splitter.svelte';
 	import { dialog } from '$lib/ui/dialog.svelte';
 	import { notice } from '$lib/ui/notice.svelte';
 
@@ -24,13 +28,16 @@
 	 *
 	 * Three columns, and the split is the plan's product principle rather than
 	 * a layout preference. The left column answers *what is the plan*, the
-	 * middle answers *what is happening to this task*, and the strip along the
-	 * bottom answers *what has happened*. A person who can see all three at once
-	 * can supervise; one who has to navigate between them is reading a log.
+	 * middle answers *what is happening to this task*, and the drawer along the
+	 * bottom answers *what has happened* and *what is the agent saying*. A
+	 * person who can see all of it at once can supervise; one who has to
+	 * navigate between them is reading a log.
 	 *
 	 * The screen has no timers. Everything arrives on the farm's event channel,
 	 * which the store subscribes to — see its header for why polling is the
-	 * wrong shape for something that moves at a model's pace.
+	 * wrong shape for something that moves at a model's pace. The one exception
+	 * is the elapsed clock inside `PlanningCard`, which counts something no
+	 * event will ever report.
 	 */
 
 	type Pane = 'tasks' | 'agents' | 'settings';
@@ -59,7 +66,55 @@
 	const tasks = $derived(farmStore.tasks);
 	const progress = $derived(farmStore.progress);
 	const usable = $derived(farmStore.usable);
-	/** The activity strip: everything except the transcript flood. */
+	/** The planning run in flight, if there is one. */
+	const planning = $derived(farmStore.planningRun);
+	/** Tasks a planner proposed that nobody has accepted or discarded yet. */
+	const drafts = $derived(farmStore.drafts);
+
+	/**
+	 * Which proposed tasks are being kept (FEAT-075).
+	 *
+	 * A plan arrives as a set of drafts, and accepting one used to mean opening
+	 * each task and pressing a button in its panel — eight clicks for an
+	 * eight-task plan, with nothing on the list itself saying they were waiting
+	 * for a decision. Everything is picked by default, because a plan that was
+	 * asked for is usually a plan that is wanted.
+	 */
+	let picked = $state<string[]>([]);
+	let pickedFor = $state('');
+
+	$effect(() => {
+		const signature = drafts.map((task) => task.id).join(',');
+		if (signature === pickedFor) return;
+		pickedFor = signature;
+		picked = drafts.map((task) => task.id);
+	});
+
+	function toggle(id: string): void {
+		picked = picked.includes(id) ? picked.filter((kept) => kept !== id) : [...picked, id];
+	}
+
+	async function acceptPlan(): Promise<void> {
+		const ids = [...picked];
+		if (ids.length === 0) return;
+		await act('Could not accept the plan', () => api.readyTasks(ids));
+	}
+
+	async function discardPlan(): Promise<void> {
+		const ids = [...picked];
+		if (ids.length === 0) return;
+		const agreed = await dialog.confirm({
+			title: ids.length === 1 ? `Discard ${ids[0]}` : `Discard ${ids.length} proposed tasks`,
+			body:
+				'They were proposed by an agent and never started, so nothing is lost but the ' +
+				'proposal. Planning again produces a new one.',
+			confirmLabel: 'Discard',
+			danger: true
+		});
+		if (!agreed) return;
+		await act('Could not discard the plan', () => api.discardTasks(ids));
+	}
+	/** The activity list: everything except the transcript flood, which has its own tab. */
 	const activity = $derived(farmStore.activity.filter((event) => event.kind !== 'agentOutput'));
 
 	/**
@@ -213,6 +268,15 @@
 		</div>
 	</header>
 
+	{#if planning}
+		<PlanningCard
+			lines={farmStore.planning}
+			startedMs={planning.startedMs}
+			{busy}
+			oncancel={() => act('Could not stop the planner', api.cancelPlan)}
+		/>
+	{/if}
+
 	<div class="body">
 		{#if repo.info === null}
 			<!--
@@ -335,14 +399,40 @@
 
 				{#if farm}
 					<h2 class="heading">Agents at once</h2>
+					<p class="note">
+						What keeps a farm supervisable is how many run at once, not how many tasks
+						there are. Every one of them is a model you are paying for and a worktree on
+						your disk.
+					</p>
 					<div class="chips">
-						{#each [1, 2, 3, 4] as count (count)}
+						{#each [1, 2, 3, 4, 5, 6, 7, 8] as count (count)}
 							<Chip
 								active={farm.maxParallel === count}
 								disabled={busy}
 								onclick={() =>
 									act('Could not change the limit', () =>
 										api.configure({ maxParallel: count })
+									)}
+							>
+								{count}
+							</Chip>
+						{/each}
+					</div>
+
+					<h2 class="heading">Attempts before a person is needed</h2>
+					<p class="note">
+						A task sent back by verification or review is tried again, up to this many
+						times. The first failure is normal, the second is usually a bad prompt, and
+						the third is a task nobody has understood yet.
+					</p>
+					<div class="chips">
+						{#each [1, 2, 3, 5, 10] as count (count)}
+							<Chip
+								active={farm.maxAttempts === count}
+								disabled={busy}
+								onclick={() =>
+									act('Could not change the attempts', () =>
+										api.configure({ maxAttempts: count })
 									)}
 							>
 								{count}
@@ -389,7 +479,17 @@
 							no longer has. Anything with uncommitted work is kept.
 						</p>
 						<div class="actions">
-							<Btn disabled={busy} onclick={() => act('Could not clean up', api.sweep)}>
+							<Btn
+								disabled={busy}
+								onclick={() =>
+									act('Could not clean up', async () => {
+										await api.sweep();
+										// The leftovers list is not part of a
+										// snapshot any more, so the action that
+										// changes it asks for it again.
+										await farmStore.leftovers();
+									})}
+							>
 								Clean up
 							</Btn>
 						</div>
@@ -437,6 +537,35 @@
 					</div>
 				</div>
 
+				{#if drafts.length > 0}
+					<!--
+						A plan is one decision, so it gets one band rather than a
+						button inside each task's panel.
+					-->
+					<div class="proposed">
+						<span class="note">
+							{drafts.length}
+							{drafts.length === 1 ? 'task was proposed' : 'tasks were proposed'} and
+							nothing has started them.
+						</span>
+						<div class="chips">
+							<Chip
+								onclick={() =>
+									(picked =
+										picked.length === drafts.length ? [] : drafts.map((task) => task.id))}
+							>
+								{picked.length === drafts.length ? 'None' : 'All'}
+							</Chip>
+							<Btn primary disabled={busy || picked.length === 0} onclick={acceptPlan}>
+								Add {picked.length} to the plan
+							</Btn>
+							<Btn danger quiet disabled={busy || picked.length === 0} onclick={discardPlan}>
+								Discard
+							</Btn>
+						</div>
+					</div>
+				{/if}
+
 				{#if farmStore.needsYou.length > 0}
 					<p class="note attention">
 						{farmStore.needsYou.length}
@@ -450,11 +579,21 @@
 					</p>
 				{:else}
 					<div class="tasks">
-						{#each tasks as task (task.id)}
+						{#each farmStore.outline as row (row.task.id)}
+							{@const task = row.task}
 							<TaskRow
 								{task}
+								depth={row.depth}
+								progress={row.total > 0 ? { done: row.done, total: row.total } : null}
 								selected={selected === task.id}
 								byId={farmStore.byId}
+								blocked={farmStore.waitingFor(task.id)}
+								pick={task.status === 'draft'
+									? {
+											on: picked.includes(task.id),
+											ontoggle: () => toggle(task.id)
+										}
+									: null}
 								onselect={(id) => {
 									selected = id;
 									editing = null;
@@ -492,6 +631,12 @@
 						onreview={() => act('Could not request a review', () => api.reviewTask(detail!.task.id))}
 						onmerge={() => act('Could not merge', () => api.mergeTask(detail!.task.id))}
 						onready={() => act('Could not add to the plan', () => api.readyTask(detail!.task.id))}
+						ondecompose={() =>
+							act('Could not break the task down', () =>
+								api.decompose(detail!.task.id, null)
+							)}
+						children={farmStore.outline.find((row) => row.task.id === detail!.task.id) ??
+							null}
 						onedit={() => (editing = detail!.task)}
 						ondelete={() => deleteTask(detail!.task.id)}
 						onopenDiff={openDiff}
@@ -503,12 +648,19 @@
 		{/if}
 	</div>
 
-	{#if farm && activity.length > 0}
-		<footer class="activity">
-			{#each activity.slice(-6) as event, index (index)}
-				<span class="line">{eventLine(event)}</span>
-			{/each}
-		</footer>
+	{#if farm}
+		{#if !panels.isHidden('farmLog')}
+			<Splitter panel="farmLog" label="Resize the log" />
+		{/if}
+		<ActivityDrawer
+			events={activity}
+			{tasks}
+			transcript={(id) => farmStore.transcript(id)}
+			selected={selected}
+			planning={planning !== null}
+			collapsed={panels.isHidden('farmLog')}
+			ontoggle={() => panels.toggleHidden('farmLog')}
+		/>
 	{/if}
 </div>
 
@@ -743,31 +895,17 @@
 		background-color: var(--stripe);
 	}
 
-	/*
-	 * The activity strip.
-	 *
-	 * Along the bottom rather than in a column, because it is the answer to
-	 * "what just happened" and not something anybody reads top to bottom. Six
-	 * lines: enough to catch what moved while you were looking elsewhere.
-	 */
-	.activity {
-		flex: none;
+	/* The band that turns a proposed plan into one decision. */
+	.proposed {
 		display: flex;
-		flex-direction: column;
-		gap: 1px;
-		padding: 6px 12px;
-		border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
-		background-color: var(--chrome-veil);
-		font-size: var(--fs-mono);
-		color: var(--muted);
-		max-height: 7.5em;
-		overflow: hidden;
-		margin-top: auto;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		flex-wrap: wrap;
+		padding: 8px 10px;
+		border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+		border-radius: var(--r-row);
+		background-color: var(--selection);
 	}
 
-	.line {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
 </style>

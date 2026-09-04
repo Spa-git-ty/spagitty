@@ -69,6 +69,15 @@ impl TaskStatus {
         )
     }
 
+    /// In the queue: the scheduler would start this if it could.
+    ///
+    /// `Waiting` is in and `Draft` is not — a draft is not in the plan, which
+    /// is a decision somebody has yet to make rather than a queue the farm is
+    /// failing to serve.
+    pub fn is_queued(self) -> bool {
+        matches!(self, TaskStatus::Ready | TaskStatus::Waiting)
+    }
+
     /// Something is running or waiting on this task, so its worktree must stay.
     pub fn is_active(self) -> bool {
         matches!(
@@ -118,6 +127,17 @@ impl TaskStatus {
             Review => matches!(next, Done | Assigned | Blocked | Failed | Waiting),
             Done | Failed | Cancelled => false,
         }
+    }
+
+    /// What a *container* may become.
+    ///
+    /// Containers do not follow the machine above, because that machine
+    /// describes the life of a task that runs: assigned to an agent, verified,
+    /// reviewed. A container has no agent, no worktree and no run — it is a
+    /// heading over the work, and it follows its children (FEAT-076). The two
+    /// ends it can reach are the two its children can put it at.
+    pub fn can_settle(self, next: TaskStatus) -> bool {
+        !self.is_terminal() && matches!(next, TaskStatus::Done | TaskStatus::Blocked)
     }
 }
 
@@ -191,6 +211,15 @@ pub struct Task {
     /// Tasks that must be `Done` before this one may start.
     #[serde(default)]
     pub depends_on: Vec<TaskId>,
+    /// The task this one was cut out of, when an agent broke a big one down.
+    ///
+    /// A task with children is a *container*: it is never run, it is done when
+    /// its children are, and it exists so a week of work can be one line in the
+    /// plan and five lines underneath it. Whether a task *is* a container is
+    /// derived from whether anything names it here — there is no second field
+    /// saying so, and therefore no way for the two to disagree (FEAT-076).
+    #[serde(default)]
+    pub parent: Option<TaskId>,
     /// Who is doing it. `None` until routing or the user picks.
     #[serde(default)]
     pub assigned_agent: Option<AgentId>,
@@ -246,6 +275,7 @@ impl Task {
             kind: TaskKind::default(),
             priority: TaskPriority::default(),
             depends_on: Vec::new(),
+            parent: None,
             assigned_agent: None,
             implemented_by: None,
             allowed_paths: Vec::new(),
@@ -262,8 +292,17 @@ impl Task {
     }
 
     /// True when the task has been round the loop as many times as it may.
+    ///
+    /// The limit is the farm's, so a long piece of work can be given more rope
+    /// than a routine one; [`Self::MAX_ATTEMPTS`] is the default it starts at.
+    pub fn is_exhausted_at(&self, limit: u32) -> bool {
+        self.attempts >= limit
+    }
+
+    /// True at the default limit. Kept for the callers that have no farm to
+    /// hand — the tests of this module, and nothing else.
     pub fn is_exhausted(&self) -> bool {
-        self.attempts >= Self::MAX_ATTEMPTS
+        self.is_exhausted_at(Self::MAX_ATTEMPTS)
     }
 }
 

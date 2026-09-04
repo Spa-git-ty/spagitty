@@ -15,6 +15,7 @@ import {
 	CHANGES_FILES_W,
 	DETAIL_W,
 	DIFF_FILES_W,
+	FARM_LOG_H,
 	RAIL_W,
 	REQUESTS_DETAIL_W,
 	STASH_ENTRIES_W
@@ -173,7 +174,8 @@ describe('reset', () => {
 			requestsDetail: REQUESTS_DETAIL_W,
 			changesFiles: CHANGES_FILES_W,
 			diffFiles: DIFF_FILES_W,
-			stashEntries: STASH_ENTRIES_W
+			stashEntries: STASH_ENTRIES_W,
+			farmLog: FARM_LOG_H
 		});
 	});
 });
@@ -307,7 +309,7 @@ describe('the panel registry', () => {
 	/** Which edge a panel is anchored to is what decides its drag direction. */
 	it('declares a side for every panel', () => {
 		for (const [key, spec] of Object.entries(PANELS)) {
-			expect(['left', 'right'], key).toContain(spec.side);
+			expect(['left', 'right', 'bottom'], key).toContain(spec.side);
 			expect(spec.min, key).toBeLessThan(spec.max);
 			expect(spec.initial, key).toBeGreaterThanOrEqual(spec.min);
 			expect(spec.initial, key).toBeLessThanOrEqual(spec.max);

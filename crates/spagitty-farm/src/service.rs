@@ -32,7 +32,7 @@
 //! are needed together. Agent runs happen on their own threads with no lock
 //! held; they take it again to record what happened.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -56,17 +56,17 @@ use crate::workspace::{self, Leases};
 /// A trait so the crate has no opinion about Tauri. The Tauri layer emits; the
 /// tests collect.
 pub trait Observer: Send + Sync + std::fmt::Debug {
-    fn event(&self, event: FarmEvent);
+    fn event(&self, event: Recorded);
 }
 
 /// An observer that keeps everything, for tests and headless use.
 #[derive(Debug, Default)]
 pub struct Recorder {
-    events: Mutex<Vec<FarmEvent>>,
+    events: Mutex<Vec<Recorded>>,
 }
 
 impl Recorder {
-    pub fn events(&self) -> Vec<FarmEvent> {
+    pub fn events(&self) -> Vec<Recorded> {
         self.events.lock().expect("recorded events").clone()
     }
 
@@ -75,7 +75,7 @@ impl Recorder {
     pub fn statuses(&self) -> Vec<(TaskId, TaskStatus)> {
         self.events()
             .into_iter()
-            .filter_map(|event| match event {
+            .filter_map(|recorded| match recorded.event {
                 FarmEvent::TaskStatusChanged { task, status, .. } => Some((task, status)),
                 _ => None,
             })
@@ -84,7 +84,7 @@ impl Recorder {
 }
 
 impl Observer for Recorder {
-    fn event(&self, event: FarmEvent) {
+    fn event(&self, event: Recorded) {
         self.events.lock().expect("recorded events").push(event);
     }
 }
@@ -99,12 +99,33 @@ struct RunSink {
 
 impl Sink for RunSink {
     fn line(&self, text: &str) {
-        self.observer.event(FarmEvent::AgentOutput {
+        // Stamped here rather than when it reaches a screen: this is the moment
+        // the agent said it, and a transcript timed by when the webview
+        // happened to render it would be a transcript of the interface.
+        self.observer.event(Recorded::now(FarmEvent::AgentOutput {
             run: self.run.clone(),
             task: self.task.clone(),
             line: text.to_string(),
-        });
+        }));
     }
+}
+
+/// One process the farm is about to start.
+///
+/// A struct rather than seven parameters. They arrive together, they are all
+/// required, and half of them are identifiers of the same shape — which is
+/// exactly the argument list where a caller silently swaps two and nothing
+/// complains.
+struct Launch {
+    run: RunId,
+    task: TaskId,
+    agent: AgentId,
+    phase: RunPhase,
+    command: crate::agent::AgentCommand,
+    /// Where the process runs: a task's own worktree, never the user's checkout.
+    workdir: PathBuf,
+    /// How to read what it prints. See [`crate::execution::narrate`].
+    narrator: Box<dyn execution::narrate::Narrator>,
 }
 
 /// The mutable heart of a farm.
@@ -121,6 +142,13 @@ struct State {
     change_requests: HashMap<TaskId, String>,
     verifications: HashMap<TaskId, Verification>,
     reviews: HashMap<TaskId, Review>,
+    /// The task a planning run is breaking down, when it is breaking one down
+    /// rather than planning the goal (FEAT-076).
+    ///
+    /// Held here rather than passed to `collect_plan`, because the collector
+    /// runs on a thread the Tauri layer spawned from a command that has already
+    /// returned: there is nobody left holding the argument.
+    planning_parent: Option<TaskId>,
 }
 
 /// One repository's farm.
@@ -131,6 +159,15 @@ pub struct FarmService {
     observer: Arc<dyn Observer>,
     /// The agent processes running right now, by task.
     sessions: Mutex<HashMap<TaskId, Session>>,
+    /// The event history, in memory.
+    ///
+    /// The log on disk is still the record — this is loaded from it once, when
+    /// the farm opens, and appended to as events are emitted. It exists because
+    /// the interface asks for the history after every burst of events, and
+    /// answering by reading and re-parsing two thousand JSON objects made the
+    /// cost of watching a farm proportional to how much it had already done
+    /// (TASK-030).
+    recent: Mutex<VecDeque<Recorded>>,
 }
 
 impl FarmService {
@@ -149,6 +186,7 @@ impl FarmService {
     /// checked yet.
     pub fn open(repo: impl Into<PathBuf>, observer: Arc<dyn Observer>) -> Self {
         let repo = repo.into();
+        let repo_for_events = repo.clone();
         let registry: AgentRegistry = store::load_registry(&repo).unwrap_or_default();
         let farm = store::load_farm(&repo);
         let service = FarmService {
@@ -160,6 +198,7 @@ impl FarmService {
             registry: Mutex::new(registry),
             observer,
             sessions: Mutex::new(HashMap::new()),
+            recent: Mutex::new(store::load_events(&repo_for_events).into()),
         };
         service.recover();
         service
@@ -276,12 +315,73 @@ impl FarmService {
         Ok(updated)
     }
 
-    pub fn events(&self) -> Vec<FarmEvent> {
-        store::load_events(&self.repo)
+    /// The whole history the farm is holding, oldest first.
+    pub fn events(&self) -> Vec<Recorded> {
+        self.recent
+            .lock()
+            .expect("recent events lock")
+            .iter()
+            .cloned()
+            .collect()
+    }
+
+    /// The last `limit` events, oldest first.
+    ///
+    /// What a screen actually renders is a screenful and a scrollback, not the
+    /// whole history, and every event sent is one serialised across the bridge.
+    pub fn events_tail(&self, limit: usize) -> Vec<Recorded> {
+        let recent = self.recent.lock().expect("recent events lock");
+        recent
+            .iter()
+            .skip(recent.len().saturating_sub(limit))
+            .cloned()
+            .collect()
     }
 
     pub fn runs(&self) -> Vec<AgentRun> {
         self.state.lock().expect("farm lock").runs.clone()
+    }
+
+    /// Why each queued task is not running, by task.
+    ///
+    /// The scheduler's own answer rather than a second opinion — see
+    /// [`scheduler::why_waiting`].
+    pub fn waiting_reasons(&self) -> Vec<(TaskId, String)> {
+        let state = self.state.lock().expect("farm lock");
+        let Some(farm) = state.farm.as_ref() else {
+            return Vec::new();
+        };
+        let registry = self.registry.lock().expect("registry lock");
+        scheduler::why_waiting(farm, &registry, &state.leases)
+    }
+
+    /// Move several drafts into the plan at once.
+    ///
+    /// One call rather than one per task, because accepting a plan is one
+    /// decision: eight round trips would be eight writes of the farm file and
+    /// eight chances to land half a plan.
+    pub fn ready_all(&self, ids: &[TaskId]) -> Result<()> {
+        for id in ids {
+            // A task that has already moved is not an error here: accepting a
+            // plan twice is a double click, not a failure.
+            if let Some(status) = self
+                .farm()
+                .and_then(|farm| farm.task(id).map(|task| task.status))
+            {
+                if status == TaskStatus::Draft {
+                    self.ready(id)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Throw several drafts away.
+    pub fn discard_all(&self, ids: &[TaskId]) -> Result<()> {
+        for id in ids {
+            self.delete_task(id)?;
+        }
+        Ok(())
     }
 
     pub fn scoreboard(&self) -> Vec<(AgentId, router::Record)> {
@@ -406,7 +506,12 @@ impl FarmService {
 
     /// Stop whatever is running for this task and cancel it.
     pub fn cancel_task(&self, id: &TaskId) -> Result<()> {
-        if let Some(session) = self.sessions.lock().expect("sessions lock").remove(id) {
+        // Out of the map first, cancelled after — the sessions lock is not held
+        // while the child is signalled and, more to the point, not held while
+        // the `Session` is dropped, which joins its reader threads and reaps
+        // the process. See [`Self::collect_plan`] for what holding it costs.
+        let running = self.sessions.lock().expect("sessions lock").remove(id);
+        if let Some(session) = running {
             session.cancel();
         }
         self.set_status(id, TaskStatus::Cancelled, Some("Stopped by hand.".into()))
@@ -465,6 +570,14 @@ impl FarmService {
                 ));
             }
             farm.tasks.retain(|candidate| &candidate.id != id);
+            // Anything cut out of it becomes work in its own right rather than
+            // an orphan pointing at a task that is gone. Deleting a heading is
+            // not deleting what was under it (FEAT-076).
+            for child in farm.tasks.iter_mut() {
+                if child.parent.as_ref() == Some(id) {
+                    child.parent = None;
+                }
+            }
             state.leases.release(id);
             self.persist(&state)?;
             self.provider_of(&task)
@@ -497,7 +610,8 @@ impl FarmService {
             .cloned()
             .collect();
         for task in running {
-            if let Some(session) = self.sessions.lock().expect("sessions lock").remove(&task) {
+            let session = self.sessions.lock().expect("sessions lock").remove(&task);
+            if let Some(session) = session {
                 session.cancel();
             }
         }
@@ -547,9 +661,44 @@ impl FarmService {
                             self.set_status(&task, TaskStatus::Blocked, Some(error.to_string()));
                     }
                 }
+                scheduler::Decision::Settle { task, status } => {
+                    let _ = self.settle(&task, status);
+                }
             }
         }
         self.emit_farm_status();
+    }
+
+    /// Move a container to where its children have put it (FEAT-076).
+    ///
+    /// Deliberately not [`Self::set_status`]: that enforces the machine a task
+    /// with a *run* follows — assigned, verified, reviewed — and a container has
+    /// no run to follow it with. `TaskStatus::can_settle` is the rule that
+    /// applies instead, and it is in the model beside the other one.
+    fn settle(&self, id: &TaskId, status: TaskStatus) -> Result<()> {
+        {
+            let mut state = self.state.lock().expect("farm lock");
+            let farm = state.farm.as_mut().ok_or(Error::NoFarm)?;
+            let task = farm
+                .task_mut(id)
+                .ok_or_else(|| Error::NoSuchTask(id.clone()))?;
+            if !task.status.can_settle(status) {
+                return Ok(());
+            }
+            task.status = status;
+            task.note = match status {
+                TaskStatus::Blocked => Some("Something underneath this did not finish.".into()),
+                _ => None,
+            };
+            task.updated_ms = now_ms();
+            self.persist(&state)?;
+        }
+        self.emit(FarmEvent::TaskStatusChanged {
+            task: id.clone(),
+            status,
+            note: None,
+        });
+        Ok(())
     }
 
     /// Run one task now, whatever the scheduler thinks.
@@ -567,6 +716,13 @@ impl FarmService {
                 .clone();
 
             let graph = crate::orchestrator::Graph::new(&farm.tasks);
+            if graph.is_container(id) {
+                // Running the heading would cut a worktree for a task whose
+                // whole content is "these five things" (FEAT-076).
+                return Err(Error::Refused(
+                    "This task was broken down. Run the tasks underneath it instead.".into(),
+                ));
+            }
             let unmet = graph.unmet(&task);
             if !unmet.is_empty() {
                 return Err(Error::Refused(format!(
@@ -689,26 +845,28 @@ impl FarmService {
             },
         );
 
-        self.spawn_run(
+        self.spawn_run(Launch {
             run,
-            task.id,
-            definition.id,
-            RunPhase::Implementation,
+            task: task.id,
+            phase: RunPhase::Implementation,
             command,
-            workspace.path,
-        )
+            workdir: workspace.path,
+            narrator: adapter_for(definition.provider).narrator(),
+            agent: definition.id,
+        })
     }
 
     /// Start a process and the thread that waits for it.
-    fn spawn_run(
-        &self,
-        run: RunId,
-        task: TaskId,
-        agent: AgentId,
-        phase: RunPhase,
-        command: crate::agent::AgentCommand,
-        workdir: PathBuf,
-    ) -> Result<()> {
+    fn spawn_run(&self, launch: Launch) -> Result<()> {
+        let Launch {
+            run,
+            task,
+            agent,
+            phase,
+            command,
+            workdir,
+            narrator,
+        } = launch;
         let log = execution::log::log_path(&self.repo, &task, &run);
         let transcript = TranscriptWriter::create(&log)?;
 
@@ -718,7 +876,7 @@ impl FarmService {
             task: task.clone(),
         });
 
-        let session = execution::start(&command, &workdir, transcript, sink)?;
+        let session = execution::start(&command, &workdir, transcript, sink, narrator)?;
 
         {
             let mut state = self.state.lock().expect("farm lock");
@@ -873,16 +1031,19 @@ impl FarmService {
 
         self.set_status(id, TaskStatus::Verification, None)?;
 
-        let observer = self.observer.clone();
+        // Through `emit`, not straight to the observer. These two used to go
+        // directly to the interface, which meant a verification was on screen
+        // while it happened and in no record afterwards: it was in neither the
+        // log on disk nor the history a reopened farm reads back.
         let task_id = id.clone();
         for command in &commands {
-            observer.event(FarmEvent::VerificationStarted {
+            self.emit(FarmEvent::VerificationStarted {
                 task: task_id.clone(),
                 command: command.clone(),
             });
         }
         let mut report = |result: &CommandResult| {
-            observer.event(FarmEvent::VerificationFinished {
+            self.emit(FarmEvent::VerificationFinished {
                 task: task_id.clone(),
                 command: result.command.clone(),
                 passed: result.passed,
@@ -979,14 +1140,15 @@ impl FarmService {
         );
         // `spawn_run` sets the task to Running, which is what the interface
         // should show: an agent is executing against this task.
-        self.spawn_run(
+        self.spawn_run(Launch {
             run,
-            id.clone(),
-            reviewer.id,
-            RunPhase::Review,
+            task: id.clone(),
+            phase: RunPhase::Review,
             command,
             workdir,
-        )
+            narrator: adapter_for(reviewer.provider).narrator(),
+            agent: reviewer.id,
+        })
     }
 
     fn conclude_review(&self, id: &TaskId, reviewer: &AgentId, transcript: &str) -> Result<()> {
@@ -1108,7 +1270,7 @@ impl FarmService {
             let state = self.state.lock().expect("farm lock");
             let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
             let task = farm.task(id).ok_or_else(|| Error::NoSuchTask(id.clone()))?;
-            (task.is_exhausted(), farm.autonomy)
+            (task.is_exhausted_at(farm.max_attempts), farm.autonomy)
         };
 
         self.state.lock().expect("farm lock").leases.release(id);
@@ -1132,6 +1294,42 @@ impl FarmService {
     /// is read with [`Self::collect_plan`]. Two steps rather than one because
     /// the planning run streams like any other and the interface shows it.
     pub fn plan(&self, agent: Option<AgentId>) -> Result<RunId> {
+        let prompt = {
+            let state = self.state.lock().expect("farm lock");
+            let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
+            context::planning(farm, &policy::read(&self.repo))
+        };
+        self.start_planning(prompt, None, agent)
+    }
+
+    /// Ask an agent to break one task into smaller ones (FEAT-076).
+    ///
+    /// The same machinery as [`Self::plan`] pointed at a task instead of the
+    /// goal. The children arrive as drafts, and the task they came out of
+    /// becomes a container the moment they are accepted.
+    pub fn decompose(&self, id: &TaskId, agent: Option<AgentId>) -> Result<RunId> {
+        let prompt = {
+            let state = self.state.lock().expect("farm lock");
+            let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
+            let task = farm.task(id).ok_or_else(|| Error::NoSuchTask(id.clone()))?;
+            if task.status.is_terminal() {
+                return Err(Error::Refused(
+                    "That task is finished. Breaking it down would produce work nobody asked for."
+                        .into(),
+                ));
+            }
+            context::decomposition(farm, task, &policy::read(&self.repo))
+        };
+        self.start_planning(prompt, Some(id.clone()), agent)
+    }
+
+    /// Start a planning run, whatever it is planning.
+    fn start_planning(
+        &self,
+        prompt: String,
+        parent: Option<TaskId>,
+        agent: Option<AgentId>,
+    ) -> Result<RunId> {
         let definition = {
             let registry = self.registry.lock().expect("registry lock");
             match agent {
@@ -1142,11 +1340,19 @@ impl FarmService {
             }
         };
 
-        let prompt = {
-            let state = self.state.lock().expect("farm lock");
+        // One planning run at a time. Two would share the `planning` session
+        // slot and the second would collect the first one's transcript, which
+        // is the kind of fault that shows up as a plan that makes no sense.
+        {
+            let mut state = self.state.lock().expect("farm lock");
             let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
-            context::planning(farm, &policy::read(&self.repo))
-        };
+            if farm.status == FarmStatus::Planning {
+                return Err(Error::Refused(
+                    "Something is already being planned. Wait for it, or stop it.".into(),
+                ));
+            }
+            state.planning_parent = parent;
+        }
 
         self.set_farm_status(FarmStatus::Planning)?;
 
@@ -1171,7 +1377,13 @@ impl FarmService {
         // The planner runs in the repository itself, read-only. It is told not
         // to change anything, and it has no worktree of its own because it is
         // not producing a change to review.
-        let session = execution::start(&command, &self.repo, transcript, sink)?;
+        let session = execution::start(
+            &command,
+            &self.repo,
+            transcript,
+            sink,
+            adapter_for(definition.provider).narrator(),
+        )?;
 
         self.emit(FarmEvent::AgentStarted {
             run: run.clone(),
@@ -1208,20 +1420,60 @@ impl FarmService {
     /// becoming five agent runs.
     pub fn collect_plan(&self, run: &RunId) -> Result<Vec<Task>> {
         let planning_task = TaskId::new("planning");
-        if let Some(session) = self
+        // Taken out of the map on its own line, deliberately. Written as
+        // `if let Some(session) = self.sessions.lock()…remove(&planning_task)`
+        // the guard is a temporary of the scrutinee, so on edition 2021 it
+        // lives to the end of the `if let` — and `session.wait()` then holds
+        // the sessions lock for the whole planning run. Every command that
+        // starts, stops or schedules a task takes that lock, and they run on
+        // the main thread, so the window froze until the planner finished
+        // (BUG-020). `await_task` has always had the shape this now copies.
+        let waiting = self
             .sessions
             .lock()
             .expect("sessions lock")
-            .remove(&planning_task)
-        {
-            session.wait();
-        }
+            .remove(&planning_task);
+        let ended = match waiting {
+            Some(session) => session.wait(),
+            // Nothing to wait for: the run is already over, or was never
+            // started. Treated as a clean end so the transcript is still read.
+            None => execution::Ended::Ok,
+        };
+
+        let outcome = match &ended {
+            execution::Ended::Ok => RunOutcome::Completed { exit_code: 0 },
+            execution::Ended::Cancelled => RunOutcome::Cancelled,
+            execution::Ended::Failed { code, message } => RunOutcome::Failed {
+                exit_code: *code,
+                reason: message.clone(),
+            },
+        };
         {
             let mut state = self.state.lock().expect("farm lock");
             if let Some(entry) = state.runs.iter_mut().find(|entry| &entry.id == run) {
-                entry.outcome = RunOutcome::Completed { exit_code: 0 };
+                entry.outcome = outcome;
                 entry.ended_ms = Some(now_ms());
             }
+        }
+
+        self.emit(FarmEvent::AgentStopped {
+            run: run.clone(),
+            task: planning_task.clone(),
+            ok: ended == execution::Ended::Ok,
+            reason: match &ended {
+                execution::Ended::Failed { message, .. } => Some(message.clone()),
+                execution::Ended::Cancelled => Some("Stopped by hand.".into()),
+                execution::Ended::Ok => None,
+            },
+        });
+
+        // A cancelled planner has said half of something. Adopting that would
+        // put an arbitrary prefix of a decomposition into the plan, which is
+        // worse than nothing: the tasks look deliberate.
+        if ended == execution::Ended::Cancelled {
+            self.state.lock().expect("farm lock").planning_parent = None;
+            self.set_farm_status(FarmStatus::Idle)?;
+            return Ok(Vec::new());
         }
 
         let transcript =
@@ -1230,13 +1482,31 @@ impl FarmService {
 
         let tasks = {
             let mut state = self.state.lock().expect("farm lock");
+            let parent = state.planning_parent.take();
             let farm = state.farm.as_mut().ok_or(Error::NoFarm)?;
-            let tasks = planner::adopt(farm, &plan)?;
+            let tasks = planner::adopt_under(farm, &plan, parent.as_ref())?;
             farm.tasks.extend(tasks.clone());
             farm.status = FarmStatus::Idle;
             self.persist(&state)?;
             tasks
         };
+
+        // A planning run that produced nothing used to end in silence: the
+        // status chip went back to Idle and the plan stayed empty, with no way
+        // to tell that from a planner that had not been asked. Whatever went
+        // wrong — a refusal, a rate limit, an answer with no plan block — the
+        // transcript has it, and the screen now says where to look.
+        if tasks.is_empty() {
+            self.emit(FarmEvent::Failed {
+                message: match &ended {
+                    execution::Ended::Failed { message, .. } => {
+                        format!("The planner did not finish: {message}")
+                    }
+                    _ => "The planner produced no tasks. Its transcript says what it did instead."
+                        .to_string(),
+                },
+            });
+        }
 
         for task in &tasks {
             self.emit(FarmEvent::TaskCreated {
@@ -1246,6 +1516,28 @@ impl FarmService {
         }
         self.emit_farm_status();
         Ok(tasks)
+    }
+
+    /// Stop a planning run.
+    ///
+    /// The session is signalled but *not* removed: the thread inside
+    /// [`Self::collect_plan`] owns it and is waiting on it, and it is that
+    /// thread which decides what a cancelled plan means. Taking it away here
+    /// would leave the collector reading a half-written transcript with nothing
+    /// telling it the run had been stopped.
+    ///
+    /// The lock is held across `cancel`, which sends a signal and returns; it
+    /// never waits for the process, which is the distinction BUG-020 turned on.
+    pub fn cancel_plan(&self) -> Result<()> {
+        if let Some(session) = self
+            .sessions
+            .lock()
+            .expect("sessions lock")
+            .get(&TaskId::new("planning"))
+        {
+            session.cancel();
+        }
+        Ok(())
     }
 
     // ── Recovery ─────────────────────────────────────────────────────────
@@ -1357,7 +1649,19 @@ impl FarmService {
     }
 
     fn emit(&self, event: FarmEvent) {
+        let event = Recorded::now(event);
         let _ = store::append_event(&self.repo, &event);
+        // Transcript lines are deliberately not kept, here or on disk: one run
+        // produces thousands, and they would push the history out within a
+        // single agent run. They reach the interface as events and are read
+        // back from the run's own log.
+        if !event.is_transcript() {
+            let mut recent = self.recent.lock().expect("recent events lock");
+            recent.push_back(event.clone());
+            while recent.len() > store::MAX_EVENTS {
+                recent.pop_front();
+            }
+        }
         self.observer.event(event);
     }
 

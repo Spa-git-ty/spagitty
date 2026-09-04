@@ -104,6 +104,14 @@ export interface Task {
 	kind: TaskKind;
 	priority: TaskPriority;
 	dependsOn: string[];
+	/**
+	 * The task this one was cut out of (FEAT-076).
+	 *
+	 * A task with children is a container: never run, done when its children
+	 * are. Whether a task *is* one is derived from whether anything names it
+	 * here, so there is no second field that can disagree.
+	 */
+	parent: string | null;
 	assignedAgent: string | null;
 	implementedBy: string | null;
 	allowedPaths: string[];
@@ -160,6 +168,8 @@ export interface Farm {
 	tasks: Task[];
 	verification: string[];
 	maxParallel: number;
+	/** How many times a task may be sent back before it needs a person. */
+	maxAttempts: number;
 	createdMs: number;
 	updatedMs: number;
 }
@@ -287,15 +297,31 @@ export type FarmEvent =
 	| { kind: 'taskProposed'; from: string; title: string }
 	| { kind: 'failed'; message: string };
 
+/**
+ * An event, and when it happened.
+ *
+ * Flattened on the wire: a recorded event is the event's own object with one
+ * more key. `atMs` is zero for events written before the field existed, which
+ * the interface shows as no time rather than as 1970 (FEAT-074).
+ */
+export type RecordedEvent = FarmEvent & { atMs: number };
+
 export interface FarmSnapshot {
 	farm: Farm | null;
 	agents: AgentStatus[];
 	undetected: AgentProvider[];
-	events: FarmEvent[];
+	events: RecordedEvent[];
 	runs: AgentRun[];
 	policy: Policy;
-	stale: StaleWorkspace[];
 	scoreboard: AgentScore[];
+	/**
+	 * Why each queued task is not running, by task id.
+	 *
+	 * Only what the screen cannot work out for itself — a contended path, a
+	 * full parallelism limit, no agent for this kind of work. Unmet
+	 * dependencies are not here: `waitingOn` has the task list (FEAT-075).
+	 */
+	waiting: Record<string, string>;
 }
 
 export interface TaskDetail {
@@ -325,6 +351,7 @@ export interface FarmSettings {
 	autonomy?: Autonomy;
 	permissions?: Permissions;
 	maxParallel?: number;
+	maxAttempts?: number;
 	verification?: string[];
 	agents?: string[];
 	goalTitle?: string;
