@@ -201,6 +201,7 @@ of its own.
 | [TASK-029](items/TASK-029-candidate-feature-backlog.md) | Candidate feature backlog items | — | Done |
 | [TASK-030](items/TASK-030-the-farm-refresh-stops-working-on-the-main-thread.md) | The farm's refresh stops working on the main thread | Farm (1Q) | Done |
 | [TASK-031](items/TASK-031-long-sessions-stay-fast.md) | A long session stays fast | Farm (1Q) | Done |
+| [TASK-032](items/TASK-032-release-baseline.md) | Restore the release baseline and record the reliability plan | — | Open |
 
 ## Skipped identifiers
 
