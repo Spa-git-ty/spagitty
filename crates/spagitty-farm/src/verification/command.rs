@@ -270,6 +270,18 @@ mod tests {
         let Ok(mode) = std::fs::read_to_string(".spagitty-verification-test-mode") else {
             return;
         };
+        if mode == "echo" {
+            println!("all good");
+            return;
+        }
+        if mode == "failure" {
+            eprintln!("2 tests failed");
+            std::process::exit(1);
+        }
+        if mode == "cwd" {
+            assert_eq!(std::fs::read_to_string("here.txt").unwrap(), "yes");
+            return;
+        }
         if mode == "hang" {
             std::thread::sleep(Duration::from_secs(3));
             return;
@@ -364,16 +376,23 @@ mod tests {
     #[test]
     fn a_passing_command_passes() {
         let dir = tempfile::tempdir().unwrap();
-        let result = run(dir.path(), "/bin/sh -c 'echo all good'");
+        std::fs::write(dir.path().join(".spagitty-verification-test-mode"), "echo").unwrap();
+        let line = fixture_line();
+        let result = run(dir.path(), &line);
         assert!(result.passed);
-        assert_eq!(result.output.trim(), "all good");
-        assert_eq!(result.command, "/bin/sh -c 'echo all good'");
+        assert!(result.output.contains("all good"));
+        assert_eq!(result.command, line);
     }
 
     #[test]
     fn a_failing_command_keeps_what_it_said() {
         let dir = tempfile::tempdir().unwrap();
-        let result = run(dir.path(), "/bin/sh -c 'echo 2 tests failed >&2; exit 1'");
+        std::fs::write(
+            dir.path().join(".spagitty-verification-test-mode"),
+            "failure",
+        )
+        .unwrap();
+        let result = run(dir.path(), &fixture_line());
         assert!(!result.passed);
         assert!(
             result.output.contains("2 tests failed"),
@@ -402,7 +421,8 @@ mod tests {
     fn a_command_runs_where_it_was_told_to() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("here.txt"), "yes").unwrap();
-        assert!(run(dir.path(), "/bin/sh -c 'test -f here.txt'").passed);
+        std::fs::write(dir.path().join(".spagitty-verification-test-mode"), "cwd").unwrap();
+        assert!(run(dir.path(), &fixture_line()).passed);
     }
 
     #[test]

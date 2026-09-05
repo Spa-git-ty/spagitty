@@ -22,6 +22,9 @@ stays backward-compatible.
 
 ### Reliability
 
+- Measure frontend routes in coverage and check descendant termination and noisy
+  verification on Linux, macOS and Windows before release.
+
 - Automatic merges now require checks and successful independent review for
   the current committed work, plus merge permission. Tasks retain their intended
   destination, and competing farm merges serialize.
