@@ -22,6 +22,10 @@ stays backward-compatible.
 
 ### Reliability
 
+- Automatic merges now require checks and successful independent review for
+  the current committed work, plus merge permission. Tasks retain their intended
+  destination, and competing farm merges serialize.
+
 - Drain verification output continuously with bounded retention. Stopping a
   check or reaching its deadline terminates its process tree.
 

@@ -1215,3 +1215,182 @@ fn cancellation_during_verification_does_not_start_review_or_later_checks() {
     assert!(!worktree.join("later-check").exists());
     assert!(harness.service.review_of(&task).is_none());
 }
+
+fn reviewed_task(harness: &Harness, checked: bool) -> TaskId {
+    harness.service.create("Reviewed work", "").unwrap();
+    harness
+        .service
+        .configure(|farm| {
+            farm.autonomy = Autonomy::SemiAuto;
+            if checked {
+                farm.verification = vec!["/bin/sh -c 'exit 0'".into()];
+            }
+        })
+        .unwrap();
+    let worker = harness.worker("evidence-worker");
+    harness.reviewer("evidence-reviewer", "approve");
+    let task = harness.task("Change with evidence");
+    harness.run(&task, &worker);
+    harness.service.await_task(&task).unwrap();
+    task
+}
+
+fn enable_merging(harness: &Harness, allowed: bool) {
+    harness
+        .service
+        .configure(|farm| {
+            farm.autonomy = Autonomy::Auto;
+            farm.permissions.merge = allowed;
+        })
+        .unwrap();
+}
+
+#[test]
+fn automatic_merging_refuses_a_task_with_no_checks() {
+    let harness = Harness::new();
+    let task = reviewed_task(&harness, false);
+    enable_merging(&harness, true);
+    harness.service.approve(&task).unwrap();
+    assert_eq!(harness.status(&task), TaskStatus::Review);
+    assert!(!harness.repo.path().join("agent-output.txt").exists());
+    assert!(harness
+        .service
+        .farm()
+        .unwrap()
+        .task(&task)
+        .unwrap()
+        .note
+        .as_deref()
+        .unwrap()
+        .contains("verification"));
+}
+
+#[test]
+fn automatic_merging_accepts_current_checks_and_independent_review() {
+    let harness = Harness::new();
+    let task = reviewed_task(&harness, true);
+    enable_merging(&harness, true);
+    harness.service.approve(&task).unwrap();
+    assert_eq!(harness.status(&task), TaskStatus::Done);
+    assert!(harness.repo.path().join("agent-output.txt").exists());
+}
+
+#[test]
+fn automatic_merging_requires_explicit_merge_permission() {
+    let harness = Harness::new();
+    let task = reviewed_task(&harness, true);
+    enable_merging(&harness, false);
+    harness.service.approve(&task).unwrap();
+    assert_eq!(harness.status(&task), TaskStatus::Review);
+    assert!(!harness.repo.path().join("agent-output.txt").exists());
+}
+
+#[test]
+fn dirty_or_changed_work_invalidates_merge_evidence() {
+    let harness = Harness::new();
+    let task = reviewed_task(&harness, true);
+    enable_merging(&harness, true);
+    let worktree = harness.worktree(&task);
+    std::fs::write(worktree.join("agent-output.txt"), "changed after review").unwrap();
+    harness.service.approve(&task).unwrap();
+    assert_eq!(harness.status(&task), TaskStatus::Review);
+    harness
+        .repo
+        .git(&["-C", worktree.to_str().unwrap(), "add", "agent-output.txt"]);
+    harness.repo.git(&[
+        "-C",
+        worktree.to_str().unwrap(),
+        "commit",
+        "-qm",
+        "Later edit",
+    ]);
+    harness.service.approve(&task).unwrap();
+    assert_eq!(harness.status(&task), TaskStatus::Review);
+    assert!(!harness.repo.path().join("agent-output.txt").exists());
+}
+
+#[test]
+fn changing_verification_commands_invalidates_previous_evidence() {
+    let harness = Harness::new();
+    let task = reviewed_task(&harness, true);
+    enable_merging(&harness, true);
+    harness
+        .service
+        .configure(|farm| farm.verification.push("/bin/sh -c 'exit 1'".into()))
+        .unwrap();
+    harness.service.approve(&task).unwrap();
+    assert_eq!(harness.status(&task), TaskStatus::Review);
+    assert!(!harness.repo.path().join("agent-output.txt").exists());
+}
+
+#[test]
+fn a_branch_switch_does_not_redirect_a_task_merge() {
+    let harness = Harness::new();
+    let task = reviewed_task(&harness, true);
+    enable_merging(&harness, true);
+    harness.repo.git(&["switch", "-c", "unrelated"]);
+    let before = harness.repo.git(&["rev-parse", "HEAD"]);
+    harness.service.approve(&task).unwrap();
+    assert_eq!(harness.repo.git(&["rev-parse", "HEAD"]), before);
+    assert_eq!(harness.status(&task), TaskStatus::Review);
+    assert!(harness
+        .service
+        .farm()
+        .unwrap()
+        .task(&task)
+        .unwrap()
+        .note
+        .as_deref()
+        .unwrap()
+        .contains("Switch back"));
+}
+
+#[test]
+fn merge_rejects_an_invalid_status_before_touching_git() {
+    let harness = Harness::new();
+    let task = reviewed_task(&harness, true);
+    harness
+        .service
+        .edit_task(&task, |task| task.status = TaskStatus::Ready)
+        .unwrap();
+    let before = harness.repo.git(&["rev-parse", "HEAD"]);
+    assert!(harness.service.merge(&task).is_err());
+    assert_eq!(harness.repo.git(&["rev-parse", "HEAD"]), before);
+}
+
+#[test]
+fn restart_never_restores_unproven_merge_evidence() {
+    let harness = Harness::new();
+    let task = reviewed_task(&harness, true);
+    enable_merging(&harness, true);
+    let reopened = FarmService::open(harness.repo.path(), Arc::new(Recorder::default()));
+    reopened.approve(&task).unwrap();
+    assert_eq!(
+        reopened.farm().unwrap().task(&task).unwrap().status,
+        TaskStatus::Review
+    );
+    assert!(!harness.repo.path().join("agent-output.txt").exists());
+}
+
+#[test]
+fn a_failed_reviewer_cannot_approve_with_its_partial_output() {
+    let harness = Harness::new();
+    harness.service.create("Failed review", "").unwrap();
+    harness
+        .service
+        .configure(|farm| {
+            farm.autonomy = Autonomy::Auto;
+            farm.permissions.merge = true;
+            farm.verification = vec!["/bin/sh -c 'exit 0'".into()];
+        })
+        .unwrap();
+    let worker = harness.worker("review-crash-worker");
+    let reviewer = scripted_agent(harness.bin(), "review-crash", "echo '```spagitty-review'; echo '{\"decision\":\"approve\",\"summary\":\"looks fine\",\"issues\":[]}'; echo '```'; exit 7");
+    harness.service.save_agent(reviewer).unwrap();
+    let task = harness.task("Do not merge");
+    harness.run(&task, &worker);
+    harness.service.await_task(&task).unwrap();
+    assert_eq!(harness.status(&task), TaskStatus::Blocked);
+    assert!(!harness.repo.path().join("agent-output.txt").exists());
+    assert!(harness.service.review_of(&task).is_none());
+}
