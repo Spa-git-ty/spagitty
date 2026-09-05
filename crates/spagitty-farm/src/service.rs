@@ -49,7 +49,7 @@ use crate::orchestrator::{planner, router, scheduler, Scoreboard};
 use crate::persistence::store;
 use crate::policy::{self, Policy};
 use crate::review::{reviewer, Review};
-use crate::verification::{verifier, CommandResult, Verification};
+use crate::verification::{evidence, verifier, CommandResult, Verification};
 use crate::workspace::{self, Leases};
 
 /// Where farm events go.
@@ -160,6 +160,9 @@ struct State {
     change_requests: HashMap<TaskId, String>,
     verifications: HashMap<TaskId, Verification>,
     reviews: HashMap<TaskId, Review>,
+    verified_commits: HashMap<TaskId, evidence::CheckedCommit>,
+    reviewed_commits: HashMap<TaskId, evidence::ReviewedCommit>,
+    review_inputs: HashMap<RunId, String>,
     /// When each run last said something, by run (FEAT-077). Written by the
     /// sink on the reader thread, read when the runs are asked for.
     heard: HashMap<RunId, Arc<AtomicU64>>,
@@ -246,6 +249,7 @@ pub struct FarmService {
     /// (TASK-030).
     recent: Mutex<VecDeque<Recorded>>,
     verification_stops: Mutex<HashMap<TaskId, Arc<AtomicBool>>>,
+    merge_lock: Mutex<()>,
 }
 
 impl FarmService {
@@ -279,6 +283,7 @@ impl FarmService {
             cancellations: Mutex::new(HashMap::new()),
             recent: Mutex::new(store::load_events(&repo_for_events).into()),
             verification_stops: Mutex::new(HashMap::new()),
+            merge_lock: Mutex::new(()),
         };
         service.recover();
         service
@@ -566,10 +571,10 @@ impl FarmService {
             let task = farm
                 .task_mut(id)
                 .ok_or_else(|| Error::NoSuchTask(id.clone()))?;
-            if task.status == next {
+            if task.status == next && task.note == note {
                 return Ok(());
             }
-            if !task.status.can_become(next) {
+            if task.status != next && !task.status.can_become(next) {
                 return Err(Error::BadTransition {
                     from: task.status.label().to_string(),
                     to: next.label().to_string(),
@@ -955,15 +960,22 @@ impl FarmService {
             });
             let unattended = farm.autonomy >= Autonomy::Assisted;
             state.leases.acquire(&task.id, &task.allowed_paths)?;
+            state.verified_commits.remove(id);
+            state.reviewed_commits.remove(id);
             (task, prompt, unattended)
         };
 
+        let destination = task
+            .merge_target
+            .clone()
+            .map(Ok)
+            .unwrap_or_else(|| evidence::branch(&self.repo))?;
         self.set_status(id, TaskStatus::Assigned, None)?;
 
         // The worktree is cut from the branch the user is on, so a farm run
         // starts from what they can see rather than from `main` on a checkout
         // that has moved on.
-        let workspace = match workspace::create(&self.repo, id, definition.provider, "HEAD") {
+        let workspace = match workspace::create(&self.repo, id, definition.provider, &destination) {
             Ok(workspace) => workspace,
             Err(error) => {
                 self.state.lock().expect("farm lock").leases.release(id);
@@ -978,6 +990,9 @@ impl FarmService {
         });
 
         self.edit_task(id, |task| {
+            if task.merge_target.is_none() {
+                task.merge_target = Some(destination);
+            }
             task.branch = Some(workspace.branch.clone());
             task.worktree = Some(workspace.path.to_string_lossy().into_owned());
             task.assigned_agent = Some(definition.id.clone());
@@ -1235,14 +1250,26 @@ impl FarmService {
         });
 
         if ended == execution::Ended::Cancelled {
-            self.state.lock().expect("farm lock").leases.release(id);
+            let mut state = self.state.lock().expect("farm lock");
+            state.leases.release(id);
+            state.review_inputs.remove(run_id);
             return Ok(());
         }
 
         let transcript = execution::log::read(&execution::log::log_path(&self.repo, id, &run));
 
         match phase {
-            RunPhase::Review => self.conclude_review(id, &agent, &transcript),
+            RunPhase::Review => {
+                if let execution::Ended::Failed { message, .. } = &ended {
+                    {
+                        let mut state = self.state.lock().expect("farm lock");
+                        state.reviewed_commits.remove(id);
+                        state.review_inputs.remove(run_id);
+                    }
+                    return self.after_rejection(id, format!("Reviewer failed: {message}"));
+                }
+                self.conclude_review(id, run_id, &agent, &transcript)
+            }
             RunPhase::Planning => Ok(()),
             RunPhase::Implementation => {
                 let handoff = Handoff::parse(&transcript);
@@ -1314,6 +1341,13 @@ impl FarmService {
         };
 
         self.set_status(id, TaskStatus::Verification, None)?;
+        let before = evidence::clean_commit(&workdir).ok();
+        {
+            let mut state = self.state.lock().expect("farm lock");
+            state.verified_commits.remove(id);
+            state.reviewed_commits.remove(id);
+            state.reviews.remove(id);
+        }
 
         // Through `emit`, not straight to the observer. These two used to go
         // directly to the interface, which meant a verification was on screen
@@ -1346,6 +1380,23 @@ impl FarmService {
             .verifications
             .insert(id.clone(), verification.clone());
 
+        if verification.passed {
+            if let Some(commit) = before {
+                if evidence::clean_commit(&workdir).ok().as_ref() == Some(&commit) {
+                    self.state
+                        .lock()
+                        .expect("farm lock")
+                        .verified_commits
+                        .insert(
+                            id.clone(),
+                            evidence::CheckedCommit {
+                                commit,
+                                commands: commands.clone(),
+                            },
+                        );
+                }
+            }
+        }
         if !verification.passed && !verification.unverified {
             return self.after_rejection(id, verification.summary());
         }
@@ -1418,6 +1469,13 @@ impl FarmService {
             id.as_str().to_lowercase(),
             now_ms()
         ));
+        if let Ok(commit) = evidence::clean_commit(&workdir) {
+            self.state
+                .lock()
+                .expect("farm lock")
+                .review_inputs
+                .insert(run.clone(), commit);
+        }
         let command = adapter_for(reviewer.provider).command(
             &reviewer,
             &AgentRunRequest {
@@ -1439,7 +1497,19 @@ impl FarmService {
         })
     }
 
-    fn conclude_review(&self, id: &TaskId, reviewer: &AgentId, transcript: &str) -> Result<()> {
+    fn conclude_review(
+        &self,
+        id: &TaskId,
+        run: &RunId,
+        reviewer: &AgentId,
+        transcript: &str,
+    ) -> Result<()> {
+        let input = self
+            .state
+            .lock()
+            .expect("farm lock")
+            .review_inputs
+            .remove(run);
         let review = Review::parse(transcript);
         self.state
             .lock()
@@ -1474,6 +1544,28 @@ impl FarmService {
             return self.after_rejection(id, review.summary.clone());
         }
 
+        let task = self
+            .farm()
+            .and_then(|farm| farm.task(id).cloned())
+            .ok_or_else(|| Error::NoSuchTask(id.clone()))?;
+        if let Some(implementer) = &task.implemented_by {
+            reviewer::check(implementer, reviewer)?;
+        }
+        if let (Some(commit), Some(path)) = (input, &task.worktree) {
+            if evidence::clean_commit(Path::new(path)).ok().as_ref() == Some(&commit) {
+                self.state
+                    .lock()
+                    .expect("farm lock")
+                    .reviewed_commits
+                    .insert(
+                        id.clone(),
+                        evidence::ReviewedCommit {
+                            commit,
+                            reviewer: reviewer.clone(),
+                        },
+                    );
+            }
+        }
         self.approve(id)
     }
 
@@ -1481,7 +1573,10 @@ impl FarmService {
     pub fn approve(&self, id: &TaskId) -> Result<()> {
         let autonomy = self.farm().map(|farm| farm.autonomy).unwrap_or_default();
         if autonomy.merges() {
-            self.merge(id)
+            match self.merge_checked(id, true) {
+                Ok(()) => Ok(()),
+                Err(error) => self.set_status(id, TaskStatus::Review, Some(error.to_string())),
+            }
         } else {
             // Stays in Review with nothing running: the human's queue.
             Ok(())
@@ -1490,20 +1585,52 @@ impl FarmService {
 
     /// Merge a task's branch into the branch the user is on, then clean up.
     pub fn merge(&self, id: &TaskId) -> Result<()> {
-        let (branch, provider) = {
+        self.merge_checked(id, false)
+    }
+
+    fn merge_checked(&self, id: &TaskId, automatic: bool) -> Result<()> {
+        let merge_guard = self.merge_lock.lock().expect("merge lock");
+        let (task, provider) = {
             let state = self.state.lock().expect("farm lock");
-            // No permission check here on purpose: this is the *button*, and a
-            // person pressing merge has given the permission by pressing it.
-            // `permissions.merge` gates the farm merging unprompted, which is
-            // decided in `approve`.
             let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
             let task = farm.task(id).ok_or_else(|| Error::NoSuchTask(id.clone()))?;
-            let branch = task
-                .branch
-                .clone()
-                .ok_or_else(|| Error::Refused("This task has no branch to merge.".into()))?;
-            (branch, self.provider_of(task))
+            if task.status != TaskStatus::Review
+                || state
+                    .runs
+                    .iter()
+                    .any(|run| &run.task == id && run.outcome == RunOutcome::Running)
+            {
+                return Err(Error::Refused(
+                    "Wait for the task and its review to finish before merging.".into(),
+                ));
+            }
+            (task.clone(), self.provider_of(task))
         };
+        let branch = task
+            .branch
+            .clone()
+            .ok_or_else(|| Error::Refused("This task has no branch to merge.".into()))?;
+        let workdir = task
+            .worktree
+            .as_deref()
+            .map(Path::new)
+            .ok_or_else(|| Error::Refused("This task has no worktree.".into()))?;
+        let commit = evidence::clean_commit(workdir)?;
+        let destination = evidence::branch(&self.repo)?;
+        if let Some(expected) = &task.merge_target {
+            if expected != &destination {
+                return Err(Error::Refused(format!(
+                    "Switch back to {expected} before merging this task."
+                )));
+            }
+        } else if automatic {
+            return Err(Error::Refused(
+                "This older task has no recorded merge destination; merge it by hand.".into(),
+            ));
+        }
+        if automatic {
+            self.check_merge_evidence(&task, &commit)?;
+        }
 
         self.emit(FarmEvent::MergeRequested {
             task: id.clone(),
@@ -1512,7 +1639,7 @@ impl FarmService {
 
         // `--no-ff`, always. A farm branch that fast-forwards disappears from
         // the history, and "which agent wrote this" stops having an answer.
-        match shell::merge(&self.repo, &branch, false, true) {
+        match shell::merge_into(&self.repo, &commit, &destination) {
             Ok(()) => {
                 self.emit(FarmEvent::MergeCompleted {
                     task: id.clone(),
@@ -1529,6 +1656,7 @@ impl FarmService {
                         .into_owned(),
                     created: false,
                 });
+                drop(merge_guard);
                 self.tick();
                 Ok(())
             }
@@ -1550,6 +1678,42 @@ impl FarmService {
                 )
             }
         }
+    }
+
+    fn check_merge_evidence(&self, task: &Task, commit: &str) -> Result<()> {
+        let state = self.state.lock().expect("farm lock");
+        let farm = state.farm.as_ref().ok_or(Error::NoFarm)?;
+        if !farm.autonomy.merges() || !farm.permissions.merge {
+            return Err(Error::Refused(
+                "Automatic merging is not enabled. Choose the autonomy level again to allow it."
+                    .into(),
+            ));
+        }
+        let checked = state.verified_commits.get(&task.id).filter(|checked| {
+            checked.commit == commit
+                && checked.commands == verifier::commands_for(&farm.verification, task)
+        });
+        if checked.is_none() {
+            return Err(Error::Refused(
+                "Run passing verification checks for the current commit before automatic merging."
+                    .into(),
+            ));
+        }
+        let reviewed = state
+            .reviewed_commits
+            .get(&task.id)
+            .filter(|review| review.commit == commit);
+        let Some(reviewed) = reviewed else {
+            return Err(Error::Refused(
+                "The current commit needs a successful independent review.".into(),
+            ));
+        };
+        let implementer = task
+            .implemented_by
+            .as_ref()
+            .ok_or_else(|| Error::Refused("The task's implementer is unknown.".into()))?;
+        reviewer::check(implementer, &reviewed.reviewer)?;
+        Ok(())
     }
 
     /// A verification failure or a requested change: try again, or give up.
