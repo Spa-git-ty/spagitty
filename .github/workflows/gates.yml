@@ -209,6 +209,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/linux-deps
+        if: matrix.os == 'ubuntu-latest'
       - name: Descendant containment and noisy/cancellable verification
         run: |
           cargo test -p spagitty-farm --lib execution::tree::tests
